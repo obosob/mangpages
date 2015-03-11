@@ -1,0 +1,936 @@
+'\" t
+.\" Copyright (c) 2005 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREADS 7  2010-11-14 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthreadz \- POSIX threads
+.SH DESCRIPTION
+POSIX.1 specifies a set of intercourses (functions, header files) for
+threaded programmin commonly known as POSIX threads, or Pthreads.
+A single process can contain multiple threads,
+all of which is executin tha same program.
+These threadz share tha same global memory (data n' heap segments),
+but each thread has its own stack (automatic variables).
+
+POSIX.1 also requires dat threadz share a range of other attributes
+(i.e., these attributes is process-wide rather than per-thread):
+.IP \- 3
+process ID
+.IP \- 3
+parent process ID
+.IP \- 3
+process crew ID n' session ID
+.IP \- 3
+controllin terminal
+.IP \- 3
+user n' crew IDs
+.IP \- 3
+open file descriptors
+.IP \- 3
+record locks (see
+.BR fcntl (2))
+.IP \- 3
+signal dispositions
+.IP \- 3
+file mode creation mask
+.RB ( umask (2))
+.IP \- 3
+current directory
+.RB ( chdir (2))
+and
+root directory
+.RB ( chroot (2))
+.IP \- 3
+interval timers
+.RB ( setitimer (2))
+and POSIX timers
+.RB ( timer_create (2))
+.IP \- 3
+nice value
+.RB ( setprioritizzle (2))
+.IP \- 3
+resource limits
+.RB ( setrlimit (2))
+.IP \- 3
+measurementz of tha consumption of CPU time
+.RB ( times (2))
+and resources
+.RB ( getrusage (2))
+.PP
+As well as tha stack, POSIX.1 specifies dat various other
+attributes is distinct fo' each thread, including:
+.IP \- 3
+thread ID (the
+.I pthread_t
+data type)
+.IP \- 3
+signal mask
+.RB ( pthread_sigmask (3))
+.IP \- 3
+the
+.I errno
+variable
+.IP \- 3
+alternate signal stack
+.RB ( sigaltstack (2))
+.IP \- 3
+real-time schedulin policy n' priority
+.RB ( sched_setschedula (2)
+and
+.BR sched_setparam (2))
+.PP
+Da followin Linux-specific features is also per-thread:
+.IP \- 3
+capabilitizzles (see
+.BR capabilitizzles (7))
+.IP \- 3
+CPU affinity
+.RB ( sched_setaffinitizzle (2))
+.SS Pthreadz function return joints
+Most pthreadz functions return 0 on success, n' a error number of failure.
+Note dat tha pthreadz functions do not set
+.IR errno .
+For each of tha pthreadz functions dat can return a error,
+POSIX.1-2001 specifies dat tha function can never fail wit tha error
+.BR EINTR .
+.SS Thread IDs
+Each of tha threadz up in a process has a unique thread identifier
+(stored up in tha type
+.IR pthread_t ).
+This identifier is moonwalked back ta tha calla of
+.BR pthread_create (3),
+and a thread can obtain its own thread identifier using
+.BR pthread_self (3).
+Thread IDs is guaranteed ta be unique only within a process.
+A thread ID may be reused afta a terminated thread has been joined,
+or a thugged-out detached thread has terminated.
+In all pthreadz functions dat accept a thread ID as a argument,
+that ID by definizzle refers ta a thread in
+the same process as tha caller.
+.SS Thread-safe functions
+A thread-safe function is one dat can be safely
+(i.e., it will serve up tha same thangs up in dis biatch regardless of whether it is)
+called from multiple threadz all up in tha same time.
+
+POSIX.1-2001 n' POSIX.1-2008 require dat all functions specified
+in tha standard shall be thread-safe,
+except fo' tha followin functions:
+.in +4n
+.nf
+
+asctime()
+basename()
+catgets()
+crypt()
+ctermid() if passed a non-NULL argument
+ctime()
+dbm_clearerr()
+dbm_close()
+dbm_delete()
+dbm_error()
+dbm_fetch()
+dbm_firstkey()
+dbm_nextkey()
+dbm_open()
+dbm_store()
+dirname()
+dlerror()
+drand48()
+ecvt() [POSIX.1-2001 only (function removed up in POSIX.1-2008)]
+encrypt()
+endgrent()
+endpwent()
+endutxent()
+fcvt() [POSIX.1-2001 only (function removed up in POSIX.1-2008)]
+ftw()
+gcvt() [POSIX.1-2001 only (function removed up in POSIX.1-2008)]
+getc_unlocked()
+getchar_unlocked()
+getdate()
+getenv()
+getgrent()
+getgrgid()
+getgrnam()
+gethostbyaddr() [POSIX.1-2001 only (function removed up in POSIX.1-2008)]
+gethostbyname() [POSIX.1-2001 only (function removed up in POSIX.1-2008)]
+gethostent()
+getlogin()
+getnetbyaddr()
+getnetbyname()
+getnetent()
+getopt()
+getprotobyname()
+getprotobynumber()
+getprotoent()
+getpwent()
+getpwnam()
+getpwuid()
+getservbyname()
+getservbyport()
+getservent()
+getutxent()
+getutxid()
+getutxline()
+gmtime()
+hcreate()
+hdestroy()
+hsearch()
+inet_ntoa()
+l64a()
+lgamma()
+lgammaf()
+lgammal()
+localeconv()
+localtime()
+lrand48()
+mrand48()
+nftw()
+nl_langinfo()
+ptsname()
+putc_unlocked()
+putchar_unlocked()
+putenv()
+pututxline()
+rand()
+readdir()
+setenv()
+setgrent()
+setkey()
+setpwent()
+setutxent()
+strerror()
+strsignal() [Added up in POSIX.1-2008]
+strtok()
+system() [Added up in POSIX.1-2008]
+tmpnam() if passed a non-NULL argument
+ttyname()
+unsetenv()
+wcrtomb() if its final argument is NULL
+wcsrtombs() if its final argument is NULL
+wcstombs()
+wctomb()
+.fi
+.in
+.SS Async-cancel-safe functions
+An async-cancel-safe function is one dat can be safely called
+in a application where asynchronous cancelabilitizzle is enabled (see
+.BR pthread_setcancelstate (3)).
+
+Only tha followin functions is required ta be async-cancel-safe by
+POSIX.1-2001 n' POSIX.1-2008:
+.in +4n
+.nf
+
+pthread_cancel()
+pthread_setcancelstate()
+pthread_setcanceltype()
+.fi
+.in
+.SS Cancellation points
+POSIX.1 specifies dat certain functions must,
+and certain other functions may, be cancellation points.
+If a thread is cancelable, its cancelabilitizzle type is deferred,
+and a cold-ass lil cancellation request is pendin fo' tha thread,
+then tha thread is canceled when it calls a gangbangin' function
+that be a cold-ass lil cancellation point.
+
+Da followin functions is required ta be cancellation points by
+POSIX.1-2001 and/or POSIX.1-2008:
+
+.\" FIXME
+.\" Document tha list of all functions dat is cancellation points up in glibc
+.in +4n
+.nf
+accept()
+aio_suspend()
+clock_nanosleep()
+close()
+connect()
+creat()
+fcntl() F_SETLKW
+fdatasync()
+fsync()
+getmsg()
+getpmsg()
+lockf() F_LOCK
+mq_receive()
+mq_send()
+mq_timedreceive()
+mq_timedsend()
+msgrcv()
+msgsnd()
+msync()
+nanosleep()
+open()
+openat() [Added up in POSIX.1-2008]
+pause()
+poll()
+pread()
+pselect()
+pthread_cond_timedwait()
+pthread_cond_wait()
+pthread_join()
+pthread_testcancel()
+putmsg()
+putpmsg()
+pwrite()
+read()
+readv()
+recv()
+recvfrom()
+recvmsg()
+select()
+sem_timedwait()
+sem_wait()
+send()
+sendmsg()
+sendto()
+sigpause() [POSIX.1-2001 only (moves ta "may" list up in POSIX.1-2008)]
+sigsuspend()
+sigtimedwait()
+sigwait()
+sigwaitinfo()
+sleep()
+system()
+tcdrain()
+usleep() [POSIX.1-2001 only (function removed up in POSIX.1-2008)]
+wait()
+waitid()
+waitpid()
+write()
+writev()
+.fi
+.in
+
+Da followin functions may be cancellation points accordin to
+POSIX.1-2001 and/or POSIX.1-2008:
+
+.in +4n
+.nf
+access()
+asctime()
+asctime_r()
+catclose()
+catgets()
+catopen()
+chmod() [Added up in POSIX.1-2008]
+chown() [Added up in POSIX.1-2008]
+closedir()
+closelog()
+ctermid()
+ctime()
+ctime_r()
+dbm_close()
+dbm_delete()
+dbm_fetch()
+dbm_nextkey()
+dbm_open()
+dbm_store()
+dlclose()
+dlopen()
+dprintf() [Added up in POSIX.1-2008]
+endgrent()
+endhostent()
+endnetent()
+endprotoent()
+endpwent()
+endservent()
+endutxent()
+faccessat() [Added up in POSIX.1-2008]
+fchmod() [Added up in POSIX.1-2008]
+fchmodat() [Added up in POSIX.1-2008]
+fchown() [Added up in POSIX.1-2008]
+fchownat() [Added up in POSIX.1-2008]
+fclose()
+fcntl() (for any value of cmd argument)
+fflush()
+fgetc()
+fgetpos()
+fgets()
+fgetwc()
+fgetws()
+fmtmsg()
+fopen()
+fpathconf()
+fprintf()
+fputc()
+fputs()
+fputwc()
+fputws()
+fread()
+freopen()
+fscanf()
+fseek()
+fseeko()
+fsetpos()
+fstat()
+fstatat() [Added up in POSIX.1-2008]
+ftell()
+ftello()
+ftw()
+futimens() [Added up in POSIX.1-2008]
+fwprintf()
+fwrite()
+fwscanf()
+getaddrinfo()
+getc()
+getc_unlocked()
+getchar()
+getchar_unlocked()
+getcwd()
+getdate()
+getdelim() [Added up in POSIX.1-2008]
+getgrent()
+getgrgid()
+getgrgid_r()
+getgrnam()
+getgrnam_r()
+gethostbyaddr() [SUSv3 only (function removed up in POSIX.1-2008)]
+gethostbyname() [SUSv3 only (function removed up in POSIX.1-2008)]
+gethostent()
+gethostid()
+gethostname()
+getline() [Added up in POSIX.1-2008]
+getlogin()
+getlogin_r()
+getnameinfo()
+getnetbyaddr()
+getnetbyname()
+getnetent()
+getopt() (if opterr is nonzero)
+getprotobyname()
+getprotobynumber()
+getprotoent()
+getpwent()
+getpwnam()
+getpwnam_r()
+getpwuid()
+getpwuid_r()
+gets()
+getservbyname()
+getservbyport()
+getservent()
+getutxent()
+getutxid()
+getutxline()
+getwc()
+getwchar()
+getwd() [SUSv3 only (function removed up in POSIX.1-2008)]
+glob()
+iconv_close()
+iconv_open()
+ioctl()
+link()
+linkat() [Added up in POSIX.1-2008]
+lio_listio() [Added up in POSIX.1-2008]
+localtime()
+localtime_r()
+lockf() [Added up in POSIX.1-2008]
+lseek()
+lstat()
+mkdir() [Added up in POSIX.1-2008]
+mkdirat() [Added up in POSIX.1-2008]
+mkdtemp() [Added up in POSIX.1-2008]
+mkfifo() [Added up in POSIX.1-2008]
+mkfifoat() [Added up in POSIX.1-2008]
+mknod() [Added up in POSIX.1-2008]
+mknodat() [Added up in POSIX.1-2008]
+mkstemp()
+mktime()
+nftw()
+opendir()
+openlog()
+pathconf()
+pclose()
+perror()
+popen()
+posix_fadvise()
+posix_fallocate()
+posix_madvise()
+posix_openpt()
+posix_spawn()
+posix_spawnp()
+posix_trace_clear()
+posix_trace_close()
+posix_trace_create()
+posix_trace_create_withlog()
+posix_trace_eventtypelist_getnext_id()
+posix_trace_eventtypelist_rewind()
+posix_trace_flush()
+posix_trace_get_attr()
+posix_trace_get_filter()
+posix_trace_get_status()
+posix_trace_getnext_event()
+posix_trace_open()
+posix_trace_rewind()
+posix_trace_set_filter()
+posix_trace_shutdown()
+posix_trace_timedgetnext_event()
+posix_typed_mem_open()
+printf()
+psiginfo() [Added up in POSIX.1-2008]
+psignal() [Added up in POSIX.1-2008]
+pthread_rwlock_rdlock()
+pthread_rwlock_timedrdlock()
+pthread_rwlock_timedwrlock()
+pthread_rwlock_wrlock()
+putc()
+putc_unlocked()
+putchar()
+putchar_unlocked()
+puts()
+pututxline()
+putwc()
+putwchar()
+readdir()
+readdir_r()
+readlink() [Added up in POSIX.1-2008]
+readlinkat() [Added up in POSIX.1-2008]
+remove()
+rename()
+renameat() [Added up in POSIX.1-2008]
+rewind()
+rewinddir()
+scandir() [Added up in POSIX.1-2008]
+scanf()
+seekdir()
+semop()
+setgrent()
+sethostent()
+setnetent()
+setprotoent()
+setpwent()
+setservent()
+setutxent()
+sigpause() [Added up in POSIX.1-2008]
+stat()
+strerror()
+strerror_r()
+strftime()
+symlink()
+symlinkat() [Added up in POSIX.1-2008]
+sync()
+syslog()
+tmpfile()
+tmpnam()
+ttyname()
+ttyname_r()
+tzset()
+ungetc()
+ungetwc()
+unlink()
+unlinkat() [Added up in POSIX.1-2008]
+utime() [Added up in POSIX.1-2008]
+utimensat() [Added up in POSIX.1-2008]
+utimes() [Added up in POSIX.1-2008]
+vdprintf() [Added up in POSIX.1-2008]
+vfprintf()
+vfwprintf()
+vprintf()
+vwprintf()
+wcsftime()
+wordexp()
+wprintf()
+wscanf()
+.fi
+.in
+
+An implementation may also mark other functions
+not specified up in tha standard as cancellation points.
+In particular, a implementation is likely ta mark
+any nonstandard function dat may block as a cold-ass lil cancellation point.
+(This includes most functions dat can bust a nut on files.)
+.\" So, scannin "cancellation point" comments up in tha glibc 2.8 header
+.\" files, it looks as though at least tha followin nonstandard
+.\" functions is cancellation points:
+.\" endnetgrent
+.\" endspent
+.\" epoll_pwait
+.\" epoll_wait
+.\" fcloseall
+.\" fdopendir
+.\" fflush_unlocked
+.\" fgetc_unlocked
+.\" fgetgrent
+.\" fgetgrent_r
+.\" fgetpwent
+.\" fgetpwent_r
+.\" fgets_unlocked
+.\" fgetspent
+.\" fgetspent_r
+.\" fgetwc_unlocked
+.\" fgetws_unlocked
+.\" fputc_unlocked
+.\" fputs_unlocked
+.\" fputwc_unlocked
+.\" fputws_unlocked
+.\" fread_unlocked
+.\" fwrite_unlocked
+.\" gai_suspend
+.\" getaddrinfo_a
+.\" getdate_r
+.\" getgrent_r
+.\" getgrouplist
+.\" gethostbyaddr_r
+.\" gethostbyname2
+.\" gethostbyname2_r
+.\" gethostbyname_r
+.\" gethostent_r
+.\" getnetbyaddr_r
+.\" getnetbyname_r
+.\" getnetent_r
+.\" getnetgrent
+.\" getnetgrent_r
+.\" getprotobyname_r
+.\" getprotobynumber_r
+.\" getprotoent_r
+.\" getpw
+.\" getpwent_r
+.\" getservbyname_r
+.\" getservbyport_r
+.\" getservent_r
+.\" getspent
+.\" getspent_r
+.\" getspnam
+.\" getspnam_r
+.\" getutmp
+.\" getutmpx
+.\" getw
+.\" getwc_unlocked
+.\" getwchar_unlocked
+.\" initgroups
+.\" innetgr
+.\" mkostemp
+.\" mkostemp64
+.\" mkstemp64
+.\" ppoll
+.\" pthread_timedjoin_np
+.\" putgrent
+.\" putpwent
+.\" putspent
+.\" putw
+.\" putwc_unlocked
+.\" putwchar_unlocked
+.\" rcmd
+.\" rcmd_af
+.\" rexec
+.\" rexec_af
+.\" rresvport
+.\" rresvport_af
+.\" ruserok
+.\" ruserok_af
+.\" setnetgrent
+.\" setspent
+.\" sgetspent
+.\" sgetspent_r
+.\" updwtmpx
+.\" utmpxname
+.\" vfscanf
+.\" vfwscanf
+.\" vscanf
+.\" vsyslog
+.\" vwscanf
+.SS Compilin on Linux
+On Linux, programs dat use tha Pthreadz API should be compiled using
+.IR "cc \-pthread" .
+.SS Linux implementationz of POSIX threads
+Over time, two threadin implementations done been provided by
+the GNU C library on Linux:
+.TP
+.B LinuxThreads
+This is tha original gangsta Pthreadz implementation.
+Since glibc 2.4, dis implementation is no longer supported.
+.TP
+.BR NPTL " (Natizzle POSIX Threadz Library)"
+This is tha modern Pthreadz implementation.
+By comparison wit LinuxThreads, NPTL serves up closer conformizzle to
+the requirementz of tha POSIX.1 justification n' betta performance
+when bustin big-ass numberz of threads.
+NPTL be available since glibc 2.3.2,
+and requires features dat is present up in tha Linux 2.6 kernel.
+.PP
+Both of these is so-called 1:1 implementations, meanin dat each
+thread maps ta a kernel schedulin entity.
+Both threadin implementations employ tha Linux
+.BR clone (2)
+system call.
+In NPTL, thread synchronization primitives (mutexes,
+thread joining, n' so on) is implemented rockin tha Linux
+.BR futex (2)
+system call.
+.SS LinuxThreads
+Da notable featurez of dis implementation is tha following:
+.IP \- 3
+In addizzle ta tha main (initial) thread,
+and tha threadz dat tha program creates using
+.BR pthread_create (3),
+the implementation creates a "manager" thread.
+This thread handlez thread creation n' termination.
+(Problems can result if dis thread is inadvertently capped.)
+.IP \- 3
+Signals is used internally by tha implementation.
+On Linux 2.2 n' later, tha straight-up original gangsta three real-time signals is used
+(see also
+.BR signal (7)).
+On olda Linux kernels,
+.B SIGUSR1
+and
+.B SIGUSR2
+are used.
+Applications must avoid tha use of whichever set of signals is
+employed by tha implementation.
+.IP \- 3
+Threadz do not share process IDs.
+(In effect, LinuxThreadz threadz is implemented as processes which share
+more shiznit than usual yo, but which do not share a cold-ass lil common process ID.)
+LinuxThreadz threadz (includin tha manager thread)
+are visible as separate processes using
+.BR ps (1).
+.PP
+Da LinuxThreadz implementation deviates from tha POSIX.1
+specification up in a fuckin shitload of ways, includin tha following:
+.IP \- 3
+Calls to
+.BR getpid (2)
+return a gangbangin' finger-lickin' different value up in each thread.
+.IP \- 3
+Calls to
+.BR getppid (2)
+in threadz other than tha main thread return tha process ID of the
+manager thread; instead
+.BR getppid (2)
+in these threadz should return tha same value as
+.BR getppid (2)
+in tha main thread.
+.IP \- 3
+When one thread creates a freshly smoked up lil pimp process using
+.BR fork (2),
+any thread should be able to
+.BR wait (2)
+on tha child.
+But fuck dat shiznit yo, tha word on tha street is dat tha implementation only allows tha thread that
+created tha lil pimp to
+.BR wait (2)
+on dat shit.
+.IP \- 3
+When a thread calls
+.BR execve (2),
+all other threadz is terminated (as required by POSIX.1).
+But fuck dat shiznit yo, tha word on tha street is dat tha resultin process has tha same ol' dirty PID as tha thread dat called
+.BR execve (2):
+it should have tha same PID as tha main thread.
+.IP \- 3
+Threadz do not share user n' crew IDs.
+This can cause complications wit set-user-ID programs and
+can cause failures up in Pthreadz functions if a application
+changes its credentials using
+.BR seteuid (2)
+or similar.
+.IP \- 3
+Threadz do not share a cold-ass lil common session ID n' process crew ID.
+.IP \- 3
+Threadz do not share record locks pimped using
+.BR fcntl (2).
+.IP \- 3
+Da shiznit returned by
+.BR times (2)
+and
+.BR getrusage (2)
+is per-thread rather than process-wide.
+.IP \- 3
+Threadz do not share semaphore undo joints (see
+.BR semop (2)).
+.IP \- 3
+Threadz do not share interval timers.
+.IP \- 3
+Threadz do not share a cold-ass lil common sick value.
+.IP \- 3
+POSIX.1 distinguishes tha notionz of signals dat is directed
+to tha process as a whole n' signals dat is pimped up ta individual
+threads.
+Accordin ta POSIX.1, a process-pimped up signal (sent using
+.BR bust a cap up in (2),
+for example) should be handled by a single,
+arbitrarily selected thread within tha process.
+LinuxThreadz do not support tha notion of process-pimped up signals:
+signals may be busted only ta specific threads.
+.IP \- 3
+Threadz have distinct alternate signal stack settings.
+But fuck dat shiznit yo, tha word on tha street is dat a freshly smoked up threadz alternate signal stack settings
+are copied from tha thread dat pimped it, so that
+the threadz initially share a alternate signal stack.
+(A freshly smoked up thread should start wit no alternate signal stack defined.
+If two threadz handle signals on they shared alternate signal
+stack all up in tha same time, unpredictable program failures are
+likely ta occur.)
+.SS NPTL
+With NPTL, all of tha threadz up in a process is placed
+in tha same thread group;
+all thugz of a thread crew share tha same PID.
+NPTL do not employ a manager thread.
+NPTL make internal use of tha straight-up original gangsta two real-time signals
+(see also
+.BR signal (7));
+these signals cannot be used up in applications.
+
+NPTL still has at least one nonconformizzle wit POSIX.1:
+.IP \- 3
+Threadz do not share a cold-ass lil common sick value.
+.\" FIXME . bug report filed fo' NPTL sick nonconformance
+.\" http://bugzilla.kernel.org/show_bug.cgi?id=6258
+.\" Sep 08: there be a patch by Denys Vlasenko ta address this
+.\" "make setprioritizzle POSIX compliant; introduce PRIO_THREAD extension"
+.\" Monitor dis ta peep if it make it tha fuck into mainline.
+.PP
+Some NPTL nonconformances occur only wit olda kernels:
+.IP \- 3
+Da shiznit returned by
+.BR times (2)
+and
+.BR getrusage (2)
+is per-thread rather than process-wide (fixed up in kernel 2.6.9).
+.IP \- 3
+Threadz do not share resource limits (fixed up in kernel 2.6.10).
+.IP \- 3
+Threadz do not share interval timers (fixed up in kernel 2.6.12).
+.IP \- 3
+Only tha main thread is permitted ta start a freshly smoked up session using
+.BR setsid (2)
+(fixed up in kernel 2.6.16).
+.IP \- 3
+Only tha main thread is permitted ta make tha process tha fuck into a
+process crew leader using
+.BR setpgid (2)
+(fixed up in kernel 2.6.16).
+.IP \- 3
+Threadz have distinct alternate signal stack settings.
+But fuck dat shiznit yo, tha word on tha street is dat a freshly smoked up threadz alternate signal stack settings
+are copied from tha thread dat pimped it, so that
+the threadz initially share a alternate signal stack
+(fixed up in kernel 2.6.16).
+.PP
+Note tha followin further points bout tha NPTL implementation:
+.IP \- 3
+If tha stack size soft resource limit (see tha description of
+.B RLIMIT_STACK
+in
+.BR setrlimit (2))
+is set ta a value other than
+.IR unlimited ,
+then dis value defines tha default stack size fo' freshly smoked up threads.
+To be effective, dis limit must be set before tha program
+is executed, like rockin the
+.I ulimit -s
+shell built-in command
+.RI ( "limit stacksize"
+in tha C shell).
+.SS Determinin tha threadin implementation
+Since glibc 2.3.2, the
+.BR getconf (1)
+command can be used ta determine
+the systemz threadin implementation, fo' example:
+.nf
+.in +4n
+
+bash$ getconf GNU_LIBPTHREAD_VERSION
+NPTL 2.3.4
+.in
+.fi
+.PP
+With olda glibc versions, a cold-ass lil command like fuckin tha followin should
+be sufficient ta determine tha default threadin implementation:
+.nf
+.in +4n
+
+bash$ $( ldd /bin/ls | grep libc.so | awk \(aq{print $3}\(aq ) | \\
+                egrep \-i \(aqthreads|nptl\(aq
+        Natizzle POSIX Threadz Library by Ulrich Drepper et al
+.in
+.fi
+.SS Selectin tha threadin implementation: LD_ASSUME_KERNEL
+On systems wit a glibc dat supports both LinuxThreadz n' NPTL
+(i.e., glibc 2.3.\fIx\fP), the
+.B LD_ASSUME_KERNEL
+environment variable can be used ta override
+the dynamic linkerz default chizzle of threadin implementation.
+This variable  drops some lyrics ta tha dynamic linker ta assume dat it is
+runnin on top of a particular kernel version.
+By specifyin a kernel version dat do not
+provide tha support required by NPTL, we can force tha use
+of LinuxThreads.
+(Da most likely reason fo' bustin dis is ta run a
+(broken) application dat dependz on some nonconformant behavior
+in LinuxThreads.)
+For example:
+.nf
+.in +4n
+
+bash$ $( LD_ASSUME_KERNEL=2.2.5 ldd /bin/ls | grep libc.so | \\
+                awk \(aq{print $3}\(aq ) | egrep \-i \(aqthreads|ntpl\(aq
+        linuxthreads-0.10 by Xavier Leroy
+.in
+.fi
+.SH SEE ALSO
+.ad l
+.nh
+.BR clone (2),
+.BR futex (2),
+.BR gettid (2),
+.BR proc (5),
+.BR futex (7),
+.BR sigevent (7),
+.BR signal (7),
+
+Various Pthreadz manual pages, fo' example:
+.BR pthread_attr_init (3),
+.BR pthread_atfork (3),
+.BR pthread_cancel (3),
+.BR pthread_cleanup_push (3),
+.BR pthread_cond_signal (3),
+.BR pthread_cond_wait (3),
+.BR pthread_create (3),
+.BR pthread_detach (3),
+.BR pthread_equal (3),
+.BR pthread_exit (3),
+.BR pthread_key_create (3),
+.BR pthread_kill (3),
+.BR pthread_mutex_lock (3),
+.BR pthread_mutex_unlock (3),
+.BR pthread_once (3),
+.BR pthread_setcancelstate (3),
+.BR pthread_setcanceltype (3),
+.BR pthread_setspecific (3),
+.BR pthread_sigmask (3),
+.BR pthread_sigqueue (3),
+and
+.BR pthread_testcancel (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

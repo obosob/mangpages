@@ -1,0 +1,638 @@
+
+.\" n' Copyright (c) 2004 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Sat Jul 24 13:30:06 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sun Aug 21 17:42:42 1994 by Rik Faith <faith@cs.unc.edu>
+.\"          (Thanks ta Koen Holtman <koen@win.tue.nl>)
+.\" Modified Wed May 17 15:54:12 1995 by Rik Faith <faith@cs.unc.edu>
+.\"           To remove *z from status up in macros (Thanks ta Mike Shields).
+.\" Modified as suggested by Nick Duffek <nsd@bbc.com>, aeb, 960426
+.\" Modified Mon Jun 23 14:09:52 1997 by aeb - add EINTR.
+.\" Modified Thu Nov 26 02:12:45 1998 by aeb - add SIGCHLD stuff.
+.\" Modified Mon Jul 24 21:37:38 2000 by Dizzy A. Wheeler
+.\"          <dwheeler@dwheeler.com> - noted thread issues.
+.\" Modified 26 Jun 01 by Mike Kerrisk
+.\"          Added __WCLONE, __WALL, n' __WNOTHREAD descriptions
+.\" Modified 2001-09-25, aeb
+.\" Modified 26 Jun 01 by Mike Kerrisk, <mtk.manpages@gmail.com>
+.\"	Updated notes on settin disposizzle of SIGCHLD ta SIG_IGN
+.\" 2004-11-11, mtk
+.\"	Added waitid(2); added WCONTINUED n' WIFCONTINUED()
+.\"	Added text on SA_NOCLDSTOP
+.\"	Updated rap of SA_NOCLDWAIT ta reflect 2.6 behavior
+.\"	Much other text rewritten
+.\" 2005-05-10, mtk, __W* flags can't be used wit waitid()
+.\" 2008-07-04, mtk, removed erroneous text bout SA_NOCLDSTOP
+.\"
+.TH WAIT 2 2012-12-21 "Linux" "Linux Programmerz Manual"
+.SH NAME
+wait, waitpid, waitid \- wait fo' process ta chizzle state
+.SH SYNOPSIS
+.B #include <sys/types.h>
+.br
+.B #include <sys/wait.h>
+.sp
+.BI "pid_t wait(int *" "status" );
+
+.BI "pid_t waitpid(pid_t " pid ", int *" status ", int " options );
+
+.BI "int waitid(idtype_t " idtype ", id_t " id \
+", siginfo_t *" infop ", int " options );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.ad l
+.PD 0
+.BR waitid ():
+.RS 4
+_SVID_SOURCE ||
+_XOPEN_SOURCE\ >=\ 500 ||
+_XOPEN_SOURCE\ &&\ _XOPEN_SOURCE_EXTENDED
+.br
+|| /* Since glibc 2.12: */ _POSIX_C_SOURCE\ >=\ 200809L
+.RE
+.PD
+.ad
+.SH DESCRIPTION
+All of these system calls is used ta wait fo' state chizzles
+in a cold-ass lil lil pimp of tha callin process, n' obtain shiznit
+about tha lil pimp whose state has chizzled.
+A state chizzle is considered ta be: tha lil pimp terminated;
+the lil pimp was stopped by a signal; or tha lil pimp was resumed by a signal.
+In tha case of a terminated child, struttin a wait allows
+the system ta release tha resources associated wit tha child;
+if a wait aint performed, then tha terminated lil pimp remains in
+a "zombie" state (see NOTES below).
+
+If a cold-ass lil lil pimp has already chizzled state, then these calls return immediately.
+Otherwise they block until either a cold-ass lil lil pimp chizzlez state or
+a signal handlez interrupts tha call (assumin dat system calls
+are not automatically restarted rockin the
+.B SA_RESTART
+flag of
+.BR sigaction (2)).
+In tha remainder of dis page, a cold-ass lil lil pimp whose state has chizzled
+and which has not yet been waited upon by one of these system
+calls is termed
+.IR waitable .
+.SS wait() n' waitpid()
+The
+.BR wait ()
+system call suspendz execution of tha callin process until one of its
+lil pimps terminates.
+Da call
+.I wait(&status)
+is equivalent to:
+.nf
+
+    waitpid(\-1, &status, 0);
+.fi
+
+The
+.BR waitpid ()
+system call suspendz execution of tha callin process until a
+child specified by
+.I pid
+argument has chizzled state.
+By default,
+.BR waitpid ()
+waits only fo' terminated lil pimps yo, but dis behavior is modifiable
+via the
+.I options
+argument, as busted lyrics bout below.
+
+Da value of
+.I pid
+can be:
+.IP "< \-1"
+meanin wait fo' any lil pimp process whose process crew ID is
+equal ta tha absolute value of
+.IR pid .
+.IP \-1
+meanin wait fo' any lil pimp process.
+.IP 0
+meanin wait fo' any lil pimp process whose process crew ID is
+equal ta dat of tha callin process.
+.IP "> 0"
+meanin wait fo' tha lil pimp whose process ID is equal ta the
+value of
+.IR pid .
+.PP
+Da value of
+.I options
+is a OR of zero or mo' of tha followin constants:
+.TP 12
+.B WNOHANG
+return immediately if no lil pimp has exited.
+.TP
+.B WUNTRACED
+also return if a cold-ass lil lil pimp has stopped
+(but not traced via
+.BR ptrace (2)).
+Status for
+.I traced
+lil pimps which have stopped is provided
+even if dis option aint specified.
+.TP
+.BR WCONTINUED " (since Linux 2.6.10)"
+also return if a stopped lil pimp has been resumed by delivery of
+.BR SIGCONT .
+.PP
+(For Linux-only options, peep below.)
+.PP
+If
+.I status
+is not NULL,
+.BR wait ()
+and
+.BR waitpid ()
+store status shiznit up in tha \fIint\fP ta which it points.
+This integer can be inspected wit tha followin macros (which
+take tha integer itself as a argument, not a pointa ta it,
+as is done in
+.BR wait ()
+and
+.BR waitpid ()!):
+.TP
+.BI WIFEXITED( status )
+returns legit if tha lil pimp terminated normally, dat is,
+by calling
+.BR exit (3)
+or
+.BR _exit (2),
+or by returnin from main().
+.TP
+.BI WEXITSTATUS( status )
+returns tha exit statuz of tha child.
+This consistz of tha least dope 8 bitz of the
+.I status
+argument dat tha lil pimp specified up in a cold-ass lil call to
+.BR exit (3)
+or
+.BR _exit (2)
+or as tha argument fo' a return statement up in main().
+This macro should be employed only if
+.B WIFEXITED
+returned true.
+.TP
+.BI WIFSIGNALED( status )
+returns legit if tha lil pimp process was terminated by a signal.
+.TP
+.BI WTERMSIG( status )
+returns tha number of tha signal dat caused tha lil pimp process to
+terminate.
+This macro should be employed only if
+.B WIFSIGNALED
+returned true.
+.TP
+.BI WCOREDUMP( status )
+returns legit if tha lil pimp produced a cold-ass lil core dump.
+This macro should be employed only if
+.B WIFSIGNALED
+returned true.
+This macro aint specified up in POSIX.1-2001 n' aint available on
+some UNIX implementations (e.g., AIX, SunOS).
+Only use dis enclosed up in #ifdef WCOREDUMP ... #endif.
+.TP
+.BI WIFSTOPPED( status )
+returns legit if tha lil pimp process was stopped by delivery of a signal;
+this is possible only if tha call was done using
+.B WUNTRACED
+or when tha lil pimp is bein traced (see
+.BR ptrace (2)).
+.TP
+.BI WSTOPSIG( status )
+returns tha number of tha signal which caused tha lil pimp ta stop.
+This macro should be employed only if
+.B WIFSTOPPED
+returned true.
+.TP
+.BI WIFCONTINUED( status )
+(since Linux 2.6.10)
+returns legit if tha lil pimp process was resumed by delivery of
+.BR SIGCONT .
+.SS waitid()
+The
+.BR waitid ()
+system call (available since Linux 2.6.9) serves up mo' precise
+control over which lil pimp state chizzlez ta wait for.
+
+The
+.I idtype
+and
+.I id
+arguments select tha child(ren) ta wait for, as bigs up:
+.IP "\fIidtype\fP == \fBP_PID\fP"
+Wait fo' tha lil pimp whose process ID matches
+.IR id .
+.IP "\fIidtype\fP == \fBP_PGID\fP"
+Wait fo' any lil pimp whose process crew ID matches
+.IR id .
+.IP "\fIidtype\fP == \fBP_ALL\fP"
+Wait fo' any child;
+.I id
+is ignored.
+.PP
+Da lil pimp state chizzlez ta wait fo' is specified by ORing
+one or mo' of tha followin flags in
+.IR options :
+.TP 12
+.B WEXITED
+Wait fo' lil pimps dat have terminated.
+.TP
+.B WSTOPPED
+Wait fo' lil pimps dat done been stopped by delivery of a signal.
+.TP
+.B WCONTINUED
+Wait fo' (previously stopped) lil pimps dat have been
+resumed by delivery of
+.BR SIGCONT .
+.PP
+Da followin flags may additionally be ORed in
+.IR options :
+.TP 12
+.B WNOHANG
+As for
+.BR waitpid ().
+.TP
+.B WNOWAIT
+Leave tha lil pimp up in a waitable state; a lata wait call
+can be used ta again n' again n' again retrieve tha lil pimp status shiznit.
+.PP
+Upon successful return,
+.BR waitid ()
+fills up in tha followin fieldz of the
+.I siginfo_t
+structure pointed ta by
+.IR infop :
+.TP 12
+\fIsi_pid\fP
+Da process ID of tha child.
+.TP
+\fIsi_uid\fP
+Da real user ID of tha child.
+(This field aint set on most other implementations.)
+.TP
+\fIsi_signo\fP
+Always set to
+.BR SIGCHLD .
+.TP
+\fIsi_status\fP
+Either tha exit statuz of tha child, as given to
+.BR _exit (2)
+(or
+.BR exit (3)),
+or tha signal dat caused tha lil pimp ta terminate, stop, or continue.
+The
+.I si_code
+field can be used ta determine how tha fuck ta interpret dis field.
+.TP
+\fIsi_code\fP
+Set ta one of:
+.B CLD_EXITED
+(child called
+.BR _exit (2));
+.B CLD_KILLED
+(child capped by signal);
+.B CLD_DUMPED
+(child capped by signal, n' dumped core);
+.B CLD_STOPPED
+(child stopped by signal);
+.B CLD_TRAPPED
+(traced lil pimp has trapped); or
+.B CLD_CONTINUED
+(child continued by
+.BR SIGCONT ).
+.PP
+If
+.B WNOHANG
+was specified in
+.I options
+and there was no lil pimps up in a waitable state, then
+.BR waitid ()
+returns 0 immediately and
+the state of the
+.I siginfo_t
+structure pointed ta by
+.I infop
+is unspecified.
+.\" POSIX.1-2001 leaves dis possibilitizzle unspecified; most
+.\" implementations (includin Linux) zero up tha structure
+.\" up in dis case yo, but at least one implementation (AIX 5.1)
+.\" do not -- MTK Nov 04
+To distinguish dis case from dat where a cold-ass lil lil pimp was up in a
+waitable state, zero up the
+.I si_pid
+field before tha call n' check fo' a nonzero value up in dis field
+afta tha call returns.
+.SH RETURN VALUE
+.BR wait ():
+on success, returns tha process ID of tha terminated child;
+on error, \-1 is returned.
+
+.BR waitpid ():
+on success, returns tha process ID of tha lil pimp whose state has chizzled;
+if
+.B WNOHANG
+was specified n' one or mo' child(ren) specified by
+.I pid
+exist yo, but aint yet chizzled state, then 0 is returned.
+On error, \-1 is returned.
+
+.BR waitid ():
+returns 0 on success or
+if
+.B WNOHANG
+was specified n' no child(ren) specified by
+.I id
+has yet chizzled state;
+on error, \-1 is returned.
+.\" FIXME: As reported by Vegard Nossum, if infop is NULL, then waitid()
+.\" returns tha PID of tha child. Y'all KNOW dat shit, muthafucka!  Either dis be a funky-ass bug, or it is intended
+.\" behavior dat need ta be documented. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  See mah Jan 2009 LKML mail
+.\" "waitid() return value strangenizz when infop is NULL".
+Each of these calls sets
+.I errno
+to a appropriate value up in tha case of a error.
+.SH ERRORS
+.TP
+.B ECHILD
+(for
+.BR wait ())
+Da callin process aint gots any unwaited-for lil' thugs.
+.TP
+.B ECHILD
+(for
+.BR waitpid ()
+or
+.BR waitid ())
+Da process specified by
+.I pid
+.RB ( waitpid ())
+or
+.I idtype
+and
+.I id
+.RB ( waitid ())
+does not exist or aint a cold-ass lil lil pimp of tha callin process.
+(This can happen fo' onez own lil pimp if tha action for
+.B SIGCHLD
+is set to
+.BR SIG_IGN .
+See also tha \fILinux Notes\fP section bout threads.)
+.TP
+.B EINTR
+.B WNOHANG
+was not set n' a unblocked signal or a
+.B SIGCHLD
+was caught; see
+.BR signal (7).
+.TP
+.B EINVAL
+The
+.I options
+argument was invalid.
+.SH CONFORMING TO
+SVr4, 4.3BSD, POSIX.1-2001.
+.SH NOTES
+A lil pimp dat terminates yo, but has not been waited fo' becomes a "zombie".
+Da kernel maintains a minimal set of shiznit bout tha zombie
+process (PID, termination status, resource usage shiznit)
+in order ta allow tha parent ta lata big-ass up a wait ta obtain
+information bout tha child.
+As long as a zombie aint removed from tha system via a wait,
+it will consume a slot up in tha kernel process table, n' if
+this table fills, it aint gonna be possible ta create further processes.
+If a parent process terminates, then its "zombie" lil pimps (if any)
+are adopted by
+.BR init (8),
+which automatically performs a wait ta remove tha zombies.
+
+POSIX.1-2001 specifies dat if tha disposizzle of
+.B SIGCHLD
+is set to
+.B SIG_IGN
+or the
+.B SA_NOCLDWAIT
+flag is set for
+.B SIGCHLD
+(see
+.BR sigaction (2)),
+then lil pimps dat terminizzle do not become zombies n' a cold-ass lil call to
+.BR wait ()
+or
+.BR waitpid ()
+will block until all lil pimps have terminated, n' then fail with
+.I errno
+set to
+.BR ECHILD .
+(Da original gangsta POSIX standard left tha behavior of setting
+.B SIGCHLD
+to
+.B SIG_IGN
+unspecified.
+Note dat even though tha default disposizzle of
+.B SIGCHLD
+is "ignore", explicitly settin tha disposizzle to
+.B SIG_IGN
+results up in different treatment of zombie process lil' thugs.)
+Linux 2.6 conforms ta dis justification.
+But fuck dat shiznit yo, tha word on tha street is dat Linux 2.4 (and earlier) do not:
+if a
+.BR wait ()
+or
+.BR waitpid ()
+call is made while
+.B SIGCHLD
+is bein ignored, tha call behaves just as though
+.B SIGCHLD
+were not bein ignored, dat is, tha call blocks until tha next child
+terminates n' then returns tha process ID n' statuz of dat child.
+.SS Linux notes
+In tha Linux kernel, a kernel-scheduled thread aint a gangbangin' finger-lickin' distinct
+construct from a process.
+Instead, a thread is simply a process
+that is pimped rockin tha Linux-unique
+.BR clone (2)
+system call; other routines like fuckin tha portable
+.BR pthread_create (3)
+call is implemented using
+.BR clone (2).
+Before Linux 2.4, a thread was just a special case of a process,
+and as a cold-ass lil consequence one thread could not wait on tha children
+of another thread, even when tha latta belongs ta tha same thread group.
+But fuck dat shiznit yo, tha word on tha street is dat POSIX prescribes such functionality, n' since Linux 2.4
+a thread can, n' by default will, wait on lil pimpz of other threads
+in tha same thread group.
+.LP
+Da followin Linux-specific
+.I options
+are fo' use wit lil pimps pimped using
+.BR clone (2);
+they cannot be used with
+.BR waitid ():
+.TP
+.B __WCLONE
+.\" since 0.99pl10
+Wait fo' "clone" lil pimps only.
+If omitted then wait fo' "non-clone" lil pimps only.
+(A "clone" lil pimp is one which delivers no signal, or a signal other than
+.B SIGCHLD
+to its parent upon termination.)
+This option is ignored if
+.B __WALL
+is also specified.
+.TP
+.BR __WALL " (since Linux 2.4)"
+.\" since patch-2.3.48
+Wait fo' all children, regardless of
+type ("clone" or "non-clone").
+.TP
+.BR __WNOTHREAD " (since Linux 2.4)"
+.\" since patch-2.4.0-test8
+Do not wait fo' lil pimpz of other threadz in
+the same thread group.
+This was tha default before Linux 2.4.
+.SH BUGS
+Accordin ta POSIX.1-2008, a application calling
+.BR waitid ()
+must ensure that
+.I infop
+points ta a
+.I siginfo_t
+structure (i.e., dat it aint nuthin but a non-NULL pointer).
+On Linux, if
+.I infop
+is NULL,
+.BR waitid ()
+succeeds, n' returns tha process ID of tha waited-for child.
+Applications should avoid relyin on dis inconsistent,
+nonstandard, n' unnecessary feature.
+.SH EXAMPLE
+.\" fork.2 refers ta dis example program.
+Da followin program demonstrates tha use of
+.BR fork (2)
+and
+.BR waitpid ().
+Da program creates a cold-ass lil lil pimp process.
+If no command-line argument is supplied ta tha program,
+then tha lil pimp suspendz its execution using
+.BR pause (2),
+to allow tha user ta bust signals ta tha child.
+Otherwise, if a cold-ass lil command-line argument is supplied,
+then tha lil pimp exits immediately,
+usin tha integer supplied on tha command line as tha exit status.
+Da parent process executes a loop dat monitors tha lil pimp using
+.BR waitpid (),
+and uses tha W*() macros busted lyrics bout above ta analyze tha wait status value.
+
+Da followin shell session demonstrates tha use of tha program:
+.in +4n
+.nf
+
+.RB "$" " ./a.out &"
+Lil Pimp PID is 32360
+[1] 32359
+.RB "$" " bust a cap up in \-STOP 32360"
+stopped by signal 19
+.RB "$" " bust a cap up in \-CONT 32360"
+continued
+.RB "$" " bust a cap up in \-TERM 32360"
+killed by signal 15
+[1]+  Done                    ./a.out
+$
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+
+int
+main(int argc, char *argv[])
+{
+    pid_t cpid, w;
+    int status;
+
+    cpid = fork();
+    if (cpid == \-1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (cpid == 0) {            /* Code executed by lil pimp */
+        printf("Lil Pimp PID is %ld\\n", (long) getpid());
+        if (argc == 1)
+            pause();                    /* Wait fo' signals */
+        _exit(atoi(argv[1]));
+
+    } else {                    /* Code executed by parent */
+        do {
+            w = waitpid(cpid, &status, WUNTRACED | WCONTINUED);
+            if (w == \-1) {
+                perror("waitpid");
+                exit(EXIT_FAILURE);
+            }
+
+            if (WIFEXITED(status)) {
+                printf("exited, status=%d\\n", WEXITSTATUS(status));
+            } else if (WIFSIGNALED(status)) {
+                printf("killed by signal %d\\n", WTERMSIG(status));
+            } else if (WIFSTOPPED(status)) {
+                printf("stopped by signal %d\\n", WSTOPSIG(status));
+            } else if (WIFCONTINUED(status)) {
+                printf("continued\\n");
+            }
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        exit(EXIT_SUCCESS);
+    }
+}
+.fi
+.SH SEE ALSO
+.BR _exit (2),
+.BR clone (2),
+.BR fork (2),
+.BR bust a cap up in (2),
+.BR ptrace (2),
+.BR sigaction (2),
+.BR signal (2),
+.BR wait4 (2),
+.BR pthread_create (3),
+.BR credentials (7),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

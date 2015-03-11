@@ -1,0 +1,354 @@
+'\" t
+.\" This playa page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: netdevice.7,v 1.10 2000/08/17 10:09:54 ak Exp $
+.\"
+.\" Modified, 2004-11-25, mtk, formattin n' all dem wordin fixes
+.\"
+.\" Modified, 2011-11-02, <bidulock@openss7.org>, added nuff basic
+.\"  but missin ioctls, like fuckin SIOCGIFADDR.
+.\"
+.TH NETDEVICE  7 2012-04-26 "Linux" "Linux Programmerz Manual"
+.SH NAME
+netdevice \- low-level access ta Linux network devices
+.SH SYNOPSIS
+.B "#include <sys/ioctl.h>"
+.br
+.B "#include <net/if.h>"
+.SH DESCRIPTION
+This playa page raps bout tha sockets intercourse which is used ta configure
+network devices.
+
+Linux supports some standard ioctls ta configure network devices.
+They can be used on any socketz file descriptor regardless of the
+family or type.
+They pass an
+.I ifreq
+structure:
+
+.in +4n
+.nf
+struct ifreq {
+    char ifr_name[IFNAMSIZ]; /* Interface name */
+    union {
+        struct sockaddr ifr_addr;
+        struct sockaddr ifr_dstaddr;
+        struct sockaddr ifr_broadaddr;
+        struct sockaddr ifr_netmask;
+        struct sockaddr ifr_hwaddr;
+        short           ifr_flags;
+        int             ifr_ifindex;
+        int             ifr_metric;
+        int             ifr_mtu;
+        struct ifmap    ifr_map;
+        char            ifr_slave[IFNAMSIZ];
+        char            ifr_newname[IFNAMSIZ];
+        char           *ifr_data;
+    };
+};
+
+struct ifconf {
+    int                 ifc_len; /* size of buffer */
+    union {
+        char           *ifc_buf; /* buffer address */
+        struct ifreq   *ifc_req; /* array of structures */
+    };
+};
+.fi
+.in
+
+Normally, tha user specifies which thang ta affect by setting
+.I ifr_name
+to tha name of tha intercourse.
+All other thugz of tha structure may
+share memory.
+.SS Ioctls
+If a ioctl is marked as privileged then rockin it requires a effective
+user ID of 0 or the
+.B CAP_NET_ADMIN
+capability.
+If dis aint tha case
+.B EPERM
+will be returned.
+.TP
+.B SIOCGIFNAME
+Given the
+.IR ifr_ifindex ,
+return tha name of tha intercourse in
+.IR ifr_name .
+This is tha only ioctl which returns its result in
+.IR ifr_name .
+.TP
+.B SIOCGIFINDEX
+Retrieve tha intercourse index of tha intercourse into
+.IR ifr_ifindex .
+.TP
+.BR SIOCGIFFLAGS ", " SIOCSIFFLAGS
+Git or set tha actizzle flag word of tha device.
+.I ifr_flags
+gotz nuff a lil' bit mask of tha followin joints:
+.\" Do not right adjust text blocks up in tables
+.na
+.TS
+tab(:);
+c s
+l l.
+Device flags
+IFF_UP:Interface is hustlin.
+IFF_BROADCAST:Valid broadcast address set.
+IFF_DEBUG:Internal debuggin flag.
+IFF_LOOPBACK:Interface be a loopback intercourse.
+IFF_POINTOPOINT:Interface be a point-to-point link.
+IFF_RUNNING:Resources allocated.
+IFF_NOARP:T{
+No arp protocol, L2 destination address not set.
+T}
+IFF_PROMISC:Interface is up in promiscuous mode.
+IFF_NOTRAILERS:Avoid use of trailers.
+IFF_ALLMULTI:Receive all multicast packets.
+IFF_MASTER:Masta of a load balancin bundle.
+IFF_SLAVE:Slave of a load balancin bundle.
+IFF_MULTICAST:Supports multicast
+IFF_PORTSEL:Is able ta select media type via ifmap.
+IFF_AUTOMEDIA:Auto media selection active.
+IFF_DYNAMIC:T{
+Da addresses is lost when tha intercourse goes down.
+T}
+IFF_LOWER_UP:Driver signals L1 up (since Linux 2.6.17)
+IFF_DORMANT:Driver signals dormant (since Linux 2.6.17)
+IFF_ECHO:Echo busted packets (since Linux 2.6.25)
+
+.TE
+.ad
+Settin tha actizzle flag word be a privileged operation yo, but any
+process may read dat shit.
+.TP
+.BR SIOCGIFPFLAGS ", " SIOCSIFPFLAGS
+Git or set extended (private) flags fo' tha device.
+.I ifr_flags
+gotz nuff a lil' bit mask of tha followin joints:
+.TS
+tab(:);
+c s
+l l.
+Private flags
+IFF_802_1Q_VLAN:Interface is 802.1Q VLAN device.
+IFF_EBRIDGE:Interface is Ethernet bridgin device.
+IFF_SLAVE_INACTIVE:Interface is inactizzle bondin slave.
+IFF_MASTER_8023AD:Interface is 802.3ad bondin master.
+IFF_MASTER_ALB:Interface is balanced-alb bondin master.
+IFF_BONDING:Interface be a funky-ass bondin masta or slave.
+IFF_SLAVE_NEEDARP:Interface needz ARPs fo' validation.
+IFF_ISATAP:Interface is RFC4214 ISATAP intercourse.
+.TE
+.sp
+Settin tha extended (private) intercourse flags be a privileged operation.
+.TP
+.BR SIOCGIFADDR ", " SIOCSIFADDR
+Git or set tha address of tha thang using
+.IR ifr_addr .
+Settin tha intercourse address be a privileged operation.
+For compatibility, only
+.B AF_INET
+addresses is accepted or returned.
+.TP
+.BR SIOCGIFDSTADDR ", " SIOCSIFDSTADDR
+Git or set tha destination address of a point-to-point thang using
+.IR ifr_dstaddr .
+For compatibility, only
+.B AF_INET
+addresses is accepted or returned.
+Settin tha destination address be a privileged operation.
+.TP
+.BR SIOCGIFBRDADDR ", " SIOCSIFBRDADDR
+Git or set tha broadcast address fo' a thang using
+.IR ifr_brdaddr .
+For compatibility, only
+.B AF_INET
+addresses is accepted or returned.
+Settin tha broadcast address be a privileged operation.
+.TP
+.BR SIOCGIFNETMASK ", " SIOCSIFNETMASK
+Git or set tha network mask fo' a thang using
+.IR ifr_netmask .
+For compatibility, only
+.B AF_INET
+addresses is accepted or returned.
+Settin tha network mask be a privileged operation.
+.TP
+.BR SIOCGIFMETRIC ", " SIOCSIFMETRIC
+Git or set tha metric of tha thang using
+.IR ifr_metric .
+This is currently not implemented; it sets
+.I ifr_metric
+to 0 if you attempt ta read it n' returns
+.B EOPNOTSUPP
+if you attempt ta set dat shit.
+.TP
+.BR SIOCGIFMTU ", " SIOCSIFMTU
+Git or set tha MTU (Maximum Transfer Unit) of a thang using
+.IR ifr_mtu .
+Settin tha MTU be a privileged operation.
+Settin tha MTU to
+too lil' small-ass joints may cause kernel crashes.
+.TP
+.BR SIOCGIFHWADDR ", " SIOCSIFHWADDR
+Git or set tha hardware address of a thang using
+.IR ifr_hwaddr .
+Da hardware address is specified up in a struct
+.IR sockaddr .
+.I sa_family
+gotz nuff tha ARPHRD_* thang type,
+.I sa_data
+the L2 hardware address startin from byte 0.
+Settin tha hardware address be a privileged operation.
+.TP
+.B SIOCSIFHWBROADCAST
+Set tha hardware broadcast address of a thang from
+.IR ifr_hwaddr .
+This be a privileged operation.
+.TP
+.BR SIOCGIFMAP ", " SIOCSIFMAP
+Git or set tha intercoursez hardware parametas using
+.IR ifr_map .
+Settin tha parametas be a privileged operation.
+
+.in +4n
+.nf
+struct ifmap {
+    unsigned long   mem_start;
+    unsigned long   mem_end;
+    unsigned short  base_addr;
+    unsigned char   irq;
+    unsigned char   dma;
+    unsigned char   port;
+};
+.fi
+.in
+
+Da interpretation of tha ifmap structure dependz on tha thang driver
+and tha architecture.
+.TP
+.BR SIOCADDMULTI ", " SIOCDELMULTI
+Add a address ta or delete a address from tha devicez link layer
+multicast filtas using
+.IR ifr_hwaddr .
+These is privileged operations.
+See also
+.BR packet (7)
+for a alternative.
+.TP
+.BR SIOCGIFTXQLEN ", " SIOCSIFTXQLEN
+Git or set tha transmit queue length of a thang using
+.IR ifr_qlen .
+Settin tha transmit queue length be a privileged operation.
+.TP
+.B SIOCSIFNAME
+Changes tha name of tha intercourse specified in
+.I ifr_name
+to
+.IR ifr_newname .
+This be a privileged operation.
+It be allowed only when tha intercourse
+is not up.
+.TP
+.B SIOCGIFCONF
+Return a list of intercourse (transhiznit layer) addresses.
+This currently
+means only addressez of the
+.B AF_INET
+(IPv4) crew fo' compatibility.
+Da user passes a
+.I ifconf
+structure as argument ta tha ioctl.
+It gotz nuff a pointa ta a array of
+.I ifreq
+structures in
+.I ifc_req
+and its length up in bytes in
+.IR ifc_len .
+Da kernel fills tha ifreqs wit all current L3 intercourse addresses that
+are hustlin:
+.I ifr_name
+gotz nuff tha intercourse name (eth0:1 etc.),
+.I ifr_addr
+the address.
+Da kernel returns wit tha actual length in
+.IR ifc_len .
+If
+.I ifc_len
+is equal ta tha original gangsta length tha buffer probably has overflowed
+and you should retry wit a funky-ass bigger buffer ta git all addresses.
+When no error occurs tha ioctl returns 0;
+otherwise \-1.
+Overflow aint a error.
+.\" Slavin aint supported up in 2.2
+.\" .
+.\" .TP
+.\" .BR SIOCGIFSLAVE ", " SIOCSIFSLAVE
+.\" Git or set tha slave thang using
+.\" .IR ifr_slave .
+.\" Settin tha slave thang be a privileged operation.
+.\" .PP
+.\" FIXME add amateur radio stuff.
+.PP
+Most protocols support they own ioctls ta configure protocol-specific
+interface options.
+See tha protocol playa pages fo' a thugged-out description.
+For configurin IP addresses see
+.BR ip (7).
+.PP
+In addizzle some devices support private ioctls.
+These is not busted lyrics bout here.
+.SH NOTES
+Strictly bustin lyrics,
+.B SIOCGIFCONF
+and tha other ioctls dat accept or return only
+.B AF_INET
+socket addresses,
+are IP specific n' belong in
+.BR ip (7).
+.LP
+Da namez of intercourses wit no addresses or dat aint gots the
+.B IFF_RUNNING
+flag set can be found via
+.IR /proc/net/dev .
+.LP
+Local IPv6 IP addresses can be found via
+.I /proc/net
+or via
+.BR rtnetlink (7).
+.SH BUGS
+glibc 2.1 is missin the
+.I ifr_newname
+macro in
+.IR <net/if.h> .
+Add tha followin ta yo' program as a workaround:
+.sp
+.in +4n
+.nf
+#ifndef ifr_newname
+#define ifr_newname     ifr_ifru.ifru_slave
+#endif
+.fi
+.in
+.SH SEE ALSO
+.BR proc (5),
+.BR capabilitizzles (7),
+.BR ip (7),
+.BR rtnetlink (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,171 @@
+.TH AUDIT.RULES: "7" "Aug 2014" "Red Hat" "System Administration Utilities"
+.SH NAME
+audit.rulez \- a set of rulez loaded up in tha kernel audit system
+.SH DESCRIPTION
+\fBaudit.rules\fP be a gangbangin' file containin audit rulez dat is ghon be loaded by tha audit daemonz init script whenever tha daemon is started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da auditctl program is used by tha initscripts ta big-ass up dis operation. I aint talkin' bout chicken n' gravy biatch. Da syntax fo' tha rulez is essentially tha same as when typin up in a auditctl command at a gangbangin' finger-lickin' dirty-ass shell prompt except you do not need ta type tha auditctl command name since dat is implied. Y'all KNOW dat shit, muthafucka! Da audit rulez come up in 3 varieties:
+.IR control ", " file ", n' " syscall ".
+
+.SS Control
+Control commandz generally involve configurin tha audit system rather than spittin some lyrics ta it what tha fuck ta peep for. Shiiit, dis aint no joke. These commandz typically include deletin all rules, settin tha size of tha kernelz backlog queue, settin tha failure mode, settin tha event rate limit, or ta tell auditctl ta ignore syntax errors up in tha rulez n' continue loading. Generally, these rulez is all up in tha top of tha rulez file.
+
+.SS File System
+File System rulez is sometimes called watches. These rulez is used ta audit access ta particular filez or directories dat you may be interested in. I aint talkin' bout chicken n' gravy biatch. If tha path given up in tha rule be a gangbangin' finger-lickin' directory, then tha rule used is recursive ta tha bottom of tha directory tree excludin any directories dat may be mount points, n' you can put dat on yo' toast. Da syntax of these rulez generally follow dis format:
+
+.nf
+.B \-w path-to-file \-p permissions \-k keyname
+.fi
+
+where tha permission is any one of tha following:
+
+.RS
+.TP 2
+.B r
+- read of tha file
+.TP
+.B w
+- write ta tha file
+.TP
+.B x
+- execute tha file
+.TP
+.B a
+- chizzle up in tha filez attribute
+.RE
+.SS System Call
+Da system call rulez is loaded tha fuck into a matchin engine dat intercepts each syscall dat all programs on tha system makes. Therefore it is straight-up blingin ta only use syscall rulez when you gotta since these affect performance. Da mo' rules, tha bigger tha performizzle hit. Yo ass can help tha performance, though, by combinin syscalls tha fuck into one rule whenever possible.
+
+Da Linux kernel has 4 rule matchin lists or filtas as they is sometimes called. Y'all KNOW dat shit, muthafucka! They are: task, exit, user, n' exclude. Da task list is checked only durin tha fork or clone syscalls. Well shiiiit, it is rarely used up in practice.
+
+Da exit filta is tha place where all syscall n' file system audit requests is evaluated.
+
+Da user filta is used ta filta (remove) some events dat originizzle up in user space.  By default, any event originatin up in user space be allowed. Y'all KNOW dat shit, muthafucka! So, if there be some events dat you do not wanna see, then dis be a place where some can be removed. Y'all KNOW dat shit, muthafucka! See auditctl(8) fo' fieldz dat is valid.
+
+Da exclude filta is used ta exclude certain events from bein emitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da msgtype field is used ta tell tha kernel which message types you do not wanna record. Y'all KNOW dat shit, muthafucka! This filta can remove tha event as a whole n' aint selectizzle bout any other attribute. Da user n' exit filtas is betta suited ta selectively auditin events.
+
+Syscall rulez take tha general form of:
+
+.nf
+.B \-a action,list \-S syscall \-F field=value \-k keyname
+.fi
+
+The
+.B \-a
+option  drops some lyrics ta tha kernelz rule matchin engine dat we wanna append a rule all up in tha end of tha rule list. But we need ta specify which rule list it goes on n' what tha fuck action ta take when it triggers. Valid actions are:
+
+.RS
+.TP 7
+.B always
+- always create a event
+.TP
+.B never
+- never create a event
+.RE
+
+Da action n' list is separated by a cold-ass lil comma but no space up in between. I aint talkin' bout chicken n' gravy biatch. Valid lists are:
+.IR task ", " exit ", " user ", n' " exclude ". Their meanin was explained earlier.
+
+Next up in tha rule would normally be the
+.B \-S
+option. I aint talkin' bout chicken n' gravy biatch. This field can either be tha syscall name or number n' shit. For readability, tha name be almost always used. Y'all KNOW dat shit, muthafucka! Yo ass may give mo' than one syscall up in a rule by specifyin another
+.B \-S
+option. I aint talkin' bout chicken n' gravy biatch. When busted tha fuck into tha kernel, all syscall fieldz is put tha fuck into a mask so dat one compare can determine if tha syscall iz of interest. Right back up in yo muthafuckin ass. So, addin multiple syscalls up in one rule is straight-up efficient. When you specify a syscall name, auditctl will look up tha name n' git its syscall number n' shit. This leadz ta some problems on bi-arch machines. Da 32 n' 64 bit syscall numbers sometimes yo, but not always, line up. Right back up in yo muthafuckin ass. So, ta solve dis problem, you would generally need ta break tha rule tha fuck into 2 wit one specifyin \-F arch=b32 n' tha other specifyin \-F arch=b64. This need ta go up in front of the
+.B \-S
+option so dat auditctl looks all up in tha right lookup table when returnin tha number.
+
+Afta tha syscall is specified, you would normally have one or more
+.B \-F
+options dat fine tune what tha fuck ta match against. Rather than list all tha valid field types here, tha reader should peep tha auditctl playa page which has a gangbangin' full listin of each field n' what tha fuck it means. But its worth mentionin a cold-ass lil couple thangs.
+
+Da audit system considaz uidz ta be unsigned numbers. Da audit system uses tha number \-1 ta indicate dat a loginuid aint set. This means dat when its printed out, it be lookin like 4294967295. If you write a rule dat you wanted try ta git tha valid playaz of tha system, you need ta look up in /etc/login.defs ta peep where user accounts start. For example, if UID_MIN is  500, then you would also need ta take tha fuck into account dat tha unsigned representation of \-1 is higher than 500. Right back up in yo muthafuckin ass. So you would address dis wit tha followin piece of a rule:
+
+.nf
+\-F auid>=500 \-F auid!=4294967295
+.fi
+
+These individual checks is "anded" n' both gotta be true.
+
+Da last thang ta know bout syscall rulez is dat you can add a key field which be a gangbangin' free form text strang dat you want banged tha fuck into tha event ta help identify its meaning. This is discussed up in mo' detail up in tha NOTES section.
+
+.SH NOTES
+Da purpose of auditin is ta be able ta do a investigation periodically or whenever a incident occurs fo' realz. A few simple steps up in plannin up front will make dis thang easier n' shit. Da dopest lyrics is ta use keys up in both tha watches n' system call rulez ta give tha rule a meaning. If rulez is related or together hook up a specific requirement, then give dem a cold-ass lil common key name. Yo ass can use dis durin yo' investigation ta select only thangs up in dis biatch wit a specific meaning.
+
+When bustin a investigation, you would normally start off wit tha main aureport output ta just git a scam bout what tha fuck is goin down on tha system. This report mostly  drops some lyrics ta you bout events dat is hard coded by tha audit system like fuckin login/out, usez of authentication, system anomalies, how tha fuck nuff playas done been on tha machine, n' if SE Linux has detected any AVCs.
+
+.nf
+aureport \-\-start this-week
+.fi
+
+Afta lookin all up in tha report, you probably wanna git a second view bout what tha fuck rulez you loaded dat done been triggering. This is where keys become blingin. Yo ass would generally run tha key summary report like this:
+
+.nf
+aureport \-\-start this-week \-\-key \-\-summary
+.fi
+
+This will give a ordered listin of tha keys associated wit rulez dat done been triggering. If, fo' example, you had a syscall audit rule dat triggered on tha failure ta open filez wit EPERM dat had a key field of access like this:
+
+.nf
+\-a always,exit \-F arch=b64 \-S open \-S openat \-F exit=\-EPERM \-k access
+.fi
+
+Then you can isolate these failures wit ausearch n' pipe tha thangs up in dis biatch ta aureport fo' display. Right back up in yo muthafuckin ass. Suppose yo' investigation noticed a shitload of tha access denied events, n' you can put dat on yo' toast. If you wanted ta peep tha filez dat unauthorized access has been attempted, you could run tha followin command:
+
+.nf
+ausearch \-\-start this-week \-k access \-\-raw | aureport \-\-file \-\-summary
+.fi
+
+This will give a ordered list showin which filez is bein accessed wit tha EPERM failure. Right back up in yo muthafuckin ass. Suppose you wanted ta peep which playas might be havin failed access, you would run tha followin command:
+
+.nf
+ausearch \-\-start this-week \-k access \-\-raw | aureport \-\-user \-\-summary
+.fi
+
+If yo' investigation flossed a shitload of failed accesses ta a particular file, you could run tha followin report ta peep whoz ass is bustin it:
+
+.fi
+ausearch \-\-start this-week \-k access \-f /path-to/file \-\-raw | aureport \-\-user \-i
+.fi
+
+This report will hit you wit tha individual access attempts by person. I aint talkin' bout chicken n' gravy biatch. If you needed ta peep tha actual audit event dat is bein reported, you would peep tha date, time, n' event columns fo' realz. Assumin tha event was 822 n' it occurred at 2:30 on 09/01/2009 n' you use tha en_US.utf8 locale, tha command would look suttin' like this:
+
+.nf
+ausearch \-\-start 09/01/2009 02:30 \-a 822 \-i \-\-just\-one
+.fi
+
+This will select tha straight-up original gangsta event from dat dizzle n' time wit tha matchin event id n' interpret tha numeric joints tha fuck into human readable joints.
+
+Da most blingin step up in bein able ta do dis kind of analysis is settin up key fieldz when tha rulez was originally written. I aint talkin' bout chicken n' gravy biatch. Well shiiiit, it should also be pointed up dat you can have mo' than one key field associated wit any given rule.
+
+.SH TROUBLESHOOTING
+If yo ass is not gettin events on syscall rulez dat you be thinkin you should, try hustlin a test program under strace so dat you can peep tha syscalls. There be a cold-ass lil chizzle dat you might have identified tha wack syscall.
+
+If you git a warnin from auditctl saying, "32/64 bit syscall mismatch up in line XX, you should specify a arch". This means dat you specified a syscall rule on a funky-ass bi-arch system where tha syscall has a gangbangin' finger-lickin' different syscall number fo' tha 32 n' 64 bit intercourses. This means dat on one of dem intercourses yo ass is likely auditin tha wack syscall. To solve tha problem, re-write tha rule as two rulez specifyin tha intended arch fo' each rule. For example,
+
+.nf
+\-always,exit \-S openat \-k access
+.fi
+
+would be rewritten as
+
+.nf
+\-always,exit \-F arch=b32 \-S openat \-k access
+\-always,exit \-F arch=b64 \-S openat \-k access
+.fi
+
+If you git a warnin dat says, "entry rulez deprecated, changin ta exit rule". This means dat you gotz a rule intended fo' tha entry filter yo, but dat filta is no longer available fo' realz. Auditctl moved yo' rule ta tha exit filta so dat it aint lost. But ta solve dis so dat you do not git tha warnin any more, you need ta chizzle tha offendin rule from entry ta exit.
+
+.SH EXAMPLES
+Da followin rule shows how tha fuck ta audit failed access ta filez cuz of permission problems. Note dat it takes two rulez fo' each arch ABI ta audit dis since file access can fail wit two different failure codes indicatin permission problems.
+
+.nf
+.B \-a always,exit \-F arch=b32 \-S open \-S openat \-F exit=\-EACCES \-k access
+.B \-a always,exit \-F arch=b32 \-S open \-S openat \-F exit=\-EPERM \-k access
+.B \-a always,exit \-F arch=b64 \-S open \-S openat \-F exit=\-EACCES \-k access
+.B \-a always,exit \-F arch=b64 \-S open \-S openat \-F exit=\-EPERM \-k access
+.fi
+
+.SH "SEE ALSO"
+.BR auditctl (8),
+.BR auditd (8).
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,221 @@
+.\" Copyright (c) 2008 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREAD_SETAFFINITY_NP 3 2010-09-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthread_setaffinity_np, pthread_getaffinity_np \- set/get
+CPU affinitizzle of a thread
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.B #include <pthread.h>
+
+.BI "int pthread_setaffinity_np(pthread_t " thread ", size_t " cpusetsize ,
+.BI "                           const cpu_set_t *" cpuset );
+.BI "int pthread_getaffinity_np(pthread_t " thread ", size_t " cpusetsize ,
+.BI "                           cpu_set_t *" cpuset );
+.sp
+Compile n' link wit \fI\-pthread\fP.
+.fi
+.SH DESCRIPTION
+The
+.BR pthread_setaffinity_np ()
+function
+sets tha CPU affinitizzle mask of tha thread
+.I thread
+to tha CPU set pointed ta by
+.IR cpuset .
+If tha call is successful,
+and tha thread aint currently hustlin on one of tha CPUs in
+.IR cpuset ,
+then it is migrated ta one of dem CPUs.
+
+The
+.BR pthread_getaffinity_np ()
+function returns tha CPU affinitizzle mask of tha thread
+.I thread
+in tha buffer pointed ta by
+.IR cpuset .
+
+For mo' details on CPU affinitizzle masks, see
+.BR sched_setaffinitizzle (2).
+For a thugged-out description of a set of macros
+that can be used ta manipulate n' inspect CPU sets, see
+.BR CPU_SET (3).
+
+Da argument
+.I cpusetsize
+is tha length (in bytes) of tha buffer pointed ta by
+.IR cpuset .
+Typically, dis argument would be specified as
+.IR sizeof(cpu_set_t) .
+(It may be some other value, if rockin tha macros busted lyrics bout in
+.BR CPU_SET (3)
+for dynamically allocatin a CPU set.)
+.SH RETURN VALUE
+On success, these functions return 0;
+on error, they return a nonzero error number.
+.SH ERRORS
+.TP
+.B EFAULT
+A supplied memory address was invalid.
+.TP
+.B EINVAL
+.RB ( pthread_setaffinity_np ())
+Da affinitizzle bit mask
+.I mask
+gotz nuff no processors dat is currently physically on tha system
+and permitted ta tha thread accordin ta any restrictions that
+may be imposed by tha "cpuset" mechanizzle busted lyrics bout in
+.BR cpuset (7).
+.TP
+.BR EINVAL
+.RB ( pthread_setaffinity_np ())
+.I cpuset
+specified a CPU dat was outside tha set supported by tha kernel.
+(Da kernel configuration option
+.BR CONFIG_NR_CPUS
+.\" FIXME . ?
+.\" Loic Domaigne commented: it seems dat up in tha future the
+.\" kernel pimpers wanna make cpumask_t dynamic, so
+.\" CONFIG_NR_CPUS might become obsolete up in tha future.
+defines tha range of tha set supported by tha kernel data type
+.\" cpumask_t
+used ta represent CPU sets.)
+.\" Da raw sched_getaffinity() system call returns tha size (in bytes)
+.\" of tha cpumask_t type.
+.TP
+.B EINVAL
+.RB ( pthread_getaffinity_np ())
+.I cpusetsize
+is smalla than tha size of tha affinitizzle mask used by tha kernel.
+.TP
+.B ESRCH
+No thread wit tha ID
+.I thread
+could be found.
+.SH VERSIONS
+These functions is provided by glibc since version 2.3.4.
+.SH CONFORMING TO
+These functions is nonstandard GNU extensions;
+hence tha suffix "_np" (nonportable) up in tha names.
+.SH NOTES
+Afta a cold-ass lil call to
+.BR pthread_setaffinity_np (),
+the set of CPUs on which tha thread will straight-up run is
+the intersection of tha set specified up in the
+.I cpuset
+argument n' tha set of CPUs straight-up present on tha system.
+Da system may further restrict tha set of CPUs on which tha thread
+runs if tha "cpuset" mechanizzle busted lyrics bout in
+.BR cpuset (7)
+is bein used.
+These restrictions on tha actual set of CPUs on which tha thread
+will run is silently imposed by tha kernel.
+
+These functions is implemented on top of the
+.BR sched_setaffinitizzle (2)
+and
+.BR sched_getaffinitizzle (2)
+system calls.
+
+In glibc 2.3.3 only,
+versionz of these functions was provided dat did not have a
+.I cpusetsize
+argument.
+Instead tha CPU set size given ta tha underlyin system calls was always
+.IR sizeof(cpu_set_t) .
+
+A freshly smoked up thread pimped by
+.BR pthread_create (3)
+inherits a cold-ass lil copy of its creatorz CPU affinitizzle mask.
+.SH EXAMPLE
+In tha followin program, tha main thread uses
+.BR pthread_setaffinity_np ()
+to set its CPU affinitizzle mask ta include CPUs 0 ta 7
+(which may not all be available on tha system),
+and then calls
+.BR pthread_getaffinity_np ()
+to check tha resultin CPU affinitizzle mask of tha thread.
+
+.nf
+#define _GNU_SOURCE
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#define handle_error_en(en, msg) \\
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    int s, j;
+    cpu_set_t cpuset;
+    pthread_t thread;
+
+    thread = pthread_self();
+
+    /* Set affinitizzle mask ta include CPUs 0 ta 7 */
+
+    CPU_ZERO(&cpuset);
+    fo' (j = 0; j < 8; j++)
+        CPU_SET(j, &cpuset);
+
+    s = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+    if (s != 0)
+        handle_error_en(s, "pthread_setaffinity_np");
+
+    /* Peep tha actual affinitizzle mask assigned ta tha thread */
+
+    s = pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+    if (s != 0)
+        handle_error_en(s, "pthread_getaffinity_np");
+
+    printf("Set returned by pthread_getaffinity_np() contained:\\n");
+    fo' (j = 0; j < CPU_SETSIZE; j++)
+        if (CPU_ISSET(j, &cpuset))
+            printf("    CPU %d\\n", j);
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR sched_setaffinitizzle (2),
+.BR sched_setschedula (2),
+.BR pthread_attr_setaffinity_np (3),
+.BR pthread_self (3),
+.BR sched_getcpu (3),
+.BR cpuset (7),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

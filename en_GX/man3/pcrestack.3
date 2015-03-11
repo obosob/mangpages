@@ -1,0 +1,215 @@
+.TH PCRESTACK 3 "24 June 2012" "PCRE 8.30"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "PCRE DISCUSSION OF STACK USAGE"
+.rs
+.sp
+When you call \fBpcre[16|32]_exec()\fP, it make use of a internal function
+called \fBmatch()\fP. This calls itself recursively at branch points up in the
+pattern, up in order ta remember tha state of tha match so dat it can back up and
+try a gangbangin' finger-lickin' different alternatizzle if tha straight-up original gangsta one fails fo' realz. As matchin proceedz deeper
+and deeper tha fuck into tha tree of possibilities, tha recursion depth increases. The
+\fBmatch()\fP function be also called up in other circumstances, fo' example,
+whenever a parenthesized sub-pattern is entered, n' up in certain cases of
+repetition.
+.P
+Not all callz of \fBmatch()\fP increase tha recursion depth; fo' a item such
+as a* it may be called nuff muthafuckin times all up in tha same level, afta matching
+different numberz of a's. Furthermore, up in a fuckin shitload of cases where tha result of
+the recursive call would immediately be passed back as tha result of the
+current call (a "tail recursion"), tha function is just restarted instead.
+.P
+Da above comments apply when \fBpcre[16|32]_exec()\fP is run up in its normal
+interpretizzle manner n' shit. If tha pattern was studied wit the
+PCRE_STUDY_JIT_COMPILE option, n' just-in-time compilin was successful, and
+the options passed ta \fBpcre[16|32]_exec()\fP was not incompatible, tha matching
+process uses tha JIT-compiled code instead of tha \fBmatch()\fP function. I aint talkin' bout chicken n' gravy biatch. In
+this case, tha memory requirements is handled entirely differently. Right back up in yo muthafuckin ass. See the
+.\" HREF
+\fBpcrejit\fP
+.\"
+documentation fo' details.
+.P
+Da \fBpcre[16|32]_dfa_exec()\fP function operates up in a entirely different way,
+and uses recursion only when there be a regular expression recursion or
+subroutine call up in tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. This includes tha processin of assertion and
+"once-only" subpatterns, which is handled like subroutine calls. Normally,
+these is never straight-up deep, n' tha limit on tha complexitizzle of
+\fBpcre[16|32]_dfa_exec()\fP is controlled by tha amount of workspace it is given.
+But fuck dat shiznit yo, tha word on tha street is dat it is possible ta write patterns wit runaway infinite recursions;
+such patterns will cause \fBpcre[16|32]_dfa_exec()\fP ta run outta stack fo' realz. At
+present, there is no protection against all dis bullshit.
+.P
+Da comments dat follow do NOT apply ta \fBpcre[16|32]_dfa_exec()\fP; they are
+relevant only fo' \fBpcre[16|32]_exec()\fP without tha JIT optimization.
+.
+.
+.SS "Reducin \fBpcre[16|32]_exec()\fPz stack usage"
+.rs
+.sp
+Each time dat \fBmatch()\fP is straight-up called recursively, it uses memory
+from tha process stack. For certain kindz of pattern n' data, straight-up large
+amountz of stack may be needed, despite tha recognizzle of "tail recursion".
+Yo ass can often reduce tha amount of recursion, n' therefore tha amount of stack
+used, by modifyin tha pattern dat is bein matched. Y'all KNOW dat shit, muthafucka! Consider, fo' example,
+this pattern:
+.sp
+  ([^<]|<(?!inet))+
+.sp
+It matches from wherever it starts until it encountas "<inet" or tha end of
+the data, n' is tha kind of pattern dat might be used when processin a XML
+file. Each iteration of tha outa parentheses matches either one characta that
+is not "<" or a "<" dat aint followed by "inet". But fuck dat shiznit yo, tha word on tha street is dat each time a
+parenthesis is processed, a recursion occurs, so dis formulation uses a stack
+frame fo' each matched character n' shit. For a long-ass string, a shitload of stack is
+required. Y'all KNOW dat shit, muthafucka! Consider now dis rewritten pattern, which matches exactly tha same
+strings:
+.sp
+  ([^<]++|<(?!inet))+
+.sp
+This uses straight-up much less stack, cuz runz of charactas dat do not contain
+"<" is "swallowed" up in one item inside tha parentheses. Recursion happens only
+when a "<" characta dat aint followed by "inet" is encountered (and we
+assume dis is relatively rare) fo' realz. A possessive quantifier is used ta stop any
+backtrackin tha fuck into tha runz of non-"<" charactas yo, but dat aint related to
+stack usage.
+.P
+This example shows dat one way of avoidin stack problems when matchin long
+subject strings is ta write repeated parenthesized subpatterns ta match more
+than one characta whenever possible.
+.
+.
+.SS "Compilin PCRE ta use heap instead of stack fo' \fBpcre[16|32]_exec()\fP"
+.rs
+.sp
+In environments where stack memory is constrained, you might wanna compile
+PCRE ta use heap memory instead of stack fo' rememberin back-up points when
+\fBpcre[16|32]_exec()\fP is hustlin. This make it run a shitload mo' slowly, however.
+Detailz of how tha fuck ta do dis is given up in the
+.\" HREF
+\fBpcrebuild\fP
+.\"
+documentation. I aint talkin' bout chicken n' gravy biatch. When built up in dis way, instead of rockin tha stack, PCRE obtains
+and frees memory by callin tha functions dat is pointed ta by the
+\fBpcre[16|32]_stack_malloc\fP n' \fBpcre[16|32]_stack_free\fP variables. By
+default, these point ta \fBmalloc()\fP n' \fBfree()\fP yo, but you can replace
+the pointas ta cause PCRE ta use yo' own functions. Right back up in yo muthafuckin ass. Since tha block sizes are
+always tha same, n' is always freed up in reverse order, it may be possible to
+implement customized memory handlezs dat is mo' efficient than tha standard
+functions.
+.
+.
+.SS "Limitin \fBpcre[16|32]_exec()\fPz stack usage"
+.rs
+.sp
+Yo ass can set limits on tha number of times dat \fBmatch()\fP is called, both in
+total n' recursively. If a limit is exceeded, \fBpcre[16|32]_exec()\fP returns an
+error code. Right back up in yo muthafuckin ass. Settin suitable limits should prevent it from hustlin up of
+stack. Da default jointz of tha limits is straight-up large, n' unlikely eva to
+operate. They can be chizzled when PCRE is built, n' they can also be set when
+\fBpcre[16|32]_exec()\fP is called. Y'all KNOW dat shit, muthafucka! For detailz of these intercourses, peep the
+.\" HREF
+\fBpcrebuild\fP
+.\"
+documentation n' the
+.\" HTML <a href="pcreapi.html#extradata">
+.\" </a>
+section on extra data fo' \fBpcre[16|32]_exec()\fP
+.\"
+in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation.
+.P
+As a straight-up rough rule of thumb, you should reckon on bout 500 bytes per
+recursion. I aint talkin' bout chicken n' gravy biatch. Thus, if you wanna limit yo' stack usage ta 8Mb, you should set
+the limit at 16000 recursions fo' realz. A 64Mb stack, on tha other hand, can support
+around 128000 recursions.
+.P
+In Unix-like environments, tha \fBpcretest\fP test program has a cold-ass lil command line
+option (\fB-S\fP) dat can be used ta increase tha size of its stack fo' realz. As long
+as tha stack is big-ass enough, another option (\fB-M\fP) can be used ta find the
+smallest limits dat allow a particular pattern ta match a given subject
+string. This is done by callin \fBpcre[16|32]_exec()\fP repeatedly wit different
+limits.
+.
+.
+.SS "Obtainin a estimate of stack usage"
+.rs
+.sp
+Da actual amount of stack used per recursion can vary like a lot, depending
+on tha compila dat was used ta build PCRE n' tha optimization or debugging
+options dat was set fo' dat shit. Da rule of thumb value of 500 bytes mentioned
+above may be larger or smalla than what tha fuck is straight-up needed. Y'all KNOW dat shit, muthafucka! A better
+approximation can be obtained by hustlin dis command:
+.sp
+  pcretest -m -C
+.sp
+Da \fB-C\fP option causes \fBpcretest\fP ta output shiznit bout the
+options wit which PCRE was compiled. Y'all KNOW dat shit, muthafucka! When \fB-m\fP be also given (before
+\fB-C\fP), shiznit bout stack use is given up in a line like this:
+.sp
+  Match recursion uses stack: approximate frame size = 640 bytes
+.sp
+Da value be approximate cuz some recursions need a lil' bit mo' (up ta like
+16 mo' bytes).
+.P
+If tha above command is given when PCRE is compiled ta use tha heap instead of
+the stack fo' recursion, tha value dat is output is tha size of each block
+that is obtained from tha heap.
+.
+.
+.SS "Changin stack size up in Unix-like systems"
+.rs
+.sp
+In Unix-like environments, there aint often a problem wit tha stack unless
+very long strings is involved, though tha default limit on stack size varies
+from system ta system. Values from 8Mb ta 64Mb is common. I aint talkin' bout chicken n' gravy biatch. Yo ass can find your
+default limit by hustlin tha command:
+.sp
+  ulimit -s
+.sp
+Unfortunately, tha effect of hustlin outta stack is often SIGSEGV, though
+sometimes a mo' explicit error message is given. I aint talkin' bout chicken n' gravy biatch. Yo ass can normally increase the
+limit on stack size by code like fuckin this:
+.sp
+  struct rlimit rlim;
+  getrlimit(RLIMIT_STACK, &rlim);
+  rlim.rlim_cur = 100*1024*1024;
+  setrlimit(RLIMIT_STACK, &rlim);
+.sp
+This readz tha current limits (soft n' hard) rockin \fBgetrlimit()\fP, then
+attempts ta increase tha soft limit ta 100Mb rockin \fBsetrlimit()\fP. Yo ass must
+do dis before callin \fBpcre[16|32]_exec()\fP.
+.
+.
+.SS "Changin stack size up in Mac OS X"
+.rs
+.sp
+Usin \fBsetrlimit()\fP, as busted lyrics bout above, should also work on Mac OS X. It
+is also possible ta set a stack size when linkin a program. There be a
+rap bout stack sizes up in Mac OS X at dis wizzy crib:
+.\" HTML <a href="http://developer.apple.com/qa/qa2005/qa1419.html">
+.\" </a>
+http://developer.apple.com/qa/qa2005/qa1419.html.
+.\"
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 24 June 2012
+Copyright (c) 1997-2012 Universitizzle of Cambridge.
+.fi

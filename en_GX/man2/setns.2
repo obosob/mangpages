@@ -1,0 +1,212 @@
+
+.\" n' Copyright (C) 2011, 2012, Mike Kerrisk <mtk.manpages@gamil.com>
+.\"
+.\" %%%LICENSE_START(GPLv2_ONELINE)
+.\" Licensed under tha GPLv2
+.\" %%%LICENSE_END
+.\"
+.TH SETNS 2 2013-01-01 "Linux" "Linux Programmerz Manual"
+.SH NAME
+setns \- reassociate thread wit a namespace
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.B #include <sched.h>
+.sp
+.BI "int setns(int " fd ", int " nstype );
+.fi
+.SH DESCRIPTION
+Given a gangbangin' file descriptor referrin ta a namespace,
+reassociate tha callin thread wit dat namespace.
+
+The
+.I fd
+argument be a gangbangin' file descriptor referrin ta one of tha namespace entries up in a
+.I /proc/[pid]/ns/
+directory; see
+.BR proc (5)
+for further shiznit on
+.IR /proc/[pid]/ns/ .
+Da callin thread is ghon be reassociated wit tha correspondin namespace,
+subject ta any constraints imposed by the
+.I nstype
+argument.
+
+The
+.I nstype
+argument specifies which type of namespace
+the callin thread may be reassociated with.
+This argument can have one of tha followin joints:
+.TP
+.BR 0
+Allow any type of namespace ta be joined.
+.TP
+.BR CLONE_NEWIPC
+.I fd
+must refer ta a IPC namespace.
+.TP
+.BR CLONE_NEWNET
+.I fd
+must refer ta a network namespace.
+.TP
+.BR CLONE_NEWUTS
+.I fd
+must refer ta a UTS namespace.
+.PP
+Specifying
+.I nstype
+as 0 suffices if tha calla knows (or do not care)
+what type of namespace is referred ta by
+.IR fd .
+Specifyin a nonzero value for
+.I nstype
+is useful if tha calla do not know what tha fuck type of namespace is referred ta by
+.IR fd
+and wants ta ensure dat tha namespace iz of a particular type.
+(Da calla might not know tha type of tha namespace referred ta by
+.IR fd
+if tha file descriptor was opened by another process and, fo' example,
+passed ta tha calla via a UNIX domain socket.)
+.SH RETURN VALUE
+On success,
+.IR setns ()
+returns 0.
+On failure, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBADF
+.I fd
+is not a valid file descriptor.
+.TP
+.B EINVAL
+.I fd
+refers ta a namespace whose type do not match dat specified in
+.IR nstype ,
+or there is problem wit reassociatin the
+the thread wit tha specified namespace.
+.TP
+.B ENOMEM
+Cannot allocate sufficient memory ta chizzle tha specified namespace.
+.TP
+.B EPERM
+Da callin thread did not have tha required privilege
+.RB ( CAP_SYS_ADMIN )
+for dis operation.
+.SH VERSIONS
+The
+.BR setns ()
+system call first rocked up in Linux up in kernel 3.0;
+library support was added ta glibc up in version 2.14.
+.SH CONFORMING TO
+The
+.BR setns ()
+system call is Linux-specific.
+.SH NOTES
+Not all of tha attributes dat can be shared when
+a freshly smoked up thread is pimped using
+.BR clone (2)
+can be chizzled using
+.BR setns ().
+.SH EXAMPLE
+Da program below takes two or mo' arguments.
+Da first argument specifies tha pathname of a namespace file up in a existing
+.I /proc/[pid]/ns/
+directory.
+Da remainin arguments specify a cold-ass lil command n' its arguments.
+Da program opens tha namespace file, joins dat namespace using
+.BR setns (),
+and executes tha specified command inside dat namespace.
+
+Da followin shell session demonstrates tha use of dis program
+(compiled as a funky-ass binary named
+.IR ns_exec )
+in conjunction wit the
+.BR CLONE_NEWUTS
+example program up in the
+.BR clone (2)
+man page (complied as a funky-ass binary named
+.IR newuts ).
+
+We begin by executin tha example program in
+.BR clone (2)
+in tha background.
+That program creates a cold-ass lil lil pimp up in a separate UTS namespace.
+Da lil pimp chizzlez tha hostname up in its namespace,
+and then both processes display tha hostnames up in they UTS namespaces,
+so dat we can peep dat they is different.
+
+.nf
+.in +4n
+$ \fBsu\fP                   # Need privilege fo' namespace operations
+Password:
+# \fB./newuts bizarro &\fP
+[1] 3549
+clone() returned 3550
+uts.nodename up in child:  bizarro
+uts.nodename up in parent: antero
+# \fBuname -n\fP             # Verify hostname up in tha shell
+antero
+.in
+.fi
+
+We then run tha program shown below,
+usin it ta execute a gangbangin' finger-lickin' dirty-ass shell.
+Inside dat shell, we verify dat tha hostname is tha one
+set by tha lil pimp pimped by tha straight-up original gangsta program:
+
+.nf
+.in +4n
+# \fB./ns_exec /proc/3550/ns/uts /bin/bash\fP
+# \fBuname -n\fP             # Executed up in shell started by ns_exec
+bizarro
+.in
+.fi
+.SS Program source
+.nf
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <sched.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \\
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    int fd;
+
+    if (argc < 3) {
+        fprintf(stderr, "%s /proc/PID/ns/FILE cmd args...\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDONLY);   /* Git descriptor fo' namespace */
+    if (fd == \-1)
+        errExit("open");
+
+    if (setns(fd, 0) == \-1)         /* Join dat namespace */
+        errExit("setns");
+
+    execvp(argv[2], &argv[2]);      /* Execute a cold-ass lil command up in namespace */
+    errExit("execvp");
+}
+.fi
+.SH SEE ALSO
+.BR clone (2),
+.BR fork (2),
+.BR vfork (2),
+.BR proc (5),
+.BR unix (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

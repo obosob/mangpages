@@ -1,0 +1,768 @@
+.TH PV 1 "January 2014" Linux "User Manuals"
+.SH NAME
+pv \- monitor tha progress of data all up in a pipe
+.SH SYNOPSIS
+.B pv
+[\fIOPTION\fR]
+[\fIFILE\fR]...
+.br
+.B pv
+[\fI\-h\fR|\fI\-V\fR]
+
+
+.SH DESCRIPTION
+.B pv
+allows a user ta peep tha progress of data all up in a pipeline, by giving
+information like fuckin time elapsed, cementage completed (with progress bar),
+current throughput rate, total data transferred, n' ETA.
+
+To use it, bang it up in a pipeline between two processes, wit the
+appropriate options.  Its standard input is ghon be passed all up in ta its
+standard output n' progress is ghon be shown on standard error.
+
+.B pv
+will copy each supplied
+.B FILE
+in turn ta standard output
+.BR "" "(" -
+means standard input), or if no
+.BR FILE s
+are specified just standard input is copied. Y'all KNOW dat shit, muthafucka! This is tha same ol' dirty behaviour
+as
+.BR pussaaaaay (1).
+
+A simple example ta peep how tha fuck quickly a gangbangin' file is transferred using
+.BR nc (1):
+
+.RS
+.B pv file | nc -w 1 somewhere.com 3000
+.RE
+
+A similar example, transferrin a gangbangin' file from another process n' passin the
+expected size to
+.BR pv :
+
+.RS
+.B pussaaaaay file | pv -s 12345 | nc -w 1 somewhere.com 3000
+.RE
+
+A mo' fucked up example rockin numeric output ta feed tha fuck into the
+.BR dialog (1)
+program fo' a gangbangin' full-screen progress display:
+ 
+.RS
+.B (tar cf - . \e
+.br
+.B " | pv -n -s $(du -sb . | awk '{print $1}') \e"
+.br
+.B " | gzip -9 > out.tgz) 2>&1 \e"
+.br
+.B | dialog --gauge 'Progress' 7 70
+.RE
+
+Takin a image of a gangbangin' finger-lickin' disk, skippin errors:
+
+.RS
+.B pv -EE /dev/sda > disk-image.img
+.RE
+
+Freestylin a image back ta a gangbangin' finger-lickin' disk:
+
+.RS
+.B pv disk-image.img > /dev/sda
+.RE
+
+Zeroin a gangbangin' finger-lickin' disk:
+
+.RS
+.B pv < /dev/zero > /dev/sda
+.RE
+
+Note dat if tha input size cannot be calculated, n' tha output be a funky-ass block
+device, then tha size of tha block thang is ghon be used and
+.B pv
+will automatically stop at dat size as if
+.B \-S
+had been given.
+
+(Linux only): Watchin file descriptor 3 opened by another process 1234:
+
+.RS
+.B pv -d 1234:3
+.RE
+
+(Linux only): Watchin all file descriptors used by process 1234:
+
+.RS
+.B pv -d 1234
+.RE
+
+
+.SH OPTIONS
+.B pv
+takes nuff options, which is divided tha fuck into display switches, output
+modifiers, n' general options.
+
+
+.SH DISPLAY SWITCHES
+If no display switches is specified,
+.B pv
+behaves as if
+.BR \-p ", " \-t ", " \-e ", " \-r ", n' " \-b
+had been given (i.e. every last muthafuckin thang except average rate is switched on).
+Otherwise, only dem display types dat is explicitly switched on will be
+shown.
+.TP
+.B \-p, \-\-progress
+Turn tha progress bar on. I aint talkin' bout chicken n' gravy biatch.  If standard input aint a gangbangin' file n' no
+size was given (with the
+.B \-s
+modifier), tha progress bar cannot indicate how tha fuck close ta completion the
+transfer is, so it will just move left n' right ta indicate dat data is
+moving.
+.TP
+.B \-t, \-\-timer
+Turn tha timer on. I aint talkin' bout chicken n' gravy biatch.  This will display tha total elapsed time that
+.B pv
+has been hustlin for.
+.TP
+.B \-e, \-\-eta
+Turn tha ETA timer on. I aint talkin' bout chicken n' gravy biatch.  This will attempt ta guess, based on previous
+transfer rates n' tha total data size, how tha fuck long it is ghon be before
+completion. I aint talkin' bout chicken n' gravy biatch.  This option gonna git no effect if tha total data size cannot
+be determined.
+.TP
+.B \-r, \-\-rate
+Turn tha rate counta on. I aint talkin' bout chicken n' gravy biatch.  This will display tha current rate of data
+transfer.
+.TP
+.B \-a, \-\-average\-rate
+Turn tha average rate counta on. I aint talkin' bout chicken n' gravy biatch.  This will display tha average rate of
+data transfer so far.
+.TP
+.B \-b, \-\-bytes
+Turn tha total byte counta on. I aint talkin' bout chicken n' gravy biatch.  This will display tha total amount of
+data transferred so far.
+.TP
+.B \-T, \-\-buffer\-percent
+Turn on tha transfer buffer cementage display.  This will show the
+percentage of tha transfer buffer up in use - but peep tha caveat under
+.B %T
+in the
+.B FORMATTING
+section below.
+.TP
+.B \-A, \-\-last\-written NUM
+Show tha last
+.B NUM
+bytes freestyled - but peep tha caveat under
+.B %nA
+in the
+.B FORMATTING
+section below.
+.TP
+.B \-F, \-\-format FORMAT
+Ignore tha options
+.BR \-p ,
+.BR \-t ,
+.BR \-e ,
+.BR \-r ,
+.BR \-a ,
+.BR \-b ,
+.BR \-T ,
+and
+.BR \-A ,
+and instead use tha format string
+.B FORMAT
+to determine tha output format.  See the
+.B FORMATTING
+section below.
+.TP
+.B \-n, \-\-numeric
+Numeric output.  Instead of givin a visual indication of progress,
+.B pv
+will give a integer cementage, one per line, on standard error, suitable
+for pipin (via convoluted redirection) into
+.BR dialog (1).
+Note that
+.B \-f
+is not required if
+.B \-n
+is bein used.
+.TP
+.B ""
+Note dat if
+.B \-\-numeric
+is up in use, then adding
+.B \-\-bytes
+will cause tha number of bytes processed so far ta be output instead of a
+percentage; if
+.B \-\-line\-mode
+is also up in use, then instead of bytes or a cementage, tha number of lines
+so far is output.  And finally, if
+.B \-\-timer
+is also up in use, then each output line is prefixed wit tha elapsed time 
+so far, as a thugged-out decimal number of seconds.
+.TP
+.B \-q, \-\-quiet
+No output.  Useful if the
+.B \-L
+option is bein used on its own ta just limit tha transfer rate of a pipe.
+
+
+.SH OUTPUT MODIFIERS
+.TP
+.B \-W, \-\-wait
+Wait until tha straight-up original gangsta byte has been transferred before showin any progress
+information or calculatin any ETAs.  Useful if tha program yo ass is pipin to
+or from requires extra shiznit before it starts, eg pipin data into
+.BR gpg (1)
+or
+.BR mcrypt (1)
+which require a passphrase before data can be processed.
+.TP
+.B \-s SIZE, \-\-size SIZE
+Assume tha total amount of data ta be transferred is
+.B SIZE
+bytes when calculatin cementages n' ETAs.  Da same suffixez of "k", "m"
+etc can be used as with
+.BR -L .
+.TP
+.B \-l, \-\-line\-mode
+Instead of countin bytes, count lines (newline characters). Da progress
+bar will only move when a freshly smoked up line is found, n' tha value passed ta the
+.B \-s
+option is ghon be interpreted as a line count.
+.TP
+.B \-0, \-\-null
+Count lines as null terminated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This option implies \-\-line\-mode.
+.TP
+.B \-i SEC, \-\-interval SEC
+Wait
+.B SEC
+secondz between thugged-out shit.  Da default is ta update every last muthafuckin second.
+Note dat dis can be a thugged-out decimal like fuckin 0.1.
+.TP
+.B \-w WIDTH, \-\-width WIDTH
+Assume tha terminal is
+.B WIDTH
+charactas wide, instead of tryin ta work it up (or assumin 80 if it
+cannot be guessed).
+.TP
+.B \-H HEIGHT, \-\-height HEIGHT
+Assume tha terminal is
+.B HEIGHT
+rows high, instead of tryin ta work it up (or assumin 25 if it
+cannot be guessed).
+.TP
+.B \-N NAME, \-\-name NAME
+Prefix tha output shiznit with
+.BR NAME .
+Useful up in conjunction with
+.B \-c
+if you gotz a cold-ass lil fucked up pipeline n' you wanna be able ta tell different
+partz of it apart.
+.TP
+.B \-f, \-\-force
+Force output.  Normally,
+.B pv
+will not output any visual display if standard error aint a terminal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. 
+This option forces it ta do so.
+.TP
+.B \-c, \-\-cursor
+Use cursor positionin escape sequences instead of just rockin carriage
+returns.  This is useful up in conjunction with
+.B \-N
+(name) if yo ass is rockin multiple
+.B pv
+invocations up in a single, long, pipeline.
+
+
+.SH DATA TRANSFER MODIFIERS
+.TP
+.B \-L RATE, \-\-rate-limit RATE
+Limit tha transfer ta a maximum of
+.B RATE
+bytes per second. Y'all KNOW dat shit, muthafucka!  A suffix of "k", "m", "g", or "t" can be added ta denote
+kilobytes (*1024), megabytes, n' so on.
+.TP
+.B \-B BYTES, \-\-buffer-size BYTES
+Use a transfer buffer size of
+.B BYTES
+bytes.  A suffix of "k", "m", "g", or "t" can be added ta denote
+kilobytes (*1024), megabytes, n' so on. I aint talkin' bout chicken n' gravy biatch.  Da default buffer size is the
+block size of tha input filez filesystem multiplied by 32 (512kb max), or
+400kb if tha block size cannot be determined.
+.TP
+.B \-C, \-\-no-splice
+Never use
+.BR splice (2),
+even if it would normally be possible.  The
+.BR splice (2)
+system call be a mo' efficient way of transferrin data from or ta a pipe
+than regular
+.BR read (2)
+and
+.BR write (2),
+but means dat tha transfer buffer may not be used. Y'all KNOW dat shit, muthafucka!  This prevents
+.B \-A
+and
+.B \-T
+from working, so if you wanna use
+.B \-A
+or
+.B \-T
+then yo big-ass booty is ghon need ta use
+.BR \-C ,
+at tha cost of a lil' small-ass loss up in transfer efficiency.
+(This option has no effect on systems where
+.BR splice (2)
+is unavailable).
+.TP
+.B \-E, \-\-skip-errors
+Ignore read errors by attemptin ta skip past tha offendin sections.  The
+correspondin partz of tha output is ghon be null bytes.  At first only a gangbangin' few
+bytes is ghon be skipped yo, but if there be nuff errors up in a row then tha skips
+will move up ta chunkz of 512.  This is intended ta be similar to
+.B dd conv=sync,noerror
+but has not been as thoroughly tested.
+.TP
+.B ""
+Specify
+.B \-E
+twice ta only report a read error once per file, instead of reportin each
+byte range skipped.
+.TP
+.B \-S, \-\-stop-at-size
+If a size was specified with
+.BR \-s ,
+stop transferrin data once dat nuff bytes done been written, instead of
+continuin ta tha end of input.
+.TP
+.B \-d PID[:FD], \-\-watchfd PID[:FD]
+Instead of transferrin data, peep file descriptor
+.B FD
+of process
+.BR PID ,
+and show its progress.  The
+.B pv
+process will exit when
+.B FD
+either chizzlez ta a gangbangin' finger-lickin' different file, chizzlez read/write mode, or is closed;
+other data transfer modifiers - n' remote control - may not be used with
+this option.
+.TP
+.B ""
+If only a
+.B PID
+is specified, then dat process is ghon be peeped it, n' all regular filez it
+opens is ghon be shown wit a progress bar. Shiiit, dis aint no joke.  The
+.B pv
+process will exit when process
+.B PID
+exits.
+.TP
+.B \-R PID, \-\-remote PID
+If
+.B PID
+is a instizzle of
+.B pv
+that be already hustlin,
+.B \-R PID
+will cause dat instizzle ta act as though it had been given
+this instancez command line instead. Y'all KNOW dat shit, muthafucka!  For example, if
+.B pv -L 123k
+is hustlin wit process ID 9876, then hustlin
+.B pv -R 9876 -L 321k
+will cause it ta start rockin a rate limit of 321k instead of 123k.
+Note dat some options cannot be chizzled while hustlin, such as
+.BR \-c ,
+.BR \-l ,
+.BR \-f ,
+.BR \-E ,
+and
+.BR \-S .
+
+.SH GENERAL OPTIONS
+.TP
+.B \-P FILE, \-\-pidfile FILE
+Save tha process ID of
+.B pv
+in
+.BR FILE .
+Da file is ghon be truncated if it already exists, n' is ghon be removed when
+.B pv
+exits, n' you can put dat on yo' toast.  While
+.B pv
+is hustlin, it will contain a single number - tha process ID of
+.B pv
+- followed by a newline.
+.TP
+.B \-h, \-\-help
+Print a usage message on standard output n' exit successfully.
+.TP
+.B \-V, \-\-version         
+Print version shiznit on standard output n' exit successfully.
+
+
+.SH FORMATTING
+If the
+.B \-F
+option is given, then tha output format is determined by tha given format
+string.  Within dat string, tha followin sequences can be used:
+.TP
+.B %p
+Progress bar.
+Expandz ta fill tha remainin space. Right back up in yo muthafuckin ass. Should only be specified once.
+Equivalent to
+.BR \-p .
+.TP
+.B %t
+Elapsed time.  Equivalent to
+.BR \-t .
+.TP
+.B %e
+ETA.  Equivalent to
+.BR \-e .
+.TP
+.B %r
+Current data transfer rate.  Equivalent to
+.BR \-r .
+.TP
+.B %a
+Average data transfer rate.  Equivalent to
+.BR \-a .
+.TP
+.B %b
+Bytes transferred so far (or lines if
+.B \-l
+was specified).  Equivalent to
+.BR \-b .
+.TP
+.B %T
+Percentage of tha transfer buffer up in use.  Equivalent to
+.BR \-T .
+Shows "{----}" if tha transfer is bein done with
+.BR splice (2),
+since splicin ta or from pipes do not use tha buffer.
+.TP
+.B %nA
+Show tha last 
+.B n
+bytes freestyled (e.g.
+.B %16A
+for tha last 16 bytes).
+Shows only dots if tha transfer is bein done with
+.BR splice (2),
+since splicin ta or from pipes do not use tha buffer.
+.TP
+.B %N
+Name prefix given by
+.BR -N .
+Padded ta 9 charactas wit spaces, n' suffixed wit :.
+.TP
+.B %%
+A single %.
+.P
+Da format strang equivalent of turnin on all display switches is
+.BR "\`%N %b %T %t %r %a %p %e'" .
+
+
+.SH EXIT STATUS
+An exit statuz of 1 indicates a problem wit the
+.B \-R
+or
+.B \-P
+options.
+
+Any other exit status be a funky-ass bitmask of tha following:
+
+.TP
+.B 2
+One or mo' filez could not be accessed, 
+.BR stat (2)ed,
+or opened.
+.TP
+.B 4
+An input file was tha same ol' dirty as tha output file.
+.TP
+.B 8
+Internal error wit closin a gangbangin' file or movin ta tha next file.
+.TP
+.B 16
+There was a error while transferrin data from one or mo' input files.
+.TP
+.B 32
+A signal was caught dat caused a early exit.
+.TP
+.B 64
+Memory allocation failed.
+
+A zero exit status indicates no problems.
+
+
+.SH AUTHORS
+Andrew Wood <andrew.wood@ivarch.com>
+.br
+.I http://www.ivarch.com/
+
+Kevin Coyner <kcoyner@debian.org>
+.br
+(Debian package maintainer)
+
+Jakub Hrozek <jhrozek@redhat.com>
+.br
+(Fedora package maintainer)
+
+Cedric Delfosse <cedric@debian.org>
+.br
+(previous Debian package maintainer)
+
+Eduardo Aguiar <eduardo.oliveira@sondabrasil.com.br>
+.br
+(provided Portuguese [Brazilian] translation)
+
+Stephane Lacasse <stephane@gorfou.ca>
+.br
+(provided French translation)
+.br
+.I http://gorfou.ca/
+
+Marcos Kreinacke <public@kreinacke.com>
+.br
+(provided German translation)
+
+Bartoss Fenski <fenio@o2.pl>
+.br
+(provided Polish translation, along wit Krystian Zubel)
+.br
+.I http://skawina.eu.org/
+
+Joshua Jensen
+.br
+(reported RPM installation bug)
+
+Boris Folgmann
+.br
+(reported cursor handlin bug)
+.br
+.I http://www.folgmann.com/en/
+
+Mathias Gumz
+.br
+(reported NLS bug)
+
+Daniel Roethlisberger
+.br
+(submitted patch ta use lockfilez fo' -c if terminal lockin fails)
+
+Adam Buchbinder
+.br
+(lotz of help wit a Cygwin port of -c)
+
+Mark Tomich
+.br
+(suggested -B option)
+.br
+.I http://metuchen.dyndns.org
+
+Gert Menke
+.br
+(reported bug when pipin ta dd wit a big-ass input buffer size)
+
+Ville Herva <Ville.Herva@iki.fi>
+.br
+(informatizzle bug report bout rate limitin performance)
+
+Elias Pipping
+.br
+(patch ta compile properly on Darwin 9; potential NULL deref report)
+
+Patrick Collison
+.br
+(similar patch fo' OS X)
+
+Boris Lohner
+.br
+(reported problem dat -L do not diss if given non-numeric value)
+
+Sebastian Kayser
+.br
+(supplied testin fo' SIGPIPE, demonstrated internationalisation problem)
+
+Laszlo Ersek
+.br
+(reported shared memory leak on SIGINT wit -c)
+.br
+.I http://phptest11.atw.hu/
+
+Phil Rutschman
+.br
+(provided a patch fo' straight-up restorin terminal state on exit)
+.br
+.I http://bandgap.rsnsoft.com/
+
+Henry Precheur
+.br
+(reportin n' suggestions fo' --rate-limit bug when rate is under 10)
+.br
+.I http://henry.precheur.org/
+
+E. Rosten
+.br
+(supplied patch fo' block bufferin up in line mode)
+.br
+.I http://mi.eng.cam.ac.uk/~er258/
+
+Kjetil Torgrim Homme
+.br
+(reported compilation error wit default CFLAGS on non-GCC compilers)
+
+Alexandre de Verteuil
+.br
+(reported bug up in OS X build n' supplied test environment ta fix in)
+
+Martin Baum
+.br
+(supplied patch ta return nonzero exit status if terminated by signal)
+
+Sam Nelson
+.br
+(supplied patch ta fix trailin slash on DESTDIR)
+.br
+.I http://www.siliconfuture.net/
+
+Daniel Pape
+.br
+(reported Cygwin installation problem cuz of DESTDIR)
+
+Henry Gebhardt <hsggebhardt@googlemail.com>
+.br
+(supplied patches ta improve SI prefixes n' add --average-rate)
+
+Vladimir Kokarev
+.br
+Alexander Leo
+.br
+(reported dat exit status did not reflect file errors)
+
+Thomas Rachel
+.br
+(submitted patches fo' IEEE1541 (MiB suffixes), 1+e03 bug)
+
+Guillaume Marcais
+.br
+(submitted speedup patch fo' line mode)
+
+Moritz Barsnick
+.br
+(submitted patch fo' compile warnin up in size calculation)
+
+Pawel Piatek
+.br
+(submitted RPM n' patches fo' AIX)
+
+Sami Liedes
+.br
+(submitted patch fo' --timer n' --bytes wit --numeric)
+
+Steven Willis
+.br
+(reported problem wit "-R" cappin' non-PV remote processes)
+
+Vladimir Pal, Vladimir Ermakov
+.br
+(submitted patch which hustled ta pimpment of --format option)
+
+Peta Samuelson <peter@p12n.org>
+.br
+(submitted patch ta calculate size if stdout be a funky-ass block device)
+
+Miguel Diaz
+.br
+(much Cygwin help (and packaging), found narrow-terminal bug)
+
+Jim Salter
+.br
+(commissioned work on tha --skip-errors option)
+.br
+.I http://ubuntuwiki.net
+
+Wouta Pronk
+.br
+(reported build problem on SCO)
+
+Bryan Dongray
+.br
+(provided patches fo' test scripts failin on olda Red Hats)
+.br
+.I http://www.dongrays.com
+
+Zev Weiss
+.br
+(provided patch ta fix splice() not rockin stdin)
+.br
+.I http://www.bewilderbeest.net
+
+Zin Shishak
+.br
+(provided patch fo' --null / -0)
+
+Jacek Wielemborek
+.br
+(implemented fdwatch up in Python, suggested
+.B pv
+port)
+.br
+.I http://deetah.jogger.pl/kategorie/english
+
+Kim Krecht
+.br
+(suggested buffer fill status n' last bytes output display options)
+
+Cristian Ciupitu
+.br
+(pointed up file descriptor leak wit helpful suggestions)
+.br
+.I http://ciupicri.github.io
+.br
+(Josh Stone initially noticed tha missin close)
+
+.SH BUGS
+Known bugs:
+.TP
+.B *
+The
+.B -c
+option do not work properly on Cygwin without
+.B cygserver
+running, if started near tha bottom of tha screen (IPC is needed ta handle
+the terminal scrolling).  To fix this, start
+.B cygserver
+before using
+.BR "pv -c" .
+.P
+.TP
+.B *
+The
+.B -R
+option aint available on Cygwin without
+.B cygserver
+runnin (SYSV IPC is needed). To fix this, start
+.B cygserver
+before hustlin tha instizzle of
+.B pv
+you want, at runtime, ta chizzle tha parametas of.
+.P
+If you find any other bugs, please contact tha primary lyricist, either by
+email or by rockin tha contact form on tha wizzy crib.
+
+
+.SH "SEE ALSO"
+.BR pussaaaaay (1),
+.BR dialog (1),
+.BR splice (2)
+
+
+.SH LICENSE
+This is free software, distributed under tha ARTISTIC 2.0 license.

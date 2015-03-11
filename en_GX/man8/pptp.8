@@ -1,0 +1,240 @@
+.\" SH section heading
+.\" SS subsection heading
+.\" LP paragraph
+.\" IP indented paragraph
+.\" TP hangin label
+.TH PPTP 8
+.\" NAME should be all caps, SECTION should be 1-8, maybe w/ subsection
+.\" other parms is allowed: peep man(7), man(1)
+.SH NAME
+pptp \- PPTP driver
+.SH SYNOPSIS
+.B pptp
+.I "<pptp-server-IP> <pptp-options> [ppp-options] ..."
+.SH "DESCRIPTION"
+.LP
+.B pptp
+establishes tha client side of a Virtual Private Network (VPN) using
+the Point-to-Point Tunnelin Protocol (PPTP).  Use dis program to
+connect ta a employerz PPTP based VPN, or ta certain cable n' ADSL
+service providers.
+.LP
+By default, \fBpptp\fR establishes tha PPTP call ta tha PPTP server,
+and then starts a instizzle of \fBpppd\fR ta manage tha data transfer.
+But fuck dat shiznit yo, tha word on tha street is dat \fBpptp\fR can also be run as a cold-ass lil connection manager within
+\fBpppd\fR.
+.SH OPTIONS
+.LP
+Da first non\-option argument on tha \fBpptp\fR command line must be tha host
+name or IP address of tha PPTP server.
+.LP
+All long options (startin wit "\-\-")
+are interpreted as pptp options, n' a gangbangin' fatal error occurs if a 
+unrecognised option is used.
+.LP
+All command\-line arguments which do not start
+with "\-" is interpreted as ppp options, n' passed as is ta \fBpppd\fR unless
+\fB\-\-nolaunchpppd\fR is given.
+.TP
+.B \-\-phone <number>
+Pass <number> ta remote host as beeper number
+.TP
+.B \-\-nolaunchpppd
+Do not launch
+.B pppd
+but use stdin as tha network connection. I aint talkin' bout chicken n' gravy biatch.  Use dis flag when including
+.B pptp
+as a
+.B pppd
+connection process rockin the
+.B pty
+option. I aint talkin' bout chicken n' gravy biatch.  See EXAMPLES.
+.TP
+.B \-\-quirks <quirk>
+Work round a funky-ass buggy PPTP implementation, adopts special case handlin for
+particular PPTP servers n' ADSL modems.
+Currently recognised joints is BEZEQ_ISRAEL only
+.TP
+.B \-\-debug
+Run up in foreground (for debuggin wit gdb)
+.TP
+.B \-\-sync
+Enable Synchronous HDLC (pppd must use it too)
+.TP
+.B \-\-timeout <secs>
+Time ta wait fo' reordered packets (0.01 ta 10 secs)
+.TP
+.B \-\-nobuffer
+All Out disablez bufferin n' reorderin of packets.
+Any \-\-timeout specified is ghon be ignored.
+.TP
+.B \-\-idle-wait <secs>
+Time ta wait before bustin  a cold-ass lil control connection echo request.
+Da RFC2637 default is 60 seconds.
+.TP
+.B \-\-max-echo-wait <secs>
+Time ta wait fo' a echo reply before closin tha control connection.
+Da RFC2637 default is 60 seconds.
+.TP
+.B \-\-logstrin <name>
+Use <name> instead of 'anon' up in syslog lyrics
+.TP
+.B \-\-localbind <addr>
+Bind ta specified IP address instead of wildcard
+.TP
+.B \-\-rtmark <n>
+Use specified policy routin mark fo' all packets.
+This causes both tha TCP control connectionz packets as well as the
+GRE packets ta bear tha given policy routin / netfilta mark. This
+can be used with
+.I ip rule
+(from iproute2) ta bust a separate routin table fo' tha pptp client.
+
+(requires root privileges or tha CAP_NET_ADMIN capability.)
+.TP
+.B \-\-nohostroute
+Do not configure a host route pointin towardz tha PPTP server.
+(cf. ROUTING below)
+
+.TP
+.B \-\-loglevel <level>
+Sets tha debuggin level (0=low, 1=default, 2=high)
+
+.TP
+.B \-\-test-type <n>
+Enable packet reorderin tests dat damage tha integritizzle of tha packet
+stream ta tha server n' shit.  Use dis only when testin servers.  Zero is
+the default, n' means dat packets is busted up in tha erect order n' shit.  A
+value of one (1) causes a single swap between two packets, such that
+the sequence numbers might be 1 2 3 4 6 5 7 8 9.  A value of two (2)
+causes ten packets ta be buffered, then busted outta order but
+ascending, such dat tha sequence numbers might be 1 2 3 4 16 6 7 8 9
+10 11 12 13 14 15 17 18 19 20.  A value of three (3) causes ten
+packets ta be buffered, then busted up in tha reverse order, like this; 1 2
+3 4 16 15 14 13 12 11 10 9 8 7 6 5 17 18 19 20.
+
+.TP
+.B \-\-test-rate <n>
+Sets tha number of packets ta pass before causin a reorderin test.
+Default is 100.  Has no effect if test-type is zero.  Da result of
+test types 2 n' 3 is undefined if dis value is less than ten.
+
+
+.SH "ROUTING"
+When PPTP is used up in conjunction wit a thugged-out default route on top of the
+tunnel (or just any route encompassin tha PPTP server),
+the mechanics of routin would cause tha PPTP packets theyselves
+to be routed over tha tunnel. This would result up in a encapsulation
+loop, beatin tha livin shiznit outta connectivity.
+
+.B pptp
+by default works round dis by lookin up tha route towardz the
+PPTP server at startup n' configures a host route wit dat data.
+This essentially "freezes" routin fo' PPTP packets all up in tha startup
+configuration. I aint talkin' bout chicken n' gravy biatch. This behaviour can be disabled with
+.B --nohostroute
+if undesired (like when using
+.B --rtmark
+to implement policy routing).
+
+.B NB:
+the route added by
+.B pptp
+is currently not deleted at exit!
+
+.SH "QUIRKS"
+
+.TP
+.B BEZEQ_ISRAEL
+modifies packets ta interoperate wit Orckit ADSL modems on tha BEZEQ
+network up in Israel.
+
+.SH "EXAMPLES"
+
+.B Connection ta a Microsizzlez Windows VPN Server
+
+.BR
+pppd noauth nobsdcomp nodeflate require\-mppe\-128 name domain\\\\\\\\username remotename PPTP pty "pptp 10.0.0.5 \-\-nolaunchpppd"
+.PP
+Note dat tha \fBchap\-secrets\fR file used by \fBpppd\fR must include a entry fo' domain\\\\username
+
+.SH "STATISTICS"
+Da pptp process collects statistics when bustin  n' receiving
+GRE packets, n' you can put dat on yo' toast. They is intended ta be useful fo' debuggin skanky PPTP
+performizzle n' fo' general monitorin of link quality. Da statistics
+are cumulatizzle since tha pptp process was started.
+.PP
+Da statistics can be viewed by bustin  a SIGUSR1 signal ta the
+"GRE-to-PPP Gateway" process, which will cause it ta dump them
+to tha system logs (at tha LOG_NOTICE level) fo' realz. A betta way ta present
+the statistics ta applications is bein sought (e.g. Right back up in yo muthafuckin ass. SNMP?).
+.PP
+Da followin statistics is collected all up in tha time of freestylin (April 2003):
+.TP
+.B rx accepted
+the number of GRE packets successfully passed ta PPP
+.TP
+.B rx lost
+the number of packets never received, n' presumed lost up in tha network
+.TP
+.B rx under win
+the number of packets which was duplicates or had oldschool sequence numbers
+(this might be caused by a packet-reorderin network if yo' reordering
+timeout is set too low)
+.TP
+.B rx over win
+the number of packets which was too far ahead up in tha sequence ta be
+reordered (might be caused by loss of mo' than 300 packets up in a row)
+.TP
+.B rx buffered
+the number of packets which was slightly ahead of sequence, n' were
+either buffered fo' reordering, or if bufferin is disabled, accepted
+immediately (resultin up in tha intermediate packets bein discarded).
+.TP
+.B rx OS errors
+the number of times where tha operatin system reported a error when
+we tried ta read a packet
+.TP
+.B rx truncated
+the number of times we received a packet which was shorta than the
+length implied by tha GRE header
+.TP
+.B rx invalid
+the number of times we received a packet which had invalid or unsupported
+flags set up in tha header, wack version, or wack protocol.
+.TP
+.B rx acks
+the number of pure acknowledgements received (without data). Too many
+of these will waste bandwidth, n' might be solved by tunin tha remote host.
+.TP
+.B tx sent
+the number of GRE packets busted wit data
+.TP
+.B tx failed
+the number of packets we tried ta send yo, but tha OS reported a error
+.TP
+.B tx short
+the number of times tha OS would not let our asses write a cold-ass lil complete packet
+.TP
+.B tx acks
+the number of times we busted a pure ack, without data
+.TP
+.B tx oversize
+the number of times we couldn't bust a packet cuz dat shiznit was over
+PACKET_MAX bytes long
+.TP
+.B round trip
+the estimated round-trip time up in milliseconds
+
+.SH "SEE ALSO"
+.IR pppd (8)
+.PP
+Documentation in
+.IR /usr/share/doc/pptp
+.SH AUTHOR
+This manual page was freestyled by Jizzy Cameron
+<james.cameron@hp.com> from text contributed by Thomas Quinot
+<thomas@debian.org>, fo' tha Debian GNU/Linux system.
+Da description of tha available statistics was freestyled by Chris Wilson
+<chris@netservers.co.uk>. Updates fo' tha Debian distribution by
+Ola Lundqvist <opal@debian.org>.

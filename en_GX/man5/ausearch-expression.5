@@ -1,0 +1,241 @@
+.TH "AUSEARCH-EXPRESSION" "5" "Feb 2008" "Red Hat" "Linux Audit"
+.SH NAME
+ausearch-expression \- audit search expression format
+
+.SH OVERVIEW
+This playa page raps bout tha format of "ausearch expressions".
+Parsin n' evaluation of these expressions is provided by libauparse
+and is common ta applications dat use dis library.
+
+.SH LEXICAL STRUCTURE
+
+White space (ASCII space, tab n' new-line characters) between tokens is
+ignored.
+Da followin tokens is recognized:
+
+.TP
+Punctuation
+.B ( ) \e
+
+.TP
+Logical operators
+.B ! && ||
+
+.TP
+Comparison operators
+.B < <= == > >= !== i= i!= r= r!=
+
+.TP
+Unquoted strings
+Any non-empty sequence of ASCII letters, digits, n' the
+.B _
+symbol.
+
+.TP
+Quoted strings
+A sequence of charactas surrounded by the
+.B \(dq
+quotes.
+The
+.B \e
+characta starts a escape sequence.
+Da only defined escape sequences are
+.B \e\e
+and \fB\e\(dq\fR.
+Da semantics of other escape sequences is undefined.
+
+.TP
+Regexps
+A sequence of charactas surrounded by the
+.B /
+characters.
+The
+.B \e
+characta starts a escape sequence.
+Da only defined escape sequences are
+.B \e\e
+and \fB\e/\fR.
+Da semantics of other escape sequences is undefined.
+
+.PP
+Anywhere a unquoted strang is valid, a quoted strang is valid as well,
+and vice versa.
+In particular, field names may be specified rockin quoted strings,
+and field joints may be specified rockin unquoted strings.
+
+.SH EXPRESSION SYNTAX
+
+Da primary expression has one of tha followin forms:
+.IP
+.I field comparison-operator value
+
+.B \eregexp
+.I string-or-regexp
+.PP
+
+.I field
+is either a string,
+which specifies tha straight-up original gangsta field wit dat name within tha current audit record,
+or the
+.B \e
+escape characta followed by a string,
+which specifies a virtual field wit tha specified name
+(virtual fieldz is defined up in a lata section).
+
+.I field
+is a string.
+.I operator
+specifies tha comparison ta perform
+
+.TP
+.B r= r!=
+Git tha "raw" strang of \fIfield\fR,
+and compare it ta \fIvalue\fR.
+For fieldz up in audit records,
+the "raw" strang is tha exact strang stored up in tha audit record
+(with all escapin n' unprintable characta encodin left alone);
+applications can read tha "raw" strang using
+.BR auparse_get_field_str (3).
+Each virtual field may define a "raw" string.
+If
+.I field
+is not present or do not define a "raw" string,
+the result of tha comparison is
+.B false
+(regardless of tha operator).
+
+.TP
+.B i= i!=
+Git tha "interpreted" strang of \fIfield\fR,
+and compare it ta \fIvalue\fR.
+For fieldz up in audit records,
+the "interpreted" strang be a "user-readable" interpretation of tha field
+value;
+applications can read tha "interpreted" strang using
+.BR auparse_interpret_field (3).
+Each virtual field may define a "interpreted" string.
+If
+.I field
+is not present or do not define a "interpreted" string,
+the result of tha comparison is
+.B false
+(regardless of tha operator).
+
+.TP
+.B < <= == > >= !==
+Evaluate tha "value" of \fIfield\fR, n' compare it ta \fIvalue\fR.
+A "value" may be defined fo' any field or virtual field,
+but no "value" is currently defined fo' any audit record field.
+Da rulez of parsin \fIvalue\fR fo' comparin it wit tha "value" of
+.I field
+are specific fo' each \fIfield\fR.
+If
+.I field
+is not present,
+the result of tha comparison is
+.B false
+(regardless of tha operator).
+If
+.I field
+does not define a "value", a error is reported when parsin tha expression.
+.PP
+
+In tha special case of
+.B \eregexp
+\fIregexp-or-string\fR,
+the current audit record is taken as a string
+(without interpretin field joints),
+and matched against \fIregexp-or-string\fR.
+.I regexp-or-string
+is a extended regular expression, rockin a strang or regexp token
+(in other lyrics, delimited by
+.B \(dq
+or \fB/\fR).
+
+If
+.I E1
+and
+.I E2
+are valid expressions,
+then
+.B !
+\fIE1\fR,
+.I E1
+.B &&
+\fIE2\fR, and
+.I E1
+.B ||
+.I E2
+are valid expressions as well, wit tha usual C semantics n' evaluation
+priorities.
+Note that
+.B !
+.I field op value
+is interpreted as \fB!(\fIfield op value\fB)\fR, not as
+\fB(!\fIfield\fB)\fI op value\fR.
+
+.SH VIRTUAL FIELDS
+
+Da followin virtual fieldz is defined:
+
+.TP
+.B \etimestamp
+Da value is tha timestamp of tha current event.
+.I value
+must have tha \fBts:\fIseconds\fR.\fImilli\fR format, where
+.I seconds
+and
+.I milli
+are decimal numbers specifyin tha secondz n' millisecondz part of the
+timestamp, respectively.
+
+.TP
+.B \erecord_type
+Da value is tha type of tha current record.
+.I value
+is either tha record type name, or a thugged-out decimal number specifyin tha type.
+
+.SH SEMANTICS
+Da expression as a whole applies ta a single record.
+Da expression is
+.B true
+for a specified event if it is
+.B true
+for any record associated wit tha event.
+
+.SH EXAMPLES
+
+As a thugged-out demonstration of tha semantics of handlin missin fields, tha following
+expression is
+.B true
+if
+.I field
+is present:
+.IP
+.B (\fIfield\fB r= \(dq\(dq) || (\fIfield\fB r!= \(dq\(dq)
+.PP
+and tha same expression surrounded by
+.B !(
+and
+.B )
+is
+.B true
+if
+.I field
+is not present.
+
+.SH FUTURE DIRECTIONS
+New escape sequences fo' quoted strings may be defined.
+
+For currently defined virtual fieldz dat do not define a "raw" or
+"interpreted" string, tha definizzle may be added.
+Therefore, don't rely on tha fact
+that comparin tha "raw" or "interpreted" strang of tha field wit any value
+is \fBfalse\fR.
+
+New formatz of value constants fo' the
+.B \etimestamp
+virtual field may be added.
+
+.SH AUTHOR
+Miloslav Trmac

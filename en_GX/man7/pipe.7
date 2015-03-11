@@ -1,0 +1,251 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PIPE 7 2005-12-08 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pipe \- overview of pipes n' FIFOs
+.SH DESCRIPTION
+Pipes n' FIFOs (also known as named pipes)
+provide a unidirectionizzle interprocess communication channel.
+A pipe has a
+.I read end
+and a
+.IR "write end" .
+Data freestyled ta tha write end of a pipe can be read
+from tha read end of tha pipe.
+
+A pipe is pimped using
+.BR pipe (2),
+which creates a freshly smoked up pipe n' returns two file descriptors,
+one referrin ta tha read end of tha pipe,
+the other referrin ta tha write end.
+Pipes can be used ta create a cold-ass lil communication channel between related
+processes; see
+.BR pipe (2)
+for a example.
+
+A FIFO (short fo' First In First Out) has a name within tha file
+system (created using
+.BR mkfifo (3)),
+and is opened using
+.BR open (2).
+Any process may open a FIFO, assumin tha file permissions allow dat shit.
+Da read end is opened rockin the
+.B O_RDONLY
+flag; tha write end is opened rockin the
+.B O_WRONLY
+flag.
+See
+.BR fifo (7)
+for further details.
+.IR Note :
+although FIFOs gotz a pathname up in tha file system,
+I/O on FIFOs do not involve operations on tha underlyin device
+(if there is one).
+.SS I/O on pipes n' FIFOs
+Da only difference between pipes n' FIFOs is tha manner up in which
+they is pimped n' opened.
+Once these tasks done been accomplished,
+I/O on pipes n' FIFOs has exactly tha same semantics.
+
+If a process attempts ta read from a empty pipe, then
+.BR read (2)
+will block until data be available.
+If a process attempts ta write ta a gangbangin' full pipe (see below), then
+.BR write (2)
+blocks until sufficient data has been read from tha pipe
+to allow tha write ta complete.
+Nonblockin I/O is possible by rockin the
+.BR fcntl (2)
+.B F_SETFL
+operation ta enable the
+.B O_NONBLOCK
+open file status flag.
+
+Da communication channel provided by a pipe be a
+.IR "byte stream" :
+there is no concept of message boundaries.
+
+If all file descriptors referrin ta tha write end of a pipe
+have been closed, then a attempt to
+.BR read (2)
+from tha pipe will peep end-of-file
+.RB ( read (2)
+will return 0).
+If all file descriptors referrin ta tha read end of a pipe
+have been closed, then a
+.BR write (2)
+will cause a
+.B SIGPIPE
+signal ta be generated fo' tha callin process.
+If tha callin process is ignorin dis signal, then
+.BR write (2)
+fails wit tha error
+.BR EPIPE .
+An application dat uses
+.BR pipe (2)
+and
+.BR fork (2)
+should use suitable
+.BR close (2)
+calls ta close unnecessary duplicate file descriptors;
+this ensures dat end-of-file and
+.BR SIGPIPE / EPIPE
+are served up when appropriate.
+
+It aint possible ta apply
+.BR lseek (2)
+to a pipe.
+.SS Pipe capacity
+A pipe has a limited capacity.
+If tha pipe is full, then a
+.BR write (2)
+will block or fail, dependin on whether the
+.B O_NONBLOCK
+flag is set (see below).
+Different implementations have different limits fo' tha pipe capacity.
+Applications should not rely on a particular capacity:
+an application should be designed so dat a readin process consumes data
+as soon as it be available,
+so dat a gangbangin' freestylin process do not remain blocked.
+
+In Linux versions before 2.6.11, tha capacitizzle of a pipe was tha same ol' dirty as
+the system page size (e.g., 4096 bytes on i386).
+Since Linux 2.6.11, tha pipe capacitizzle is 65536 bytes.
+.SS PIPE_BUF
+POSIX.1-2001 say that
+.BR write (2)s
+of less than
+.B PIPE_BUF
+bytes must be atomic: tha output data is freestyled ta tha pipe as a
+contiguous sequence.
+Writez of mo' than
+.B PIPE_BUF
+bytes may be nonatomic: tha kernel may interleave tha data
+with data freestyled by other processes.
+POSIX.1-2001 requires
+.B PIPE_BUF
+to be at least 512 bytes.
+(On Linux,
+.B PIPE_BUF
+is 4096 bytes.)
+Da precise semantics depend on whether tha file descriptor is nonblocking
+.RB ( O_NONBLOCK ),
+whether there be multiple writas ta tha pipe, n' on
+.IR n ,
+the number of bytes ta be written:
+.TP
+\fBO_NONBLOCK\fP disabled, \fIn\fP <= \fBPIPE_BUF\fP
+All
+.I n
+bytes is freestyled atomically;
+.BR write (2)
+may block if there aint room for
+.I n
+bytes ta be freestyled immediately
+.TP
+\fBO_NONBLOCK\fP enabled, \fIn\fP <= \fBPIPE_BUF\fP
+If there is room ta write
+.I n
+bytes ta tha pipe, then
+.BR write (2)
+succeedz immediately, freestylin all
+.I n
+bytes; otherwise
+.BR write (2)
+fails, with
+.I errno
+set to
+.BR EAGAIN .
+.TP
+\fBO_NONBLOCK\fP disabled, \fIn\fP > \fBPIPE_BUF\fP
+Da write is nonatomic: tha data given to
+.BR write (2)
+may be interleaved with
+.BR write (2)s
+by other process;
+the
+.BR write (2)
+blocks until
+.I n
+bytes done been written.
+.TP
+\fBO_NONBLOCK\fP enabled, \fIn\fP > \fBPIPE_BUF\fP
+If tha pipe is full, then
+.BR write (2)
+fails, with
+.I errno
+set to
+.BR EAGAIN .
+Otherwise, from 1 to
+.I n
+bytes may be freestyled (i.e., a "partial write" may occur;
+the calla should check tha return value from
+.BR write (2)
+to peep how tha fuck nuff bytes was straight-up written),
+and these bytes may be interleaved wit writes by other processes.
+.SS Open file status flags
+Da only open file status flags dat can be meaningfully applied to
+a pipe or FIFO are
+.B O_NONBLOCK
+and
+.BR O_ASYNC .
+
+Settin the
+.B O_ASYNC
+flag fo' tha read end of a pipe causes a signal
+.RB ( SIGIO
+by default) ta be generated when freshly smoked up input becomes available on tha pipe
+(see
+.BR fcntl (2)
+for details).
+On Linux,
+.B O_ASYNC
+is supported fo' pipes n' FIFOs only since kernel 2.6.
+.SS Portabilitizzle notes
+On some systems (but not Linux), pipes is bidirectional:
+data can be transmitted up in both directions between tha pipe ends.
+Accordin ta POSIX.1-2001, pipes only need ta be unidirectional.
+Portable applications should avoid reliizzle on
+bidirectionizzle pipe semantics.
+.SH SEE ALSO
+.BR dup (2),
+.BR fcntl (2),
+.BR open (2),
+.BR pipe (2),
+.BR poll (2),
+.BR select (2),
+.BR socketpair (2),
+.BR stat (2),
+.BR mkfifo (3),
+.BR epoll (7),
+.BR fifo (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

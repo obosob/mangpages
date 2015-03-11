@@ -1,0 +1,169 @@
+.\" Copyright (C) 2010 Intel Corporation
+.\" Author: Andi Kleen
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH KEXEC_LOAD 2 2012-07-13 "Linux" "Linux Programmerz Manual"
+.SH NAME
+kexec_load \- load a freshly smoked up kernel fo' lata execution
+.SH SYNOPSIS
+.B #include <linux/kexec.h>
+.br
+.BI "long kexec_load(unsigned long " entry ", unsigned long " nr_segments ","
+.br
+.BI "                struct kexec_segment *" segments \
+", unsigned long " flags ");"
+
+.IR Note :
+There is no glibc wrapper fo' dis system call; peep NOTES.
+.SH DESCRIPTION
+The
+.BR kexec_load ()
+system call loadz a freshly smoked up kernel dat can be executed lata by
+.BR reboot (2).
+.PP
+The
+.I flags
+argument be a mask whose high-order bits control tha operation of tha call.
+Da followin joints can be specified in
+.IR flags :
+.TP
+.BR KEXEC_ON_CRASH " (since Linux 2.6.13)"
+Execute tha freshly smoked up kernel automatically on a system crash.
+.\" FIXME figure up how tha fuck dis is straight-up used
+.TP
+.BR KEXEC_PRESERVE_CONTEXT " (since Linux 2.6.27)"
+Preserve tha system hardware and
+software states before executin tha freshly smoked up kernel.
+This could be used fo' system suspend.
+This flag be available only if tha kernel was configured with
+.BR CONFIG_KEXEC_JUMP ,
+and is effectizzle only if
+.I nr_segments
+is pimped outa than 0.
+.PP
+Da low-order bits of
+.I flags
+contain tha architecture of tha to-be-executed kernel.
+Specify (OR) tha constant
+.B KEXEC_ARCH_DEFAULT
+to use tha current architecture,
+or one of tha followin architecture constants
+.BR KEXEC_ARCH_386 ,
+.BR KEXEC_ARCH_X86_64 ,
+.BR KEXEC_ARCH_PPC ,
+.BR KEXEC_ARCH_PPC64 ,
+.BR KEXEC_ARCH_IA_64 ,
+.BR KEXEC_ARCH_ARM ,
+.BR KEXEC_ARCH_S390 ,
+.BR KEXEC_ARCH_SH ,
+.BR KEXEC_ARCH_MIPS ,
+and
+.BR KEXEC_ARCH_MIPS_LE .
+Da architecture must be executable on tha CPU of tha system.
+
+The
+.I entry
+argument is tha physical entry address up in tha kernel image.
+The
+.I nr_segments
+argument is tha number of segments pointed ta by the
+.I segments
+pointer.
+The
+.I segments
+argument be a array of
+.I kexec_segment
+structures which define tha kernel layout:
+.in +4n
+.nf
+
+struct kexec_segment {
+    void   *buf;        /* Buffer up in user space */
+    size_t  bufsz;      /* Buffer length up in user space */
+    void   *mem;        /* Physical address of kernel */
+    size_t  memsz;      /* Physical address length */
+};
+.fi
+.in
+.PP
+.\" FIXME elaborate on tha following:
+Da kernel image defined by
+.I segments
+is copied from tha callin process tha fuck into previously reserved memory.
+.SH RETURN VALUE
+On success,
+.BR kexec_load ()
+returns 0.
+On error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBUSY
+Another crash kernel be already bein loaded
+or a cold-ass lil crash kernel be already up in use.
+.TP
+.B EINVAL
+.I flags
+is invalid; or
+.IR nr_segments
+is too large
+.\" KEXEC_SEGMENT_MAX == 16
+.TP
+.B EPERM
+Da calla aint gots the
+.BR CAP_SYS_BOOT
+capability.
+.SH VERSIONS
+The
+.BR kexec_load ()
+system call first rocked up in Linux 2.6.13.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+Currently, there is no glibc support for
+.BR kexec_load ().
+Call it using
+.BR syscall (2).
+.PP
+Da required constants is up in tha Linux kernel source file
+.IR linux/kexec.h ,
+which aint currently exported ta glibc.
+.\" FIXME Andi submitted a patch fo' all dis bullshit.
+.\" Peep if it gots accepted later.
+Therefore, these constants must be defined manually.
+
+This system call be available only if tha kernel was configured with
+.BR CONFIG_KEXEC .
+.SH SEE ALSO
+.BR reboot (2),
+.BR syscall (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

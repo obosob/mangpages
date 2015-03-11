@@ -1,0 +1,3116 @@
+.\" -*- nroff -*-
+.\" Copyright Neil Brown n' others.
+.\"   This program is free software; you can redistribute it and/or modify
+.\"   it under tha termz of tha GNU General Public License as published by
+.\"   tha Jacked Software Foundation; either version 2 of tha License, or
+.\"   (at yo' option) any lata version.
+.\" See file COPYING up in distribution fo' details.
+.TH MDADM 8 "" v3.3
+.SH NAME
+mdadm \- manage MD devices
+.I aka
+Linux Software RAID
+
+.SH SYNOPSIS
+
+.BI mdadm " [mode] <raiddevice> [options] <component-devices>"
+
+.SH DESCRIPTION
+RAID devices is virtual devices pimped from two or more
+real block devices.  This allows multiple devices (typically disk
+drives or partitions thereof) ta be combined tha fuck into a single thang to
+hold (for example) a single filesystem.
+Some RAID levels include redundancy n' so can survive some degree of
+device failure.
+
+Linux Software RAID devices is implemented all up in tha md (Multiple
+Devices) thang driver.
+
+Currently, Linux supports
+.B LINEAR
+md devices,
+.B RAID0
+(striping),
+.B RAID1
+(mirroring),
+.BR RAID4 ,
+.BR RAID5 ,
+.BR RAID6 ,
+.BR RAID10 ,
+.BR MULTIPATH ,
+.BR FAULTY ,
+and
+.BR CONTAINER .
+
+.B MULTIPATH
+is not a Software RAID mechanizzle yo, but do involve
+multiple devices:
+each thang be a path ta one common physical storage device.
+New installations should not use md/multipath as it aint well
+supported n' has no ongoin pimpment.  Use tha Device Mapper based
+multipath-tools instead.
+
+.B FAULTY
+is also not legit RAID, n' it only involves one device.  It
+provides a layer over a legit thang dat can be used ta inject faults.
+
+.B CONTAINER
+is different again. I aint talkin' bout chicken n' gravy biatch.  A
+.B CONTAINER
+is a cold-ass lil collection of devices dat are
+managed as a set.  This is similar ta tha set of devices connected to
+a hardware RAID controlla n' shit.  Da set of devices may contain a number
+of different RAID arrays each utilisin some (or all) of tha blocks from a
+number of tha devices up in tha set.  For example, two devices up in a 5-device set
+might form a RAID1 rockin tha whole devices.  Da remainin three might
+have a RAID5 over tha straight-up original gangsta half of each device, n' a RAID0 over the
+second half.
+
+With a
+.BR CONTAINER ,
+there is one set of metadata dat raps bout all of
+the arrays up in tha container n' shit.  So when
+.I mdadm
+creates a
+.B CONTAINER
+device, tha thang just represents tha metadata.  Other aiiight arrays (RAID1
+etc) can be pimped inside tha container.
+
+.SH MODES
+mdadm has nuff muthafuckin major modez of operation:
+.TP
+.B Assemble
+Assemble tha componentz of a previously pimped
+array tha fuck into a actizzle array.  Components can be explicitly given
+or can be searched for.
+.I mdadm
+checks dat tha components
+do form a funky-ass bona fide array, n' can, on request, fiddle superblock
+information so as ta assemble a gangbangin' faulty array.
+
+.TP
+.B Build
+Build a array dat aint gots per-device metadata (superblocks).  For these
+sortz of arrays,
+.I mdadm
+cannot differentiate between initial creation n' subsequent assembly
+of a array.  It also cannot big-ass up any checks dat appropriate
+components done been requested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Because of this, the
+.B Build
+mode should only be used together wit a cold-ass lil complete understandin of
+what yo ass is bustin.
+
+.TP
+.B Create
+Smoke a freshly smoked up array wit per-device metadata (superblocks).
+Appropriate metadata is freestyled ta each device, n' then tha array
+comprisin dem devices be activated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  A 'resync' process is started
+to make shizzle dat tha array is consistent (e.g. both sidez of a mirror
+contain tha same data) but tha content of tha thang is left otherwise
+untouched.
+Da array can be used as soon as it has been pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  There is no
+need ta wait fo' tha initial resync ta finish.
+
+.TP
+.B "Big up or Monitor"
+Monitor one or mo' md devices n' act on any state chizzles.  This is
+only meaningful fo' RAID1, 4, 5, 6, 10 or multipath arrays, as
+only these have bangin-ass state.  RAID0 or Linear never have
+missing, spare, or failed drives, so there is not a god damn thang ta monitor.
+
+.TP
+.B "Grow"
+Grow (or shrink) a array, or otherwise reshape it up in some way.
+Currently supported growth options includin changin tha actizzle size
+of component devices n' changin tha number of actizzle devices in
+Linear n' RAID levels 0/1/4/5/6,
+changin tha RAID level between 0, 1, 5, n' 6, n' between 0 n' 10,
+changin tha chunk size n' layout fo' RAID 0,4,5,6,10 as well as addin or
+removin a write-intent bitmap.
+
+.TP
+.B "Incremenstrual Assembly"
+Add a single thang ta a appropriate array.  If tha addizzle of the
+device make tha array runnable, tha array is ghon be started.
+This serves up a cold-ass lil convenient intercourse ta a
+.I hot-plug
+system.  As each thang is detected,
+.I mdadm
+has a cold-ass lil chizzle ta include it up in some array as appropriate.
+Optionally, when the
+.I \-\-fail
+flag is passed up in we will remove tha thang from any actizzle array
+instead of addin dat shit.
+
+If a
+.B CONTAINER
+is passed to
+.I mdadm
+in dis mode, then any arrays within dat container is ghon be assembled
+and started.
+
+.TP
+.B Manage
+This is fo' bustin thangs ta specific componentz of a array such as
+addin freshly smoked up spares n' removin faulty devices.
+
+.TP
+.B Misc
+This be a 'everythang else' mode dat supports operations on active
+arrays, operations on component devices like fuckin erasin oldschool superblocks, and
+information gatherin operations.
+.\"This mode allows operations on independent devices like fuckin examine MD
+.\"superblocks, erasin oldschool superblocks n' stoppin actizzle arrays.
+
+.TP
+.B Auto-detect
+This mode do not act on a specific thang or array yo, but rather it
+requests tha Linux Kernel ta activate any auto-detected arrays.
+.SH OPTIONS
+
+.SH Options fo' selectin a mode are:
+
+.TP
+.BR \-A ", " \-\-assemble
+Assemble a pre-existin array.
+
+.TP
+.BR \-B ", " \-\-build
+Build a legacy array without superblocks.
+
+.TP
+.BR \-C ", " \-\-create
+Smoke a freshly smoked up array.
+
+.TP
+.BR \-F ", " \-\-follow ", " \-\-monitor
+Select
+.B Monitor
+mode.
+
+.TP
+.BR \-G ", " \-\-grow
+Change tha size or shape of a actizzle array.
+
+.TP
+.BR \-I ", " \-\-incremental
+Add/remove a single thang to/from a appropriate array, n' possibly start tha array.
+
+.TP
+.B \-\-auto-detect
+Request dat tha kernel starts any auto-detected arrays.  This can only
+work if
+.I md
+is compiled tha fuck into tha kernel \(em not if it aint nuthin but a module.
+Arrays can be auto-detected by tha kernel if all tha components is in
+primary MS-DOS partitions wit partizzle type
+.BR FD ,
+and all use v0.90 metadata.
+In-kernel autodetect aint recommended fo' freshly smoked up installations.  Using
+.I mdadm
+to detect n' assemble arrays \(em possibly up in an
+.I initrd
+\(em is substantially mo' flexible n' should be preferred.
+
+.P
+If a thang is given before any options, or if tha straight-up original gangsta option is
+.BR \-\-add ,
+.BR \-\-fail ,
+.BR \-\-remove ,
+or
+.BR \-\-replace ,
+then tha MANAGE mode be assumed.
+Anythang other than these will cause the
+.B Misc
+mode ta be assumed.
+
+.SH Options dat is not mode-specific are:
+
+.TP
+.BR \-h ", " \-\-help
+Display general help message or, afta one of tha above options, a
+mode-specific help message.
+
+.TP
+.B \-\-help\-options
+Display mo' detailed help bout command line parsin n' some commonly
+used options.
+
+.TP
+.BR \-V ", " \-\-version
+Print version shiznit fo' mdadm.
+
+.TP
+.BR \-v ", " \-\-verbose
+Be mo' verbose bout what tha fuck is happening.  This can be used twice ta be
+extra-verbose.
+Da extra verbositizzle currently only affects
+.B \-\-detail \-\-scan
+and
+.BR "\-\-examine \-\-scan" .
+
+.TP
+.BR \-q ", " \-\-quiet
+Avoid printin purely informatizzle lyrics.  With this,
+.I mdadm
+will be silent unless there is suttin' straight-up blingin ta report.
+
+
+.TP
+.BR \-f ", " \-\-force
+Be mo' forceful bout certain operations.  See tha various modes for
+the exact meanin of dis option up in different contexts.
+
+.TP
+.BR \-c ", " \-\-config=
+Specify tha config file or directory.  Default is ta use
+.B /etc/mdadm.conf
+and
+.BR /etc/mdadm.conf.d ,
+or if dem is missin then
+.B /etc/mdadm/mdadm.conf
+and
+.BR /etc/mdadm/mdadm.conf.d .
+If tha config file given is
+.B "partitions"
+then not a god damn thang is ghon be read yo, but
+.I mdadm
+will act as though tha config file contained exactly
+.br
+.B "    DEVICE partitions containers"
+.br
+and will read
+.B /proc/partitions
+to find a list of devices ta scan, and
+.B /proc/mdstat
+to find a list of containers ta examine.
+If tha word
+.B "none"
+is given fo' tha config file, then
+.I mdadm
+will act as though tha config file was empty.
+
+If tha name given iz of a gangbangin' finger-lickin' directory, then
+.I mdadm
+will collect all tha filez contained up in tha directory wit a name ending
+in
+.BR .conf ,
+sort dem lexically, n' process all of dem filez as config files.
+
+.TP
+.BR \-s ", " \-\-scan
+Scan config file or
+.B /proc/mdstat
+for missin shiznit.
+In general, dis option gives
+.I mdadm
+permission ta git any missin shiznit (like component devices,
+array devices, array identities, n' alert destination) from the
+configuration file (see previous option);
+one exception is MISC mode when using
+.B \-\-detail
+or
+.B \-\-stop,
+in which case
+.B \-\-scan
+says ta git a list of array devices from
+.BR /proc/mdstat .
+
+.TP
+.BR \-e ", " \-\-metadata=
+Declare tha steez of RAID metadata (superblock) ta be used. Y'all KNOW dat shit, muthafucka!  The
+default is 1.2 for
+.BR \-\-create ,
+and ta guess fo' other operations.
+Da default can be overridden by settin the
+.B metadata
+value fo' the
+.B CREATE
+keyword in
+.BR mdadm.conf .
+
+Options are:
+.RS
+.ie '1.2'0.90'
+.IP "0, 0.90, default"
+.el
+.IP "0, 0.90"
+Use tha original gangsta 0.90 format superblock.  This format limits arrays to
+28 component devices n' limits component devicez of levels 1 and
+greata ta 2 terabytes.  It be also possible fo' there ta be mad drama
+about whether tha superblock applies ta a whole thang or just the
+last partition, if dat partizzle starts on a 64K boundary.
+.ie '1.2'0.90'
+.IP "1, 1.0, 1.1, 1.2"
+.el
+.IP "1, 1.0, 1.1, 1.2 default"
+Use tha freshly smoked up version-1 format superblock.  This has fewer restrictions.
+It can easily be moved between hosts wit different endian-ness, n' a
+recovery operation can be checkpointed n' restarted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da different
+sub-versions store tha superblock at different locations on the
+device, either all up in tha end (for 1.0), all up in tha start (for 1.1) or 4K from
+the start (for 1.2).  "1" is equivalent ta "1.2" (the commonly
+preferred 1.x format).
+'if '1.2'1.2'  "default" is equivalent ta "1.2".
+.IP ddf
+Use tha "Industry Standard" DDF (Disk Data Format) format defined by
+SNIA.
+When bustin a DDF array a
+.B CONTAINER
+will be pimped, n' aiiight arrays can be pimped up in dat container.
+.IP imsm
+Use tha Intel(R) Matrix Storage Manager metadata format.  This creates a
+.B CONTAINER
+which is managed up in a similar manner ta DDF, n' is supported by an
+option-rom on some platforms:
+.IP
+.B http://www.intel.com/design/chipsets/matrixstorage_sb.htm
+.PP
+.RE
+
+.TP
+.B \-\-homehost=
+This will override any
+.B HOMEHOST
+settin up in tha config file n' serves up tha identitizzle of tha host which
+should be considered tha home fo' any arrays.
+
+When bustin a array, the
+.B homehost
+will be recorded up in tha metadata.  For version-1 superblocks, it will
+be prefixed ta tha array name.  For version-0.90 superblocks, part of
+the SHA1 hash of tha hostname is ghon be stored up in tha lata half of the
+UUID.
+
+When reportin shiznit bout a array, any array which is tagged
+for tha given homehost is ghon be reported as such.
+
+When rockin Auto-Assemble, only arrays tagged fo' tha given homehost
+will be allowed ta use 'local' names (i.e. not endin up in '_' followed
+by a gangbangin' finger-lickin' digit string).  See below under
+.BR "Auto Assembly" .
+
+.TP
+.B \-\-prefer=
+When
+.I mdadm
+needz ta print tha name fo' a thang it normally findz tha name in
+.B /dev
+which refers ta tha thang n' is shortest.  When a path component is
+given with
+.B \-\-prefer
+.I mdadm
+will prefer a longer name if it gotz nuff dat component.  For example
+.B \-\-prefer=by-uuid
+will prefer a name up in a subdirectory of
+.B /dev
+called
+.BR by-uuid .
+
+This functionalitizzle is currently only provided by
+.B \-\-detail
+and
+.BR \-\-monitor .
+
+.SH For create, build, or grow:
+
+.TP
+.BR \-n ", " \-\-raid\-devices=
+Specify tha number of actizzle devices up in tha array.  This, plus the
+number of spare devices (see below) must equal tha number of
+.I component-devices
+(includin "\fBmissing\fP" devices)
+that is listed on tha command line for
+.BR \-\-create .
+Settin a value of 1 is probably
+a fuck up n' so requires that
+.B \-\-force
+be specified first.  A value of 1 will then be allowed fo' linear,
+multipath, RAID0 n' RAID1.  It be never allowed fo' RAID4, RAID5 or RAID6.
+.br
+This number can only be chizzled using
+.B \-\-grow
+for RAID1, RAID4, RAID5 n' RAID6 arrays, n' only on kernels which provide
+the necessary support.
+
+.TP
+.BR \-x ", " \-\-spare\-devices=
+Specify tha number of spare (eXtra) devices up in tha initial array.
+Spares can also be added
+and removed later n' shit.  Da number of component devices listed
+on tha command line must equal tha number of RAID devices plus the
+number of spare devices.
+
+.TP
+.BR \-z ", " \-\-size=
+Amount (in Kibibytes) of space ta use from each drive up in RAID levels 1/4/5/6.
+This must be a multiple of tha chunk size, n' must leave bout 128Kb
+of space all up in tha end of tha drive fo' tha RAID superblock.
+If dis aint specified
+(as it normally is not) tha smallest drive (or partition) sets the
+size, though if there be a variizzle among tha drivez of pimped outa than 1%, a warnin is
+issued.
+
+A suffix of 'M' or 'G' can be given ta indicate Megabytes or
+Gigabytes respectively.
+
+Sometimes a replacement drive can be a lil smalla than the
+original gangsta drives though dis should be minimised by IDEMA standards.
+Such a replacement drive is ghon be rejected by
+.IR md .
+To guard against dis it can be useful ta set tha initial size
+slightly smalla than tha smalla thang wit tha aim dat it will
+still be larger than any replacement.
+
+This value can be set with
+.B \-\-grow
+for RAID level 1/4/5/6 though
+.B CONTAINER
+based arrays like fuckin dem wit IMSM metadata may not be able to
+support all dis bullshit.
+If tha array was pimped wit a size smalla than tha currently
+actizzle drives, tha extra space can be accessed using
+.BR \-\-grow .
+Da size can be given as
+.B max
+which means ta chizzle tha phattest size dat fits on all current drives.
+
+Before reducin tha size of tha array (with
+.BR "\-\-grow \-\-size=" )
+you should make shizzle dat space aint needed. Y'all KNOW dat shit, muthafucka!  If tha thang holdz a
+filesystem, you would need ta resize tha filesystem ta use less space.
+
+Afta reducin tha array size you should check dat tha data stored in
+the thang is still available.  If tha thang holdz a gangbangin' filesystem, then
+an 'fsck' of tha filesystem be a minimum requirement.  If there are
+problems tha array can be made bigger again n' again n' again wit no loss wit another
+.B "\-\-grow \-\-size="
+command.
+
+This value cannot be used when bustin a
+.B CONTAINER
+like fuckin wit DDF n' IMSM metadata, though it perfectly valid when
+bustin a array inside a cold-ass lil container.
+
+.TP
+.BR \-Z ", " \-\-array\-size=
+This is only meaningful with
+.B \-\-grow
+and its effect aint persistent: when tha array is stopped and
+restarted tha default array size is ghon be restored.
+
+Settin tha array-size causes tha array ta step tha fuck up smalla ta programs
+that access tha data.  This is particularly needed before reshapin an
+array so dat it is ghon be smalla n' shit.  As tha reshape aint reversible,
+but settin tha size with
+.B \-\-array-size
+is, it is required dat tha array size is reduced as appropriate
+before tha number of devices up in tha array is reduced.
+
+Before reducin tha size of tha array you should make shizzle dat space
+aint needed. Y'all KNOW dat shit, muthafucka!  If tha thang holdz a gangbangin' filesystem, you would need to
+resize tha filesystem ta use less space.
+
+Afta reducin tha array size you should check dat tha data stored in
+the thang is still available.  If tha thang holdz a gangbangin' filesystem, then
+an 'fsck' of tha filesystem be a minimum requirement.  If there are
+problems tha array can be made bigger again n' again n' again wit no loss wit another
+.B "\-\-grow \-\-array\-size="
+command.
+
+A suffix of 'M' or 'G' can be given ta indicate Megabytes or
+Gigabytes respectively.
+A value of
+.B max
+restores tha apparent size of tha array ta be whatever tha real
+amount of available space is.
+
+.TP
+.BR \-c ", " \-\-chunk=
+Specify chunk size of kibibytes.  Da default when bustin an
+array is 512KB.  To ensure compatibilitizzle wit earlier versions, the
+default when Buildin n' array wit no persistent metadata is 64KB.
+This is only meaningful fo' RAID0, RAID4, RAID5, RAID6, n' RAID10.
+
+RAID4, RAID5, RAID6, n' RAID10 require tha chunk size ta be a power
+of 2.  In any case it must be a multiple of 4KB.
+
+A suffix of 'M' or 'G' can be given ta indicate Megabytes or
+Gigabytes respectively.
+
+.TP
+.BR \-\-rounding=
+Specify roundin factor fo' a Linear array.  Da size of each
+component is ghon be rounded down ta a multiple of dis size.
+This be a synonym for
+.B \-\-chunk
+but highlights tha different meanin fo' Linear as compared ta other
+RAID levels.  Da default is 64K if a kernel earlier than 2.6.16 is in
+use, n' is 0K (i.e. no rounding) up in lata kernels.
+
+.TP
+.BR \-l ", " \-\-level=
+Set RAID level.  When used with
+.BR \-\-create ,
+options are: linear, raid0, 0, stripe, raid1, 1, mirror, raid4, 4,
+raid5, 5, raid6, 6, raid10, 10, multipath, mp, faulty, container.
+Obviously a shitload of these is synonymous.
+
+When a
+.B CONTAINER
+metadata type is requested, only the
+.B container
+level is permitted, n' it do not need ta be explicitly given.
+
+When used with
+.BR \-\-build ,
+only linear, stripe, raid0, 0, raid1, multipath, mp, n' faulty is valid.
+
+Can be used with
+.B \-\-grow
+to chizzle tha RAID level up in some cases.  See LEVEL CHANGES below.
+
+.TP
+.BR \-p ", " \-\-layout=
+This option configures tha fine detailz of data layout fo' RAID5, RAID6,
+and RAID10 arrays, n' controls tha failure modes for
+.IR faulty .
+
+Da layout of tha RAID5 paritizzle block can be one of
+.BR left\-asymmetric ,
+.BR left\-symmetric ,
+.BR right\-asymmetric ,
+.BR right\-symmetric ,
+.BR la ", " ra ", " ls ", " rs .
+Da default is
+.BR left\-symmetric .
+
+It be also possible ta cause RAID5 ta bust a RAID4-like layout by
+choosing
+.BR parity\-first ,
+or
+.BR parity\-last .
+
+Finally fo' RAID5 there be DDF\-compatible layouts,
+.BR ddf\-zero\-restart ,
+.BR ddf\-N\-restart ,
+and
+.BR ddf\-N\-continue .
+
+These same layouts is available fo' RAID6.  There is also 4 layouts
+that will provide a intermediate stage fo' convertin between RAID5
+and RAID6.  These provide a layout which is identical ta the
+correspondin RAID5 layout on tha straight-up original gangsta N\-1 devices, n' has tha 'Q'
+syndrome (the second 'parity' block used by RAID6) on tha last device.
+These layouts are:
+.BR left\-symmetric\-6 ,
+.BR right\-symmetric\-6 ,
+.BR left\-asymmetric\-6 ,
+.BR right\-asymmetric\-6 ,
+and
+.BR parity\-first\-6 .
+
+When settin tha failure mode fo' level
+.I faulty,
+the options are:
+.BR write\-transient ", " wt ,
+.BR read\-transient ", " rt ,
+.BR write\-persistent ", " wp ,
+.BR read\-persistent ", " rp ,
+.BR write\-all ,
+.BR read\-fixable ", " rf ,
+.BR clear ", " flush ", " none .
+
+Each failure mode can be followed by a number, which is used as a period
+between fault generation. I aint talkin' bout chicken n' gravy biatch.  Without a number, tha fault is generated
+once on tha straight-up original gangsta relevant request.  With a number, tha fault will be
+generated afta dat nuff requests, n' will continue ta be generated
+every time tha period elapses.
+
+Multiple failure modes can be current simultaneously by rockin the
+.B \-\-grow
+option ta set subsequent failure modes.
+
+"clear" or "none" will remove any pendin or periodic failure modes,
+and "flush" will clear any persistent faults.
+
+Finally, tha layout options fo' RAID10 is one of 'n', 'o' or 'f' followed
+by a lil' small-ass number n' shit.  Da default is 'n2'.  Da supported options are:
+
+.I 'n'
+signals 'near' copies. Put ya muthafuckin choppers up if ya feel dis!  Multiple copiez of one data block is at
+similar offsets up in different devices.
+
+.I 'o'
+signals 'offset' copies. Put ya muthafuckin choppers up if ya feel dis!  Rather than tha chunks bein duplicated
+within a stripe, whole stripes is duplicated but is rotated by one
+device so duplicate blocks is on different devices.  Thus subsequent
+copiez of a funky-ass block is up in tha next drive, n' is one chunk further
+down.
+
+.I 'f'
+signals 'far' copies
+(multiple copies have straight-up different offsets).
+See md(4) fo' mo' detail bout 'near', 'offset', n' 'far'.
+
+Da number is tha number of copiez of each datablock.  2 is normal, 3
+can be useful naaahhmean, biatch?  This number can be at most equal ta tha number of
+devices up in tha array.  It do not need ta divide evenly tha fuck into that
+number (e.g. it is perfectly legal ta have a 'n2' layout fo' a array
+with a odd number of devices).
+
+When a array is converted between RAID5 n' RAID6 a intermediate
+RAID6 layout is used up in which tha second paritizzle block (Q) be always on
+the last device.  To convert a RAID5 ta RAID6 n' leave it up in dis new
+layout (which do not require re-striping) use
+.BR \-\-layout=preserve .
+This will try ta avoid any restriping.
+
+Da converse of dis is
+.B \-\-layout=normalise
+which will chizzle a non-standard RAID6 layout tha fuck into a mo' standard
+arrangement.
+
+.TP
+.BR \-\-parity=
+same as
+.B \-\-layout
+(thus explainin tha p of
+.BR \-p ).
+
+.TP
+.BR \-b ", " \-\-bitmap=
+Specify a gangbangin' file ta store a write-intent bitmap in. I aint talkin' bout chicken n' gravy biatch.  Da file should not
+exist unless
+.B \-\-force
+is also given. I aint talkin' bout chicken n' gravy biatch.  Da same file should be provided
+when assemblin tha array.  If tha word
+.B "internal"
+is given, then tha bitmap is stored wit tha metadata on tha array,
+and so is replicated on all devices.  If tha word
+.B "none"
+is given with
+.B \-\-grow
+mode, then any bitmap dat is present is removed.
+
+To help catch typin errors, tha filename must contain at least one
+slash ('/') if it aint nuthin but a real file (not 'internal' or 'none').
+
+Note: external bitmaps is only known ta work on ext2 n' ext3.
+Storin bitmap filez on other filesystems may result up in straight-up problems.
+
+When bustin a array on devices which is 100G or larger,
+.I mdadm
+automatically addz a internal bitmap as it will probably be
+beneficial. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  This can be suppressed with
+.B "\-\-bitmap=none".
+
+.TP
+.BR \-\-bitmap\-chunk=
+Set tha chunksize of tha bitmap.  Each bit correspondz ta dat many
+Kilobytez of storage.
+When rockin a gangbangin' file based bitmap, tha default is ta use tha smallest
+size dat be at-least 4 n' requires no mo' than 2^21 chunks.
+When rockin an
+.B internal
+bitmap, tha chunksize defaults ta 64Meg, or larger if necessary to
+fit tha bitmap tha fuck into tha available space.
+
+A suffix of 'M' or 'G' can be given ta indicate Megabytes or
+Gigabytes respectively.
+
+.TP
+.BR \-W ", " \-\-write\-mostly
+subsequent devices listed up in a
+.BR \-\-build ,
+.BR \-\-create ,
+or
+.B \-\-add
+command is ghon be flagged as 'write-mostly'.  This is valid fo' RAID1
+only n' means dat tha 'md' driver will avoid readin from these
+devices if at all possible.  This can be useful if mirrorin over a
+slow link.
+
+.TP
+.BR \-\-write\-behind=
+Specify dat write-behind mode should be enabled (valid fo' RAID1
+only).  If a argument is specified, it will set tha maximum number
+of outstandin writes allowed. Y'all KNOW dat shit, muthafucka!  Da default value is 256.
+A write-intent bitmap is required up in order ta use write-behind
+mode, n' write-behind is only attempted on drives marked as
+.IR write-mostly .
+
+.TP
+.BR \-\-assume\-clean
+Tell
+.I mdadm
+that tha array pre-existed n' is known ta be clean. I aint talkin' bout chicken n' gravy biatch.  It can be useful
+when tryin ta recover from a major failure as you can be shizzle dat no
+data is ghon be affected unless you straight-up write ta tha array.  It can
+also be used when bustin a RAID1 or RAID10 if you wanna avoid the
+initial resync, however dis practice \(em while normally safe \(em is not
+recommended. Y'all KNOW dat shit, muthafucka!  Use dis only if you straight-up know what tha fuck yo ass is bustin.
+.IP
+When tha devices dat is ghon be part of a freshly smoked up array was filled
+with zeros before creation tha operator knows tha array is
+actually clean. I aint talkin' bout chicken n' gravy biatch. If dat is tha case, like fuckin afta hustlin
+badblocks, dis argument can be used ta tell mdadm the
+facts tha operator knows.
+.IP
+When a array is resized ta a larger size with
+.B "\-\-grow \-\-size="
+the freshly smoked up space is normally resynced up in dat same way dat tha whole
+array is resynced at creation. I aint talkin' bout chicken n' gravy biatch.  From Linux version 3.0,
+.B \-\-assume\-clean
+can be used wit dat command ta avoid tha automatic resync.
+
+.TP
+.BR \-\-backup\-file=
+This is needed when
+.B \-\-grow
+is used ta increase tha number of raid-devices up in a RAID5 or RAID6 if
+there is no spare devices available, or ta shrink, chizzle RAID level
+or layout.  See tha GROW MODE section below on RAID\-DEVICES CHANGES.
+Da file must be stored on a separate device, not on tha RAID array
+bein reshaped.
+
+.TP
+.B \-\-data\-offset=
+Arrays wit 1.x metadata can leave a gap between tha start of the
+device n' tha start of array data.  This gap can be used fo' various
+metadata.  Da start of data is known as the
+.IR data\-offset .
+Normally a appropriate data offset is computed automatically.
+However it can be useful ta set it explicitly like fuckin when re-bustin
+an array which was originally pimped rockin a gangbangin' finger-lickin' different version of
+.I mdadm
+which computed a gangbangin' finger-lickin' different offset.
+
+Settin tha offset explicitly over-rides tha default.  Da value given
+is up in Kilobytes unless a 'M' or 'G' suffix is given.
+
+Since Linux 3.4,
+.B \-\-data\-offset
+can also be used with
+.B --grow
+for some RAID levels (initially on RAID10).  This allows the
+data\-offset ta be chizzled as part of tha reshape process.  When the
+data offset is chizzled, no backup file is required as tha difference
+in offsets is used ta provide tha same functionality.
+
+When tha freshly smoked up offset is earlier than tha oldschool offset, tha number of
+devices up in tha array cannot shrink.  When it be afta tha oldschool offset,
+the number of devices up in tha array cannot increase.
+
+When bustin a array,
+.B \-\-data\-offset
+can be specified as
+.BR variable .
+In tha case each member thang is expected ta git a offset appended
+to tha name, separated by a cold-ass lil colon. I aint talkin' bout chicken n' gravy biatch.  This make it possible ta recreate
+exactly a array which has varyin data offsets (as can happen when
+different versions of
+.I mdadm
+are used ta add different devices).
+
+.TP
+.BR \-\-continue
+This option is complementary ta the
+.B \-\-freeze-reshape
+option fo' assembly. Well shiiiit, it is needed when
+.B \-\-grow
+operation is interrupted n' it aint restarted automatically due to
+.B \-\-freeze-reshape
+usage durin array assembly.  This option is used together with
+.BR \-G
+, (
+.BR \-\-grow
+) command n' thang fo' a pendin reshape ta be continued.
+All parametas required fo' reshape continuation is ghon be read from array metadata.
+If initial
+.BR \-\-grow
+command had required
+.BR \-\-backup\-file=
+option ta be set, continuation option will require ta have exactly tha same
+backup file given as well.
+.IP
+Any other parameta passed together with
+.BR \-\-continue
+option is ghon be ignored.
+
+.TP
+.BR \-N ", " \-\-name=
+Set a
+.B name
+for tha array.  This is currently only effectizzle when bustin an
+array wit a version-1 superblock, or a array up in a DDF container.
+Da name be a simple textual strang dat can be used ta identify array
+components when assembling.  If name is needed but not specified, it
+is taken from tha basename of tha thang dat is bein pimped.
+e.g. when bustin
+.I /dev/md/home
+the
+.B name
+will default to
+.IR home .
+
+.TP
+.BR \-R ", " \-\-run
+Insist that
+.I mdadm
+run tha array, even if a shitload of tha components
+appear ta be actizzle up in another array or filesystem.  Normally
+.I mdadm
+will ask fo' confirmation before includin such components up in an
+array.  This option causes dat question ta be suppressed.
+
+.TP
+.BR \-f ", " \-\-force
+Insist that
+.I mdadm
+accept tha geometry n' layout specified without question. I aint talkin' bout chicken n' gravy biatch.  Normally
+.I mdadm
+will not allow creation of a array wit only one device, n' will try
+to create a RAID5 array wit one missin drive (as dis make the
+initial resync work faster).  With
+.BR \-\-force ,
+.I mdadm
+will not try ta be all kindsa def.
+
+.TP
+.BR \-o ", " \-\-readonly
+Start tha array
+.B read only
+rather than read-write as normal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  No writes is ghon be allowed ta the
+array, n' no resync, recovery, or reshape is ghon be started.
+
+.TP
+.BR \-a ", " "\-\-auto{=yes,md,mdp,part,p}{NN}"
+Instruct mdadm how tha fuck ta create tha thang file if needed, possibly allocating
+an unused minor number n' shit.  "md" causes a non-partitionable array
+to be used (though since Linux 2.6.28, these array devices is up in fact
+partitionable).  "mdp", "part" or "p" causes a partitionable array (2.6 and
+later) ta be used. Y'all KNOW dat shit, muthafucka!  "yes" requires tha named md thang ta have
+a 'standard' format, n' tha type n' minor number is ghon be determined
+from all dis bullshit.  With mdadm 3.0, thang creation is normally left up to
+.I udev
+so dis option is unlikely ta be needed.
+See DEVICE NAMES below.
+
+Da argument can also come immediately after
+"\-a".  e.g. "\-ap".
+
+If
+.B \-\-auto
+is not given on tha command line or up in tha config file, then
+the default will be
+.BR \-\-auto=yes .
+
+If
+.B \-\-scan
+is also given, then any
+.I auto=
+entries up in tha config file will override the
+.B \-\-auto
+instruction given on tha command line.
+
+For partitionable arrays,
+.I mdadm
+will create tha thang file fo' tha whole array n' fo' tha straight-up original gangsta 4
+partitions.  A different number of partitions can be specified at the
+end of dis option (e.g.
+.BR \-\-auto=p7 ).
+If tha thang name endz wit a gangbangin' finger-lickin' digit, tha partizzle names add a 'p',
+and a number, e.g.
+.IR /dev/md/home1p3 .
+If there is no trailin digit, then tha partizzle names just have a
+number added, e.g.
+.IR /dev/md/scratch3 .
+
+If tha md thang name is up in a 'standard' format as busted lyrics bout up in DEVICE
+NAMES, then it is ghon be pimped, if necessary, wit tha appropriate
+device number based on dat name.  If tha thang name aint up in one of these
+formats, then a unused thang number is ghon be allocated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da device
+number is ghon be considered unused if there is no actizzle array fo' that
+number, n' there is no entry up in /dev fo' dat number n' wit a
+non-standard name.  Names dat is not up in 'standard' format is only
+allowed up in "/dev/md/".
+
+This is meaningful with
+.B \-\-create
+or
+.BR \-\-build .
+
+.TP
+.BR \-a ", " "\-\-add"
+This option can be used up in Grow mode up in two cases.
+
+If tha target array be a Linear array, then
+.B \-\-add
+can be used ta add one or mo' devices ta tha array.  They
+are simply catenated on ta tha end of tha array.  Once added, the
+devices cannot be removed.
+
+If the
+.B \-\-raid\-disks
+option is bein used ta increase tha number of devices up in a array,
+then
+.B \-\-add
+can be used ta add some extra devices ta be included up in tha array.
+In most cases dis aint needed as tha extra devices can be added as
+spares first, n' then tha number of raid-disks can be chizzled.
+However fo' RAID0, it aint possible ta add spares.  So ta increase
+the number of devices up in a RAID0, it is necessary ta set tha new
+number of devices, n' ta add tha freshly smoked up devices, up in tha same command.
+
+.SH For assemble:
+
+.TP
+.BR \-u ", " \-\-uuid=
+uuid of array ta assemble.  Devices which aint gots dis uuid are
+excluded
+
+.TP
+.BR \-m ", " \-\-super\-minor=
+Minor number of thang dat array was pimped for. Shiiit, dis aint no joke.  Devices which
+don't have dis minor number is excluded. Y'all KNOW dat shit, muthafucka!  If you create a array as
+/dev/md1, then all superblocks will contain tha minor number 1, even if
+the array is lata assembled as /dev/md2.
+
+Givin tha literal word "dev" for
+.B \-\-super\-minor
+will cause
+.I mdadm
+to use tha minor number of tha md thang dat is bein assembled.
+e.g. when assembling
+.BR /dev/md0 ,
+.B \-\-super\-minor=dev
+will look fo' supa blocks wit a minor number of 0.
+
+.B \-\-super\-minor
+is only relevant fo' v0.90 metadata, n' should not normally be used.
+Using
+.B \-\-uuid
+is much safer.
+
+.TP
+.BR \-N ", " \-\-name=
+Specify tha name of tha array ta assemble.  This must be tha name
+that was specified when bustin tha array.  It must either match
+the name stored up in tha superblock exactly, or it must match
+with tha current
+.I homehost
+prefixed ta tha start of tha given name.
+
+.TP
+.BR \-f ", " \-\-force
+Assemble tha array even if tha metadata on some devices appears ta be
+out-of-date.  If
+.I mdadm
+cannot find enough hustlin devices ta start tha array yo, but can find
+some devices dat is recorded as havin failed, then it will mark
+those devices as hustlin so dat tha array can be started.
+An array which requires
+.B \-\-force
+to be started may contain data corruption. I aint talkin' bout chicken n' gravy biatch.  Use it carefully.
+
+.TP
+.BR \-R ", " \-\-run
+Attempt ta start tha array even if fewer drives was given than were
+present last time tha array was active.  Normally if not all the
+expected drives is found and
+.B \-\-scan
+is not used, then tha array is ghon be assembled but not started.
+With
+.B \-\-run
+an attempt is ghon be made ta start it anyway.
+
+.TP
+.B \-\-no\-degraded
+This is tha reverse of
+.B \-\-run
+in dat it inhibits tha startup of array unless all expected drives
+are present.  This is only needed with
+.B \-\-scan,
+and can be used if tha physical connections ta devices are
+not as reliable as you wanna.
+
+.TP
+.BR \-a ", " "\-\-auto{=no,yes,md,mdp,part}"
+See dis option under Smoke n' Build options.
+
+.TP
+.BR \-b ", " \-\-bitmap=
+Specify tha bitmap file dat was given when tha array was pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If
+an array has an
+.B internal
+bitmap, there is no need ta specify dis when assemblin tha array.
+
+.TP
+.BR \-\-backup\-file=
+If
+.B \-\-backup\-file
+was used while reshapin a array (e.g. changin number of devices or
+chunk size) n' tha system crashed durin tha critical section, then tha same
+.B \-\-backup\-file
+must be presented to
+.B \-\-assemble
+to allow possibly corrupted data ta be restored, n' tha reshape
+to be completed.
+
+.TP
+.BR \-\-invalid\-backup
+If tha file needed fo' tha above option aint available fo' any
+reason a empty file can be given together wit dis option to
+indicate dat tha backup file is invalid. Y'all KNOW dat shit, muthafucka!  In dis case tha data that
+was bein rearranged all up in tha time of tha crash could be irrecoverably
+lost yo, but tha rest of tha array may still be recoverable.  This option
+should only be used as a last resort if there is no way ta recover the
+backup file.
+
+
+.TP
+.BR \-U ", " \-\-update=
+Update tha superblock on each thang while assemblin tha array.  The
+argument given ta dis flag can be one of
+.BR sparc2.2 ,
+.BR summaries ,
+.BR uuid ,
+.BR name ,
+.BR homehost ,
+.BR resync ,
+.BR byteorder ,
+.BR devicesize ,
+.BR no\-bitmap ,
+.BR bbl ,
+.BR no-\bbl ,
+.BR metadata ,
+or
+.BR super\-minor .
+
+The
+.B sparc2.2
+option will adjust tha superblock of a array what tha fuck was pimped on a Sparc
+machine hustlin a patched 2.2 Linux kernel.  This kernel gots the
+alignment of part of tha superblock wrong.  Yo ass can use the
+.B "\-\-examine \-\-sparc2.2"
+option to
+.I mdadm
+to peep what tha fuck effect dis would have.
+
+The
+.B super\-minor
+option will update the
+.B "preferred minor"
+field on each superblock ta match tha minor number of tha array being
+assembled.
+This can be useful if
+.B \-\-examine
+reports a gangbangin' finger-lickin' different "Preferred Minor" to
+.BR \-\-detail .
+In some cases dis update is ghon be performed automatically
+by tha kernel driver n' shit.  In particular tha update happens automatically
+at tha straight-up original gangsta write ta a array wit redundancy (RAID level 1 or
+greater) on a 2.6 (or later) kernel.
+
+The
+.B uuid
+option will chizzle tha uuid of tha array.  If a UUID is given wit the
+.B \-\-uuid
+option dat UUID is ghon be used as a freshly smoked up UUID n' will
+.B NOT
+be used ta help identify tha devices up in tha array.
+If no
+.B \-\-uuid
+is given, a random UUID is chosen.
+
+The
+.B name
+option will chizzle the
+.I name
+of tha array as stored up in tha superblock.  This is only supported for
+version-1 superblocks.
+
+The
+.B homehost
+option will chizzle the
+.I homehost
+as recorded up in tha superblock.  For version-0 superblocks, dis is the
+same as uppimpin tha UUID.
+For version-1 superblocks, dis involves uppimpin tha name.
+
+The
+.B resync
+option will cause tha array ta be marked
+.I dirty
+meanin dat any redundancy up in tha array (e.g. paritizzle fo' RAID5,
+copies fo' RAID1) may be incorrect.  This will cause tha RAID system
+to big-ass up a "resync" pass ta make shizzle dat all redundant shiznit
+is erect.
+
+The
+.B byteorder
+option allows arrays ta be moved between machines wit different
+byte-order.
+When assemblin such a array fo' tha last time afta a move, giving
+.B "\-\-update=byteorder"
+will cause
+.I mdadm
+to expect superblocks ta have they byteorder reversed, n' will
+correct dat order before assemblin tha array.  This is only valid
+with original gangsta (Version 0.90) superblocks.
+
+The
+.B summaries
+option will erect tha summaries up in tha superblock.  That is the
+countz of total, working, active, failed, n' spare devices.
+
+The
+.B devicesize
+option will rarely be of use.  It applies ta version 1.1 n' 1.2 metadata
+only (where tha metadata be all up in tha start of tha device) n' is only
+useful when tha component thang has chizzled size (typically become
+larger).  Da version 1 metadata recordz tha amount of tha thang that
+can be used ta store data, so if a thang up in a version 1.1 or 1.2
+array becomes larger, tha metadata will still be visible yo, but the
+extra space will not.  In dis case it might be useful ta assemble the
+array with
+.BR \-\-update=devicesize .
+This will cause
+.I mdadm
+to determine tha maximum usable amount of space on each thang and
+update tha relevant field up in tha metadata.
+
+The
+.B metadata
+option only works on v0.90 metadata arrays n' will convert dem to
+v1.0 metadata.  Da array must not be dirty (i.e. it must not need a
+sync) n' it must not gotz a write-intent bitmap.
+
+Da oldschool metadata will remain on tha devices yo, but will step tha fuck up older
+than tha freshly smoked up metadata n' so will probably be ignored. Y'all KNOW dat shit, muthafucka! Da oldschool metadata
+(or indeed tha freshly smoked up metadata) can be removed by givin tha appropriate
+.B \-\-metadata=
+option to
+.BR \-\-zero\-superblock .
+
+The
+.B no\-bitmap
+option can be used when a array has a internal bitmap which is
+corrupt up in some way so dat assemblin tha array normally fails.  It
+will cause any internal bitmap ta be ignored.
+
+The
+.B bbl
+option will reserve space up in each thang fo' a wack block list.  This
+will be 4K up in size n' positioned near tha end of any free space
+between tha superblock n' tha data.
+
+The
+.B no\-bbl
+option will cause any reservation of space fo' a wack block list ta be
+removed. Y'all KNOW dat shit, muthafucka!  If tha wack block list gotz nuff entries, dis will fail, as
+removin tha list could cause data corruption.
+
+.TP
+.BR \-\-freeze\-reshape
+Option is intended ta be used up in start-up scripts durin initrd boot phase.
+When array under reshape be assembled durin initrd phase, dis option
+stops reshape afta reshape critical section is bein restored. Y'all KNOW dat shit, muthafucka! This happens
+before file system pivot operation n' avoidz loss of file system context.
+Losin file system context would cause reshape ta be broken.
+
+Reshape can be continued lata rockin the
+.B \-\-continue
+option fo' tha grow command.
+
+.SH For Manage mode:
+
+.TP
+.BR \-t ", " \-\-test
+Unless a mo' straight-up error occurred,
+.I mdadm
+will exit wit a statuz of 2 if no chizzlez was made ta tha array and
+0 if at least one chizzle was made.
+This can be useful when a indirect specifier such as
+.BR missin ,
+.B detached
+or
+.B faulty
+is used up in requestin a operation on tha array.
+.B \-\-test
+will report failure if these specifiers didn't find any match.
+
+.TP
+.BR \-a ", " \-\-add
+hot-add listed devices.
+If a thang appears ta have recently been part of tha array
+(possibly it failed or was removed) tha thang is re\-added as busted lyrics about
+in tha next point.
+If dat fails or tha thang was never part of tha array, tha thang is
+added as a hot-spare.
+If tha array is degraded, it will immediately start ta rebuild data
+onto dat spare.
+
+Note dat dis n' tha followin options is only meaningful on array
+with redundancy.  They don't apply ta RAID0 or Linear.
+
+.TP
+.BR \-\-re\-add
+re\-add a thang dat was previously removed from a array.
+If tha metadata on tha thang reports dat it aint nuthin but a gangmember of the
+array, n' tha slot dat it used is still vacant, then tha thang will
+be added back ta tha array up in tha same position. I aint talkin' bout chicken n' gravy biatch.  This will normally
+cause tha data fo' dat thang ta be recovered. Y'all KNOW dat shit, muthafucka!  However based on the
+event count on tha device, tha recovery may only require sections that
+are flagged a write-intent bitmap ta be recovered or may not require
+any recovery at all.
+
+When used on a array dat has no metadata (i.e. dat shiznit was built with
+.BR \-\-build)
+it is ghon be assumed dat bitmap-based recovery is enough ta make the
+device straight-up consistent wit tha array.
+
+When used wit v1.x metadata,
+.B \-\-re\-add
+can be accompanied by
+.BR \-\-update=devicesize ,
+.BR \-\-update=bbl ", or"
+.BR \-\-update=no\-bbl .
+See tha description of these option when used up in Assemble mode fo' an
+explanation of they use.
+
+If tha thang name given is
+.B missing
+then
+.I mdadm
+will try ta find any thang dat be lookin like it should be
+part of tha array but aint n' will try ta re\-add all such devices.
+
+If tha thang name given is
+.B faulty
+then
+.I mdadm
+will find all devices up in tha array dat is marked
+.BR faulty ,
+remove dem n' attempt ta immediately re\-add em.  This can be
+useful if yo ass is certain dat tha reason fo' failure has been
+resolved.
+
+.TP
+.BR \-r ", " \-\-remove
+remove listed devices.  They must not be active.  i.e. they should
+be failed or spare devices.
+
+As well as tha name of a thang file
+(e.g.
+.BR /dev/sda1 )
+the lyrics
+.BR failed ,
+.B detached
+and names like
+.B set-A
+can be given to
+.BR \-\-remove .
+Da first causes all failed thang ta be removed. Y'all KNOW dat shit, muthafucka!  Da second causes
+any thang which is no longer connected ta tha system (i.e a 'open'
+returns
+.BR ENXIO )
+to be removed.
+Da third will remove a set as describe below under
+.BR \-\-fail .
+
+.TP
+.BR \-f ", " \-\-fail
+Mark listed devices as faulty.
+As well as tha name of a thang file, tha word
+.B detached
+or a set name like
+.B set\-A
+can be given. I aint talkin' bout chicken n' gravy biatch.  Da forma will cause any thang dat has been detached from
+the system ta be marked as failed. Y'all KNOW dat shit, muthafucka!  It can then be removed.
+
+For RAID10 arrays where tha number of copies evenly divides tha number
+of devices, tha devices can be conceptually divided tha fuck into sets where
+each set gotz nuff a single complete copy of tha data on tha array.
+Sometimes a RAID10 array is ghon be configured so dat these sets is on
+separate controllers.  In dis case all tha devices up in one set can be
+failed by givin a name like
+.B set\-A
+or
+.B set\-B
+to
+.BR \-\-fail .
+Da appropriate set names is reported by
+.BR \-\-detail .
+
+.TP
+.BR \-\-set\-faulty
+same as
+.BR \-\-fail .
+
+.TP
+.B \-\-replace
+Mark listed devices as requirin replacement.  As soon as a spare is
+available, it is ghon be rebuilt n' will replace tha marked device.
+This is similar ta markin a thang as faulty yo, but tha thang remains
+in steez durin tha recovery process ta increase resilience against
+multiple failures.  When tha replacement process finishes, the
+replaced thang is ghon be marked as faulty.
+
+.TP
+.B \-\-with
+This can follow a list of
+.B \-\-replace
+devices.  Da devices listed after
+.B \-\-with
+will be preferentially used ta replace tha devices listed after
+.BR \-\-replace .
+These thang must already be spare devices up in tha array.
+
+.TP
+.BR \-\-write\-mostly
+Subsequent devices dat is added or re\-added gonna git tha 'write-mostly'
+flag set.  This is only valid fo' RAID1 n' means dat tha 'md' driver
+will avoid readin from these devices if possible.
+.TP
+.BR \-\-readwrite
+Subsequent devices dat is added or re\-added gonna git tha 'write-mostly'
+flag cleared.
+
+.P
+Each of these options requires dat tha straight-up original gangsta thang listed is tha array
+to be acted upon, n' tha remainder is component devices ta be added,
+removed, marked as faulty, etc.  Several different operations can be
+specified fo' different devices, e.g.
+.in +5
+mdadm /dev/md0 \-\-add /dev/sda1 \-\-fail /dev/sdb1 \-\-remove /dev/sdb1
+.in -5
+Each operation applies ta all devices listed until tha next
+operation.
+
+If a array is rockin a write-intent bitmap, then devices which have
+been removed can be re\-added up in a way dat avoidz a gangbangin' full
+reconstruction but instead just thugged-out shiznit tha blocks dat have chizzled
+since tha thang was removed. Y'all KNOW dat shit, muthafucka!  For arrays wit persistent metadata
+(superblocks) dis is done automatically.  For arrays pimped with
+.B \-\-build
+mdadm need ta be holla'd at dat dis thang we removed recently with
+.BR \-\-re\-add .
+
+Devices can only be removed from a array if they is not up in active
+use, i.e. dat must be spares or failed devices.  To remove a active
+device, it must first be marked as
+.B faulty.
+
+.SH For Misc mode:
+
+.TP
+.BR \-Q ", " \-\-query
+Examine a thang ta see
+(1) if it be a md thang n' (2) if it aint nuthin but a cold-ass lil component of a md
+array.
+Hype bout what tha fuck is discovered is presented.
+
+.TP
+.BR \-D ", " \-\-detail
+Print detailz of one or mo' md devices.
+
+.TP
+.BR \-\-detail\-platform
+Print detailz of tha platformz RAID capabilitizzles (firmware / hardware
+topology) fo' a given metadata format. If used without argument, mdadm
+will scan all controllaz lookin fo' they capabilities. Put ya muthafuckin choppers up if ya feel dis! Otherwise, mdadm
+will only peep tha controlla specified by tha argument up in form of an
+absolute filepath or a link, e.g.
+.IR /sys/devices/pci0000:00/0000:00:1f.2 .
+
+.TP
+.BR \-Y ", " \-\-export
+When used with
+.B \-\-detail , \-\-detail-platform
+or
+.BR \-\-examine ,
+output is ghon be formatted as
+.B key=value
+pairs fo' easy as fuck  import tha fuck into tha environment.
+
+.TP
+.BR \-E ", " \-\-examine
+Print contentz of tha metadata stored on tha named device(s).
+Note tha contrast between
+.B \-\-examine
+and
+.BR \-\-detail .
+.B \-\-examine
+applies ta devices which is componentz of a array, while
+.B \-\-detail
+applies ta a whole array which is currently active.
+.TP
+.B \-\-sparc2.2
+If a array was pimped on a SPARC machine wit a 2.2 Linux kernel
+patched wit RAID support, tha superblock gonna git been pimped
+incorrectly, or at least incompatibly wit 2.4 n' lata kernels.
+Usin the
+.B \-\-sparc2.2
+flag with
+.B \-\-examine
+will fix tha superblock before displayin dat shit.  If dis appears ta do
+the right thang, then tha array can be successfully assembled using
+.BR "\-\-assemble \-\-update=sparc2.2" .
+
+.TP
+.BR \-X ", " \-\-examine\-bitmap
+Report shiznit on some funky-ass bitmap file.
+Da argument is either a external bitmap file or a array component
+in case of a internal bitmap.  Note dat hustlin dis on a array
+device (e.g.
+.BR /dev/md0 )
+does not report tha bitmap fo' dat array.
+
+.TP
+.B \-\-examine\-badblocks
+List tha bad-blocks recorded fo' tha device, if a funky-ass bad-blocks list has
+been configured. Y'all KNOW dat shit, muthafucka!  Currently only
+.B 1.x
+metadata supports bad-blocks lists.
+
+.TP
+.BI \-\-dump= directory
+.TP
+.BI \-\-restore= directory
+Save metadata from lists devices, or restore metadata ta listed devices.
+
+.TP
+.BR \-R ", " \-\-run
+start a partially assembled array.  If
+.B \-\-assemble
+did not find enough devices ta straight-up start tha array, it might leaving
+it partially assembled. Y'all KNOW dat shit, muthafucka!  If you wish, you can then use
+.B \-\-run
+to start tha array up in degraded mode.
+
+.TP
+.BR \-S ", " \-\-stop
+deactivate array, releasin all resources.
+
+.TP
+.BR \-o ", " \-\-readonly
+mark array as readonly.
+
+.TP
+.BR \-w ", " \-\-readwrite
+mark array as readwrite.
+
+.TP
+.B \-\-zero\-superblock
+If tha thang gotz nuff a valid md superblock, tha block is
+overwritten wit zeros.  With
+.B \-\-force
+the block where tha superblock would be is overwritten even if it
+doesn't step tha fuck up ta be valid.
+
+.TP
+.B \-\-kill\-subarray=
+If tha thang be a cold-ass lil container n' tha argument ta \-\-kill\-subarray
+specifies a inactizzle subarray up in tha container, then tha subarray is
+deleted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Deletin all subarrays will leave a 'empty-container' or
+spare superblock on tha drives.  See
+.B \-\-zero\-superblock
+for straight-up
+removin a superblock.  Note dat some formats depend on tha subarray
+index fo' generatin a UUID, dis command will fail if it would chizzle
+the UUID of a actizzle subarray.
+
+.TP
+.B \-\-update\-subarray=
+If tha thang be a cold-ass lil container n' tha argument ta \-\-update\-subarray
+specifies a subarray up in tha container, then attempt ta update tha given
+superblock field up in tha subarray. Right back up in yo muthafuckin ass. See below in
+.B MISC MODE
+for details.
+
+.TP
+.BR \-t ", " \-\-test
+When used with
+.BR \-\-detail ,
+the exit status of
+.I mdadm
+is set ta reflect tha statuz of tha device.  See below in
+.B MISC MODE
+for details.
+
+.TP
+.BR \-W ", " \-\-wait
+For each md thang given, wait fo' any resync, recovery, or reshape
+activitizzle ta finish before returning.
+.I mdadm
+will return wit success if it straight-up waited fo' every last muthafuckin device
+listed, otherwise it will return failure.
+
+.TP
+.BR \-\-wait\-clean
+For each md thang given, or each thang up in /proc/mdstat if
+.B \-\-scan
+is given, arrange fo' tha array ta be marked clean quicker than a muthafucka.
+.I mdadm
+will return wit success if tha array uses external metadata n' we
+successfully waited. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  For natizzle arrays dis returns immediately as the
+kernel handlez dirty-clean transitions at shutdown. I aint talkin' bout chicken n' gravy biatch.  No action is taken
+if safe-mode handlin is disabled.
+
+.SH For Incremenstrual Assembly mode:
+.TP
+.BR \-\-rebuild\-map ", " \-r
+Rebuild tha map file
+.RB ( /run/mdadm/map )
+that
+.I mdadm
+uses ta help track which arrays is currently bein assembled.
+
+.TP
+.BR \-\-run ", " \-R
+Run any array assembled as soon as a minimal number of devices are
+available, rather than waitin until all expected devices is present.
+
+.TP
+.BR \-\-scan ", " \-s
+Only meaningful with
+.B \-R
+this will scan the
+.B map
+file fo' arrays dat is bein incrementally assembled n' will try to
+start any dat is not already started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If any such array is listed
+in
+.B mdadm.conf
+as requirin a external bitmap, dat bitmap is ghon be attached first.
+
+.TP
+.BR \-\-fail ", " \-f
+This allows tha hot-plug system ta remove devices dat have straight-up disappeared
+from tha kernel.  It will first fail n' then remove tha thang from any
+array it belongs to.
+Da thang name given should be a kernel thang name like fuckin "sda",
+not a name in
+.IR /dev .
+
+.TP
+.BR \-\-path=
+Only used wit \-\-fail.  Da 'path' given is ghon be recorded so dat if
+a freshly smoked up thang appears all up in tha same location it can be automatically
+added ta tha same array.  This allows tha failed thang ta be
+automatically replaced by a freshly smoked up thang without metadata if it appears
+at specified path.   This option is normally only set by a
+.I udev
+script.
+
+.SH For Monitor mode:
+.TP
+.BR \-m ", " \-\-mail
+Give a mail address ta bust alerts to.
+
+.TP
+.BR \-p ", " \-\-program ", " \-\-alert
+Give a program ta be run whenever a event is detected.
+
+.TP
+.BR \-y ", " \-\-syslog
+Cause all events ta be reported all up in 'syslog'.  Da lyrics have
+facilitizzle of 'daemon' n' varyin priorities.
+
+.TP
+.BR \-d ", " \-\-delay
+Give a thugged-out delay up in seconds.
+.I mdadm
+polls tha md arrays n' then waits dis nuff secondz before polling
+again. I aint talkin' bout chicken n' gravy biatch.  Da default is 60 seconds.  Since 2.6.16, there is no need to
+reduce dis as tha kernel alerts
+.I mdadm
+immediately when there be any chizzle.
+
+.TP
+.BR \-r ", " \-\-increment
+Give a cementage increment.
+.I mdadm
+will generate RebuildNN events wit tha given cementage increment.
+
+.TP
+.BR \-f ", " \-\-daemonise
+Tell
+.I mdadm
+to run as a funky-ass background daemon if it decides ta monitor anything.  This
+causes it ta fork n' run up in tha child, n' ta disconnect from the
+terminal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  Da process id of tha lil pimp is freestyled ta stdout.
+This is useful with
+.B \-\-scan
+which will only continue monitorin if a mail address or alert program
+is found up in tha config file.
+
+.TP
+.BR \-i ", " \-\-pid\-file
+When
+.I mdadm
+is hustlin up in daemon mode, write tha pid of tha daemon process to
+the specified file, instead of printin it on standard output.
+
+.TP
+.BR \-1 ", " \-\-oneshot
+Peep arrays only once.  This will generate
+.B NewArray
+events n' mo' significantly
+.B DegradedArray
+and
+.B SparesMissing
+events, n' you can put dat on yo' toast.  Running
+.in +5
+.B "   mdadm \-\-monitor \-\-scan \-1"
+.in -5
+from a cold-ass lil cron script will ensure regular notification of any degraded arrays.
+
+.TP
+.BR \-t ", " \-\-test
+Generate a
+.B TestMessage
+alert fo' every last muthafuckin array found at startup.  This alert gets mailed and
+passed ta tha alert program.  This can be used fo' testin dat alert
+message do git all up in successfully.
+
+.TP
+.BR \-\-no\-sharing
+This inhibits tha functionalitizzle fo' movin spares between arrays.
+Only one monitorin process started with
+.B \-\-scan
+but without dis flag be allowed, otherwise tha two could interfere
+with each other.
+
+.SH ASSEMBLE MODE
+
+.HP 12
+Usage:
+.B mdadm \-\-assemble
+.I md-device options-and-component-devices...
+.HP 12
+Usage:
+.B mdadm \-\-assemble \-\-scan
+.I md-devices-and-options...
+.HP 12
+Usage:
+.B mdadm \-\-assemble \-\-scan
+.I options...
+
+.PP
+This usage assemblez one or mo' RAID arrays from pre-existin components.
+For each array, mdadm need ta know tha md device, tha identitizzle of the
+array, n' a fuckin shitload of component-devices.  These can be found up in a fuckin shitload of ways.
+
+In tha straight-up original gangsta usage example (without the
+.BR \-\-scan )
+the first thang given is tha md device.
+In tha second usage example, all devices listed is treated as md
+devices n' assembly be attempted.
+In tha third (where no devices is listed) all md devices dat are
+listed up in tha configuration file is assembled. Y'all KNOW dat shit, muthafucka!  If no arrays are
+busted lyrics bout by tha configuration file, then any arrays that
+can be found on unused devices is ghon be assembled.
+
+If precisely one thang is listed yo, but
+.B \-\-scan
+is not given, then
+.I mdadm
+acts as though
+.B \-\-scan
+was given n' identitizzle shiznit is extracted from tha configuration file.
+
+Da identitizzle can be given wit the
+.B \-\-uuid
+option, the
+.B \-\-name
+option, or the
+.B \-\-super\-minor
+option, is ghon be taken from tha md-device record up in tha config file, or
+will be taken from tha supa block of tha straight-up original gangsta component-device
+listed on tha command line.
+
+Devices can be given on the
+.B \-\-assemble
+command line or up in tha config file.  Only devices which have a md
+superblock which gotz nuff tha right identitizzle is ghon be considered for
+any array.
+
+Da config file is only used if explicitly named with
+.B \-\-config
+or axed wit (a possibly implicit)
+.BR \-\-scan .
+In tha lata case,
+.B /etc/mdadm.conf
+or
+.B /etc/mdadm/mdadm.conf
+is used.
+
+If
+.B \-\-scan
+is not given, then tha config file will only be used ta find the
+identitizzle of md arrays.
+
+Normally tha array is ghon be started afta it be assembled. Y'all KNOW dat shit, muthafucka!  However if
+.B \-\-scan
+is not given n' not all expected drives was listed, then tha array
+is not started (to guard against usage errors).  To insist dat the
+array be started up in dis case (as may work fo' RAID1, 4, 5, 6, or 10),
+give the
+.B \-\-run
+flag.
+
+If
+.I udev
+is active,
+.I mdadm
+does not create any entries in
+.B /dev
+but leaves dat to
+.IR udev .
+It do record shiznit in
+.B /run/mdadm/map
+which will allow
+.I udev
+to chizzle tha erect name.
+
+If
+.I mdadm
+detects dat udev aint configured, it will create tha devices in
+.B /dev
+itself.
+
+In Linux kernels prior ta version 2.6.28 there was two distinctly
+different typez of md devices dat could be pimped: one dat could be
+partitioned rockin standard partitionin tools n' one dat could not.
+Since 2.6.28 dat distinction is no longer relevant as both type of
+devices can be partitioned.
+.I mdadm
+will normally create tha type dat originally could not be partitioned
+as it has a well defined major number (9).
+
+Prior ta 2.6.28, it is blingin dat mdadm chizzlez tha erect type
+of array thang ta use.  This can be controlled wit the
+.B \-\-auto
+option. I aint talkin' bout chicken n' gravy biatch.  In particular, a value of "mdp" or "part" or "p"  drops some lyrics ta mdadm
+to bust a partitionable thang rather than tha default.
+
+In tha no-udev case, tha value given to
+.B \-\-auto
+can be suffixed by a number n' shit.  This tells
+.I mdadm
+to create dat number of partizzle devices rather than tha default of 4.
+
+Da value given to
+.B \-\-auto
+can also be given up in tha configuration file as a word starting
+.B auto=
+on tha ARRAY line fo' tha relevant array.
+
+.SS Auto Assembly
+When
+.B \-\-assemble
+is used with
+.B \-\-scan
+and no devices is listed,
+.I mdadm
+will first attempt ta assemble all tha arrays listed up in tha config
+file.
+
+If no arrays is listed up in tha config (other than dem marked
+.BR <ignore> )
+it will look all up in tha available devices fo' possible arrays and
+will try ta assemble anythang dat it finds.  Arrays which is tagged
+as belongin ta tha given homehost is ghon be assembled n' started
+normally.  Arrays which do not obviously belong ta dis host is given
+names dat is expected not ta conflict wit anythang local, n' are
+started "read-auto" so dat not a god damn thang is freestyled ta any thang until the
+array is freestyled to. i.e.  automatic resync etc is delayed.
+
+If
+.I mdadm
+findz a cold-ass lil consistent set of devices dat be lookin like they should comprise
+an array, n' if tha superblock is tagged as belongin ta tha given
+home host, it will automatically chizzle a thang name n' try to
+assemble tha array.  If tha array uses version-0.90 metadata, then the
+.B minor
+number as recorded up in tha superblock is used ta create a name in
+.B /dev/md/
+so fo' example
+.BR /dev/md/3 .
+If tha array uses version-1 metadata, then the
+.B name
+from tha superblock is used ta similarly create a name in
+.B /dev/md/
+(the name gonna git any 'host' prefix stripped first).
+
+This behaviour can be modified by the
+.I AUTO
+line up in the
+.I mdadm.conf
+configuration file.  This line can indicate dat specific metadata
+type should, or should not, be automatically assembled. Y'all KNOW dat shit, muthafucka!  If a array
+is found which aint listed in
+.I mdadm.conf
+and has a metadata format dat is denied by the
+.I AUTO
+line, then it aint gonna be assembled.
+The
+.I AUTO
+line can also request dat all arrays identified as bein fo' this
+homehost should be assembled regardless of they metadata type.
+See
+.IR mdadm.conf (5)
+for further details.
+
+Note: Auto assembly cannot be used fo' assemblin n' activatin some
+arrays which is undergoin reshape.  In particular as the
+.B backup\-file
+cannot be given, any reshape which requires a funky-ass backup-file ta continue
+cannot be started by auto assembly.  An array which is growin ta more
+devices n' has passed tha critical section can be assembled using
+auto-assembly.
+
+.SH BUILD MODE
+
+.HP 12
+Usage:
+.B mdadm \-\-build
+.I md-device
+.BI \-\-chunk= X
+.BI \-\-level= Y
+.BI \-\-raid\-devices= Z
+.I devices
+
+.PP
+This usage is similar to
+.BR \-\-create .
+Da difference is dat it creates a array without a superblock.  With
+these arrays there is no difference between initially bustin tha array and
+subsequently assemblin tha array, except dat hopefully there is useful
+data there up in tha second case.
+
+Da level may raid0, linear, raid1, raid10, multipath, or faulty, or
+one of they synonyms.  All devices must be listed n' tha array will
+be started once complete.  It will often be appropriate ta use
+.B \-\-assume\-clean
+with levels raid1 or raid10.
+
+.SH CREATE MODE
+
+.HP 12
+Usage:
+.B mdadm \-\-create
+.I md-device
+.BI \-\-chunk= X
+.BI \-\-level= Y
+.br
+.BI \-\-raid\-devices= Z
+.I devices
+
+.PP
+This usage will initialise a freshly smoked up md array, associate some devices with
+it, n' activate tha array.
+
+Da named thang will normally not exist when
+.I "mdadm \-\-create"
+is run yo, but is ghon be pimped by
+.I udev
+once tha array becomes active.
+
+As devices is added, they is checked ta peep if they contain RAID
+superblocks or filesystems.  They is also checked ta peep if tha variizzle in
+device size exceedz 1%.
+
+If any discrepancy is found, tha array aint gonna automatically be run, though
+the presence of a
+.B \-\-run
+can override dis caution.
+
+To create a "degraded" array up in which some devices is missing, simply
+give tha word "\fBmissing\fP"
+in place of a thang name.  This will cause
+.I mdadm
+to leave tha correspondin slot up in tha array empty.
+For a RAID4 or RAID5 array at most one slot can be
+"\fBmissing\fP"; fo' a RAID6 array at most two slots.
+For a RAID1 array, only one real thang need ta be given. I aint talkin' bout chicken n' gravy biatch.  All of the
+others can be
+"\fBmissing\fP".
+
+When bustin a RAID5 array,
+.I mdadm
+will automatically create a thugged-out degraded array wit a extra spare drive.
+This is cuz buildin tha spare tha fuck into a thugged-out degraded array is up in general
+fasta than resyncin tha paritizzle on a non-degraded yo, but not clean,
+array.  This feature can be overridden wit the
+.B \-\-force
+option.
+
+When bustin a array wit version-1 metadata a name fo' tha array is
+required.
+If dis aint given wit the
+.B \-\-name
+option,
+.I mdadm
+will chizzle a name based on tha last component of tha name of the
+device bein pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  So if
+.B /dev/md3
+is bein pimped, then tha name
+.B 3
+will be chosen.
+If
+.B /dev/md/home
+is bein pimped, then tha name
+.B home
+will be used.
+
+When bustin a partizzle based array, using
+.I mdadm
+with version-1.x metadata, tha partizzle type should be set to
+.B 0xDA
+(non fs-data).  This type selection allows fo' pimped outa precision since
+usin any other [RAID auto-detect (0xFD) or a GNU/Linux partizzle (0x83)],
+might create problems up in tha event of array recovery all up in a live cdrom.
+
+A freshly smoked up array will normally git a randomly assigned 128bit UUID which is
+very likely ta be unique.  If you gotz a specific need, you can chizzle
+a UUID fo' tha array by givin the
+.B \-\-uuid=
+option. I aint talkin' bout chicken n' gravy biatch.  Be warned dat bustin two arrays wit tha same UUID be a
+recipe fo' fuck up n' shit.  Also, using
+.B \-\-uuid=
+when bustin a v0.90 array will silently override any
+.B \-\-homehost=
+setting.
+.\"If the
+.\".B \-\-size
+.\"option is given, it aint necessary ta list any component-devices up in dis command.
+.\"They can be added later, before a
+.\".B \-\-run.
+.\"If no
+.\".B \-\-size
+.\"is given, tha apparent size of tha smallest drive given is used.
+
+If tha array type supports a write-intent bitmap, n' if tha devices
+in tha array exceed 100G is size, a internal write-intent bitmap
+will automatically be added unless some other option is explicitly
+axed wit the
+.B \-\-bitmap
+option. I aint talkin' bout chicken n' gravy biatch.  In any case space fo' a funky-ass bitmap is ghon be reserved so dat one
+can be added layer with
+.BR "\-\-grow \-\-bitmap=internal" .
+
+If tha metadata type supports it (currently only 1.x metadata), space
+will be allocated ta store a wack block list.  This allows a modest
+number of wack blocks ta be recorded, allowin tha drive ta remain in
+service while only partially functional.
+
+When bustin a array within a
+.B CONTAINER
+.I mdadm
+can be given either tha list of devices ta use, or simply tha name of
+the container n' shit.  Da forma case gives control over which devices in
+the container is ghon be used fo' tha array.  Da latta case allows
+.I mdadm
+to automatically chizzle which devices ta use based on how tha fuck much spare
+space be available.
+
+Da General Management options dat is valid with
+.B \-\-create
+are:
+.TP
+.B \-\-run
+insist on hustlin tha array even if some devices be lookin like they might
+be up in use.
+
+.TP
+.B \-\-readonly
+start tha array readonly \(em not supported yet.
+
+.SH MANAGE MODE
+.HP 12
+Usage:
+.B mdadm
+.I device
+.I options... devices...
+.PP
+
+This usage will allow individual devices up in a array ta be failed,
+removed or added. Y'all KNOW dat shit, muthafucka!  It be possible ta big-ass up multiple operations with
+on command. Y'all KNOW dat shit, muthafucka!  For example:
+.br
+.B "  mdadm /dev/md0 \-f /dev/hda1 \-r /dev/hda1 \-a /dev/hda1"
+.br
+will firstly mark
+.B /dev/hda1
+as faulty in
+.B /dev/md0
+and will then remove it from tha array n' finally add it back
+in as a spare.  However only one md array can be affected by a single
+command.
+
+When a thang be added ta a actizzle array, mdadm checks ta peep if it
+has metadata on it which suggests dat dat shiznit was recently a gangmember of the
+array.  If it do, it tries ta "re\-add" tha device.  If there have
+been no chizzlez since tha thang was removed, or if tha array has a
+write-intent bitmap which has recorded whatever chizzlez there were,
+then tha thang will immediately become a gangbangin' full gangmember of tha array and
+those differences recorded up in tha bitmap is ghon be resolved.
+
+.SH MISC MODE
+.HP 12
+Usage:
+.B mdadm
+.I options ...
+.I devices ...
+.PP
+
+MISC mode includes a fuckin shitload of distinct operations that
+operate on distinct devices.  Da operations are:
+.TP
+.B \-\-query
+Da thang is examined ta peep if it is
+(1) a actizzle md array, or
+(2) a cold-ass lil component of a md array.
+Da shiznit discovered is reported.
+
+.TP
+.B \-\-detail
+Da thang should be a actizzle md device.
+.B mdadm
+will display a thugged-out detailed description of tha array.
+.B \-\-brief
+or
+.B \-\-scan
+will cause tha output ta be less detailed n' tha format ta be
+suitable fo' inclusion in
+.BR mdadm.conf .
+Da exit status of
+.I mdadm
+will normally be 0 unless
+.I mdadm
+failed ta git useful shiznit bout tha device(s); however, if the
+.B \-\-test
+option is given, then tha exit status will be:
+.RS
+.TP
+0
+Da array is functionin normally.
+.TP
+1
+Da array has at least one failed device.
+.TP
+2
+Da array has multiple failed devices such dat it is unusable.
+.TP
+4
+There was a error while tryin ta git shiznit bout tha device.
+.RE
+
+.TP
+.B \-\-detail\-platform
+Print detail of tha platformz RAID capabilitizzles (firmware / hardware
+topology).  If tha metadata is specified with
+.B \-e
+or
+.B \-\-metadata=
+then tha return status will be:
+.RS
+.TP
+0
+metadata successfully enumerated its platform components on dis system
+.TP
+1
+metadata is platform independent
+.TP
+2
+metadata failed ta find its platform components on dis system
+.RE
+
+.TP
+.B \-\-update\-subarray=
+If tha thang be a cold-ass lil container n' tha argument ta \-\-update\-subarray
+specifies a subarray up in tha container, then attempt ta update tha given
+superblock field up in tha subarray.  Similar ta uppimpin a array in
+"assemble" mode, tha field ta update is selected by
+.B \-U
+or
+.B \-\-update=
+option. I aint talkin' bout chicken n' gravy biatch.  Currently only
+.B name
+is supported.
+
+Da 
+.B name
+option thugged-out shiznit tha subarray name up in tha metadata, it may not affect the
+device node name or tha thang node symlink until tha subarray is
+re\-assembled. Y'all KNOW dat shit, muthafucka!  If uppimpin 
+.B name
+would chizzle tha UUID of a actizzle subarray dis operation is blocked,
+and tha command will end up in a error.
+
+.TP
+.B \-\-examine
+Da thang should be a cold-ass lil component of a md array.
+.I mdadm
+will read tha md superblock of tha thang n' display tha contents.
+If
+.B \-\-brief
+or
+.B \-\-scan
+is given, then multiple devices dat is componentz of tha one array
+are grouped together n' reported up in a single entry suitable
+for inclusion in
+.BR mdadm.conf .
+
+Having
+.B \-\-scan
+without listin any devices will cause all devices listed up in the
+config file ta be examined.
+
+.TP
+.BI \-\-dump= directory
+If tha thang gotz nuff RAID metadata, a gangbangin' file is ghon be pimped up in the
+.I directory
+and tha metadata is ghon be freestyled ta dat shit.  Da file is ghon be tha same
+size as tha thang n' have tha metadata freestyled up in tha file at the
+same locate dat it exists up in tha device.  However tha file is ghon be "sparse" so
+that only dem blocks containin metadata is ghon be allocated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. The
+total space used is ghon be small.
+
+Da file name used up in the
+.I directory
+will be tha base name of tha device.   Further if any links step tha fuck up in
+.I /dev/disk/by-id
+which point ta tha device, then hard links ta tha file is ghon be pimped
+in
+.I directory
+based on these
+.I by-id
+names.
+
+Multiple devices can be listed n' they metadata will all be stored
+in tha one directory.
+
+.TP
+.BI \-\-restore= directory
+This is tha reverse of
+.BR \-\-dump .
+.I mdadm
+will locate a gangbangin' file up in tha directory dat has a name appropriate for
+the given thang n' will restore metadata from dat shit.  Names dat match
+.I /dev/disk/by-id
+names is preferred, however if two of dem refer ta different files,
+.I mdadm
+will not chizzle between dem but will abort tha operation.
+
+If a gangbangin' file name is given instead of a
+.I directory
+then
+.I mdadm
+will restore from dat file ta a single device, always provided the
+size of tha file matches dat of tha device, n' tha file gotz nuff
+valid metadata.
+.TP
+.B \-\-stop
+Da devices should be actizzle md arrays which is ghon be deactivated, as
+long as they is not currently up in use.
+
+.TP
+.B \-\-run
+This will straight-up activate a partially assembled md array.
+
+.TP
+.B \-\-readonly
+This will mark a actizzle array as read-only, providin dat it is
+not currently bein used.
+
+.TP
+.B \-\-readwrite
+This will chizzle a
+.B readonly
+array back ta bein read/write.
+
+.TP
+.B \-\-scan
+For all operations except
+.BR \-\-examine ,
+.B \-\-scan
+will cause tha operation ta be applied ta all arrays listed in
+.BR /proc/mdstat .
+For
+.BR \-\-examine,
+.B \-\-scan
+causes all devices listed up in tha config file ta be examined.
+
+.TP
+.BR \-b ", " \-\-brief
+Be less verbose.  This is used with
+.B \-\-detail
+and
+.BR \-\-examine .
+Using
+.B \-\-brief
+with
+.B \-\-verbose
+gives a intermediate level of verbosity.
+
+.SH MONITOR MODE
+
+.HP 12
+Usage:
+.B mdadm \-\-monitor
+.I options... devices...
+
+.PP
+This usage causes
+.I mdadm
+to periodically poll a fuckin shitload of md arrays n' ta report on any events
+noticed.
+.I mdadm
+will never exit once it decides dat there be arrays ta be checked,
+so it should normally be run up in tha background.
+
+As well as reportin events,
+.I mdadm
+may move a spare drive from one array ta another if they is up in the
+same
+.B spare-group
+or
+.B domain
+and if tha destination array has a gangbangin' failed drive but no spares.
+
+If any devices is listed on tha command line,
+.I mdadm
+will only monitor dem devices.  Otherwise all arrays listed up in the
+configuration file is ghon be monitored. Y'all KNOW dat shit, muthafucka!  Further, if
+.B \-\-scan
+is given, then any other md devices dat step tha fuck up in
+.B /proc/mdstat
+will also be monitored.
+
+Da result of monitorin tha arrays is tha generation of events.
+These events is passed ta a separate program (if specified) n' may
+be mailed ta a given E-mail address.
+
+When passin events ta a program, tha program is run once fo' each event,
+and is given 2 or 3 command-line arguments: tha straight-up original gangsta is the
+name of tha event (see below), tha second is tha name of the
+md thang which be affected, n' tha third is tha name of a related
+device if relevant (like fuckin a cold-ass lil component thang dat has failed).
+
+If
+.B \-\-scan
+is given, then a program or a E-mail address must be specified on the
+command line or up in tha config file.  If neither is available, then
+.I mdadm
+will not monitor anything.
+Without
+.B \-\-scan,
+.I mdadm
+will continue monitorin as long as suttin' was found ta monitor. Shiiit, dis aint no joke.  If
+no program or email is given, then each event is reported to
+.BR stdout .
+
+Da different events are:
+
+.RS 4
+.TP
+.B DeviceDisappeared
+An md array which previously was configured appears ta no longer be
+configured. Y'all KNOW dat shit, muthafucka! (syslog priority: Critical)
+
+If
+.I mdadm
+was holla'd at ta monitor a array which is RAID0 or Linear, then it will
+report
+.B DeviceDisappeared
+with tha extra shiznit
+.BR Wrong-Level .
+This is cuz RAID0 n' Linear do not support tha device-failed,
+hot-spare n' resync operations which is monitored.
+
+.TP
+.B RebuildStarted
+An md array started reconstruction. I aint talkin' bout chicken n' gravy biatch. (syslog priority: Warning)
+
+.TP
+.BI Rebuild NN
+Where
+.I NN
+is a two-digit number (ie. 05, 48). This indicates dat rebuild
+has passed dat nuff cement of tha total. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Da events is generated
+with fixed increment since 0. Increment size may be specified with
+a commandline option (default is 20). (syslog priority: Warning)
+
+.TP
+.B RebuildFinished
+An md array dat was rebuilding, aint no damn more, either cuz it
+finished normally or was aborted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. (syslog priority: Warning)
+
+.TP
+.B Fail
+An actizzle component thang of a array has been marked as
+faulty. (syslog priority: Critical)
+
+.TP
+.B FailSpare
+A spare component thang which was bein rebuilt ta replace a gangbangin' faulty
+device has failed. Y'all KNOW dat shit, muthafucka! (syslog priority: Critical)
+
+.TP
+.B SpareActive
+A spare component thang which was bein rebuilt ta replace a gangbangin' faulty
+device has been successfully rebuilt n' has been made active.
+(syslog priority: Info)
+
+.TP
+.B NewArray
+A freshly smoked up md array has been detected up in the
+.B /proc/mdstat
+file.  (syslog priority: Info)
+
+.TP
+.B DegradedArray
+A newly noticed array appears ta be degraded. Y'all KNOW dat shit, muthafucka!  This message is not
+generated when
+.I mdadm
+notices a thugged-out drive failure which causes degradation yo, but only when
+.I mdadm
+notices dat a array is degraded when it first sees tha array.
+(syslog priority: Critical)
+
+.TP
+.B MoveSpare
+A spare drive has been moved from one array up in a
+.B spare-group
+or
+.B domain
+to another ta allow a gangbangin' failed drive ta be replaced.
+(syslog priority: Info)
+
+.TP
+.B SparesMissing
+If
+.I mdadm
+has been holla'd at, via tha config file, dat a array should gotz a cold-ass lil certain
+number of spare devices, and
+.I mdadm
+detects dat it has fewer than dis number when it first sees the
+array, it will report a
+.B SparesMissing
+message.
+(syslog priority: Warning)
+
+.TP
+.B TestMessage
+An array was found at startup, n' the
+.B \-\-test
+flag was given.
+(syslog priority: Info)
+.RE
+
+Only
+.B Fail,
+.B FailSpare,
+.B DegradedArray,
+.B SparesMissing
+and
+.B TestMessage
+cause Email ta be sent.  All events cause tha program ta be run.
+Da program is run wit two or three arguments: tha event
+name, tha array thang n' possibly a second device.
+
+Each event has a associated array thang (e.g.
+.BR /dev/md1 )
+and possibly a second device.  For
+.BR Fail ,
+.BR FailSpare ,
+and
+.B SpareActive
+the second thang is tha relevant component device.
+For
+.B MoveSpare
+the second thang is tha array dat tha spare was moved from.
+
+For
+.I mdadm
+to move spares from one array ta another, tha different arrays need to
+be labeled wit tha same
+.B spare-group
+or tha spares must be allowed ta migrate all up in matchin POLICY domains
+in tha configuration file.  The
+.B spare-group
+name can be any string; it is only necessary dat different spare
+groups use different names.
+
+When
+.I mdadm
+detects dat a array up in a spare crew has fewer active
+devices than necessary fo' tha complete array, n' has no spare
+devices, it will look fo' another array up in tha same spare crew that
+has a gangbangin' full complement of hustlin drive n' a spare.  It will then
+attempt ta remove tha spare from tha second drive n' add it ta the
+first.
+If tha removal succeedz but tha addin fails, then it be added back to
+the original gangsta array.
+
+If tha spare crew fo' a thugged-out degraded array aint defined,
+.I mdadm
+will peep tha rulez of spare migration specified by POLICY lines in
+.B mdadm.conf
+and then follow similar steps as above if a matchin spare is found.
+
+.SH GROW MODE
+Da GROW mode is used fo' changin tha size or shape of a active
+array.
+For dis ta work, tha kernel must support tha necessary chizzle.
+Various typez of growth is bein added durin 2.6 pimpment.
+
+Currently tha supported chizzlez include
+.IP \(bu 4
+change tha "size" attribute fo' RAID1, RAID4, RAID5 n' RAID6.
+.IP \(bu 4
+increase or decrease tha "raid\-devices" attribute of RAID0, RAID1, RAID4,
+RAID5, n' RAID6.
+.IP \(bu 4
+change tha chunk-size n' layout of RAID0, RAID4, RAID5, RAID6 n' RAID10.
+.IP \(bu 4
+convert between RAID1 n' RAID5, between RAID5 n' RAID6, between
+RAID0, RAID4, n' RAID5, n' between RAID0 n' RAID10 (in tha near-2 mode).
+.IP \(bu 4
+add a write-intent bitmap ta any array which supports these bitmaps, or
+remove a write-intent bitmap from such a array.
+.PP
+
+Usin GROW on containers is currently supported only fo' Intelz IMSM
+container format.  Da number of devices up in a cold-ass lil container can be
+increased - which affects all arrays up in tha container - or a array
+in a cold-ass lil container can be converted between levels where dem levels are
+supported by tha container, n' tha conversion is on of dem listed
+above.  Resizin arrays up in a IMSM container with
+.B "--grow --size"
+is not yet supported.
+
+Grow functionalitizzle (e.g. expand a fuckin shitload of raid devices) fo' Intel's
+IMSM container format has a experimenstrual status. Well shiiiit, it is guarded by the
+.B MDADM_EXPERIMENTAL
+environment variable which must be set ta '1' fo' a GROW command to
+succeed.
+This is fo' tha followin reasons:
+
+.IP 1.
+Intelz natizzle IMSM check-pointin aint straight-up tested yet.
+This can causes IMSM incompatibilitizzle durin tha grow process: a array
+which is growin cannot roam between Microsizzlez Windows(R) n' Linux
+systems.
+
+.IP 2.
+Interruptin a grow operation aint recommended, cuz it
+has not been straight-up tested fo' Intelz IMSM container format yet.
+
+.PP
+Note: Intelz natizzle checkpointin don't use
+.B --backup-file
+option n' it is transparent fo' assembly feature.
+
+.SS SIZE CHANGES
+Normally when a array is built tha "size" is taken from tha smallest
+of tha drives.  If all tha lil' small-ass drives up in a arrays are, one at a
+time, removed n' replaced wit larger drives, then you could have an
+array of big-ass drives wit only a lil' small-ass amount used. Y'all KNOW dat shit, muthafucka!  In this
+situation, changin tha "size" wit "GROW" mode will allow tha extra
+space ta start bein used. Y'all KNOW dat shit, muthafucka!  If tha size is increased up in dis way, a
+"resync" process will start ta make shizzle tha freshly smoked up partz of tha array
+are synchronised.
+
+Note dat when a array chizzlez size, any filesystem dat may be
+stored up in tha array aint gonna automatically grow or shrink ta use or
+vacate tha space.  The
+filesystem will need ta be explicitly holla'd at ta use tha extra space
+afta growing, or ta reduce its size
+.B prior
+to shrinkin tha array.
+
+Also tha size of a array cannot be chizzled while it has a active
+bitmap.  If a array has a funky-ass bitmap, it must be removed before tha size
+can be chizzled. Y'all KNOW dat shit, muthafucka! Once tha chizzle is complete a freshly smoked up bitmap can be pimped.
+
+.SS RAID\-DEVICES CHANGES
+
+A RAID1 array can work wit any number of devices from 1 upwards
+(though 1 aint straight-up useful).  There may be times which you want to
+increase or decrease tha number of actizzle devices.  Note dat dis is
+different ta hot-add or hot-remove which chizzlez tha number of
+inactizzle devices.
+
+When reducin tha number of devices up in a RAID1 array, tha slots which
+are ta be removed from tha array must already be vacant.  That is, the
+devices which was up in dem slots must be failed n' removed.
+
+When tha number of devices is increased, any bangin' spares dat are
+present is ghon be activated immediately.
+
+Changin tha number of actizzle devices up in a RAID5 or RAID6 is much more
+effort.  Every block up in tha array will need ta be read n' written
+back ta a freshly smoked up location. I aint talkin' bout chicken n' gravy biatch.  From 2.6.17, tha Linux Kernel be able to
+increase tha number of devices up in a RAID5 safely, includin restarting
+an interrupted "reshape".  From 2.6.31, tha Linux Kernel be able to
+increase or decrease tha number of devices up in a RAID5 or RAID6.
+
+From 2.6.35, tha Linux Kernel be able ta convert a RAID0 up in ta a RAID4
+or RAID5.
+.I mdadm
+uses dis functionalitizzle n' tha mobilitizzle ta add
+devices ta a RAID4 ta allow devices ta be added ta a RAID0.  When
+axed ta do this,
+.I mdadm
+will convert tha RAID0 ta a RAID4, add tha necessary disks n' make
+the reshape happen, n' then convert tha RAID4 back ta RAID0.
+
+When decreasin tha number of devices, tha size of tha array will also
+decrease.  If there was data up in tha array, it could git destroyed and
+this aint reversible, so you should firstly shrink tha filesystem on
+the array ta fit within tha freshly smoked up size.  To help prevent accidents,
+.I mdadm
+requires dat tha size of tha array be decreased first with
+.BR "mdadm --grow --array-size" .
+This be a reversible chizzle which simply make tha end of tha array
+inaccessible.  Da integritizzle of any data can then be checked before
+the non-reversible reduction up in tha number of devices is request.
+
+When relocatin tha straight-up original gangsta few stripes on a RAID5 or RAID6, it is not
+possible ta keep tha data on disk straight-up consistent and
+crash-proof.  To provide tha required safety, mdadm disablez writes to
+the array while dis "critical section" is reshaped, n' takes a
+backup of tha data dat is up in dat section. I aint talkin' bout chicken n' gravy biatch.  For grows, dis backup may be
+stored up in any spare devices dat tha array has, however it can also be
+stored up in a separate file specified wit the
+.B \-\-backup\-file
+option, n' is required ta be specified fo' shrinks, RAID level
+changes n' layout chizzles.  If dis option is used, n' tha system
+does crash durin tha critical period, tha same file must be passed to
+.B \-\-assemble
+to restore tha backup n' reassemble tha array.  When shrinkin rather
+than growin tha array, tha reshape is done from tha end towardz the
+beginning, so tha "critical section" be all up in tha end of tha reshape.
+
+.SS LEVEL CHANGES
+
+Changin tha RAID level of any array happens instantaneously.  However
+in tha RAID5 ta RAID6 case dis requires a non-standard layout of the
+RAID6 data, n' up in tha RAID6 ta RAID5 case dat non-standard layout is
+required before tha chizzle can be accomplished. Y'all KNOW dat shit, muthafucka!  So while tha level
+change is instant, tha accompanyin layout chizzle can take like a
+long time.  A
+.B \-\-backup\-file
+is required. Y'all KNOW dat shit, muthafucka!  If tha array aint simultaneously bein grown or
+shrunk, so dat tha array size will remain tha same - fo' example,
+reshapin a 3-drive RAID5 tha fuck into a 4-drive RAID6 - tha backup file will
+be used not just fo' a "cricital section" but all up in tha reshape
+operation, as busted lyrics bout below under LAYOUT CHANGES.
+
+.SS CHUNK-SIZE AND LAYOUT CHANGES
+
+Changin tha chunk-size of layout without also changin tha number of
+devices as tha same ol' dirty time will involve re-writin all blocks in-place.
+To ensure against data loss up in tha case of a cold-ass lil crash, a
+.B --backup-file
+must be provided fo' these chizzles.  Lil Small-Ass sectionz of tha array will
+be copied ta tha backup file while they is bein rearranged. Y'all KNOW dat shit, muthafucka!  This
+means dat all tha data is copied twice, once ta tha backup n' once
+to tha freshly smoked up layout on tha array, so dis type of reshape will go hella
+slowly.
+
+If tha reshape is interrupted fo' any reason, dis backup file must be
+made available to
+.B "mdadm --assemble"
+so tha array can be reassembled. Y'all KNOW dat shit, muthafucka!  Consequently tha file cannot be
+stored on tha thang bein reshaped.
+
+
+.SS BITMAP CHANGES
+
+A write-intent bitmap can be added to, or removed from, a active
+array.  Either internal bitmaps, or bitmaps stored up in a separate file,
+can be added. Y'all KNOW dat shit, muthafucka!  Note dat if you add a funky-ass bitmap stored up in a gangbangin' file which is
+in a gangbangin' filesystem dat is on tha RAID array bein affected, tha system
+will deadlock.  Da bitmap must be on a separate filesystem.
+
+.SH INCREMENTAL MODE
+
+.HP 12
+Usage:
+.B mdadm \-\-incremental
+.RB [ \-\-run ]
+.RB [ \-\-quiet ]
+.I component-device
+.HP 12
+Usage:
+.B mdadm \-\-incremenstrual \-\-fail
+.I component-device
+.HP 12
+Usage:
+.B mdadm \-\-incremenstrual \-\-rebuild\-map
+.HP 12
+Usage:
+.B mdadm \-\-incremenstrual \-\-run \-\-scan
+
+.PP
+This mode is designed ta be used up in conjunction wit a thugged-out device
+discovery system.  As devices is found up in a system, they can be
+passed to
+.B "mdadm \-\-incremental"
+to be conditionally added ta a appropriate array.
+
+Conversely, it can also be used wit the
+.B \-\-fail
+flag ta do just tha opposite n' find whatever array a particular device
+is part of n' remove tha thang from dat array.
+
+If tha thang passed be a
+.B CONTAINER
+device pimped by a previous call to
+.IR mdadm ,
+then rather than tryin ta add dat thang ta a array, all tha arrays
+busted lyrics bout by tha metadata of tha container is ghon be started.
+
+.I mdadm
+performs a fuckin shitload of tests ta determine if tha thang is part of an
+array, n' which array it should be part of.  If a appropriate array
+is found, or can be pimped,
+.I mdadm
+addz tha thang ta tha array n' conditionally starts tha array.
+
+Note that
+.I mdadm
+will normally only add devices ta a array which was previously working
+(actizzle or spare) partz of dat array.  Da support fo' automatic
+inclusion of a freshly smoked up drive as a spare up in some array requires
+a configuration all up in POLICY up in config file.
+
+Da tests that
+.I mdadm
+makes is as follow:
+.IP +
+Is tha thang permitted by
+.BR mdadm.conf ?
+That is, is it listed up in a
+.B DEVICES
+line up in dat file.  If
+.B DEVICES
+is absent then tha default it ta allow any device.  Similar if
+.B DEVICES
+gotz nuff tha special word
+.B partitions
+then any thang be allowed. Y'all KNOW dat shit, muthafucka!  Otherwise tha thang name given to
+.I mdadm
+must match one of tha names or patterns up in a
+.B DEVICES
+line.
+
+.IP +
+Do tha thang gotz a valid md superblock, biatch?  If a specific metadata
+version be axed with
+.B \-\-metadata
+or
+.B \-e
+then only dat steez of metadata be accepted, otherwise
+.I mdadm
+findz any known version of metadata.  If no
+.I md
+metadata is found, tha thang may be still added ta a array
+as a spare if POLICY allows.
+
+.ig
+.IP +
+Do tha metadata match a expected array?
+Da metadata can match up in two ways.  Either there be a array listed
+in
+.B mdadm.conf
+which identifies tha array (either by UUID, by name, by thang list,
+or by minor-number), or tha array was pimped wit a
+.B homehost
+specified n' that
+.B homehost
+matches tha one in
+.B mdadm.conf
+or on tha command line.
+If
+.I mdadm
+is not able ta positively identify tha array as belongin ta the
+current host, tha thang is ghon be rejected.
+..
+
+.PP
+.I mdadm
+keeps a list of arrays dat it has partially assembled in
+.BR /run/mdadm/map .
+If no array exists which matches
+the metadata on tha freshly smoked up device,
+.I mdadm
+must chizzle a thang name n' unit number n' shit.  It do dis based on any
+name given in
+.B mdadm.conf
+or any name shiznit stored up in tha metadata.  If dis name
+suggests a unit number, dat number is ghon be used, otherwise a gangbangin' free
+unit number is ghon be chosen. I aint talkin' bout chicken n' gravy biatch.  Normally
+.I mdadm
+will prefer ta create a partitionable array, however if the
+.B CREATE
+line in
+.B mdadm.conf
+suggests dat a non-partitionable array is preferred, dat will be
+honoured.
+
+If tha array aint found up in tha config file n' its metadata do not
+identify it as belongin ta tha "homehost", then
+.I mdadm
+will chizzle a name fo' tha array which is certain not ta conflict with
+any array which do belong ta dis host.  It do dis be addin an
+underscore n' a lil' small-ass number ta tha name preferred by tha metadata.
+
+Once a appropriate array is found or pimped n' tha thang be added,
+.I mdadm
+must decizzle if tha array is locked n loaded ta be started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  It will
+normally compare tha number of available (non-spare) devices ta the
+number of devices dat tha metadata suggests need ta be active.  If
+there is at least dat many, tha array is ghon be started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This means
+that if any devices is missin tha array aint gonna be restarted.
+
+As a alternative,
+.B \-\-run
+may be passed to
+.I mdadm
+in which case tha array is ghon be run as soon as there be enough
+devices present fo' tha data ta be accessible.  For a RAID1, that
+means one thang will start tha array.  For a cold-ass lil clean RAID5, tha array
+will be started as soon as all but one drive is present.
+
+Note dat neither of these approaches is straight-up ideal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  If it can
+be known dat all thang discovery has completed, then
+.br
+.B "   mdadm \-IRs"
+.br
+can be run which will try ta start all arrays dat is being
+incrementally assembled. Y'all KNOW dat shit, muthafucka!  They is started up in "read-auto" mode in
+which they is read-only until tha straight-up original gangsta write request.  This means
+that no metadata thugged-out shiznit is made n' no attempt at resync or recovery
+happens.  Further devices dat is found before tha straight-up original gangsta write can
+still be added safely.
+
+.SH ENVIRONMENT
+This section raps bout environment variablez dat affect how tha fuck mdadm
+operates.
+
+.TP
+.B MDADM_NO_MDMON
+Settin dis value ta 1 will prevent mdadm from automatically launching
+mdmon. I aint talkin' bout chicken n' gravy biatch.  This variable is intended primarily fo' debuggin mdadm/mdmon.
+
+.TP
+.B MDADM_NO_UDEV
+Normally,
+.I mdadm
+does not create any thang nodes up in /dev yo, but leaves dat task to
+.IR udev .
+If
+.I udev
+appears not ta be configured, or if dis environment variable is set
+to '1', the
+.I mdadm
+will create n' devices dat is needed.
+
+.TP
+.B IMSM_NO_PLATFORM
+A key value of IMSM metadata is dat it allows interoperabilitizzle with
+boot ROMs on Intel platforms, n' wit other major operatin systems.
+Consequently,
+.I mdadm
+will only allow a IMSM array ta be pimped or modified if detects
+that it is hustlin on a Intel platform which supports IMSM, and
+supports tha particular configuration of IMSM dat is bein requested
+(some functionalitizzle requires newer OROM support).
+
+These checks can be suppressed by settin IMSM_NO_PLATFORM=1 up in the
+environment.  This can be useful fo' testin or fo' fuck up
+recovery.  Yo ass should be aware dat interoperabilitizzle may be
+compromised by settin dis value.
+
+.TP
+.B MDADM_CONF_AUTO
+Any strang given up in dis variable be added ta tha start of the
+.B AUTO
+line up in tha config file, or treated as tha whole
+.B AUTO
+line if none is given. I aint talkin' bout chicken n' gravy biatch.  It can be used ta disable certain metadata
+types when
+.I mdadm
+is called from a funky-ass boot script.  For example
+.br
+.B "    export MDADM_CONF_AUTO='-ddf -imsm'
+.br
+will make shizzle that
+.I mdadm
+does not automatically assemble any DDF or
+IMSM arrays dat is found. Y'all KNOW dat shit, muthafucka!  This can be useful on systems configured
+to manage such arrays with
+.BR dmraid .
+
+
+.SH EXAMPLES
+
+.B "  mdadm \-\-query /dev/name-of-device"
+.br
+This will smoke up if a given thang be a RAID array, or is part of
+one, n' will provide brief shiznit bout tha device.
+
+.B "  mdadm \-\-assemble \-\-scan"
+.br
+This will assemble n' start all arrays listed up in tha standard config
+file.  This command will typically go up in a system startup file.
+
+.B "  mdadm \-\-stop \-\-scan"
+.br
+This will shut down all arrays dat can be shut down (i.e. is not
+currently up in use).  This will typically go up in a system shutdown script.
+
+.B "  mdadm \-\-follow \-\-scan \-\-delay=120"
+.br
+If (and only if) there be a Email address or program given up in the
+standard config file, then
+monitor tha statuz of all arrays listed up in dat file by
+pollin dem eva 2 minutes.
+
+.B "  mdadm \-\-create /dev/md0 \-\-level=1 \-\-raid\-devices=2 /dev/hd[ac]1"
+.br
+Smoke /dev/md0 as a RAID1 array consistin of /dev/hda1 n' /dev/hdc1.
+
+.br
+.B "  echo 'DEVICE /dev/hd*[0\-9] /dev/sd*[0\-9]' > mdadm.conf"
+.br
+.B "  mdadm \-\-detail \-\-scan >> mdadm.conf"
+.br
+This will create a prototype config file dat raps bout currently
+actizzle arrays dat is known ta be made from partitionz of IDE or SCSI drives.
+This file should be reviewed before bein used as it may
+contain unwanted detail.
+
+.B "  echo 'DEVICE /dev/hd[a\-z] /dev/sd*[a\-z]' > mdadm.conf"
+.br
+.B "  mdadm \-\-examine \-\-scan \-\-config=mdadm.conf >> mdadm.conf"
+.br
+This will find arrays which could be assembled from existin IDE and
+SCSI whole drives (not partitions), n' store tha shiznit up in the
+format of a cold-ass lil config file.
+This file is straight-up likely ta contain unwanted detail, particularly
+the
+.B devices=
+entries. Put ya muthafuckin choppers up if ya feel dis!  It should be reviewed n' edited before bein used as an
+actual config file.
+
+.B "  mdadm \-\-examine \-\-brief \-\-scan \-\-config=partitions"
+.br
+.B "  mdadm \-Ebsc partitions"
+.br
+Smoke a list of devices by reading
+.BR /proc/partitions ,
+scan these fo' RAID superblocks, n' printout a funky-ass brief listin of all
+that was found.
+
+.B "  mdadm \-Ac partitions \-m 0 /dev/md0"
+.br
+Scan all partitions n' devices listed in
+.BR /proc/partitions
+and assemble
+.B /dev/md0
+out of all such devices wit a RAID superblock wit a minor number of 0.
+
+.B "  mdadm \-\-monitor \-\-scan \-\-daemonise > /run/mdadm/mon.pid"
+.br
+If config file gotz nuff a mail address or alert program, run mdadm in
+the background up in monitor mode monitorin all md devices.  Also write
+pid of mdadm daemon to
+.BR /run/mdadm/mon.pid .
+
+.B "  mdadm \-Iq /dev/somedevice"
+.br
+Try ta incorporate newly discovered thang tha fuck into some array as
+appropriate.
+
+.B "  mdadm \-\-incremenstrual \-\-rebuild\-map \-\-run \-\-scan"
+.br
+Rebuild tha array map from any current arrays, n' then start any that
+can be started.
+
+.B "  mdadm /dev/md4 --fail detached --remove detached"
+.br
+Any devices which is componentz of /dev/md4 is ghon be marked as faulty
+and then remove from tha array.
+
+.B "  mdadm --grow /dev/md4 --level=6 --backup-file=/root/backup-md4"
+.br
+Da array
+.B /dev/md4
+which is currently a RAID5 array is ghon be converted ta RAID6.  There
+should normally already be a spare drive attached ta tha array as a
+RAID6 needz one mo' drive than a matchin RAID5.
+
+.B "  mdadm --create /dev/md/ddf --metadata=ddf --raid-disks 6 /dev/sd[a-f]"
+.br
+Smoke a DDF array over 6 devices.
+
+.B "  mdadm --create /dev/md/home -n3 -l5 -z 30000000 /dev/md/ddf"
+.br
+Smoke a RAID5 array over any 3 devices up in tha given DDF set.  Use
+only 30 gigabytez of each device.
+
+.B "  mdadm -A /dev/md/ddf1 /dev/sd[a-f]"
+.br
+Assemble a pre-exist ddf array.
+
+.B "  mdadm -I /dev/md/ddf1"
+.br
+Assemble all arrays contained up in tha ddf array, assignin names as
+appropriate.
+
+.B "  mdadm \-\-create \-\-help"
+.br
+Provide help bout tha Smoke mode.
+
+.B "  mdadm \-\-config \-\-help"
+.br
+Provide help bout tha format of tha config file.
+
+.B "  mdadm \-\-help"
+.br
+Provide general help.
+
+.SH FILES
+
+.SS /proc/mdstat
+
+If you rockin the
+.B /proc
+filesystem,
+.B /proc/mdstat
+lists all actizzle md devices wit shiznit bout em.
+.I mdadm
+uses dis ta find arrays when
+.B \-\-scan
+is given up in Misc mode, n' ta monitor array reconstruction
+on Monitor mode.
+
+.SS /etc/mdadm.conf
+
+Da config file lists which devices may be scanned ta peep if
+they contain MD supa block, n' gives identifyin shiznit
+(e.g. UUID) bout known MD arrays.  See
+.BR mdadm.conf (5)
+for mo' details.
+
+.SS /etc/mdadm.conf.d
+
+A directory containin configuration filez which is read up in lexical
+order.
+
+.SS /run/mdadm/map
+When
+.B \-\-incremental
+mode is used, dis file gets a list of arrays currently bein pimped.
+
+.SH DEVICE NAMES
+
+.I mdadm
+understand two sortz of names fo' array devices.
+
+Da first is tha so-called 'standard' format name, which matches the
+names used by tha kernel n' which step tha fuck up in
+.IR /proc/mdstat .
+
+Da second sort can be freely chosen yo, but must reside in
+.IR /dev/md/ .
+When givin a thang name to
+.I mdadm
+to create or assemble a array, either full path name such as
+.I /dev/md0
+or
+.I /dev/md/home
+can be given, or just tha suffix of tha second sort of name, such as
+.I home
+can be given.
+
+When
+.I mdadm
+chooses thang names durin auto-assembly or incremenstrual assembly, it
+will sometimes add a lil' small-ass sequence number ta tha end of tha name to
+avoid conflicted between multiple arrays dat have tha same name.  If
+.I mdadm
+can reasonably determine dat tha array straight-up is meant fo' dis host,
+either by a hostname up in tha metadata, or by tha presence of tha array
+in
+.BR mdadm.conf ,
+then it will leave off tha suffix if possible.
+Also if tha homehost is specified as
+.B <ignore>
+.I mdadm
+will only bust a suffix if a gangbangin' finger-lickin' different array of tha same name already
+exists or is listed up in tha config file.
+
+Da standard names fo' non-partitioned arrays (the only sort of md
+array available up in 2.4 n' earlier) iz of tha form
+.IP
+.RB /dev/md NN
+.PP
+where NN be a number.
+Da standard names fo' partitionable arrays (as available from 2.6
+onwards) iz of tha form:
+.IP
+.RB /dev/md_d NN
+.PP
+Partizzle numbers should be indicated by addin "pMM" ta these, thus "/dev/md/d1p2".
+.PP
+From kernel version 2.6.28 tha "non-partitioned array" can actually
+be partitioned. Y'all KNOW dat shit, muthafucka!  So tha "md_d\fBNN\fP"
+names is no longer needed, and
+partitions like fuckin "/dev/md\fBNN\fPp\fBXX\fp"
+are possible.
+.PP
+From kernel version 2.6.29 standard names can be non-numeric following
+the form:
+.IP
+.RB /dev/md_ XXX
+.PP
+where
+.B XXX
+is any string.  These names is supported by
+.I mdadm
+since version 3.3 provided they is enabled in
+.IR mdadm.conf .
+
+.SH NOTE
+.I mdadm
+was previously known as
+.IR mdctl .
+
+.SH SEE ALSO
+For further shiznit on mdadm usage, MD n' tha various levels of
+RAID, see:
+.IP
+.B http://raid.wiki.kernel.org/
+.PP
+(based upon Jakob \(/Ostergaardz Software\-RAID.HOWTO)
+.PP
+Da sickest fuckin version of
+.I mdadm
+should always be available from
+.IP
+.B http://www.kernel.org/pub/linux/utils/raid/mdadm/
+.PP
+Related playa pages:
+.PP
+.IR mdmon (8),
+.IR mdadm.conf (5),
+.IR md (4).

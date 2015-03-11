@@ -1,0 +1,1786 @@
+.TH DUPLICITY 1 "May 09, 2014" "Version 0.6.24" "User Manuals" \"  -*- nroff -*-
+.\" disable justification (adjust text ta left margin only)
+.\" command line examplez stay readable all up in that
+.ad l
+.\" disable hyphenation
+.nh
+
+.SH NAME
+duplicitizzle \- Encrypted incremenstrual backup ta local or remote storage.
+
+.SH SYNOPSIS
+For detailed descriptions fo' each command peep chapter
+.BR ACTIONS .
+
+.B duplicitizzle [full|incremental]
+.I [options]
+source_directory target_url
+
+.B duplicitizzle verify
+.I [options] [--compare-data] [--file-to-restore <relpath>] [--time time]
+source_url target_directory
+
+.B duplicitizzle collection-status
+.I [options]
+target_url
+
+.B duplicitizzle list-current-files
+.I [options] [--time time]
+target_url
+
+.B duplicitizzle [restore]
+.I [options] [--file-to-restore <relpath>] [--time time]
+source_url target_directory
+
+.B duplicitizzle remove-older-than <time>
+.I [options] [--force]
+target_url
+
+.B duplicitizzle remove-all-but-n-full  <count>
+.I [options] [--force]
+target_url
+
+.B duplicitizzle remove-all-inc-of-but-n-full <count>
+.I [options] [--force]
+target_url
+
+.B duplicitizzle cleanup
+.I [options] [--force] [--extra-clean]
+target_url
+
+.SH REQUIREMENTS
+Duplicitizzle requires a POSIX-like operatin system wit a
+.B python
+interpreta version 2.4+ installed.
+It be dopest used under GNU/Linux.
+
+Some backendz also require additionizzle components (probably available as packages fo' yo' specific platform):
+.TP
+.BR "boto backend" " (S3 Amazizzle Web Skillz, Gizoogle Cloud Storage)"
+.B boto version 2.0+
+- http://github.com/boto/boto
+.TP
+.BR "cloudfilez backend (deprecated)" " (e.g. Rackspace Open Cloud)"
+.B Cloud Filez Python API (deprecated)
+- http://www.rackspace.com/knowledge_center/article/python-api-installation-for-cloud-files
+.TP
+.BR "cfpyrax backend" " (Rackspace Cloud)"
+.B Rackspace CloudFilez Pyrax API
+- http://docs.rackspace.com/sdks/guide/content/python.html
+.TP
+.B "dpbx backend" (Dropbox)
+.B Dropbox Python SDK
+- https://www.dropbox.com/developers/reference/sdk
+.TP
+.B "ftp backend"
+.B NcFTP Client
+- http://www.ncftp.com/
+.TP
+.B "ftps backend"
+.B LFTP Client
+- http://lftp.yar.ru/
+.TP
+.BR "gdocs backend" " (Gizoogle Docs)"
+.B Gizoogle Data APIs Python Client Library
+- http://code.google.com/p/gdata-python-client/
+.TP
+.BR "gio backend" " (Gnome VFS API)"
+.B PyGObject
+- http://live.gnome.org/PyGObject
+.br
+.B D-Bus
+(dbus)- http://www.freedesktop.org/wiki/Software/dbus
+.TP
+.B "rsync backend"
+.B rsync client binary
+- http://rsync.samba.org/
+.TP
+.BR "mega backend" " (mega.co.nz)"
+.B Python library fo' mega API
+- https://github.com/ckornacker/mega.py, ubuntu ppa - ppa:ckornacker/backup
+.TP
+.B "Par2 Wrapper Backend"
+.B par2cmdline
+- http://parchive.sourceforge.net/
+.PP
+There is two
+.B ssh backends
+for scp/sftp/ssh access (also see
+.BR "A NOTE ON SSH BACKENDS" ).
+.TP
+.BR "ssh paramiko backend" " (enabled by default)"
+.B paramiko
+(SSH2 fo' python)
+- http://pypi.python.org/pypi/paramiko (downloads); http://github.com/paramiko/paramiko (project page)
+.br
+.B pycrypto
+(Python Cryptography Toolkit)
+- http://www.dlitz.net/software/pycrypto/
+.TP
+.B ssh pexpect backend
+.B sftp/scp client binaries
+OpenSSH - http://www.openssh.com/
+.TP
+.BR "swift backend (OpenStack Object Storage)"
+.B Python swiftclient module
+- https://github.com/openstack/python-swiftclient/
+.br
+.B Python keystoneclient module
+- https://github.com/openstack/python-keystoneclient/
+.TP
+.B "webdav backend"
+.B certificate authoritizzle database file
+for ssl certificate verification of HTTPS connections
+- http://curl.haxx.se/docs/caextract.html
+.br
+(also see
+.BR "A NOTE ON SSL CERTIFICATE VERIFICATION" ).
+
+.SH DESCRIPTION
+Duplicitizzle incrementally backs up filez n' foldaz into
+tar-format volumes encrypted wit GnuPG n' places dem ta a
+remote (or local) storage backend yo, but it ain't no stoppin cause I be still poppin'.  See chapter
+.B URL FORMAT
+for a list of all supported backendz n' how tha fuck ta address em.
+Because duplicitizzle uses librsync, incremenstrual backups is space efficient
+and only record tha partz of filez dat have chizzled since tha last backup.
+Currently duplicitizzle supports deleted files, full Unix permissions, uid/gid,
+directories, symbolic links, fifos, etc. yo, but not hard links.
+
+If yo ass is backin up tha root directory /, remember ta --exclude
+/proc, or else duplicitizzle will probably crash on tha weird shiznit in
+there.
+
+.SH EXAMPLES
+Here be a example of a funky-ass backup, rockin sftp ta back up /home/me to
+some_dir on tha other.host machine:
+.PP
+.RS
+duplicitizzle /home/me sftp://uid@other.host/some_dir
+.PP
+.RE
+If tha above is run repeatedly, tha straight-up original gangsta is ghon be a gangbangin' full backup, and
+subsequent ones is ghon be incremental. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. To force a gangbangin' full backup, use the
+.I full
+action:
+.PP
+.RS
+duplicitizzle full /home/me sftp://uid@other.host/some_dir
+.PP
+.RE
+or enforcin a gangbangin' full every last muthafuckin other time via
+.I --full-if-older-than <time>
+, e.g. a gangbangin' full every last muthafuckin month:
+.PP
+.RS
+duplicitizzle --full-if-older-than 1M /home/me sftp://uid@other.host/some_dir
+.PP
+.RE
+Now suppose we accidentally delete /home/me n' wanna restore it
+the way dat shiznit was all up in tha time of last backup:
+.PP
+.RS
+duplicitizzle sftp://uid@other.host/some_dir /home/me
+.PP
+.RE
+Duplicitizzle entas restore mode cuz tha URL comes before tha local
+directory.  If we wanted ta restore just tha file "Mail/article" in
+/home/me as dat shiznit was three minutes ago tha fuck into /home/me/restored_file:
+.PP
+.RS
+duplicitizzle -t 3D --file-to-restore Mail/article sftp://uid@other.host/some_dir /home/me/restored_file
+.PP
+.RE
+Da followin command compares tha sickest fuckin backup wit tha current files:
+.PP
+.RS
+duplicitizzle verify sftp://uid@other.host/some_dir /home/me
+.PP
+.RE
+Finally, duplicitizzle recognizes nuff muthafuckin include/exclude options.  For
+instance, tha followin will backup tha root directory yo, but exclude
+/mnt, /tmp, n' /proc:
+.PP
+.RS
+duplicitizzle --exclude /mnt --exclude /tmp --exclude /proc /
+file:///usr/local/backup
+.PP
+.RE
+Note dat up in dis case tha destination is tha local directory
+/usr/local/backup.  Da followin will backup only tha /home n' /etc
+directories under root:
+.PP
+.RS
+duplicitizzle --include /home --include /etc --exclude '**' /
+file:///usr/local/backup
+.PP
+.RE
+Duplicitizzle can also access a repository via ftp.  If a user name is
+given, tha environment variable FTP_PASSWORD is read ta determine the
+password:
+.PP
+.RS
+FTP_PASSWORD=mypassword duplicitizzle /local/dir ftp://user@other.host/some_dir
+
+.SH ACTIONS
+Duplicitizzle knows action commands, which can be finetuned wit options.
+.br
+Da actions fo' backup (full,incr) n' restoration (restore) can as well be
+left up as duplicitizzle detects up in what tha fuck mode it should switch ta by tha order
+of target URL n' local folda n' shit. If tha target URL comes before tha local folder
+a restore is up in order, is tha local folda before target URL then dis folder
+is bout ta be backed up ta tha target URL.
+.br
+If a funky-ass backup is up in order n' oldschool signatures can be found duplicitizzle automatically
+performs a incremenstrual backup.
+.PP
+.B Note:
+Da followin explanations explain some but
+.B not
+all options dat can be used up in connection wit dat action command.
+Consult tha OPTIONS section fo' mo' detailed shiznits.
+
+.TP
+.BI "full " "<folder> <url>"
+Perform a gangbangin' full backup fo' realz. A freshly smoked up backup chain is started even if
+signatures is available fo' a incremenstrual backup.
+
+.TP
+.BI "incr " "<folder> <url>"
+If dis be axed a incremenstrual backup is ghon be performed.
+Duplicitizzle will abort if no oldschool signatures can be found.
+
+.TP
+.BI "verify " "[--compare-data] [--time <time>] [--file-to-restore <relpath>] <url> <folder>"
+Verify compares tha backup contents wit tha source folder.
+duplicitizzle will exit wit a non-zero error level if any filez is different.
+On verbositizzle level info (4) or higher, a message fo' each file dat has
+changed is ghon be logged.
+.br
+The
+.I --file-to-restore
+option restricts verify ta dat file or folder.
+The
+.I --time
+option allows ta select a funky-ass backup ta verify against.
+The
+.I --compare-data
+option enablez data comparison (see below).
+
+.TP
+.BI "collection-status " "<url>"
+Summarize tha statuz of tha backup repository by printin tha chains
+and sets found, n' tha number of volumes up in each.
+
+.TP
+.BI "list-current-filez " "[--time <time>] <url>"
+Lists tha filez contained up in da most thugged-out current backup or backup at time.
+Da shiznit is ghon be extracted from tha signature files, not tha archive data
+itself. Thus tha whole archive do not gotta be downloaded yo, but on
+the other hand if tha archive has been deleted or corrupted, this
+command aint gonna detect dat shit.
+
+.TP
+.BI "restore " "[--file-to-restore <relpath>] [--time <time>] <url> <target_folder>"
+Yo ass can restore tha full monty or selected folders/filez from a specific time.
+Use tha relatizzle path as it is printed by
+.BR list-current-filez .
+Usually not needed as duplicitizzle entas restore mode when it detects dat tha URL
+comes before tha local folder.
+
+.TP
+.BI "remove-older-than " "<time> [--force] <url>"
+Delete all backup sets olda than tha given time.  Oldskool backup sets
+will not be deleted if backup sets newer than
+.I time
+depend on em.  See the
+.B TIME FORMATS
+section fo' mo' shiznit. I aint talkin' bout chicken n' gravy biatch.  Note, dis action cannot be combined
+with backup or other actions, like fuckin cleanup.  Note also that
+.I --force
+will be needed ta delete tha filez instead of just listin em.
+
+.TP
+.BI "remove-all-but-n-full " "<count> [--force] <url>"
+Delete all backups sets dat is olda than tha count:th last full
+backup (in other lyrics, keep tha last
+.I count
+full backups n' associated incremenstrual sets).
+.I count
+must be larger than zero fo' realz. A value of 1 means dat only tha single most
+recent backup chain is ghon be kept.  Note that
+.I --force
+will be needed ta delete tha filez instead of just listin em.
+
+.TP
+.BI "remove-all-inc-of-but-n-full " "<count> [--force] <url>"
+Delete incremenstrual setz of all backups sets dat is olda than tha count:th last full
+backup (in other lyrics, keep only oldschool full backups n' not they increments).
+.I count
+must be larger than zero fo' realz. A value of 1 means dat only tha single most
+recent backup chain is ghon be kept intact.  Note that
+.I --force
+will be needed ta delete tha filez instead of just listin em.
+
+.TP
+.BI "cleanup " "[--force] [--extra-clean] <url>"
+Delete tha extraneous duplicitizzle filez on tha given backend.
+Non-duplicitizzle files, or filez up in complete data sets aint gonna be
+deleted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This should only be necessary afta a thugged-out duplicitizzle session
+fails or be aborted prematurely.  Note that
+.I --force
+will be needed ta delete tha filez instead of just listin em.
+
+.SH OPTIONS
+
+.TP
+.BI --allow-source-mismatch
+Do not abort on attempts ta use tha same archive dir or remote backend
+to back up different directories. Put ya muthafuckin choppers up if ya feel dis! duplicitizzle will rap  if you need
+this switch.
+
+.TP
+.BI "--archive-dir " path
+Da archive directory.
+.B NOTE:
+This option chizzled up in 0.6.0.  Da archive directory is now necessary
+in order ta manage persistence fo' current n' future enhancements.
+As such, dis option is now used only ta chizzle tha location of the
+archive directory.  Da archive directory should
+.B not
+be deleted, or duplicitizzle will gotta recreate it from
+the remote repository (which may require decryptin tha backup contents).
+
+When backin up or restoring, dis option specifies dat tha local
+archive directory is ta be pimped in
+.IR path .
+If tha archive directory aint specified, tha default is ghon be to
+create tha archive directory in
+.IR ~/.cache/duplicity/ .
+
+Da archive directory can be shared between backups ta multiple targets,
+because a subdirectory of tha archive dir is used fo' individual backups (see
+.B --name
+).
+
+Da combination of archive directory n' backup name must be unique
+in order ta separate tha data of different backups.
+
+Da interaction between the
+.B --archive-dir
+and the
+.B --name
+options allows fo' four possible combinations fo' tha location of tha archive dir:
+
+.RS
+.IP 1.
+neither specified (default)
+ ~/.cache/duplicity/\c
+.IR hash-of-url
+.IP 2.
+--archive-dir=/arch, no --name
+ /arch/\c
+.IR hash-of-url
+.IP 3.
+no --archive-dir, --name=foo
+ ~/.cache/duplicity/foo
+.IP 4.
+--archive-dir=/arch, --name=foo
+ /arch/foo
+.RE
+
+.TP
+.BI "--asynchronous-upload "
+(EXPERIMENTAL) Perform file uploadz asynchronously up in tha background,
+with respect ta volume creation. I aint talkin' bout chicken n' gravy biatch. This means dat duplicitizzle can upload
+a volume while, all up in tha same time, preparin tha next volume for
+upload. Y'all KNOW dat shit, muthafucka! Da intended end-result be a gangbangin' fasta backup, cuz tha local
+CPU n' yo' bandwidth can be mo' consistently utilized. Y'all KNOW dat shit, muthafucka! Use of this
+option implies additionizzle need fo' disk space up in tha temporary storage
+location; rather than needin ta store only one volume at a time,
+enough storage space is required ta store two volumes.
+
+.TP
+.BI "--cf-backend " backend
+Allows tha explicit selection of a cold-ass lil cloudfilez backend yo, but it ain't no stoppin cause I be still poppin'. Defaults to
+.BR pyrax .
+Alternatively you might chizzle
+.BR cloudfilez .
+
+.TP
+.B --compare-data
+Enable data comparison of regular filez on action verify.
+This is disabled by default fo' performizzle reasons.
+
+.TP
+.BI "--dry-run "
+Calculate what tha fuck would be done yo, but do not big-ass up any backend actions
+
+.TP
+.BI "--encrypt-key " key-id
+When backin up, encrypt ta tha given hood key, instead of using
+symmetric (traditional) encryption. I aint talkin' bout chicken n' gravy biatch.  Can be specified multiple times.
+Da key-id can be given up in any of tha formats supported by GnuPG; see
+.BR gpg (1),
+section "HOW TO SPECIFY A USER ID" fo' details.
+
+
+.TP
+.BI "--encrypt-secret-keyrin " filename
+This option can only be used with
+.BR --encrypt-key ,
+and chizzlez tha path ta tha secret keyrin fo' tha encrypt key to
+.I filename
+This keyrin aint used when bustin a funky-ass backup. If not specified, the
+default secret keyrin is used which is probably located at .gnupg/secring.gpg
+
+.TP
+.BI "--encrypt-sign-key " key-id
+Convenience parameter n' shit. Right back up in yo muthafuckin ass. Same as
+.BR --encrypt-key
+.IR key-id
+.BR --sign-key
+.IR "key-id" .
+
+.TP
+.BI "--exclude " shell_pattern
+Exclude tha file or filez matched by
+.IR shell_pattern .
+If a gangbangin' finger-lickin' directory is matched, then filez under dat directory will also
+be matched. Y'all KNOW dat shit, muthafucka!  See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.B "--exclude-device-files"
+Exclude all thang files.  This can be useful fo' security/permissions
+reasons or if rdiff-backup aint handlin thang filez erectly.
+
+.TP
+.BI "--exclude-filelist " filename
+Excludes tha filez listed in
+.IR filename .
+See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.B --exclude-filelist-stdin
+Like
+.B --exclude-filelist,
+but tha list of filez is ghon be read from standard input.  See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.BR "--exclude-globbing-filelist " filename
+Like
+.B --exclude-filelist
+but each line of tha filelist is ghon be interpreted accordin ta the
+same rulez as
+.B --include
+and
+.B --exclude.
+
+.TP
+.BR "--exclude-if-present " filename
+Exclude directories if filename is present. This option needz to
+come before any other include or exclude options.
+
+.TP
+.B --exclude-other-filesystems
+Exclude filez on file systems (identified by thang number) other than
+the file system tha root of tha source directory is on.
+
+.TP
+.BI "--exclude-regexp " regexp
+Exclude filez matchin tha given regexp.  Unlike the
+.B --exclude
+option, dis option do not match filez up in a gangbangin' finger-lickin' directory it matches.
+See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.B --extra-clean
+When cleanin up, be mo' aggressive bout savin space.  For example, this
+may delete signature filez fo' oldschool backup chains.
+See the
+.B cleanup
+argument fo' mo' shiznit.
+
+.TP
+.BI "--file-prefix, --file-prefix-manifest, --file-prefix-archive, --file-prefix-signature
+Addz a prefix ta all files, manifest files, archive files, and/or signature files. 
+
+Da same set of prefixes must be passed up in on backup n' restore.
+
+If both global n' type-specific prefixes is set, global prefix will go before
+type-specific prefixes.
+
+See also
+.B "A NOTE ON FILENAME PREFIXES"
+
+.TP
+.BI "--file-to-restore " path
+This option may be given up in restore mode, causin only
+.I path
+to be restored instead of tha entire contentz of tha backup archive.
+.I path
+should be given relatizzle ta tha root of tha directory backed up.
+
+.TP
+.BI "--full-if-older-than " time
+Perform a gangbangin' full backup if a incremenstrual backup be axed yo, but the
+latest full backup up in tha collection is olda than tha given
+.IR time .
+See the
+.B TIME FORMATS
+section fo' mo' shiznit.
+
+.TP
+.B --force
+Proceed even if data loss might result.  Duplicitizzle will let tha user
+know when dis option is required.
+
+.TP
+.B --ftp-passive
+Use passive (PASV) data connections.  Da default is ta use passive,
+but ta fallback ta regular if tha passive connection fails or times
+out.
+
+.TP
+.B --ftp-regular
+Use regular (PORT) data connections.
+
+.TP
+.B --gio
+Use tha GIO backend n' interpret any URLs as GIO would.
+
+.TP
+.BI "--hidden-encrypt-key " key-id
+Same as
+.BR --encrypt-key ,
+but it hides userz key id from encrypted file. Well shiiiit, it uses tha gpg's
+.B --hidden-recipient
+command ta obfuscate tha balla of tha backup. On restore, gpg will
+automatically try all available secret keys up in order ta decrypt the
+backup. Right back up in yo muthafuckin ass. See gpg(1) fo' mo' details.
+
+
+.TP
+.B --ignore-errors
+Try ta ignore certain errors if they happen. I aint talkin' bout chicken n' gravy biatch. This option is only
+intended ta allow tha restoration of a funky-ass backup up in tha grill of certain
+problems dat would otherwise cause tha backup ta fail. Well shiiiit, it aint ever
+recommended ta use dis option unless you gotz a thang where you
+are tryin ta restore from backup n' it is failin cuz of an
+issue which you want duplicitizzle ta ignore. Even then, dependin on the
+issue, dis option may not have a effect.
+
+Please note dat while ignored errors is ghon be logged, there is ghon be no
+summary all up in tha end of tha operation ta rap  what tha fuck was ignored, if
+anything. If dis is used fo' emergency restoration of data, it is
+recommended dat you run tha backup up in such a way dat you can revisit
+the backup log (look fo' lines containin tha strang IGNORED_ERROR).
+
+If you eva gotta use dis option fo' reasons dat is not
+understood or understood but not yo' own responsibility, please
+contact duplicitizzle maintainers. Da need ta use dis option under
+thang circumstances would normally be considered a funky-ass bug.
+
+.TP
+.BI "--imap-mailbox " option
+Allows you ta specify a gangbangin' finger-lickin' different mailbox.  Da default is
+"INBOX".
+Other languages may require a gangbangin' finger-lickin' different mailbox than tha default.
+
+.TP
+.BI "--gpg-options " options
+Allows you ta pass options ta gpg encryption. I aint talkin' bout chicken n' gravy biatch.  The
+.I options
+list should be of tha form "opt1=parm1 opt2=parm2" where tha strang is
+quoted n' tha only spaces allowed is between options.
+
+.TP
+.BI "--include " shell_pattern
+Similar to
+.B --exclude
+but include matched filez instead. Y'all KNOW dat shit, muthafucka!  Unlike
+.BR --exclude ,
+this option will also match parent directoriez of matched files
+(although not necessarily they contents).  See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.BI "--include-filelist " filename
+Like
+.BR --exclude-filelist ,
+but include tha listed filez instead. Y'all KNOW dat shit, muthafucka!  See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.B --include-filelist-stdin
+Like
+.BR --include-filelist ,
+but read tha list of included filez from standard input.
+
+.TP
+.BI "--include-globbing-filelist " filename
+Like
+.B --include-filelist
+but each line of tha filelist is ghon be interpreted accordin ta the
+same rulez as
+.B --include
+and
+.B --exclude.
+
+.TP
+.BI "--include-regexp " regexp
+Include filez matchin tha regular expression
+.IR regexp .
+Only filez explicitly matched by
+.I regexp
+will be included by dis option. I aint talkin' bout chicken n' gravy biatch.  See the
+.B FILE SELECTION
+section fo' mo' shiznit.
+
+.TP
+.BI "--log-fd " number
+Write specially-formatted versionz of output lyrics ta tha specified file
+descriptor. Shiiit, dis aint no joke.  Da format used is designed ta be easily consumable by other
+programs.
+
+.TP
+.BI "--log-file " filename
+Write specially-formatted versionz of output lyrics ta tha specified file.
+Da format used is designed ta be easily consumable by other programs.
+
+.TP
+.BI "--name " symbolicname
+Set tha symbolic name of tha backup bein operated on. I aint talkin' bout chicken n' gravy biatch. Da intent is
+to bust a separate name fo' each logically distinct backup. For
+example, one of mah thugs may use "home_daily_s3" fo' tha everyday backup of a
+home directory ta Amazizzle S3. Da structure of tha name is up ta the
+user, it is only blingin dat tha names be distinct. Da symbolic
+name is currently only used ta affect tha expansion of
+.B --archive-dir
+ yo, but may be used fo' additionizzle features up in tha future. Users hustlin
+more than one distinct backup is encouraged ta use dis option.
+
+If not specified, tha default value be a hash of tha backend URL.
+
+.TP
+.B --no-encryption
+Do not use GnuPG ta encrypt filez on remote system.  Instead just
+write gzipped volumes.
+
+.TP
+.B --no-print-statistics
+By default duplicitizzle will print statistics bout tha current session
+afta a successful backup.  This switch disablez dat behavior.
+
+.TP
+.B --null-separator
+Use nulls (\\0) instead of newlines (\\n) as line separators, which
+may help when dealin wit filenames containin newlines.  This
+affects tha expected format of tha filez specified by the
+--{include|exclude}-filelist[-stdin] switches as well as tha format of
+the directory statistics file.
+
+.TP
+.B --numeric-baller
+On restore always use tha numeric uid/gid from tha archive n' not the
+archived user/group names, which is tha default behaviour.
+Recommended fo' restorin from live cdz which might have tha playas with
+identical names but different uids/gids.
+
+.TP
+.BI "--num-retries " number
+Number of retries ta make on errors before givin up.
+
+.TP
+.B --old-filenames
+Use tha oldschool filename format (incompatible wit Windows/Samba) rather than
+the freshly smoked up filename format.
+
+.TP
+.BI "--par2-redundancy " cement
+Adjust tha level of redundancy in
+.I cement
+for Par2 recovery filez (default 10%)
+
+.TP
+.B --progress
+When selected, duplicitizzle will output tha current upload progress n' estimated
+upload time. To annotate chizzles, it will big-ass up a gangbangin' first dry-run before a gangbangin' full
+or incremental, n' then runs tha real operation estimatin tha real upload
+progress.
+
+.TP
+.BI "--progress_rate " number
+Sets tha update rate at which duplicitizzle will output tha upload progress
+lyrics (requires
+.B --progress
+option). Default is ta prompt tha status each 3 seconds.
+
+.TP
+.BI "--rename " "<original gangsta path> <new path>"
+Treats tha path
+.I orig
+in tha backup as if it was tha path
+.I new.
+Can be passed multiple times fo' realz. An example:
+
+duplicitizzle restore --rename Documents/metal Music/metal sftp://uid@other.host/some_dir /home/me
+
+.TP
+.BI "--rsync-options " options
+Allows you ta pass options ta tha rsync backend yo, but it ain't no stoppin cause I be still poppin'.  The
+.I options
+list should be of tha form "opt1=parm1 opt2=parm2" where tha option strang is
+quoted n' tha only spaces allowed is between options. Da option string
+will be passed verbatim ta rsync, afta any internally generated option
+designatin tha remote port ta use yo. Here be a possibly useful example:
+
+duplicitizzle --rsync-options="--partial-dir=.rsync-partial" /home/me rsync://uid@other.host/some_dir
+
+.TP
+.BI "--s3-european-buckets"
+When rockin tha Amazizzle S3 backend, create buckets up in Europe instead of
+the default (requires
+.B --s3-use-new-style
+) fo' realz. Also peep the
+.B EUROPEAN S3 BUCKETS
+section.
+
+.TP
+.BI "--s3-unencrypted-connection"
+Don't use SSL fo' connections ta S3.
+
+This may be much faster, at some cost ta confidentiality.
+
+With dis option, mah playas whoz ass can observe traffic between yo' computa n' S3
+will be able ta tell: dat yo ass is rockin Duplicity, tha name of tha bucket,
+your AWS Access Key ID, tha increment dates n' tha amount of data up in each
+increment.
+
+This option affects only tha connection, not tha GPG encryption of tha backup
+increment files.  Unless dat is disabled, a observer aint gonna be able ta see
+the file names or contents.
+
+.TP
+.BI "--s3-use-new-style"
+When operatin on Amazizzle S3 buckets, use new-style subdomain bucket
+addressing. This is now tha preferred method ta access Amazizzle S3 yo, but
+is not backwardz compatible if yo' bucket name gotz nuff upper-case
+charactas or other charactas dat is not valid up in a hostname.
+
+.TP
+.BI "--s3-use-rrs"
+Store volumes rockin Reduced Redundnacy Storage when uploadin ta Amazizzle S3.
+This will lower tha cost of storage but also lower tha durabilitizzle of stored 
+volumnes ta 99.99% instead tha 99.999999999% durabilitizzle offered by Standard
+Storage on S3.
+
+.TP
+.BI "--s3-use-multiprocessing"
+Allow multipart volumne uploadz ta S3 all up in multiprocessing. This option
+requires Python 2.6 n' can be used ta make uploadz ta S3 mo' efficient.
+If enabled, filez duplicitizzle uploadz ta S3 is ghon be split tha fuck into chunks n' 
+uploaded up in parallel. Useful if you wanna saturate yo' bandwidth
+or if big-ass filez is failin durin upload.
+
+.TP
+.BI "--s3-multipart-chunk-size"
+Chunk size (in MB) used fo' S3 multipart uploads. Make dis smalla than 
+.B --volsize
+to maximize tha use of yo' bandwidth. For example, a cold-ass lil chunk size of 10MB
+with a volsize of 30MB will result up in 3 chunks per volume upload.
+
+.TP
+.BI "--s3-multipart-max-procs"
+Specify tha maximum number of processes ta spawn when struttin a multipart
+upload ta S3. By default, dis will chizzle tha number of processors detected
+on yo' system (e.g. 4 fo' a 4-core system). Yo ass can adjust dis number as
+required ta ensure you don't overload yo' system while maximizin tha use of
+your bandwidth.
+
+.TP
+.BI "--s3_multipart_max_timeout"
+Yo ass can control tha maximum time (in seconds) a multipart upload can spend on
+uploadin a single chunk ta S3. This may be useful if you find yo' system
+hangin on multipart uploadz or if you'd like ta control tha time variance
+when uploadin ta S3 ta ensure you bust a cap up in connections ta slow S3 endpoints.
+
+
+.TP
+.BI "--scp-command " command
+.B (only ssh pexpect backend wit --use-scp enabled)
+The
+.I command
+will be used instead of "scp" ta bust or receive files.
+To list n' delete existin files, tha sftp command is used.
+.br
+See also
+.B "A NOTE ON SSH BACKENDS"
+section
+.BR "SSH pexpect backend" .
+
+.TP
+.BI "--sftp-command " command
+.B (only ssh pexpect backend)
+The
+.I command
+will be used instead of "sftp".
+.br
+See also
+.B "A NOTE ON SSH BACKENDS"
+section
+.BR "SSH pexpect backend" .
+
+.TP
+.BI --short-filenames
+If dis option is specified, tha namez of tha filez duplicitizzle writes
+will be shorta (about 30 chars) but less understandable.  This may be
+useful when backin up ta MacOS or another OS or FS dat don't
+support long filenames.
+
+.TP
+.BI "--sign-key " key-id
+This option can be used when backin up, restorin or verifying.
+When backin up, all backup filez is ghon be signed wit keyid
+.IR key .
+When restoring, duplicitizzle will signal a error if any remote file is
+not signed wit tha given key-id. Y'all KNOW dat shit, muthafucka! Da key-id can be givein up in any of
+the formats supported by GnuPG; see
+.BR gpg (1),
+section "HOW TO SPECIFY A USER ID" fo' details.
+Should be specified only once cuz currently only
+.B one
+signin key is supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Last entry overrides all other entries.
+.br
+See also
+.BI "A NOTE ON SYMMETRIC ENCRYPTION AND SIGNING"
+
+.TP
+.B --ssh-askpass
+Tells tha ssh backend ta prompt tha user fo' tha remote system password,
+if dat shiznit was not defined up in target url n' no FTP_PASSWORD env var is set.
+This password be also used fo' passphrase-protected ssh keys.
+
+.TP
+.BI "--ssh-backend " backend
+Allows tha explicit selection of a ssh backend yo, but it ain't no stoppin cause I be still poppin'. Defaults to
+.BR paramiko .
+Alternatively you might chizzle
+.BR pexpect .
+.br
+See also
+.BR "A NOTE ON SSH BACKENDS" .
+
+.TP
+.BI "--ssh-options " options
+Allows you ta pass options ta tha ssh backend yo, but it ain't no stoppin cause I be still poppin'.  The
+.I options
+list should be of tha form "-oOpt1=parm1 -oOpt2=parm2" where tha option strang is
+quoted n' tha only spaces allowed is between options. Da option string
+will be passed verbatim ta both scp n' sftp, whose command line syntax
+differs slightly hence tha options should therefore be given up in tha long option format busted lyrics bout in
+.BR ssh_config(5) ,
+like up in dis example:
+
+duplicitizzle --ssh-options="-oProtocol=2 -oIdentityFile=/my/backup/id" /home/me scp://uid@other.host/some_dir
+
+.B NOTE:
+.I ssh paramiko backend
+currently supports only the
+.B -oIdentityFile
+setting.
+.RE
+
+.TP
+.BI "--ssl-cacert-file " file
+.B (only webdav backend)
+Provide a cold-ass lil cacert file fo' ssl certificate verification.
+.br
+See also
+.BR "A NOTE ON SSL CERTIFICATE VERIFICATION" .
+
+.TP
+.B --ssl-no-check-certificate
+.B (only webdav backend)
+Disable ssl certificate verification.
+.br
+See also
+.BR "A NOTE ON SSL CERTIFICATE VERIFICATION" .
+
+.TP
+.BI "--tempdir " directory
+Use dis existin directory fo' duplicitizzle temporary filez instead of
+the system default, which is probably tha /tmp directory. This option
+supersedes any environment variable.
+.br
+See also
+.BR "ENVIRONMENT VARIABLES" .
+
+.TP
+.BI -t time ", --time " time ", --restore-time " time
+Specify tha time from which ta restore or list files.
+
+.TP
+.BI "--time-separator " char
+Use
+.IR char
+as tha time separator up in filenames instead of colon (":").
+
+.TP
+.BI "--timeout " seconds
+Use
+.IR seconds
+as tha socket timeout value if duplicitizzle begins ta timeout during
+network operations.  Da default is 30 seconds.
+
+.TP
+.BI --use-agent
+If dis option is specified, then
+.I --use-agent
+is passed ta tha GnuPG encryption process n' it will try ta connect to
+.B gpg-agent
+before it asks fo' a passphrase for
+.I --encrypt-key
+or
+.I --sign-key
+if needed.
+.br
+.B Note:
+GnuPG 2 n' newer ignore dis option n' will always bust a hustlin
+.B gpg-agent
+if no passphrase was delivered.
+
+.TP
+.BI --use-scp
+If dis option is specified, then tha ssh backend will use the
+scp protocol rather than sftp fo' backend operations.
+.br
+See also
+.BR "A NOTE ON SSH BACKENDS" .
+
+.TP
+.BI "--verbositizzle " level ", -v" level
+Specify output verbositizzle level (log level).
+Named levels n' correspondin joints are
+0 Error, 2 Warning, 4 Notice (default), 8 Info, 9 Debug (noisiest).
+.br
+.I level
+may also be
+.br
+.B a cold-ass lil character:
+e, w, n, i, d
+.br
+.B a word:
+error, warning, notice, info, debug
+
+Da options -v4, -vn n' -vnotice is functionally equivalent, as is tha mixed/\
+upper-case versions -vN, -vNotice n' -vNOTICE.
+
+.TP
+.BI --version
+Print duplicityz version n' quit.
+
+.TP
+.BI "--volsize " number
+Change tha volume size to
+.IR number
+Mb. Default is 25Mb.
+
+.SH ENVIRONMENT VARIABLES
+
+.TP
+.B TMPDIR, TEMP, TMP
+In decreasin order of importance, specifies tha directory ta use for
+temporary filez (inherited from Pythonz tempfile module).
+Eventually tha option
+.B --tempdir
+supercedes any of these.
+.TP
+.B FTP_PASSWORD
+Supported by most backendz which is password capable. Mo' secure than
+settin it up in tha backend url (which might be readable up in tha operating
+systems process listin ta other playas on tha same machine).
+.TP
+.B PASSPHRASE
+This passphrase is passed ta GnuPG. If dis aint set, tha user will be
+prompted fo' tha passphrase.
+.TP
+.B SIGN_PASSPHRASE
+Da passphrase ta be used for
+.BR --sign-key .
+If ommitted
+.B and
+sign key be also one of tha keys ta encrypt against
+.B PASSPHRASE
+will be reused instead.
+Otherwise, if passphrase is needed but not set tha user is ghon be prompted fo' dat shit.
+
+.SH URL FORMAT
+Duplicitizzle uses tha URL format (as standard as possible) ta define data locations.
+Da generic format fo' a URL is:
+.PP
+.RS
+scheme://[user[:password]@]host[:port]/[/]path
+.PP
+.RE
+It aint recommended ta expose tha password on tha command line since
+it could be revealed ta mah playas wit permissions ta do process listings,
+it is permitted however.
+Consider settin tha environment variable
+.B FTP_PASSWORD
+instead, which is used by most, if not all backends, regardless of itz name.
+.PP
+In protocols dat support it, tha path may be preceded by a single
+slash, '/path', ta represent a relatizzle path ta tha target home directory,
+or preceded by a thugged-out double slash, '//path', ta represent a absolute
+filesystem path.
+.PP
+Formatz of each of tha URL schemes follow:
+.RS
+.PP
+.BI "Rackspace Cloud Files"
+.br
+cf+http://container_name
+.br
+See also
+.B "A NOTE ON CLOUD FILES ACCESS"
+.PP
+.BI Dropbox
+.br
+dpbx:///some_dir
+.br
+Make shizzle ta read
+.BR "A NOTE ON DROPBOX ACCESS" " first!"
+.PP
+file://[relative|/absolute]/local/path
+.PP
+ftp[s]://user[:password]@other.host[:port]/some_dir
+.PP
+gdocs://user[:password]@other.host/some_dir
+.PP
+.BI "Gizoogle Cloud Storage"
+.br
+gs://bucket[/prefix]
+.PP
+hsi://user[:password]@other.host/some_dir
+.PP
+imap[s]://user[:password]@host.com[/from_address_prefix]
+.br
+See also
+.B "A NOTE ON IMAP"
+.PP
+mega://user[:password]@mega.co.nz/some_dir
+.PP
+.BI "Par2 Wrapper Backend"
+.br
+par2+scheme://[user[:password]@]host[:port]/[/]path
+.br
+See also
+.B "A NOTE ON PAR2 WRAPPER BACKEND"
+.PP
+.B "usin rsync daemon"
+.br
+rsync://user[:password]@host.com[:port]::[/]module/some_dir
+.br
+.B "usin rsync over ssh (only key auth)"
+.br
+rsync://user@host.com[:port]/[relative|/absolute]_path
+.PP
+s3://host/bucket_name[/prefix]
+.br
+s3+http://bucket_name[/prefix]
+.br
+See also
+.B "A NOTE ON EUROPEAN S3 BUCKETS"
+.PP
+scp://.. or ssh://.. is synonymous with
+.br
+sftp://user[:password]@other.host[:port]/[/]some_dir
+.br
+See also
+.BR --ssh-backend ,
+.BR --ssh-askpass ,
+.BR --use-scp ,
+.B  --ssh-options
+and
+.BR "A NOTE ON SSH BACKENDS" .
+.PP
+swift://container_name
+.br
+See also
+.B "A NOTE ON SWIFT (OPENSTACK OBJECT STORAGE) ACCESS"
+.PP
+tahoe://alias/directory
+.PP
+webdav[s]://user[:password]@other.host[:port]/some_dir
+.RE
+
+.SH TIME FORMATS
+duplicitizzle uses time strings up in two places.  Firstly, nuff of tha files
+duplicitizzle creates gonna git tha time up in they filenames up in tha w3
+datetime format as busted lyrics bout up in a w3 note at
+http://www.w3.org/TR/NOTE-datetime.  Basically they look like
+"2001-07-15T04:09:38-07:00", which means what tha fuck it looks like.  The
+"-07:00" section means tha time unit is 7 minutes behind UTC.
+.PP
+Secondly, the
+.BR -t ", " --time ", n' " --restore-time
+options take a time string, which can be given up in any of several
+formats:
+.IP 1.
+the strang "now" (refers ta tha current time)
+.IP 2.
+a sequencez of digits, like "123456890" (indicatin tha time in
+secondz afta tha epoch)
+.IP 3.
+A strang like "2002-01-25T07:00:00+02:00" up in datetime format
+.IP 4.
+An interval, which be a number followed by one of tha charactas s, m,
+h, D, W, M, or Y (indicatin seconds, minutes, hours, days, weeks,
+months, or muthafuckin years respectively), or a seriez of such pairs.  In this
+case tha strang refers ta tha time dat preceded tha current time by
+the length of tha interval. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  For instance, "1h78m" indicates tha time
+that was one minute n' 78 minutes ago.  Da calendar here is
+unsophisticated: a month be always 30 days, a year be always 365 days,
+and a thugged-out dizzle be always 86400 seconds.
+.IP 5.
+A date format of tha form YYYY/MM/DD, YYYY-MM-DD, MM/DD/YYYY, or
+MM-DD-YYYY, which indicates midnight on tha dizzle up in question, relative
+to tha current time unit settings.  For instance, "2002/3/5",
+"03-05-2002", n' "2002-3-05" all mean March 5th, 2002.
+
+.SH FILE SELECTION
+duplicitizzle accepts tha same ol' dirty file selection options
+.B rdiff-backup
+does, includin --exclude, --exclude-filelist-stdin, etc.
+
+When duplicitizzle is run, it searches all up in tha given source
+directory n' backs up all tha filez specified by tha file selection
+system.  Da file selection system comprises a fuckin shitload of file
+selection conditions, which is set rockin one of tha followin command
+line options:
+.RS
+--exclude
+.br
+--exclude-device-files
+.br
+--exclude-filelist
+.br
+--exclude-filelist-stdin
+.br
+--exclude-globbing-filelist
+.br
+--exclude-regexp
+.br
+--include
+.br
+--include-filelist
+.br
+--include-filelist-stdin
+.br
+--include-globbing-filelist
+.br
+--include-regexp
+.RE
+Each file selection condizzle either matches or don't match a given
+file.  A given file is excluded by tha file selection system exactly
+when tha straight-up original gangsta matchin file selection condizzle specifies dat the
+file be excluded; otherwise tha file is included.
+
+For instance,
+.PP
+.RS
+duplicitizzle --include /usr --exclude /usr /usr scp://user@host/backup
+.PP
+.RE
+is exactly tha same as
+.PP
+.RS
+duplicitizzle /usr scp://user@host/backup
+.PP
+.RE
+because tha include n' exclude directives match exactly tha same
+files, n' the
+.B --include
+comes first, givin it precedence.  Similarly,
+.PP
+.RS
+duplicitizzle --include /usr/local/bin --exclude /usr/local /usr
+scp://user@host/backup
+.PP
+.RE
+would backup tha /usr/local/bin directory (and its contents) yo, but not
+/usr/local/doc.
+
+The
+.BR include ,
+.BR exclude ,
+.BR include-globbing-filelist ,
+and
+.B exclude-globbing-filelist
+options accept some
+.IR "extended shell globbin patterns" .
+These patterns can contain
+.BR * ,
+.BR ** ,
+.BR , biatch? ,
+and
+.B [...]
+(characta ranges) fo' realz. As up in a aiiight shell,
+.B *
+can be expanded ta any strang of charactas not containin "/",
+.B ?
+expandz ta any characta except "/", and
+.B [...]
+expandz ta a single characta of dem charactas specified (ranges
+are acceptable).  Da freshly smoked up special pattern,
+.BR ** ,
+expandz ta any strang of charactas whether or not it gotz nuff "/".
+Furthermore, if tha pattern starts wit "ignorecase:" (case
+insensitive), then dis prefix is ghon be removed n' any characta in
+the strang can be replaced wit a upper- or lowercase version of
+itself.
+
+Remember dat you may need ta quote these charactas when typin them
+into a gangbangin' finger-lickin' dirty-ass shell, so tha shell do not interpret tha globbin patterns
+before duplicitizzle sees em.
+
+The
+.B --exclude
+pattern option matches a gangbangin' file if:
+.PP
+.B 1.
+.I pattern
+can be expanded tha fuck into tha filez filename, or
+.br
+.B 2.
+the file is inside a gangbangin' finger-lickin' directory matched by tha option.
+.PP
+Conversely, the
+.B "--include "
+pattern matches a gangbangin' file if:
+.PP
+.B 1.
+.I pattern
+can be expanded tha fuck into tha filez filename, or
+.br
+.B 2.
+the file is inside a gangbangin' finger-lickin' directory matched by tha option, or
+.br
+.B 3.
+the file be a gangbangin' finger-lickin' directory which gotz nuff a gangbangin' file matched by tha option.
+.PP
+For example,
+
+.RS
+.B --exclude
+/usr/local
+.RE
+
+matches e.g. /usr/local, /usr/local/lib, n' /usr/local/lib/netscape.  It
+is tha same ol' dirty as --exclude /usr/local --exclude '/usr/local/**'.
+.PP
+On tha other hand
+
+.RS
+.B --include
+/usr/local
+.RE
+
+specifies dat /usr, /usr/local, /usr/local/lib, and
+/usr/local/lib/netscape (but not /usr/doc) all be backed up. Thus you
+don't gotta worry bout includin parent directories ta make sure
+that included subdirectories have somewhere ta bounce tha fuck out.
+.PP
+Finally,
+
+.RS
+.B --include
+ignorecase:'/usr/[a-z0-9]foo/*/**.py'
+.RE
+
+would match a gangbangin' file like /usR/5fOO/hello/there/world.py.  If it did
+match anything, it would also match /usr. Shiiit, dis aint no joke.  If there is no existing
+file dat tha given pattern can be expanded into, tha option will not
+match /usr ridin' solo.
+
+The
+.BR --include-filelist ,
+.BR --exclude-filelist ,
+.BR --include-filelist-stdin ,
+and
+.B --exclude-filelist-stdin
+options also introduce file selection conditions.  They direct
+duplicitizzle ta read up in a gangbangin' file, each line of which be a gangbangin' file
+specification, n' ta include or exclude tha matchin files.  Lines
+are separated by newlines or nulls, dependin on whether the
+--null-separator switch was given. I aint talkin' bout chicken n' gravy biatch.  Each line up in a gangbangin' filelist is
+interpreted similarly ta tha way
+.I extended shell patterns
+are, wit all dem exceptions:
+.PP
+.B 1.
+Globbin patterns like
+.BR * ,
+.BR ** ,
+.BR , biatch? ,
+and
+.B [...]
+are not expanded.
+.br
+.B 2.
+Include patterns do not match filez up in a gangbangin' finger-lickin' directory dat is included.
+So /usr/local up in a include file aint gonna match /usr/local/doc.
+.br
+.B 3.
+Lines startin wit "+ " is interpreted as include directives, even
+if found up in a gangbangin' filelist referenced by
+.BR --exclude-filelist .
+Similarly, lines startin wit "- " exclude filez even if they are
+found within a include filelist.
+.PP
+For example, if file "list.txt" gotz nuff tha lines:
+
+.RS
+/usr/local
+.br
+- /usr/local/doc
+.br
+/usr/local/bin
+.br
++ /var
+.br
+- /var
+.RE
+
+then
+.B "--include-filelist list.txt"
+would include /usr, /usr/local, and
+/usr/local/bin. I aint talkin' bout chicken n' gravy biatch.  It would exclude /usr/local/doc,
+/usr/local/doc/python, etc.  It neither excludes nor includes
+/usr/local/man, leavin tha fate of dis directory ta tha next
+specification condition. I aint talkin' bout chicken n' gravy biatch.  Finally, it is undefined what tha fuck happens with
+/var. Shiiit, dis aint no joke.  A single file list should not contain conflictin file
+specifications.
+
+The
+.B --include-globbing-filelist
+and
+.B --exclude-globbing-filelist
+options also specify filelists yo, but each line up in tha filelist will be
+interpreted as a globbin pattern tha way
+.B --include
+and
+.B --exclude
+options is interpreted (although "+ " n' "- " prefixin is still
+allowed).  For instance, if tha file "globbing-list.txt" gotz nuff the
+lines:
+
+.RS
+dir/foo
+.br
++ dir/bar
+.br
+- **
+.RE
+
+Then
+.B "--include-globbing-filelist globbing-list.txt"
+would be exactly tha same as specifying
+.B "--include dir/foo --include dir/bar --exclude **"
+on tha command line.
+
+Finally, the
+.B --include-regexp
+and
+.B --exclude-regexp
+options allow filez ta be included n' excluded if they filenames match a
+python regular expression. I aint talkin' bout chicken n' gravy biatch.  Regular expression syntax is too
+fucked up ta explain here yo, but is covered up in Pythonz library
+reference.  Unlike the
+.B --include
+and
+.B --exclude
+options, tha regular expression options don't match filez containing
+or contained up in matched files.  So fo' instance
+.PP
+.RS
+--include '[0-9]{7}(?!foo)'
+.PP
+.RE
+matches any filez whose full pathnames contain 7 consecutizzle digits
+which aren't followed by 'foo'.  But fuck dat shiznit yo, tha word on tha street is dat it wouldn't match /home even
+if /home/ben/1234567 existed.
+
+.SH A NOTE ON CLOUD FILES ACCESS
+Pyrax is Rackspacez next-generation Cloud pimpment API, including
+Cloud Filez access.  Da cfpyrax backend requires tha pyrax library to
+be installed on tha system.
+See
+.B REQUIREMENTS
+above.
+
+Cloudfilez is Rackspacez now deprecated implementation of OpenStack
+Object Storage protocol.  Users wishin ta use Duplicitizzle wit Rackspace
+Cloud Filez should migrate ta tha freshly smoked up Pyrax plugin ta ensure support.
+
+Da backend requires python-cloudfilez ta be installed on tha system.
+See
+.B REQUIREMENTS
+above.
+
+It uses three environment variablez fo' authentification:
+.BR CLOUDFILES_USERNAME " (required),"
+.BR CLOUDFILES_APIKEY " (required),"
+.BR CLOUDFILES_AUTHURL " (optional)"
+
+If
+.B CLOUDFILES_AUTHURL
+is unspecified it will default ta tha value
+provided by python-cloudfiles, which points ta rackspace, hence dis value
+.I must
+be set up in order ta use other cloud filez providers.
+
+.SH A NOTE ON DROPBOX ACCESS
+.IP 1.
+"some_dir" must already exist up in tha Dropbox Application folda for
+this application, like "Apps/Duplicity/some_dir".
+.IP 2.
+Da first run of tha backend must be ineractive!
+It will print tha URL dat you need ta open up in tha browser ta obtain
+OAuth token fo' tha application. I aint talkin' bout chicken n' gravy biatch. Da token is ghon be saved up in tha file
+$HOME/.dropbox.token_store.txt n' used up in tha future runs.
+.IP 3.
+When rockin Dropbox fo' storage, be aware dat all files, includin the
+ones up in tha Apps folder, is ghon be synced ta all connected computers.
+Yo ass may prefer ta bust a separate Dropbox account specially fo' the
+backups, n' not connect any computas ta dat account.
+
+.SH A NOTE ON EUROPEAN S3 BUCKETS
+Amazizzle S3 serves up tha mobilitizzle ta chizzle tha location of a funky-ass bucket upon
+its creation. I aint talkin' bout chicken n' gravy biatch. Da purpose is ta enable tha user ta chizzle a location
+which is betta located network topologically relatizzle ta tha user,
+because it may allow fo' fasta data transfers.
+.PP
+duplicitizzle will create a freshly smoked up bucket tha last time a funky-ass bucket access is
+attempted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time fo' realz. At dis point, tha bucket is ghon be pimped up in Europe if
+.B --s3-european-buckets
+was given. I aint talkin' bout chicken n' gravy biatch. For reasons havin ta do wit how tha fuck tha Amazizzle S3 service
+works, dis also requires tha use of the
+.B --s3-use-new-style
+option. I aint talkin' bout chicken n' gravy biatch. This option turns on subdomain based bucket addressin in
+S3. Da details is beyond tha scope of dis playa page yo, but it is
+important ta know dat yo' bucket must not contain upper case letters
+or any other charactas dat is not valid partz of a
+hostname. Consequently, fo' reasonz of backwardz compatibility, use of
+subdomain based bucket addressin aint enabled by default.
+.PP
+Note dat yo big-ass booty is ghon need ta use
+.B --s3-use-new-style
+for all operations on European buckets; not just upon initial
+creation.
+.PP
+Yo ass only need ta use
+.B --s3-european-buckets
+upon initial creation yo, but you may may use it at all times for
+consistency.
+.PP
+Further note dat when bustin a freshly smoked up European bucket, it can take a
+while before tha bucket is straight-up accessible fo' realz. At tha time of this
+writin it is unclear ta what tha fuck extent dis be a expected feature of
+Amazizzle S3 yo, but up in practice you may experience timeouts, socket errors
+or HTTP errors when tryin ta upload filez ta yo' newly pimped
+bucket. Give it all dem minutes n' tha bucket should function normally.
+
+.SH A NOTE ON GOOGLE CLOUD STORAGE
+Support fo' Gizoogle Cloud Storage relies on its Interoperable Access,
+which must be enabled fo' yo' account.  Once enabled, you can generate
+Interoperable Storage Access Keys n' pass dem ta duplicitizzle via the
+.B GS_ACCESS_KEY_ID
+and
+.B GS_SECRET_ACCESS_KEY
+environment variablez fo' realz. Alternatively, you can run
+.B "gsutil config -a"
+to have tha Gizoogle Cloud Storage utilitizzle populate the
+.B ~/.boto
+configuration file.
+.PP
+Enable Interoperable Access:
+https://code.google.com/apis/console#:storage
+.br
+Smoke Access Keys:
+https://code.google.com/apis/console#:storage:legacy
+
+.SH A NOTE ON IMAP
+An IMAP account can be used as a target fo' tha upload. Y'all KNOW dat shit, muthafucka!  Da userid may
+be specified n' tha password is ghon be requested.
+.PP
+The
+.B from_address_prefix
+may be specified (and probably should be). Da text is ghon be used as
+the "From" address up in tha IMAP server n' shit.  Then on a restore (or list) command
+the
+.B from_address_prefix
+will distinguish between different backups.
+
+.SH A NOTE ON PAR2 WRAPPER BACKEND
+Par2 Wrapper Backend can be used up in combination wit all other backendz to
+create recovery files. Just add
+.BR par2+
+before a regular scheme (e.g.
+.IR par2+ftp://user@host/dir " or"
+.I par2+s3+http://bucket_name
+). This will create par2 recovery filez fo' each archive n' upload dem all to
+the wrapped backend.
+.PP
+Before restoring, archives is ghon be verified. Y'all KNOW dat shit, muthafucka! Corrupt archives is ghon be repaired
+on tha fly if there be enough recovery blocks available.
+.PP
+Use
+.BI "--par2-redundancy " cement
+to adjust tha size (and redundancy) of recovery filez in
+.I cement.
+
+.SH A NOTE ON SSH BACKENDS
+The
+.I ssh backends
+support
+.I sftp
+and
+.I scp/ssh
+transhiznit protocols.
+This be a known user-confusin issue as these is fundamentally different.
+If you plan ta access yo' backend via one of dem please inform yo ass
+about tha requirements fo' a server ta support
+.IR sftp " or"
+.I scp/ssh
+access.
+To make it even mo' confusin tha user can chizzle between two ssh backendz via
+.BR --ssh-backend " option."
+.br
+Both support
+.BR --use-scp ,
+.BR --ssh-askpass " and"
+.BR --ssh-options "."
+Only the
+.B pexpect
+backend allows ta define
+.BR --scp-command " and"
+.BR --sftp-command .
+.PP
+.BR "SSH paramiko backend " "(selected by default)"
+is a cold-ass lil complete reimplementation of ssh protocols natively up in python. I aint talkin' bout chicken n' gravy biatch fo' realz. Advantages
+are speed n' maintainability. Minor disadvantage is dat extra packages are
+needed as listed in
+.B REQUIREMENTS
+above. In
+.I sftp
+(default) mode all operations is done via tha accordin sftp commands. In
+.I scp
+mode (
+.I --use-scp
+) though scp access is used fo' put/get operations but listin is done via ssh remote shell.
+.PP
+.B SSH pexpect backend
+is tha legacy ssh backend rockin tha command line ssh binaries via pexpect.
+Older versions used
+.I scp
+for git n' put operations and
+.I sftp
+for list and
+delete operations.  Da current version uses
+.I sftp
+for all four supported
+operations, unless the
+.I --use-scp
+option is used ta revert ta oldschool behavior.
+.PP
+.B Why use sftp instead of scp?
+Da chizzle ta sftp was made up in order ta allow tha remote system ta chroot tha backup,
+thus providin betta securitizzle n' cuz it do not suffer from shell quotin thangs like scp.
+Scp also do not support any kind of file listing, so sftp or ssh access will always be needed
+in addizzle fo' dis backend mode ta work properly. Right back up in yo muthafuckin ass. Sftp aint gots these limitations but needs
+an sftp steez hustlin on tha backend server, which is sometimes not a option.
+
+.SH A NOTE ON SSL CERTIFICATE VERIFICATION
+Certificate verification as implemented right now [01.2013] only up in tha webdav backend needz a gangbangin' file
+based database of certification authoritizzle certificates (cacert file). Well shiiiit, it has ta be a
+.B PEM
+formatted text file as currently provided by the
+.B CURL
+project. Right back up in yo muthafuckin ass. See
+.PP
+.RS
+http://curl.haxx.se/docs/caextract.html
+.PP
+.RE
+Afta bustin/retrievin a valid cacert file you should copy it ta either
+.PP
+.RS
+~/.duplicity/cacert.pem
+.br
+~/duplicity_cacert.pem
+.br
+/etc/duplicity/cacert.pem
+.PP
+.RE
+Duplicitizzle searches it there up in tha same order n' will fail if it can't find dat shit.
+Yo ass can however specify tha option
+.BI --ssl-cacert-file " <file>"
+to point duplicitizzle ta a cold-ass lil copy up in a gangbangin' finger-lickin' different location.
+.PP
+Finally there is the
+.B --ssl-no-check-certificate
+option ta disable certificate verification alltogether, up in case some ssl library
+is missin or verification aint wanted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Use it wit care, as even wit self signed
+servers manually providin tha private ca certificate is definitely tha less thuggy option.
+
+.SH A NOTE ON SWIFT (OPENSTACK OBJECT STORAGE) ACCESS
+Swift is tha OpenStack Object Storage service.
+.br
+Da backend requires python-switclient ta be installed on tha system.
+python-keystoneclient be also needed ta use OpenStackz Keystone Identitizzle service.
+See
+.B REQUIREMENTS
+above.
+
+It uses four environment variablez fo' authentification:
+.BR SWIFT_USERNAME " (required),"
+.BR SWIFT_PASSWORD " (required),"
+.BR SWIFT_AUTHURL " (required),"
+.BR SWIFT_TENANTNAME " (optional, tha tenant can be included up in tha username)"
+
+If tha user was previously authenticated, tha followin environment
+variablez can be used instead:
+.BR SWIFT_PREAUTHURL " (required),"
+.BR SWIFT_PREAUTHTOKEN " (required)"
+
+If
+.B SWIFT_AUTHVERSION
+is unspecified, it will default ta version 1.
+
+.SH A NOTE ON SYMMETRIC ENCRYPTION AND SIGNING
+Signin n' symmetrically encrypt all up in tha same time wit tha gpg binary on the
+command line, as used within duplicity, be a specifically challengin issue.
+Tests flossed dat tha followin combinations proved working.
+.PP
+1. Right back up in yo muthafuckin ass. Setup gpg-agent properly. Use tha option
+.BI --use-agent
+and enta both passphrases (symmetric n' sign key) up in tha gpg-agentz dialog.
+.PP
+2. Use a
+.BI PASSPHRASE
+for symmetric encryption of yo' chizzle but tha signin key has an
+.B empty
+passphrase.
+.PP
+3. Da used
+.BI PASSPHRASE
+for symmetric encryption n' tha passphrase of tha signin key is identical.
+
+.SH A NOTE ON FILENAME PREFIXES
+
+Filename prefixes can be used up in conjunction wit S3 gamecycle rulez ta transizzle 
+archive filez ta Glacier, while keepin metadata (signature n' manifest files) on S3.
+
+Duplicitizzle do not require access ta archive filez except when restorin from backup.
+
+.SH KNOWN ISSUES / BUGS
+Hard links currently unsupported (they is ghon be treated as non-linked
+regular files).
+
+Wack signatures is ghon be treated as empty instead of loggin appropriate
+error message.
+
+.SH OPERATION AND DATA FORMATS
+This section raps bout duplicityz basic operation n' tha format of
+its data files.  It should not necessary ta read dis section ta use
+duplicity.
+
+Da filez used by duplicitizzle ta store backup data is tarfilez up in GNU
+tar format.  They can be produced independently by
+.BR rdiffdir (1).
+For incremenstrual backups, freshly smoked up filez is saved normally up in tha tarfile.
+But when a gangbangin' file chizzles, instead of storin a cold-ass lil complete copy of the
+file, only a gangbangin' finger-lickin' diff is stored, as generated by
+.BR rdiff (1).
+If a gangbangin' file is deleted, a 0 length file is stored up in tha tar. Shiiit, dis aint no joke.  It is
+possible ta restore a thugged-out duplicitizzle archive "manually" by using
+.B tar
+and then
+.BR cp ,
+.BR rdiff ,
+and
+.B rm
+as necessary.  These duplicitizzle archives have tha extension
+.BR difftar .
+
+Both full n' incremenstrual backup sets have tha same format.  In
+effect, a gangbangin' full backup set be a incremenstrual one generated from an
+empty signature (see below).  Da filez up in full backup sets will start
+with
+.B duplicity-full
+while tha incremenstrual sets start with
+.BR duplicity-inc .
+When restoring, duplicitizzle applies patches up in order, so deleting, for
+instance, a gangbangin' full backup set may make related incremenstrual backup sets
+unusable.
+
+In order ta determine which filez done been deleted, n' ta calculate
+diffs fo' chizzled files, duplicitizzle need ta process shiznit about
+previous sessions.  It stores dis shiznit up in tha form of tarfiles
+where each entryz data gotz nuff tha signature (as produced by
+.BR rdiff )
+of tha file instead of tha filez contents, n' you can put dat on yo' toast.  These signature sets have
+the extension
+.BR sigtar .
+
+Signature filez is not required ta restore a funky-ass backup set yo, but without
+an up-to-date signature, duplicitizzle cannot append a incremenstrual backup
+to a existin archive.
+
+To save bandwidth, duplicitizzle generates full signature sets and
+incremenstrual signature sets, n' you can put dat on yo' toast.  A full signature set is generated for
+each full backup, n' a incremenstrual one fo' each incremenstrual backup.
+These start with
+.B duplicity-full-signatures
+and
+.B duplicity-new-signatures
+respectively. These signatures is ghon be stored both locally n' remotely.
+Da remote signatures is ghon be encrypted if encryption is enabled.
+Da local signatures aint gonna be encrypted n' stored up in tha archive dir (see
+.B "--archive-dir"
+).
+
+.SH AUTHOR
+.TP
+.BR "Original Gangsta Author" " - Lil' Bow Wow Escoto <bescoto@stanford.edu>"
+.TP
+.BR "Current Maintainer" " - Kenneth Loafman <kenneth@loafman.com>"
+.br
+.TP
+.B "Continuous Contributors"
+Edgar Soldin, Mike Terry
+.PP
+Most backendz was contributed individually.
+Hype bout they authorshizzle may be found up in tha accordin filez header.
+.br
+Also we'd like ta give props ta dem hoes postin issue ta tha mailin list or on
+launchpad, bustin  up in patches or contributin otherwise. Duplicitizzle wouldn't
+be as stable n' useful if it weren't fo' yo thugged-out ass.
+
+.SH SEE ALSO
+.BR rdiffdir (1),
+.BR python (1),
+.BR rdiff (1),
+.BR rdiff-backup (1).

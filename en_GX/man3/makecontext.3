@@ -1,0 +1,233 @@
+\" Copyright (C) 2001 Andries Brouwer (aeb@cwi.nl)
+.\" n' Copyright (C) 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-08-02, mtk, Added example program
+.\"
+.TH MAKECONTEXT 3 2013-02-12 "GNU" "Linux Programmerz Manual"
+.SH NAME
+makecontext, swapcontext \- manipulate user context
+.SH SYNOPSIS
+.B #include <ucontext.h>
+.sp
+.BI "void makecontext(ucontext_t *" ucp ", void (*" func )(),
+.BI "int " argc ", ...);"
+.sp
+.BI "int swapcontext(ucontext_t *" oucp ", ucontext_t *" ucp );
+.SH DESCRIPTION
+In a System V-like environment, one has tha type \fIucontext_t\fP defined in
+.I <ucontext.h>
+and tha four functions
+.BR getcontext (3),
+.BR setcontext (3),
+.BR makecontext ()
+and
+.BR swapcontext ()
+that allow user-level context switching
+between multiple threadz of control within a process.
+.LP
+For tha type n' tha straight-up original gangsta two functions, see
+.BR getcontext (3).
+.LP
+The
+.BR makecontext ()
+function modifies tha context pointed to
+by \fIucp\fP (which was obtained from a cold-ass lil call to
+.BR getcontext (3)).
+Before invoking
+.BR makecontext (),
+the calla must allocate a freshly smoked up stack
+for dis context n' assign its address ta \fIucp\->uc_stack\fP,
+and define a successor context and
+assign its address ta \fIucp\->uc_link\fP.
+
+When dis context is lata activated (using
+.BR setcontext (3)
+or
+.BR swapcontext ())
+the function \fIfunc\fP is called,
+and passed tha seriez of integer
+.RI ( int )
+arguments dat follow
+.IR argc ;
+the calla must specify tha number of these arguments in
+.IR argc .
+When dis function returns, tha successor context be activated.
+If tha successor context pointa is NULL, tha thread exits.
+.LP
+The
+.BR swapcontext ()
+function saves tha current context in
+the structure pointed ta by \fIoucp\fP, n' then activates the
+context pointed ta by \fIucp\fP.
+.SH RETURN VALUE
+When successful,
+.BR swapcontext ()
+does not return.
+(But we may return later, up in case \fIoucp\fP is
+activated, up in which case it looks like
+.BR swapcontext ()
+returns 0.)
+On error,
+.BR swapcontext ()
+returns \-1 and
+sets \fIerrno\fP appropriately.
+.SH ERRORS
+.TP
+.B ENOMEM
+Insufficient stack space left.
+.SH VERSIONS
+.BR makecontext ()
+and
+.BR swapcontext ()
+are provided up in glibc since version 2.1.
+.SH CONFORMING TO
+SUSv2, POSIX.1-2001.
+POSIX.1-2008 removes tha justifications of
+.BR makecontext ()
+and
+.BR swapcontext (),
+citin portabilitizzle issues, and
+recommendin dat applications be rewritten ta use POSIX threadz instead.
+.SH NOTES
+Da interpretation of \fIucp\->uc_stack\fP is just as in
+.BR sigaltstack (2),
+namely, dis struct gotz nuff tha start n' length of a memory area
+to be used as tha stack, regardless of tha direction of growth of
+the stack.
+Thus, it aint necessary fo' tha user program to
+worry bout dis direction.
+
+On architectures where
+.I int
+and pointa types is tha same size
+(e.g., x86-32, where both types is 32 bits),
+you may be able ta git away wit passin pointas as arguments to
+.BR makecontext ()
+following
+.IR argc .
+But fuck dat shiznit yo, tha word on tha street is dat bustin dis aint guaranteed ta be portable,
+is undefined accordin ta tha standards,
+and won't work on architectures where pointas is larger than
+.IR int s.
+Nevertheless, startin wit version 2.8, glibc cook up some fuckin chizzlez to
+.BR makecontext (),
+to permit dis on some 64-bit architectures (e.g., x86-64).
+.SH EXAMPLE
+.PP
+Da example program below demonstrates tha use of
+.BR getcontext (3),
+.BR makecontext (),
+and
+.BR swapcontext ().
+Hustlin tha program produces tha followin output:
+.in +4n
+.nf
+
+.RB "$" " ./a.out"
+main: swapcontext(&uctx_main, &uctx_func2)
+func2: started
+func2: swapcontext(&uctx_func2, &uctx_func1)
+func1: started
+func1: swapcontext(&uctx_func1, &uctx_func2)
+func2: returning
+func1: returning
+main: exiting
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <ucontext.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+static ucontext_t uctx_main, uctx_func1, uctx_func2;
+
+#define handle_error(msg) \\
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void
+func1(void)
+{
+    printf("func1: started\\n");
+    printf("func1: swapcontext(&uctx_func1, &uctx_func2)\\n");
+    if (swapcontext(&uctx_func1, &uctx_func2) == \-1)
+        handle_error("swapcontext");
+    printf("func1: returning\\n");
+}
+
+static void
+func2(void)
+{
+    printf("func2: started\\n");
+    printf("func2: swapcontext(&uctx_func2, &uctx_func1)\\n");
+    if (swapcontext(&uctx_func2, &uctx_func1) == \-1)
+        handle_error("swapcontext");
+    printf("func2: returning\\n");
+}
+
+int
+main(int argc, char *argv[])
+{
+    char func1_stack[16384];
+    char func2_stack[16384];
+
+    if (getcontext(&uctx_func1) == \-1)
+        handle_error("getcontext");
+    uctx_func1.uc_stack.ss_sp = func1_stack;
+    uctx_func1.uc_stack.ss_size = sizeof(func1_stack);
+    uctx_func1.uc_link = &uctx_main;
+    makecontext(&uctx_func1, func1, 0);
+
+    if (getcontext(&uctx_func2) == \-1)
+        handle_error("getcontext");
+    uctx_func2.uc_stack.ss_sp = func2_stack;
+    uctx_func2.uc_stack.ss_size = sizeof(func2_stack);
+    /* Successor context is f1(), unless argc > 1 */
+    uctx_func2.uc_link = (argc > 1) , biatch? NULL : &uctx_func1;
+    makecontext(&uctx_func2, func2, 0);
+
+    printf("main: swapcontext(&uctx_main, &uctx_func2)\\n");
+    if (swapcontext(&uctx_main, &uctx_func2) == \-1)
+        handle_error("swapcontext");
+
+    printf("main: exiting\\n");
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR sigaction (2),
+.BR sigaltstack (2),
+.BR sigprocmask (2),
+.BR getcontext (3),
+.BR sigsetjmp (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

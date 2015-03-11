@@ -1,0 +1,747 @@
+.TH SMTP 8 
+.ad
+.fi
+.SH NAME
+smtp
+\-
+Postfix SMTP+LMTP client
+.SH "SYNOPSIS"
+.na
+.nf
+\fBsmtp\fR [generic Postfix daemon options]
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix SMTP+LMTP client implements tha SMTP n' LMTP mail
+delivery protocols. Well shiiiit, it processes message delivery requests from
+the queue manager n' shit. Each request specifies a queue file, a sender
+address, a thugged-out domain or host ta serve up to, n' recipient shiznit.
+This program expects ta be run from tha \fBmaster\fR(8) process
+manager.
+
+Da SMTP+LMTP client thugged-out shiznit tha queue file n' marks recipients
+as finished, or it informs tha queue manager dat delivery should
+be tried again n' again n' again at a lata time. Delivery status reports is sent
+to tha \fBbounce\fR(8), \fBdefer\fR(8) or \fBtrace\fR(8) daemon as
+appropriate.
+
+Da SMTP+LMTP client looks up a list of mail exchanger addresses for
+the destination host, sorts tha list by preference, n' connects
+to each listed address until it findz a server dat responds.
+
+When a server aint reachable, or when mail delivery fails due
+to a recoverable error condition, tha SMTP+LMTP client will try to
+deliver tha mail ta a alternate host.
+
+Afta a successful mail transaction, a cold-ass lil connection may be saved
+to tha \fBscache\fR(8) connection cache server, so dat it
+may be used by any SMTP+LMTP client fo' a subsequent transaction.
+
+By default, connection cachin is enabled temporarily for
+destinations dat gotz a high volume of mail up in tha active
+queue. Connection cachin can be enabled permanently for
+specific destinations.
+.SH "SMTP DESTINATION SYNTAX"
+.na
+.nf
+.ad
+.fi
+SMTP destinations have tha followin form:
+.IP \fIdomainname\fR
+.IP \fIdomainname\fR:\fIport\fR
+Look up tha mail exchangers fo' tha specified domain, and
+connect ta tha specified port (default: \fBsmtp\fR).
+.IP [\fIhostname\fR]
+.IP [\fIhostname\fR]:\fIport\fR
+Look up tha address(es) of tha specified host, n' connect to
+the specified port (default: \fBsmtp\fR).
+.IP [\fIaddress\fR]
+.IP [\fIaddress\fR]:\fIport\fR
+Connect ta tha host all up in tha specified address, n' connect
+to tha specified port (default: \fBsmtp\fR) fo' realz. An IPv6 address
+must be formatted as [\fBipv6\fR:\fIaddress\fR].
+.SH "LMTP DESTINATION SYNTAX"
+.na
+.nf
+.ad
+.fi
+LMTP destinations have tha followin form:
+.IP \fBunix\fR:\fIpathname\fR
+Connect ta tha local UNIX-domain server dat is bound ta tha specified
+\fIpathname\fR. If tha process runs chrooted, a absolute pathname
+is interpreted relatizzle ta tha Postfix queue directory.
+.IP \fBinet\fR:\fIhostname\fR
+.IP \fBinet\fB:\fIhostname\fR:\fIport\fR
+.IP \fBinet\fR:[\fIaddress\fR]
+.IP \fBinet\fR:[\fIaddress\fR]:\fIport\fR
+Connect ta tha specified TCP port on tha specified local or
+remote host. If no port is specified, connect ta tha port defined as
+\fBlmtp\fR up in \fBskillz\fR(4).
+If no such steez is found, tha \fBlmtp_tcp_port\fR configuration
+parameta (default value of 24) is ghon be used.
+An IPv6 address must be formatted as [\fBipv6\fR:\fIaddress\fR].
+.PP
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da SMTP+LMTP client is moderately security-sensitive. It
+talks ta SMTP or LMTP servers n' ta DNS servers on the
+network. Da SMTP+LMTP client can be run chrooted at fixed
+low privilege.
+.SH "STANDARDS"
+.na
+.nf
+RFC 821 (SMTP protocol)
+RFC 822 (ARPA Internizzle Text Lyrics)
+RFC 1651 (SMTP steez extensions)
+RFC 1652 (8bit-MIME transport)
+RFC 1870 (Message Size Declaration)
+RFC 2033 (LMTP protocol)
+RFC 2034 (SMTP Enhanced Error Codes)
+RFC 2045 (MIME: Format of Internizzle Message Bodies)
+RFC 2046 (MIME: Media Types)
+RFC 2554 (AUTH command)
+RFC 2821 (SMTP protocol)
+RFC 2920 (SMTP Pipelining)
+RFC 3207 (STARTTLS command)
+RFC 3461 (SMTP DSN Extension)
+RFC 3463 (Enhanced Status Codes)
+RFC 4954 (AUTH command)
+RFC 5321 (SMTP protocol)
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+Corrupted message filez is marked so dat tha queue manager can
+move dem ta tha \fBcorrupt\fR queue fo' further inspection.
+
+Dependin on tha settin of tha \fBnotify_classes\fR parameter,
+the postmasta is notified of bounces, protocol problems, n' of
+other shit.
+.SH BUGS
+.ad
+.fi
+SMTP n' LMTP connection cachin do not work wit TLS. Da necessary
+support fo' TLS object passivation n' re-activation do not
+exist without closin tha session, which defeats tha purpose.
+
+SMTP n' LMTP connection cachin assumes dat SASL credentials
+are valid fo' all destinations dat map onto tha same IP
+address n' TCP port.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Before Postfix version 2.3, tha LMTP client be a separate
+program dat implements only a subset of tha functionality
+available wit SMTP: there is no support fo' TLS, and
+connections is cached in-process, makin it ineffective
+when tha client is used fo' multiple domains.
+
+Most smtp_\fIxxx\fR configuration parametas have an
+lmtp_\fIxxx\fR "mirror" parameta fo' tha equivalent LMTP
+feature. This document raps bout only dem LMTP-related
+parametas dat aren't simply "mirror" parameters.
+
+Changes ta \fBmain.cf\fR is picked up automatically, as \fBsmtp\fR(8)
+processes run fo' only a limited amount of time. Use tha command
+"\fBpostfix reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.SH "COMPATIBILITY CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBignore_mx_lookup_error (no)\fR"
+Ignore DNS MX lookups dat produce no response.
+.IP "\fBsmtp_always_send_ehlo (yes)\fR"
+Always bust EHLO all up in tha start of a SMTP session.
+.IP "\fBsmtp_never_send_ehlo (no)\fR"
+Never bust EHLO all up in tha start of a SMTP session.
+.IP "\fBsmtp_defer_if_no_mx_address_found (no)\fR"
+Defer mail delivery when no MX record resolves ta a IP address.
+.IP "\fBsmtp_line_length_limit (998)\fR"
+Da maximal length of message header n' body lines dat Postfix
+will bust via SMTP.
+.IP "\fBsmtp_pix_workaround_delay_time (10s)\fR"
+How tha fuck long tha Postfix SMTP client pauses before sending
+".<CR><LF>" up in order ta work round tha PIX firewall
+"<CR><LF>.<CR><LF>" bug.
+.IP "\fBsmtp_pix_workaround_threshold_time (500s)\fR"
+How tha fuck long a message must be queued before tha Postfix SMTP client
+turns on tha PIX firewall "<CR><LF>.<CR><LF>"
+bug workaround fo' delivery all up in firewalls wit "smtp fixup"
+mode turned on.
+.IP "\fBsmtp_pix_workaroundz (disable_esmtp, delay_dotcrlf)\fR"
+A list dat specifies zero or mo' workaroundz fo' CISCO PIX
+firewall bugs.
+.IP "\fBsmtp_pix_workaround_maps (empty)\fR"
+Lookup tables, indexed by tha remote SMTP server address, with
+per-destination workaroundz fo' CISCO PIX firewall bugs.
+.IP "\fBsmtp_quote_rfc821_envelope (yes)\fR"
+Quote addresses up in Postfix SMTP client MAIL FROM n' RCPT TO commands
+as required
+by RFC 5321.
+.IP "\fBsmtp_reply_filta (empty)\fR"
+A mechanizzle ta transform replies from remote SMTP servers one
+line at a time.
+.IP "\fBsmtp_skip_5xx_greetin (yes)\fR"
+Skip remote SMTP servers dat greet wit a 5XX status code (go away,
+do
+not try again n' again n' again later).
+.IP "\fBsmtp_skip_quit_response (yes)\fR"
+Do not wait fo' tha response ta tha SMTP QUIT command.
+.PP
+Available up in Postfix version 2.0 n' earlier:
+.IP "\fBsmtp_skip_4xx_greetin (yes)\fR"
+Skip SMTP servers dat greet wit a 4XX status code (go away, try
+again later).
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBsmtp_discard_ehlo_keyword_address_maps (empty)\fR"
+Lookup tables, indexed by tha remote SMTP server address, with
+case insensitizzle listz of EHLO keywordz (pipelining, starttls, auth,
+etc.) dat tha Postfix SMTP client will ignore up in tha EHLO response from a
+remote SMTP server.
+.IP "\fBsmtp_discard_ehlo_keywordz (empty)\fR"
+A case insensitizzle list of EHLO keywordz (pipelining, starttls,
+auth, etc.) dat tha Postfix SMTP client will ignore up in tha EHLO
+response from a remote SMTP server.
+.IP "\fBsmtp_generic_maps (empty)\fR"
+Optionizzle lookup tablez dat big-ass up address rewritin up in the
+Postfix SMTP client, typically ta transform a locally valid address into
+a globally valid address when bustin  mail across tha Internet.
+.PP
+Available up in Postfix version 2.2.9 n' later:
+.IP "\fBsmtp_cname_overrides_servername (version dependent)\fR"
+Allow DNS CNAME recordz ta override tha servername dat the
+Postfix SMTP client uses fo' logging, SASL password lookup, TLS
+policy decisions, or TLS certificate verification.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBlmtp_discard_lhlo_keyword_address_maps (empty)\fR"
+Lookup tables, indexed by tha remote LMTP server address, with
+case insensitizzle listz of LHLO keywordz (pipelining, starttls,
+auth, etc.) dat tha Postfix LMTP client will ignore up in tha LHLO
+response
+from a remote LMTP server.
+.IP "\fBlmtp_discard_lhlo_keywordz (empty)\fR"
+A case insensitizzle list of LHLO keywordz (pipelining, starttls,
+auth, etc.) dat tha Postfix LMTP client will ignore up in tha LHLO
+response
+from a remote LMTP server.
+.PP
+Available up in Postfix version 2.4.4 n' later:
+.IP "\fBsend_cyrus_sasl_authzid (no)\fR"
+When authenticatin ta a remote SMTP or LMTP server wit the
+default settin "no", bust no SASL authoriZation ID (authzid); send
+only tha SASL authentiCation ID (authcid) plus tha authcidz password.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBsmtp_header_checks (empty)\fR"
+Restricted \fBheader_checks\fR(5) tablez fo' tha Postfix SMTP client.
+.IP "\fBsmtp_mime_header_checks (empty)\fR"
+Restricted \fBmime_header_checks\fR(5) tablez fo' tha Postfix SMTP
+client.
+.IP "\fBsmtp_nested_header_checks (empty)\fR"
+Restricted \fBnested_header_checks\fR(5) tablez fo' tha Postfix SMTP
+client.
+.IP "\fBsmtp_body_checks (empty)\fR"
+Restricted \fBbody_checks\fR(5) tablez fo' tha Postfix SMTP client.
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBtcp_windowsize (0)\fR"
+An optionizzle workaround fo' routas dat break TCP window scaling.
+.PP
+Available up in Postfix version 2.8 n' later:
+.IP "\fBsmtp_dns_resolver_options (empty)\fR"
+DNS Resolver options fo' tha Postfix SMTP client.
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBsmtp_per_record_deadline (no)\fR"
+Change tha behavior of tha smtp_*_timeout time limits, from a
+time limit per read or write system call, ta a time limit ta send
+or receive a cold-ass lil complete record (an SMTP command line, SMTP response
+line, SMTP message content line, or TLS protocol message).
+.IP "\fBsmtp_send_dummy_mail_auth (no)\fR"
+Whether or not ta append tha "AUTH=<>" option ta tha MAIL
+FROM command up in SASL-authenticated SMTP sessions.
+.SH "MIME PROCESSING CONTROLS"
+.na
+.nf
+.ad
+.fi
+Available up in Postfix version 2.0 n' later:
+.IP "\fBdisable_mime_output_conversion (no)\fR"
+Disable tha conversion of 8BITMIME format ta 7BIT format.
+.IP "\fBmime_boundary_length_limit (2048)\fR"
+Da maximal length of MIME multipart boundary strings.
+.IP "\fBmime_nesting_limit (100)\fR"
+Da maximal recursion level dat tha MIME processor will handle.
+.SH "EXTERNAL CONTENT INSPECTION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtp_send_xforward_command (no)\fR"
+Send tha non-standard XFORWARD command when tha Postfix SMTP server
+EHLO response announces XFORWARD support.
+.SH "SASL AUTHENTICATION CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBsmtp_sasl_auth_enable (no)\fR"
+Enable SASL authentication up in tha Postfix SMTP client.
+.IP "\fBsmtp_sasl_password_maps (empty)\fR"
+Optionizzle Postfix SMTP client lookup tablez wit one username:password
+entry
+per remote hostname or domain, or sender address when sender-dependent
+authentication is enabled.
+.IP "\fBsmtp_sasl_security_options (noplaintext, noanonymous)\fR"
+Postfix SMTP client SASL securitizzle options; az of Postfix 2.3
+the list of available
+features dependz on tha SASL client implementation dat is selected
+with \fBsmtp_sasl_type\fR.
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBsmtp_sasl_mechanism_filta (empty)\fR"
+If non-empty, a Postfix SMTP client filta fo' tha remote SMTP
+serverz list of offered SASL mechanisms.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBsmtp_sender_dependent_authentication (no)\fR"
+Enable sender-dependent authentication up in tha Postfix SMTP client; dis is
+available only wit SASL authentication, n' disablez SMTP connection
+cachin ta ensure dat mail from different sendaz will use the
+appropriate credentials.
+.IP "\fBsmtp_sasl_path (empty)\fR"
+Implementation-specific shiznit dat tha Postfix SMTP client
+passes all up in to
+the SASL plug-in implementation dat is selected with
+\fBsmtp_sasl_type\fR.
+.IP "\fBsmtp_sasl_type (cyrus)\fR"
+Da SASL plug-in type dat tha Postfix SMTP client should use
+for authentication.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBsmtp_sasl_auth_cache_name (empty)\fR"
+An optionizzle table ta prevent repeated SASL authentication
+failures wit tha same remote SMTP server hostname, username and
+password.
+.IP "\fBsmtp_sasl_auth_cache_time (90d)\fR"
+Da maximal age of a smtp_sasl_auth_cache_name entry before it
+is removed.
+.IP "\fBsmtp_sasl_auth_soft_bounce (yes)\fR"
+When a remote SMTP server rejects a SASL authentication request
+with a 535 reply code, defer mail delivery instead of returning
+mail as undeliverable.
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBsmtp_send_dummy_mail_auth (no)\fR"
+Whether or not ta append tha "AUTH=<>" option ta tha MAIL
+FROM command up in SASL-authenticated SMTP sessions.
+.SH "STARTTLS SUPPORT CONTROLS"
+.na
+.nf
+.ad
+.fi
+Detailed shiznit bout STARTTLS configuration may be found
+in tha TLS_README document.
+.IP "\fBsmtp_tls_security_level (empty)\fR"
+Da default SMTP TLS securitizzle level fo' tha Postfix SMTP client;
+when a non-empty value is specified, dis overrides tha obsolete
+parametas smtp_use_tls, smtp_enforce_tls, n' smtp_tls_enforce_peername.
+.IP "\fBsmtp_sasl_tls_security_options ($smtp_sasl_security_options)\fR"
+Da SASL authentication securitizzle options dat tha Postfix SMTP
+client uses fo' TLS encrypted SMTP sessions.
+.IP "\fBsmtp_starttls_timeout (300s)\fR"
+Time limit fo' Postfix SMTP client write n' read operations
+durin TLS startup n' shutdown handshake procedures.
+.IP "\fBsmtp_tls_CAfile (empty)\fR"
+A file containin CA certificatez of root CAs trusted ta sign
+either remote SMTP server certificates or intermediate CA certificates.
+.IP "\fBsmtp_tls_CApath (empty)\fR"
+Directory wit PEM format certificate authoritizzle certificates
+that tha Postfix SMTP client uses ta verify a remote SMTP server
+certificate.
+.IP "\fBsmtp_tls_cert_file (empty)\fR"
+File wit tha Postfix SMTP client RSA certificate up in PEM format.
+.IP "\fBsmtp_tls_mandatory_ciphers (medium)\fR"
+Da minimum TLS cipher grade dat tha Postfix SMTP client will
+use with
+mandatory TLS encryption.
+.IP "\fBsmtp_tls_exclude_ciphers (empty)\fR"
+List of ciphers or cipher types ta exclude from tha Postfix
+SMTP client cipher
+list at all TLS securitizzle levels.
+.IP "\fBsmtp_tls_mandatory_exclude_ciphers (empty)\fR"
+Additionizzle list of ciphers or cipher types ta exclude from the
+Postfix SMTP client cipher list at mandatory TLS securitizzle levels.
+.IP "\fBsmtp_tls_dcert_file (empty)\fR"
+File wit tha Postfix SMTP client DSA certificate up in PEM format.
+.IP "\fBsmtp_tls_dkey_file ($smtp_tls_dcert_file)\fR"
+File wit tha Postfix SMTP client DSA private key up in PEM format.
+.IP "\fBsmtp_tls_key_file ($smtp_tls_cert_file)\fR"
+File wit tha Postfix SMTP client RSA private key up in PEM format.
+.IP "\fBsmtp_tls_loglevel (0)\fR"
+Enable additionizzle Postfix SMTP client loggin of TLS activity.
+.IP "\fBsmtp_tls_note_starttls_offer (no)\fR"
+Log tha hostname of a remote SMTP server dat offers STARTTLS,
+when TLS aint already enabled fo' dat server.
+.IP "\fBsmtp_tls_policy_maps (empty)\fR"
+Optionizzle lookup tablez wit tha Postfix SMTP client TLS security
+policy by next-hop destination; when a non-empty value is specified,
+this overrides tha obsolete smtp_tls_per_site parameter.
+.IP "\fBsmtp_tls_mandatory_protocols (!SSLv2)\fR"
+List of SSL/TLS protocols dat tha Postfix SMTP client will use with
+mandatory TLS encryption.
+.IP "\fBsmtp_tls_scert_verifydepth (9)\fR"
+Da verification depth fo' remote SMTP server certificates.
+.IP "\fBsmtp_tls_secure_cert_match (nexthop, dot-nexthop)\fR"
+How tha fuck tha Postfix SMTP client verifies tha server certificate
+peername fo' the
+"secure" TLS securitizzle level.
+.IP "\fBsmtp_tls_session_cache_database (empty)\fR"
+Name of tha file containin tha optionizzle Postfix SMTP client
+TLS session cache.
+.IP "\fBsmtp_tls_session_cache_timeout (3600s)\fR"
+Da expiration time of Postfix SMTP client TLS session cache
+information.
+.IP "\fBsmtp_tls_verify_cert_match (hostname)\fR"
+How tha fuck tha Postfix SMTP client verifies tha server certificate
+peername fo' the
+"verify" TLS securitizzle level.
+.IP "\fBtls_daemon_random_bytes (32)\fR"
+Da number of pseudo-random bytes dat a \fBsmtp\fR(8) or \fBsmtpd\fR(8)
+process requests from tha \fBtlsmgr\fR(8) server up in order ta seed its
+internal pseudo random number generator (PRNG).
+.IP "\fBtls_high_cipherlist (ALL:!EXPORT:!LOW:!MEDIUM:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "HIGH" grade ciphers.
+.IP "\fBtls_medium_cipherlist (ALL:!EXPORT:!LOW:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "MEDIUM" or higher grade ciphers.
+.IP "\fBtls_low_cipherlist (ALL:!EXPORT:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "LOW" or higher grade ciphers.
+.IP "\fBtls_export_cipherlist (ALL:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "EXPORT" or higher grade ciphers.
+.IP "\fBtls_null_cipherlist (eNULL:!aNULL)\fR"
+Da OpenSSL cipherlist fo' "NULL" grade ciphers dat provide
+authentication without encryption.
+.PP
+Available up in Postfix version 2.4 n' later:
+.IP "\fBsmtp_sasl_tls_verified_security_options ($smtp_sasl_tls_security_options)\fR"
+Da SASL authentication securitizzle options dat tha Postfix SMTP
+client uses fo' TLS encrypted SMTP sessions wit a verified server
+certificate.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBsmtp_tls_fingerprint_cert_match (empty)\fR"
+List of aaight remote SMTP server certificate fingerprints for
+the "fingerprint" TLS securitizzle level (\fBsmtp_tls_security_level\fR =
+fingerprint).
+.IP "\fBsmtp_tls_fingerprint_digest (md5)\fR"
+Da message digest algorithm used ta construct remote SMTP server
+certificate fingerprints.
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBsmtp_tls_protocols (!SSLv2)\fR"
+List of TLS protocols dat tha Postfix SMTP client will exclude or
+include wit opportunistic TLS encryption.
+.IP "\fBsmtp_tls_ciphers (export)\fR"
+Da minimum TLS cipher grade dat tha Postfix SMTP client
+will use wit opportunistic TLS encryption.
+.IP "\fBsmtp_tls_eccert_file (empty)\fR"
+File wit tha Postfix SMTP client ECDSA certificate up in PEM format.
+.IP "\fBsmtp_tls_eckey_file ($smtp_tls_eccert_file)\fR"
+File wit tha Postfix SMTP client ECDSA private key up in PEM format.
+.PP
+Available up in Postfix version 2.7 n' later:
+.IP "\fBsmtp_tls_block_early_mail_reply (no)\fR"
+Try ta detect a mail hijackin battle based on a TLS protocol
+vulnerabilitizzle (CVE-2009-3555), where a attacker prependz malicious
+HELO, MAIL, RCPT, DATA commandz ta a Postfix SMTP client TLS session.
+.PP
+Available up in Postfix version 2.8 n' later:
+.IP "\fBtls_disable_workaroundz (see 'postconf -d' output)\fR"
+List or bit-mask of OpenSSL bug work-aroundz ta disable.
+.SH "OBSOLETE STARTTLS CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da followin configuration parametas exist fo' compatibility
+with Postfix versions before 2.3. Right back up in yo muthafuckin ass. Support fo' these will
+be removed up in a gangbangin' future release.
+.IP "\fBsmtp_use_tls (no)\fR"
+Opportunistic mode: use TLS when a remote SMTP server announces
+STARTTLS support, otherwise bust tha mail up in tha clear.
+.IP "\fBsmtp_enforce_tls (no)\fR"
+Enforcement mode: require dat remote SMTP servers use TLS
+encryption, n' never bust mail up in tha clear.
+.IP "\fBsmtp_tls_enforce_peername (yes)\fR"
+With mandatory TLS encryption, require dat tha remote SMTP
+server hostname matches tha shiznit up in tha remote SMTP server
+certificate.
+.IP "\fBsmtp_tls_per_site (empty)\fR"
+Optionizzle lookup tablez wit tha Postfix SMTP client TLS usage
+policy by next-hop destination n' by remote SMTP server hostname.
+.IP "\fBsmtp_tls_cipherlist (empty)\fR"
+Obsolete Postfix < 2.3 control fo' tha Postfix SMTP client TLS
+cipher list.
+.SH "RESOURCE AND RATE CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBsmtp_destination_concurrency_limit ($default_destination_concurrency_limit)\fR"
+Da maximal number of parallel deliveries ta tha same destination
+via tha smtp message delivery transport.
+.IP "\fBsmtp_destination_recipient_limit ($default_destination_recipient_limit)\fR"
+Da maximal number of recipients per message fo' tha smtp
+message delivery transport.
+.IP "\fBsmtp_connect_timeout (30s)\fR"
+Da Postfix SMTP client time limit fo' completin a TCP connection, or
+zero (use tha operatin system built-in time limit).
+.IP "\fBsmtp_helo_timeout (300s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha HELO or EHLO command,
+and fo' receivin tha initial remote SMTP server response.
+.IP "\fBlmtp_lhlo_timeout (300s)\fR"
+Da Postfix LMTP client time limit fo' bustin  tha LHLO command,
+and fo' receivin tha initial remote LMTP server response.
+.IP "\fBsmtp_xforward_timeout (300s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha XFORWARD command,
+and fo' receivin tha remote SMTP server response.
+.IP "\fBsmtp_mail_timeout (300s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha MAIL FROM command,
+and fo' receivin tha remote SMTP server response.
+.IP "\fBsmtp_rcpt_timeout (300s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha SMTP RCPT TO
+command, n' fo' receivin tha remote SMTP server response.
+.IP "\fBsmtp_data_init_timeout (120s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha SMTP DATA command,
+and fo' receivin tha remote SMTP server response.
+.IP "\fBsmtp_data_xfer_timeout (180s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha SMTP message content.
+.IP "\fBsmtp_data_done_timeout (600s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha SMTP ".", and
+for receivin tha remote SMTP server response.
+.IP "\fBsmtp_quit_timeout (300s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha QUIT command,
+and fo' receivin tha remote SMTP server response.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtp_mx_address_limit (5)\fR"
+Da maximal number of MX (mail exchanger) IP addresses dat can
+result from Postfix SMTP client mail exchanger lookups, or zero (no
+limit).
+.IP "\fBsmtp_mx_session_limit (2)\fR"
+Da maximal number of SMTP sessions per delivery request before
+the Postfix SMTP client
+gives up or delivers ta a gangbangin' fall-back relay host, or zero (no
+limit).
+.IP "\fBsmtp_rset_timeout (20s)\fR"
+Da Postfix SMTP client time limit fo' bustin  tha RSET command,
+and fo' receivin tha remote SMTP server response.
+.PP
+Available up in Postfix version 2.2 n' earlier:
+.IP "\fBlmtp_cache_connection (yes)\fR"
+Keep Postfix LMTP client connections open fo' up ta $max_idle
+seconds.
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBsmtp_connection_cache_destinations (empty)\fR"
+Permanently enable SMTP connection cachin fo' tha specified
+destinations.
+.IP "\fBsmtp_connection_cache_on_demand (yes)\fR"
+Temporarily enable SMTP connection cachin while a thugged-out destination
+has a high volume of mail up in tha actizzle queue.
+.IP "\fBsmtp_connection_reuse_time_limit (300s)\fR"
+Da amount of time durin which Postfix will use a SMTP
+connection repeatedly.
+.IP "\fBsmtp_connection_cache_time_limit (2s)\fR"
+When SMTP connection cachin is enabled, tha amount of time that
+an unused SMTP client socket is kept open before it is closed.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBconnection_cache_protocol_timeout (5s)\fR"
+Time limit fo' connection cache connect, bust or receive
+operations.
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBsmtp_per_record_deadline (no)\fR"
+Change tha behavior of tha smtp_*_timeout time limits, from a
+time limit per read or write system call, ta a time limit ta send
+or receive a cold-ass lil complete record (an SMTP command line, SMTP response
+line, SMTP message content line, or TLS protocol message).
+.SH "TROUBLE SHOOTING CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBdebug_peer_level (2)\fR"
+Da increment up in verbose loggin level when a remote client or
+server matches a pattern up in tha debug_peer_list parameter.
+.IP "\fBdebug_peer_list (empty)\fR"
+Optionizzle list of remote client or server hostname or network
+address patterns dat cause tha verbose loggin level ta increase
+by tha amount specified up in $debug_peer_level.
+.IP "\fBerror_notice_recipient (postmaster)\fR"
+Da recipient of postmasta notifications bout mail delivery
+problems dat is caused by policy, resource, software or protocol
+errors.
+.IP "\fBinternal_mail_filter_classes (empty)\fR"
+What categoriez of Postfix-generated mail is subject to
+before-queue content inspection by non_smtpd_milters, header_checks
+and body_checks.
+.IP "\fBnotify_classes (resource, software)\fR"
+Da list of error classes dat is reported ta tha postmaster.
+.SH "MISCELLANEOUS CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBbest_mx_transhiznit (empty)\fR"
+Where tha Postfix SMTP client should serve up mail when it detects
+a "mail loops back ta mah dirty ass" error condition.
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdaemon_timeout (18000s)\fR"
+How tha fuck much time a Postfix daemon process may take ta handle a
+request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBdelay_logging_resolution_limit (2)\fR"
+Da maximal number of digits afta tha decimal point when logging
+sub-second delay joints.
+.IP "\fBdisable_dns_lookups (no)\fR"
+Disable DNS lookups up in tha Postfix SMTP n' LMTP clients.
+.IP "\fBinet_interfaces (all)\fR"
+Da network intercourse addresses dat dis mail system receives
+mail on.
+.IP "\fBinet_protocols (all)\fR"
+Da Internizzle protocols Postfix will attempt ta use when making
+or acceptin connections.
+.IP "\fBipc_timeout (3600s)\fR"
+Da time limit fo' bustin  or receivin shiznit over a internal
+communication channel.
+.IP "\fBlmtp_assume_final (no)\fR"
+When a remote LMTP server announces no DSN support, assume that
+the
+server performs final delivery, n' bust "delivered" delivery status
+notifications instead of "relayed".
+.IP "\fBlmtp_tcp_port (24)\fR"
+Da default TCP port dat tha Postfix LMTP client connects to.
+.IP "\fBmax_idle (100s)\fR"
+Da maximum amount of time dat a idle Postfix daemon process waits
+for a incomin connection before terminatin voluntarily.
+.IP "\fBmax_use (100)\fR"
+Da maximal number of incomin connections dat a Postfix daemon
+process will steez before terminatin voluntarily.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBproxy_interfaces (empty)\fR"
+Da network intercourse addresses dat dis mail system receives mail
+on by way of a proxy or network address translation unit.
+.IP "\fBsmtp_address_preference (any)\fR"
+Da address type ("ipv6", "ipv4" or "any") dat tha Postfix
+SMTP client will try first, when a thugged-out destination has IPv6 n' IPv4
+addresses wit equal MX preference.
+.IP "\fBsmtp_bind_address (empty)\fR"
+An optionizzle numerical network address dat tha Postfix SMTP client
+should bind ta when bustin a IPv4 connection.
+.IP "\fBsmtp_bind_address6 (empty)\fR"
+An optionizzle numerical network address dat tha Postfix SMTP client
+should bind ta when bustin a IPv6 connection.
+.IP "\fBsmtp_helo_name ($myhostname)\fR"
+Da hostname ta bust up in tha SMTP EHLO or HELO command.
+.IP "\fBlmtp_lhlo_name ($myhostname)\fR"
+Da hostname ta bust up in tha LMTP LHLO command.
+.IP "\fBsmtp_host_lookup (dns)\fR"
+What mechanizzlez tha Postfix SMTP client uses ta look up a hostz IP
+address.
+.IP "\fBsmtp_randomize_addresses (yes)\fR"
+Randomize tha order of equal-preference MX host addresses.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.PP
+Available wit Postfix 2.2 n' earlier:
+.IP "\fBfallback_relay (empty)\fR"
+Optionizzle list of relay hosts fo' SMTP destinations dat can't be
+found or dat is unreachable.
+.PP
+Available wit Postfix 2.3 n' later:
+.IP "\fBsmtp_fallback_relay ($fallback_relay)\fR"
+Optionizzle list of relay hosts fo' SMTP destinations dat can't be
+found or dat is unreachable.
+.SH "SEE ALSO"
+.na
+.nf
+generic(5), output address rewriting
+header_checks(5), message header content inspection
+body_checks(5), body parts content inspection
+qmgr(8), queue manager
+bounce(8), delivery status reports
+scache(8), connection cache server
+postconf(5), configuration parameters
+master(5), generic daemon options
+master(8), process manager
+tlsmgr(8), TLS session n' PRNG pimpment
+syslogd(8), system logging
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+SASL_README, Postfix SASL howto
+TLS_README, Postfix STARTTLS howto
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA
+
+Command pipelinin up in cooperation with:
+Jizzle Ribbens
+Oaktree Internizzle Solutions Ltd.,
+Internizzle House,
+Canal Basin,
+Coventry,
+CV1 4LY, United Mackdaddydom.
+
+SASL support originally by:
+Till Franke
+SuSE Rhein/Main AG
+65760 Eschborn, Germany
+
+TLS support originally by:
+Lutz Jaenicke
+BTU Cottbus
+Allgemeine Elektrotechnik
+Universitaetsplatz 3-4
+D-03044 Cottbus, Germany
+
+Revised TLS n' SMTP connection cache support by:
+Victor Duchovni
+Morgan Stanley

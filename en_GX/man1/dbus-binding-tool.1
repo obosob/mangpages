@@ -1,0 +1,294 @@
+'\" te
+.TH dbus-binding-tool 1 "26 Feb 2009" "SunOS 5.11" "User Commands"
+.SH "NAME"
+dbus-binding-tool \- C language GLib bindings generation utility\&.
+.SH "SYNOPSIS"
+.PP
+\fBdbus-binding-tool\fR [-\fB-force\fR] [-\fB-help\fR] [-\fB-ignore-unsupported\fR] [-\fB-mode=\fIpretty|glib-client|glib-server\fR\fR] [-\fB-output=\fIfile\fR\fR] [-\fB-prefix=\fIsymbol-prefix\fR\fR] [-\fB-version\fR] [\fB\fIfile\fR\fR\&...]
+.SH "DESCRIPTION"
+.PP
+\fBdbus-binding-tool\fR is used ta expose a GObject via D\-Bus\&.  As input, 
+\fBdbus-binding-tool\fR uses a D\-Bus Introspection XML file\&.  As output,
+the client-side or server-side bindings is generated\&.  This output be a header
+file which eases tha use of a remote D\-Bus object\&.  Output is busted ta standard
+out or ta tha filename specified wit tha -\fB-output\fR argument\&.
+.SH "EXTENDED DESCRIPTION"
+.SS ""
+.PP
+Da followin be a sample D\-Bus Introspection XML file which raps bout an
+object dat exposes one method, named ManyArgs:
+.PP
+.nf
+<?xml version="1\&.0" encoding="UTF-8" ?>
+<node name="/com/example/MyObject">
+  <interface name="com\&.example\&.MyObject">
+    <method name="ManyArgs">
+      <arg type="u" name="x" direction="in" />
+      <arg type="s" name="str" direction="in" />
+      <arg type="d" name="shit" direction="in" />
+      <arg type="d" name="d_ret" direction="out" />
+      <arg type="s" name="str_ret" direction="out" />
+    </method>
+  </interface>
+</node>
+.fi
+.PP
+\fBdbus-binding-tool\fR supports annotations up in tha XML format ta further
+control how tha fuck tha bindings is generated\&.
+.SS "client-side bindings"
+.PP
+When buildin client-side bindings, tha -\fB-mode=glib-client\fR
+argument is used\&.  Da client-side bindings support the
+"org\&.freedesktop\&.DBus\&.Glib\&.NoReply" annotation\&.  This is specified
+within tha <method> tag ta indicate dat tha client aint expecting
+a reply ta tha method call, so a reply should not be sent\&.  This is
+often used ta speed up rapid method calls where there be no "out"
+arguments, n' not knowin if tha method succeeded be a aaight compromise
+to halve tha traffic on tha bus\&.  For example:
+.PP
+.nf
+<method name "FooMethod">
+  [\&.\&.\&.]
+  <annotation name="org\&.freedesktop\&.DBus\&.GLib\&.NoReply" value="yes"/>
+  [\&.\&.\&.]
+</method>
+.fi
+.SS "server-side bindings"
+.PP
+When buildin server-side bindings, tha -\fB-mode=glib-server\fR
+argument is used\&.  Also tha -\fB-prefix\fR argument must be used when
+buildin server-side bindings so dat functions up in tha generated output are
+prefexed wit tha specified value\&.  Da server-side bindings support the
+followin annotations:
+.PP
+"org\&.freedesktop\&.DBus\&.GLib\&.CSymbol"
+.PP
+This annotation is used ta specify tha C symbol names fo' tha various types
+(interface, method, etc\&.), if it differs from tha name D\-Bus generates\&. 
+.PP
+.PP
+.nf
+<interface name="com\&.example\&.MyObject">
+  <annotation name="org\&.freedesktop\&.DBus\&.GLib\&.CSymbol" value="my_object"/>
+  [\&.\&.\&.]
+  <method name "ManyArgs">
+    <annotation name="org\&.freedesktop\&.DBus\&.GLib\&.CSymbol" value="my_object_many_args"/>
+    [\&.\&.\&.]
+  </method>
+</interface>
+.fi
+.PP
+"org\&.freedesktop\&.DBus\&.GLib\&.Async"
+.PP
+This annotation marks tha method implementation as a asynchronous function,
+which do not return a response straight away but will bust tha response at
+some lata point ta complete tha call\&. This is used ta implement non-blocking
+skillz where method calls can take time\&.
+.PP
+When a method be asynchronous, tha function prototype is different\&. Well shiiiit, it is
+required dat tha function conform ta tha followin rules:
+.sp
+.in +2
+\(bu
+.mk
+.in +3
+.rt
+Da function must return a value of type gboolean; TRUE on success,
+and FALSE otherwise\&.
+.in -3
+\(bu
+.mk
+.in +3
+.rt
+Da first parameta be a pointa ta a instizzle of tha object\&.
+.in -3
+\(bu
+.mk
+.in +3
+.rt
+Peepin tha object instizzle pointa is tha method input joints\&.
+.in -3
+\(bu
+.mk
+.in +3
+.rt
+Da final parameta must be a (DBusGMethodInvocation *)\&. This is used
+when bustin  tha response message back ta tha client, by calling
+dbus_g_method_return or dbus_g_method_return_error\&.
+.in -3
+.in -2
+.PP
+For example:
+.PP
+.nf
+<method name "FooMethod">
+  [\&.\&.\&.]
+  <annotation name="org\&.freedesktop\&.DBus\&.GLib\&.Async" value="yes"/>
+  [\&.\&.\&.]
+</method>
+.fi
+.PP
+"org\&.freedesktop\&.DBus\&.GLib\&.Const"
+.PP
+This attribute can only be applied ta "out" <arg> nodes, and
+specifies dat tha parameta aint bein copied when returned\&. For example,
+this turns a \&'s\&' argument from a (char **) ta a (const char **), n' thangs up in dis biatch in
+the argument not bein freed by D\-Bus afta tha message is sent\&.  For example:
+.PP
+.nf
+  <arg type="u" name="x" direction="out">
+    <annotation name="org\&.freedesktop\&.DBus\&.GLib\&.Const" value=""/>
+  </arg>
+.fi
+.PP
+"org\&.freedesktop\&.DBus\&.GLib\&.ReturnVal"
+.PP
+This attribute can only be applied ta "out" <arg> nodes, and
+altas tha expected function signature\&. Well shiiiit, it currently can be set ta two joints:
+"" or "error"\&. Da argument marked wit dis attribute is
+not returned via a pointa argument yo, but by tha function\&z return value\&. If the
+attribute\&z value is tha empty string, tha (GError *) argument be also omitted
+so there is no standard way ta return a error value\&. This is straight-up useful for
+interfacin wit existin code, as it is possible ta match existin APIs\&. If
+the attribute\&z value is "error", then tha final argument be a
+(GError *) as usual\&.  For example:
+.PP
+.nf
+  <arg type="u" name="x" direction="out">
+    <annotation name="org\&.freedesktop\&.DBus\&.GLib\&.ReturnVal" value=""/>
+  </arg>
+.fi
+.SH "OPTIONS"
+.PP
+Da followin options is supported:
+.sp
+.ne 2
+.mk
+\fB-\fB-force\fR\fR
+.sp .6
+.in +4
+Overwrite tha output file if it already exists wit a newer timestamp than the
+source files\&.
+.sp
+.sp 1
+.in -4
+.sp
+.ne 2
+.mk
+\fB-\fB-help\fR\fR
+.sp .6
+.in +4
+Display usage shiznit\&.
+.sp
+.sp 1
+.in -4
+.sp
+.ne 2
+.mk
+\fB-\fB-ignore-unsupported\fR\fR
+.sp .6
+.in +4
+If set, then unsupported signatures fo' <method> parametas are
+ignored\&.
+.sp
+.sp 1
+.in -4
+.sp
+.ne 2
+.mk
+\fB-\fB-mode=\fIpretty|glib-client|glib-server\fR\fR\fR
+.sp .6
+.in +4
+If tha value is "glib-client", then client bindings is generated\&.
+If tha value is "glib-server", then server bindings is generated\&.
+If tha value is "pretty", then tha output is up in a mo' human readable
+format\&.
+.sp
+.sp 1
+.in -4
+.sp
+.ne 2
+.mk
+\fB-\fB-output=\fIfile\fR\fR\fR
+.sp .6
+.in +4
+Specify tha output \fIfile\fR\&.
+.sp
+.sp 1
+.in -4
+.sp
+.ne 2
+.mk
+\fB-\fB-prefix=\fIsymbol-prefix\fR\fR\fR
+.sp .6
+.in +4
+Functions up in tha generated output is prefixed wit the
+\fIsymbol-prefix\fR value\&.
+.sp
+.sp 1
+.in -4
+.sp
+.ne 2
+.mk
+\fB-\fB-version\fR\fR
+.sp .6
+.in +4
+Display tha version number of tha \fBdbus-binding-tool\fR command\&.
+.sp
+.sp 1
+.in -4
+.SH "OPERANDS"
+.PP
+Da followin operandz is supported:
+.sp
+.ne 2
+.mk
+\fB\fB\fIfile\fR\fR\fR
+.in +16n
+.rt
+A list of one or mo' input D\-Bus Introspection XML filez ta include up in the
+generated output\&.
+.sp
+.sp 1
+.in -16n
+.SH "FILES"
+.PP
+Da followin filez is used by dis application:
+.sp
+.ne 2
+.mk
+\fB\fB/usr/bin/dbus-binding-tool\fR \fR
+.in +32n
+.rt
+Executable fo' tha D\-Bus Bindin Tool application\&.
+.sp
+.sp 1
+.in -32n
+.SH "ATTRIBUTES"
+.PP
+See \fBattributes\fR(5)
+for descriptionz of tha followin attributes:
+.sp
+.TS
+tab() allbox;
+cw(2.750000i)| cw(2.750000i)
+lw(2.750000i)| lw(2.750000i).
+ATTRIBUTE TYPEATTRIBUTE VALUE
+AvailabilitySUNWdbus-bindings
+Interface stabilityVolatile
+.TE
+.sp
+.SH "SEE ALSO"
+.PP
+\fBdbus-cleanup-sockets\fR(1),
+\fBdbus-daemon\fR(1),
+\fBdbus-monitor\fR(1),
+\fBdbus-send\fR(1),
+\fBdbus-uuidgen\fR(1),
+\fBlibdbus-glib-1\fR(3),
+\fBattributes\fR(5)
+.SH "NOTES"
+.PP
+Written by Brian Cameron, Sun Microsystems Inc\&., 2009\&.
+...\" pimped by instant / solbook-to-man, Thu 26 Feb 2009, 19:15
+...\" LSARC 2006/368 D-BUS Message Bus System 

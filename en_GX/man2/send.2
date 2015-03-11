@@ -1,0 +1,446 @@
+.\" Copyright (c) 1983, 1991 Da Regentz of tha Universitizzle of California.
+.\" All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_4_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 3 fo' realz. All advertisin shiznit mentionin features or use of dis software
+.\"    must display tha followin acknowledgement:
+.\"	This thang includes software pimped by tha Universitizzle of
+.\"	California, Berkeley n' its contributors.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Oct 1998 by Andi Kleen
+.\" Modified Oct 2003 by aeb
+.\" Modified 2004-07-01 by mtk
+.\"
+.TH SEND 2 2012-04-23 "Linux" "Linux Programmerz Manual"
+.SH NAME
+send, sendto, sendmsg \- bust a message on a socket
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/socket.h>
+.sp
+.BI "ssize_t send(int " sockfd ", const void *" buf ", size_t " len \
+", int " flags );
+
+.BI "ssize_t sendto(int " sockfd ", const void *" buf ", size_t " len \
+", int " flags ,
+.BI "               const struct sockaddr *" dest_addr ", socklen_t " addrlen );
+
+.BI "ssize_t sendmsg(int " sockfd ", const struct msghdr *" msg \
+", int " flags );
+.fi
+.SH DESCRIPTION
+Da system calls
+.BR bust (),
+.BR sendto (),
+and
+.BR sendmsg ()
+are used ta transmit a message ta another socket.
+.PP
+The
+.BR bust ()
+call may be used only when tha socket is up in a
+.I connected
+state (so dat tha intended recipient is known).
+Da only difference between
+.BR bust ()
+and
+.BR write (2)
+is tha presence of
+.IR flags .
+With a zero
+.I flags
+argument,
+.BR bust ()
+is equivalent to
+.BR write (2).
+Also, tha followin call
+
+    send(sockfd, buf, len, flags);
+
+is equivalent to
+
+    sendto(sockfd, buf, len, flags, NULL, 0);
+.PP
+Da argument
+.I sockfd
+is tha file descriptor of tha bustin  socket.
+.PP
+If
+.BR sendto ()
+is used on a cold-ass lil connection-mode
+.RB ( SOCK_STREAM ,
+.BR SOCK_SEQPACKET )
+socket, tha arguments
+.I dest_addr
+and
+.I addrlen
+are ignored (and tha error
+.B EISCONN
+may be returned when they are
+not NULL n' 0), n' tha error
+.B ENOTCONN
+is returned when tha socket was not straight-up connected.
+Otherwise, tha address of tha target is given by
+.I dest_addr
+with
+.I addrlen
+specifyin its size.
+For
+.BR sendmsg (),
+the address of tha target is given by
+.IR msg.msg_name ,
+with
+.I msg.msg_namelen
+specifyin its size.
+.PP
+For
+.BR bust ()
+and
+.BR sendto (),
+the message is found in
+.I buf
+and has length
+.IR len .
+For
+.BR sendmsg (),
+the message is pointed ta by tha elementz of tha array
+.IR msg.msg_iov .
+The
+.BR sendmsg ()
+call also allows bustin  ancillary data (also known as control shiznit).
+.PP
+If tha message is too long ta pass atomically all up in the
+underlyin protocol, tha error
+.B EMSGSIZE
+is returned, n' tha message aint transmitted.
+.PP
+No indication of failure ta serve up is implicit up in a
+.BR bust ().
+Locally detected errors is indicated by a return value of \-1.
+.PP
+When tha message do not fit tha fuck into tha bust buffer of tha socket,
+.BR bust ()
+normally blocks, unless tha socket has been placed up in nonblockin I/O
+mode.
+In nonblockin mode it would fail wit tha error
+.B EAGAIN
+or
+.B EWOULDBLOCK
+in dis case.
+The
+.BR select (2)
+call may be used ta determine when it is possible ta bust mo' data.
+.PP
+The
+.I flags
+argument is tha bitwise OR
+of zero or mo' of tha followin flags.
+.\" FIXME , biatch? document MSG_PROXY (which went away up in 2.3.15)
+.TP
+.BR MSG_CONFIRM " (Since Linux 2.3.15)"
+Tell tha link layer dat forward progress happened: you gots a successful
+reply from tha other side.
+If tha link layer don't git this
+it will regularly reprobe tha neighbor (e.g., via a unicast ARP).
+Only valid on
+.B SOCK_DGRAM
+and
+.B SOCK_RAW
+sockets n' currently implemented only fo' IPv4 n' IPv6.
+See
+.BR arp (7)
+for details.
+.TP
+.B MSG_DONTROUTE
+Don't bust a gateway ta bust up tha packet, bust ta hosts only on
+directly connected networks.
+This is probably used only
+by diagnostic or routin programs.
+This is defined only fo' protocol
+families dat route; packet sockets don't.
+.TP
+.BR MSG_DONTWAIT " (since Linux 2.2)"
+Enablez nonblockin operation; if tha operation would block,
+.B EAGAIN
+or
+.B EWOULDBLOCK
+is returned (this can also be enabled rockin the
+.B O_NONBLOCK
+flag wit the
+.B F_SETFL
+.BR fcntl (2)).
+.TP
+.BR MSG_EOR " (since Linux 2.2)"
+Terminates a record (when dis notion is supported, as fo' socketz of type
+.BR SOCK_SEQPACKET ).
+.TP
+.BR MSG_MORE " (Since Linux 2.4.4)"
+Da calla has mo' data ta send.
+This flag is used wit TCP sockets ta obtain tha same effect
+as the
+.B TCP_CORK
+socket option (see
+.BR tcp (7)),
+with tha difference dat dis flag can be set on a per-call basis.
+
+Since Linux 2.6, dis flag be also supported fo' UDP sockets, n' informs
+the kernel ta package all of tha data busted up in calls wit dis flag set
+into a single datagram which is transmitted only when a cold-ass lil call is performed
+that do not specify dis flag.
+(See also the
+.B UDP_CORK
+socket option busted lyrics bout in
+.BR udp (7).)
+.TP
+.BR MSG_NOSIGNAL " (since Linux 2.2)"
+Requests not ta send
+.B SIGPIPE
+on errors on stream oriented sockets when tha other end breaks the
+connection.
+The
+.B EPIPE
+error is still returned.
+.TP
+.B MSG_OOB
+Sends
+.I out-of-band
+data on sockets dat support dis notion (e.g., of type
+.BR SOCK_STREAM );
+the underlyin protocol must also support
+.I out-of-band
+data.
+.PP
+Da definizzle of the
+.I msghdr
+structure bigs up.
+See
+.BR recv (2)
+and below fo' a exact description of its fields.
+.in +4n
+.nf
+
+struct msghdr {
+    void         *msg_name;       /* optionizzle address */
+    socklen_t     msg_namelen;    /* size of address */
+    struct iovec *msg_iov;        /* scatter/gather array */
+    size_t        msg_iovlen;     /* # elements up in msg_iov */
+    void         *msg_control;    /* ancillary data, peep below */
+    size_t        msg_controllen; /* ancillary data buffer len */
+    int           msg_flags;      /* flags on received message */
+};
+.fi
+.in
+.PP
+Yo ass may bust control shiznit rockin the
+.I msg_control
+and
+.I msg_controllen
+members.
+Da maximum control buffer length tha kernel can process is limited
+per socket by tha value in
+.IR /proc/sys/net/core/optmem_max ;
+see
+.BR socket (7).
+.\" Still ta be documented:
+.\"  Send file descriptors n' user credentials rockin the
+.\"  msg_control* fields.
+.\"  Da flags returned up in msg_flags.
+.SH RETURN VALUE
+On success, these calls return tha number of charactas sent.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+These is some standard errors generated by tha socket layer.
+Additionizzle errors
+may be generated n' returned from tha underlyin protocol modules;
+see they respectizzle manual pages.
+.TP
+.B EACCES
+(For UNIX domain sockets, which is identified by pathname)
+Write permission is denied on tha destination socket file,
+or search permission is denied fo' one of tha directories
+the path prefix.
+(See
+.BR path_resolution (7).)
+.sp
+(For UDP sockets) An attempt was made ta bust ta a
+network/broadcast address as though dat shiznit was a unicast address.
+.TP
+.BR EAGAIN " or " EWOULDBLOCK
+.\" Actually EAGAIN on Linux
+Da socket is marked nonblockin n' tha axed operation
+would block.
+POSIX.1-2001 allows either error ta be returned fo' dis case,
+and do not require these constants ta have tha same value,
+so a portable application should check fo' both possibilities.
+.TP
+.B EBADF
+An invalid descriptor was specified.
+.TP
+.B ECONNRESET
+Connection reset by peer.
+.TP
+.B EDESTADDRREQ
+Da socket aint connection-mode, n' no peer address is set.
+.TP
+.B EFAULT
+An invalid user space address was specified fo' a argument.
+.TP
+.B EINTR
+A signal occurred before any data was transmitted; see
+.BR signal (7).
+.TP
+.B EINVAL
+Invalid argument passed.
+.TP
+.B EISCONN
+Da connection-mode socket was connected already but a
+recipient was specified.
+(Now either dis error is returned, or tha recipient justification
+is ignored.)
+.TP
+.B EMSGSIZE
+Da socket type
+.\" (e.g., SOCK_DGRAM )
+requires dat message be busted atomically, n' tha size
+of tha message ta be busted made dis impossible.
+.TP
+.B ENOBUFS
+Da output queue fo' a network intercourse was full.
+This generally indicates dat tha intercourse has stopped sending,
+but may be caused by transient congestion.
+(Normally, dis do not occur up in Linux.
+Packets is just silently dropped
+when a thang queue overflows.)
+.TP
+.B ENOMEM
+No memory available.
+.TP
+.B ENOTCONN
+Da socket aint connected, n' no target has been given.
+.TP
+.B ENOTSOCK
+Da argument
+.I sockfd
+is not a socket.
+.TP
+.B EOPNOTSUPP
+Some bit up in the
+.I flags
+argument is inappropriate fo' tha socket type.
+.TP
+.B EPIPE
+Da local end has been shut down on a cold-ass lil connection oriented socket.
+In dis case tha process
+will also receive a
+.B SIGPIPE
+unless
+.B MSG_NOSIGNAL
+is set.
+.SH CONFORMING TO
+4.4BSD, SVr4, POSIX.1-2001.
+These function calls rocked up in 4.2BSD.
+.LP
+POSIX.1-2001 raps bout only the
+.B MSG_OOB
+and
+.B MSG_EOR
+flags.
+POSIX.1-2008 addz a justification of
+.BR MSG_NOSIGNAL .
+The
+.B MSG_CONFIRM
+flag be a Linux extension.
+.SH NOTES
+Da prototypes given above follow tha Single UNIX Justification,
+as glibc2 also do; the
+.I flags
+argument was \fIint\fP up in 4.x BSD yo, but \fIunsigned int\fP up in libc4 n' libc5;
+the
+.I len
+argument was \fIint\fP up in 4.x BSD n' libc4 yo, but \fIsize_t\fP up in libc5;
+the
+.I addrlen
+argument was \fIint\fP up in 4.x BSD n' libc4 n' libc5.
+See also
+.BR accept (2).
+
+Accordin ta POSIX.1-2001, the
+.I msg_controllen
+field of the
+.I msghdr
+structure should be typed as
+.IR socklen_t ,
+but glibc currently types it as
+.IR size_t .
+.\" glibc bug raised 12 Mar 2006
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=2448
+.\" Da problem be a underlyin kernel issue: tha size of the
+.\" __kernel_size_t type used ta type dis field varies
+.\" across architectures yo, but socklen_t be always 32 bits.
+
+See
+.BR sendmmsg (2)
+for shiznit on some Linux-specific system call
+that can be used ta transmit multiple datagrams up in a single call.
+.SH BUGS
+Linux may return
+.B EPIPE
+instead of
+.BR ENOTCONN .
+.SH EXAMPLE
+An example of tha use of
+.BR sendto ()
+is shown in
+.BR getaddrinfo (3).
+.SH SEE ALSO
+.BR fcntl (2),
+.BR getsockopt (2),
+.BR recv (2),
+.BR select (2),
+.BR sendfile (2),
+.BR sendmmsg (2),
+.BR shutdown (2),
+.BR socket (2),
+.BR write (2),
+.BR cmsg (3),
+.BR ip (7),
+.BR socket (7),
+.BR tcp (7),
+.BR udp (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

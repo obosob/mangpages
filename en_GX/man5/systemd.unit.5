@@ -1,0 +1,894 @@
+'\" t
+.TH "SYSTEMD\&.UNIT" "5" "" "systemd 208" "systemd.unit"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+systemd.unit \- Unit configuration
+.SH "SYNOPSIS"
+.PP
+\fIservice\fR\&.service,
+\fIsocket\fR\&.socket,
+\fIdevice\fR\&.device,
+\fImount\fR\&.mount,
+\fIautomount\fR\&.automount,
+\fIswap\fR\&.swap,
+\fItarget\fR\&.target,
+\fIpath\fR\&.path,
+\fItimer\fR\&.timer,
+\fIsnapshot\fR\&.snapshot,
+\fIslice\fR\&.slice,
+\fIscope\fR\&.scope
+.PP
+.nf
+/etc/systemd/system/*
+/run/systemd/system/*
+/usr/lib/systemd/system/*
+\&.\&.\&.
+                
+.fi
+.PP
+.nf
+$HOME/\&.config/systemd/user/*
+/etc/systemd/user/*
+/run/systemd/user/*
+/usr/lib/systemd/user/*
+\&.\&.\&.
+                
+.fi
+.SH "DESCRIPTION"
+.PP
+A unit configuration file encodes shiznit on some service, a socket, a thugged-out device, a mount point, a automount point, a swap file or partition, a start\-up target, a peeped file system path, a timer controlled n' supervised by
+\fBsystemd\fR(1), a temporary system state snapshot, a resource pimpment slice or a crew of externally pimped processes\&. Da syntax is inspired by
+\m[blue]\fBXDG Desktop Entry Justification\fR\m[]\&\s-2\u[1]\d\s+2\&.desktop
+files, which is up in turn inspired by Microsizzlez Windows
+\&.ini
+files\&.
+.PP
+This playa page lists tha common configuration optionz of all tha unit types\&. These options need ta be configured up in tha [Unit] or [Install] sectionz of tha unit files\&.
+.PP
+In addizzle ta tha generic [Unit] n' [Install] sections busted lyrics bout here, each unit may gotz a type\-specific section, e\&.g\&. [Service] fo' a steez unit\&. Right back up in yo muthafuckin ass. See tha respectizzle playa pages fo' mo' shiznit:
+\fBsystemd.service\fR(5),
+\fBsystemd.socket\fR(5),
+\fBsystemd.device\fR(5),
+\fBsystemd.mount\fR(5),
+\fBsystemd.automount\fR(5),
+\fBsystemd.swap\fR(5),
+\fBsystemd.target\fR(5),
+\fBsystemd.path\fR(5),
+\fBsystemd.timer\fR(5),
+\fBsystemd.snapshot\fR(5)\&.
+\fBsystemd.slice\fR(5)\&.
+\fBsystemd.scope\fR(5)\&.
+.PP
+Various settings is allowed ta be specified mo' than once, up in which case tha interpretation dependz on tha setting\&. Often, multiple settings form a list, n' settin ta a empty value "resets", which means dat previous assignments is ignored\&. When dis be allowed, it is mentioned up in tha description of tha setting\&. Note dat rockin multiple assignments ta tha same value make tha unit file incompatible wit parsers fo' tha XDG
+\&.desktop
+file format\&.
+.PP
+Unit filez is loaded from a set of paths determined durin compilation, busted lyrics bout up in tha next section\&.
+.PP
+Unit filez may contain additionizzle options on top of dem listed here\&. If systemd encountas a unknown option, it will write a warnin log message but continue loadin tha unit\&. If a option is prefixed with
+\fBX\-\fR, it is ignored straight-up by systemd\& fo' realz. Applications may use dis ta include additionizzle shiznit up in tha unit files\&.
+.PP
+Boolean arguments used up in unit filez can be freestyled up in various formats\&. For positizzle settings tha strings
+\fB1\fR,
+\fByes\fR,
+\fBtrue\fR
+and
+\fBon\fR
+are equivalent\&. For wack settings, tha strings
+\fB0\fR,
+\fBno\fR,
+\fBfalse\fR
+and
+\fBoff\fR
+are equivalent\&.
+.PP
+Time span joints encoded up in unit filez can be freestyled up in various formats\& fo' realz. A stand\-alone number specifies a time up in seconds\&. If suffixed wit a time unit, tha unit is honored\& fo' realz. A concatenation of multiple joints wit units is supported, up in which case tha joints is added up\&. Example: "50" refers ta 50 seconds; "2min 200ms" refers ta 2 minutes plus 200 milliseconds, i\&.e\&. 120200ms\&. Da followin time units is understood: s, min, h, d, w, ms, us\&. For details see
+\fBsystemd.time\fR(7)\&.
+.PP
+Empty lines n' lines startin wit # or ; is ignored\&. This may be used fo' commenting\&. Lines endin up in a funky-ass backslash is concatenated wit tha followin line while readin n' tha backslash is replaced by a space character\&. This may be used ta wrap long lines\&.
+.PP
+Along wit a unit file
+foo\&.service, tha directory
+foo\&.service\&.wants/
+may exist\& fo' realz. All unit filez symlinked from such a gangbangin' finger-lickin' directory is implicitly added as dependenciez of type
+\fIWants=\fR
+to tha unit\&. This is useful ta hook units tha fuck into tha start\-up of other units, without havin ta modify they unit files\&. For details bout tha semantics of
+\fIWants=\fR, peep below\&. Da preferred way ta create symlinks up in the
+\&.wants/
+directory of a unit file is wit the
+\fBenable\fR
+command of the
+\fBsystemctl\fR(1)
+tool which readz shiznit from tha [Install] section of unit filez (see below)\& fo' realz. A similar functionalitizzle exists for
+\fIRequires=\fR
+type dependencies as well, tha directory suffix is
+\&.requires/
+in dis case\&.
+.PP
+Along wit a unit file
+foo\&.service, a gangbangin' finger-lickin' directory
+foo\&.service\&.d/
+may exist\& fo' realz. All filez wit tha suffix
+"\&.conf"
+from dis directory is ghon be parsed afta tha file itself is parsed\&. This is useful ta alta or add configuration settings ta a unit, without havin ta modify they unit files\&. Make shizzle dat tha file dat is included has tha appropriate section headaz before any directive\&. Note dat fo' instanced units dis logic will first look fo' tha instance
+"\&.d/"
+subdirectory n' read its
+"\&.conf"
+files, followed by tha template
+"\&.d/"
+subdirectory n' readz its
+"\&.conf"
+files\&.
+.PP
+If a line starts with
+\fB\&.include\fR
+followed by a gangbangin' filename, tha specified file is ghon be parsed at dis point\&. Make shizzle dat tha file dat is included has tha appropriate section headaz before any directives\&.
+.PP
+Note dat while systemd offers a gangbangin' flexible dependency system between units it is recommended ta use dis functionalitizzle only sparingly n' instead rely on steez like fuckin bus\-based or socket\-based activation which make dependencies implicit, resultin up in a funky-ass both simpla n' mo' flexible system\&.
+.PP
+Some unit names reflect paths existin up in tha file system namespace\&. Example: a thang unit
+dev\-sda\&.device
+refers ta a thang wit tha thang node
+/dev/sda
+in tha file system namespace\&. If dis applies, a special way ta escape tha path name is used, so dat tha result is usable as part of a gangbangin' filename\&. Basically, given a path, "/" is replaced by "\-", n' all unprintable charactas n' tha "\-" is replaced by C\-style "\ex2d" escapes\&. Da root directory "/" is encoded as single dash, while otherwise tha initial n' endin "/" is removed from all paths durin transformation\&. This escapin is reversible\&.
+.PP
+Optionally, units may be instantiated from a template file at runtime\&. This allows creation of multiple units from a single configuration file\&. If systemd looks fo' a unit configuration file, it will first search fo' tha literal unit name up in tha file system\&. If dat yieldz no success n' tha unit name gotz nuff an
+"@"
+character, systemd will look fo' a unit template dat shares tha same ol' dirty name but wit tha instizzle strang (i\&.e\&. tha part between the
+"@"
+characta n' tha suffix) removed\&. Example: if a service
+getty@tty3\&.service
+is axed n' no file by dat name is found, systemd will look for
+getty@\&.service
+and instantiate a steez from dat configuration file if it is found\&.
+.PP
+To refer ta tha instizzle strang from within tha configuration file you may use tha special
+"%i"
+specifier up in nuff of tha configuration options\&. Right back up in yo muthafuckin ass. See below fo' details\&.
+.PP
+If a unit file is empty (i\&.e\&. has tha file size 0) or is symlinked to
+/dev/null, its configuration aint gonna be loaded n' it appears wit a load state of
+"masked", n' cannot be activated\&. Use dis as a effectizzle way ta straight-up disable a unit, makin it impossible ta start it even manually\&.
+.PP
+Da unit file format is covered by the
+\m[blue]\fBInterface Stabilitizzle Promise\fR\m[]\&\s-2\u[2]\d\s+2\&.
+.SH "UNIT LOAD PATH"
+.PP
+Unit filez is loaded from a set of paths determined durin compilation, busted lyrics bout up in tha two tablez below\&. Unit filez found up in directories listed earlier override filez wit tha same name up in directories lower up in tha list\&.
+.PP
+When systemd is hustlin up in user mode (\fB\-\-user\fR) n' tha variable
+\fI$SYSTEMD_UNIT_PATH\fR
+is set, dis contentz of dis variable overrides tha unit load path\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table\ \&1.\ \& Load path when hustlin up in system mode (\-\-system).
+.TS
+allbox tab(:);
+lB lB.
+T{
+Path
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l.
+T{
+/etc/systemd/system
+T}:T{
+Local configuration
+T}
+T{
+/run/systemd/system
+T}:T{
+Runtime units
+T}
+T{
+/usr/lib/systemd/system
+T}:T{
+Unitz of installed packages
+T}
+.TE
+.sp 1
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table\ \&2.\ \& Load path when hustlin up in user mode (\-\-user).
+.TS
+allbox tab(:);
+lB lB.
+T{
+Path
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l.
+T{
+$HOME/\&.config/systemd/user
+T}:T{
+User configuration
+T}
+T{
+/etc/systemd/user
+T}:T{
+Local configuration
+T}
+T{
+/run/systemd/user
+T}:T{
+Runtime units
+T}
+T{
+/usr/lib/systemd/user
+T}:T{
+Unitz of installed packages
+T}
+.TE
+.sp 1
+.PP
+Additionizzle units might be loaded tha fuck into systemd ("linked") from directories not on tha unit load path\&. Right back up in yo muthafuckin ass. See the
+\fBlink\fR
+command for
+\fBsystemctl\fR(1)\& fo' realz. Also, some units is dynamically pimped via generators
+\m[blue]\fBGenerators\fR\m[]\&\s-2\u[3]\d\s+2\&.
+.SH "OPTIONS"
+.PP
+Unit file may include a [Unit] section, which carries generic shiznit bout tha unit dat aint dependent on tha type of unit:
+.PP
+\fIDescription=\fR
+.RS 4
+A free\-form strang describin tha unit\&. This is intended fo' use up in UIs ta show descriptizzle shiznit along wit tha unit name\&. Da description should contain a name dat means suttin' ta tha end user\&.
+"Apache2 Web Server"
+is a phat example\&. Wack examplez are
+"high\-performizzle light\-weight HTTP server"
+(too generic) or
+"Apache2"
+(too specific n' meaningless fo' playas whoz ass do not know Apache)\&.
+.RE
+.PP
+\fIDocumentation=\fR
+.RS 4
+A space\-separated list of URIs referencin documentation fo' dis unit or its configuration\& fo' realz. Accepted is only URIz of tha types
+"http://",
+"https://",
+"file:",
+"info:",
+"man:"\&. For mo' shiznit bout tha syntax of these URIs, see
+\fBuri\fR(7)\&. Da URIs should be listed up in order of relevance, startin wit da most thugged-out relevant\&. Well shiiiit, it aint nuthin but a phat scam ta first reference documentation dat explains what tha fuck tha unit\*(Aqs purpose is, followed by how tha fuck it is configured, followed by any other related documentation\&. This option may be specified mo' than once up in which case tha specified list of URIs is merged\&. If tha empty strang be assigned ta dis option, tha list is reset n' all prior assignments gonna git no effect\&.
+.RE
+.PP
+\fIRequires=\fR
+.RS 4
+Configures requirement dependencies on other units\&. If dis unit gets activated, tha units listed here is ghon be activated as well\&. If one of tha other units gets deactivated or its activation fails, dis unit is ghon be deactivated\&. This option may be specified mo' than once or multiple space\-separated units may be specified up in one option up in which case requirement dependencies fo' all listed names is ghon be pimped\&. Note dat requirement dependencies do not influence tha order up in which skillz is started or stopped\&. This has ta be configured independently wit the
+\fIAfter=\fR
+or
+\fIBefore=\fR
+options\&. If a unit
+foo\&.service
+requires a unit
+bar\&.service
+as configured with
+\fIRequires=\fR
+and no orderin is configured with
+\fIAfter=\fR
+or
+\fIBefore=\fR, then both units is ghon be started simultaneously n' without any delay between dem if
+foo\&.service
+is activated\&. Often it aint nuthin but a funky-ass betta chizzle ta use
+\fIWants=\fR
+instead of
+\fIRequires=\fR
+in order ta big up a system dat is mo' robust when dealin wit failin skillz\&.
+.sp
+Note dat dependenciez of dis type may also be configured outside of tha unit configuration file by addin a symlink ta a
+\&.requires/
+directory accompanyin tha unit file\&. For details peep above\&.
+.RE
+.PP
+\fIRequiresOverridable=\fR
+.RS 4
+Similar to
+\fIRequires=\fR\&. Dependencies listed in
+\fIRequiresOverridable=\fR
+which cannot be fulfilled or fail ta start is ignored if tha startup was explicitly axed by tha user\&. If tha start\-up was pulled up in indirectly by some dependency or automatic start\-up of units dat aint axed by tha user, dis dependency must be fulfilled n' otherwise tha transaction fails\& yo. Hence, dis option may be used ta configure dependencies dat is normally honored unless tha user explicitly starts up tha unit, up in which case whether they failed or not is irrelevant\&.
+.RE
+.PP
+\fIRequisite=\fR, \fIRequisiteOverridable=\fR
+.RS 4
+Similar to
+\fIRequires=\fR
+and
+\fIRequiresOverridable=\fR, respectively\&. But fuck dat shiznit yo, tha word on tha street is dat if tha units listed here is not started already they aint gonna be started n' tha transaction will fail immediately\&.
+.RE
+.PP
+\fIWants=\fR
+.RS 4
+A weaker version of
+\fIRequires=\fR\&. Units listed up in dis option is ghon be started if tha configurin unit is\&. But fuck dat shiznit yo, tha word on tha street is dat if tha listed units fail ta start or cannot be added ta tha transaction dis has no impact on tha validitizzle of tha transaction as a whole\&. This is tha recommended way ta hook start\-up of one unit ta tha start\-up of another unit\&.
+.sp
+Note dat dependenciez of dis type may also be configured outside of tha unit configuration file by addin symlinks ta a
+\&.wants/
+directory accompanyin tha unit file\&. For details peep above\&.
+.RE
+.PP
+\fIBindsTo=\fR
+.RS 4
+Configures requirement dependencies, straight-up similar up in steez to
+\fIRequires=\fR, however up in addizzle ta dis behavior it also declares dat dis unit is stopped when any of tha units listed suddenly disappears\&. Units can suddenly, unexpectedly disappear if a steez terminates on its own chizzle, a thang is unplugged or a mount point unmounted without involvement of systemd\&.
+.RE
+.PP
+\fIPartOf=\fR
+.RS 4
+Configures dependencies similar to
+\fIRequires=\fR yo, but limited ta stoppin n' restartin of units\&. When systemd stops or restarts tha units listed here, tha action is propagated ta dis unit\&. Note dat dis be a one\-way dependency\ \&\(em chizzlez ta dis unit do not affect tha listed units\&.
+.RE
+.PP
+\fIConflicts=\fR
+.RS 4
+A space\-separated list of unit names\&. Configures wack requirement dependencies\&. If a unit has a
+\fIConflicts=\fR
+settin on another unit, startin tha forma will stop tha latta n' vice versa\&. Note dat dis settin is independent of n' orthogonal ta the
+\fIAfter=\fR
+and
+\fIBefore=\fR
+orderin dependencies\&.
+.sp
+If a unit A dat conflicts wit a unit B is scheduled ta be started all up in tha same time as B, tha transaction will either fail (in case both is required part of tha transaction) or be modified ta be fixed (in case one or both thangs is not a required part of tha transaction)\&. In tha latta case tha thang dat aint tha required is ghon be removed, or up in case both is not required tha unit dat conflicts is ghon be started n' tha unit dat is conflicted is stopped\&.
+.RE
+.PP
+\fIBefore=\fR, \fIAfter=\fR
+.RS 4
+A space\-separated list of unit names\&. Configures orderin dependencies between units\&. If a unit
+foo\&.service
+gotz nuff a setting
+\fBBefore=bar\&.service\fR
+and both units is bein started,
+bar\&.service\*(Aqs start\-up is delayed until
+foo\&.service
+is started up\&. Note dat dis settin is independent of n' orthogonal ta tha requirement dependencies as configured by
+\fIRequires=\fR\&. Well shiiiit, it aint nuthin but a cold-ass lil common pattern ta include a unit name up in both the
+\fIAfter=\fR
+and
+\fIRequires=\fR
+option up in which case tha unit listed is ghon be started before tha unit dat is configured wit these options\&. This option may be specified mo' than once, up in which case orderin dependencies fo' all listed names is pimped\&.
+\fIAfter=\fR
+is tha inverse of
+\fIBefore=\fR, i\&.e\&. while
+\fIAfter=\fR
+ensures dat tha configured unit is started afta tha listed unit finished startin up,
+\fIBefore=\fR
+ensures tha opposite, i\&.e\&. dat tha configured unit is straight-up started up before tha listed unit is started\&. Note dat when two units wit a orderin dependency between dem is shut down, tha inverse of tha start\-up order be applied\&. i\&.e\&. if a unit is configured with
+\fIAfter=\fR
+on another unit, tha forma is stopped before tha latta if both is shut down\&. If one unit wit a orderin dependency on another unit is shut down while tha latta is started up, tha shut down is ordered before tha start\-up regardless of whether tha orderin dependency is straight-up of type
+\fIAfter=\fR
+or
+\fIBefore=\fR\&. If two units have no orderin dependencies between them, they is shut down or started up simultaneously, n' no orderin takes place\&.
+.RE
+.PP
+\fIOnFailure=\fR
+.RS 4
+A space\-separated list of one or mo' units dat is activated when dis unit entas the
+"failed"
+state\&.
+.RE
+.PP
+\fIPropagatesReloadTo=\fR, \fIReloadPropagatedFrom=\fR
+.RS 4
+A space\-separated list of one or mo' units where reload requests on dis unit is ghon be propagated to, or reload requests on tha other unit is ghon be propagated ta dis unit, respectively\&. Issuin a reload request on a unit will automatically also enqueue a reload request on all units dat tha reload request shall be propagated ta via these two settings\&.
+.RE
+.PP
+\fIRequiresMountsFor=\fR
+.RS 4
+Takes a space\-separated list of absolute paths\& fo' realz. Automatically addz dependenciez of type
+\fIRequires=\fR
+and
+\fIAfter=\fR
+for all mount units required ta access tha specified path\&.
+.sp
+Mount points marked with
+\fBnoauto\fR
+are not mounted automatically n' is ghon be ignored fo' tha purposez of dis option\&. If such a mount should be a requirement fo' dis unit, direct dependencies on tha mount units may be added (\fIRequires=\fR
+and
+\fIAfter=\fR
+or some other combination)\&.
+.RE
+.PP
+\fIOnFailureIsolate=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, tha unit listed in
+\fIOnFailure=\fR
+will be enqueued up in isolation mode, i\&.e\&. all units dat is not its dependency is ghon be stopped\&. If dis is set, only a single unit may be listed in
+\fIOnFailure=\fR\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIIgnoreOnIsolate=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, dis unit aint gonna be stopped when isolatin another unit\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIIgnoreOnSnapshot=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, dis unit aint gonna be included up in snapshots\&. Defaults to
+\fBtrue\fR
+for thang n' snapshot units,
+\fBfalse\fR
+for tha others\&.
+.RE
+.PP
+\fIStopWhenUnneeded=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, dis unit is ghon be stopped when it is no longer used\&. Note dat up in order ta minimize tha work ta be executed, systemd aint gonna stop units by default unless they is conflictin wit other units, or tha user explicitly axed they shut down\&. If dis option is set, a unit is ghon be automatically cleaned up if no other actizzle unit requires it\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIRefuseManualStart=\fR, \fIRefuseManualStop=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, dis unit can only be activated or deactivated indirectly\&. In dis case, explicit start\-up or termination axed by tha user is denied, however if it is started or stopped as a thugged-out dependency of another unit, start\-up or termination will succeed\&. This is mostly a safety feature ta ensure dat tha user do not accidentally activate units dat is not intended ta be activated explicitly, n' not accidentally deactivate units dat is not intended ta be deactivated\&. These options default to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIAllowIsolate=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, dis unit may be used wit the
+\fBsystemctl isolate\fR
+command\&. Otherwise, dis is ghon be refused\&. Well shiiiit, it probably be a phat scam ta leave dis disabled except fo' target units dat shall be used similar ta runlevels up in SysV init systems, just as a precaution ta avoid unusable system states\&. This option defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIDefaultDependencies=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If
+\fBtrue\fR, (the default), all dem default dependencies will implicitly be pimped fo' tha unit\&. Da actual dependencies pimped depend on tha unit type\&. For example, fo' steez units, these dependencies ensure dat tha steez is started only afta basic system initialization is completed n' is properly terminated on system shutdown\&. Right back up in yo muthafuckin ass. See tha respectizzle playa pages fo' details\&. Generally, only skillz involved wit early boot or late shutdown should set dis option to
+\fBfalse\fR\&. Well shiiiit, it is highly recommended ta leave dis option enabled fo' tha majoritizzle of common units\&. If set to
+\fBfalse\fR, dis option do not disable all implicit dependencies, just non\-essential ones\&.
+.RE
+.PP
+\fIJobTimeoutSec=\fR
+.RS 4
+When clients is waitin fo' a thang of dis unit ta complete, time up afta tha specified time\&. If dis time limit is reached, tha thang is ghon be shut down, tha unit however aint gonna chizzle state or even enta the
+"failed"
+mode\&. This value defaults ta 0 (job timeouts disabled), except fo' thang units\&. NB: dis timeout is independent from any unit\-specific timeout (for example, tha timeout set with
+\fITimeout=\fR
+in steez units) as tha thang timeout has no effect on tha unit itself, only on tha thang dat might be pendin fo' it\&. Or up in other lyrics: unit\-specific timeouts is useful ta abort unit state chizzles, n' revert them\&. Da thang timeout set wit dis option however is useful ta abort only tha thang waitin fo' tha unit state ta chizzle\&.
+.RE
+.PP
+\fIConditionPathExists=\fR, \fIConditionPathExistsGlob=\fR, \fIConditionPathIsDirectory=\fR, \fIConditionPathIsSymbolicLink=\fR, \fIConditionPathIsMountPoint=\fR, \fIConditionPathIsReadWrite=\fR, \fIConditionDirectoryNotEmpty=\fR, \fIConditionFileNotEmpty=\fR, \fIConditionFileIsExecutable=\fR, \fIConditionKernelCommandLine=\fR, \fIConditionVirtualization=\fR, \fIConditionSecurity=\fR, \fIConditionCapability=\fR, \fIConditionHost=\fR, \fIConditionACPower=\fR, \fIConditionNull=\fR
+.RS 4
+Before startin a unit verify dat tha specified condizzle is true\&. If it aint true, tha startin of tha unit is ghon be skipped, however all orderin dependenciez of it is still bigged up\& fo' realz. A failin condizzle aint gonna result up in tha unit bein moved tha fuck into a gangbangin' failure state\&. Da condizzle is checked all up in tha time tha queued start thang is ta be executed\&.
+.sp
+With
+\fIConditionPathExists=\fR
+a file existence condizzle is checked before a unit is started\&. If tha specified absolute path name do not exist, tha condizzle will fail\&. If tha absolute path name passed to
+\fIConditionPathExists=\fR
+is prefixed wit a exclamation mark ("!"), tha test is negated, n' tha unit is only started if tha path do not exist\&.
+.sp
+\fIConditionPathExistsGlob=\fR
+is similar to
+\fIConditionPathExists=\fR yo, but checks fo' tha existence of at least one file or directory matchin tha specified globbin pattern\&.
+.sp
+\fIConditionPathIsDirectory=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether a cold-ass lil certain path exists n' be a gangbangin' finger-lickin' directory\&.
+.sp
+\fIConditionPathIsSymbolicLink=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether a cold-ass lil certain path exists n' be a symbolic link\&.
+.sp
+\fIConditionPathIsMountPoint=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether a cold-ass lil certain path exists n' be a mount point\&.
+.sp
+\fIConditionPathIsReadWrite=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether tha underlyin file system is readable n' writable (i\&.e\&. not mounted read\-only)\&.
+.sp
+\fIConditionDirectoryNotEmpty=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether a cold-ass lil certain path exists n' be a non\-empty directory\&.
+.sp
+\fIConditionFileNotEmpty=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether a cold-ass lil certain path exists n' refers ta a regular file wit a non\-zero size\&.
+.sp
+\fIConditionFileIsExecutable=\fR
+is similar to
+\fIConditionPathExists=\fR
+but verifies whether a cold-ass lil certain path exists, be a regular file n' marked executable\&.
+.sp
+Similarly,
+\fIConditionKernelCommandLine=\fR
+may be used ta check whether a specific kernel command line option is set (or if prefixed wit tha exclamation mark unset)\&. Da argument must either be a single word, or a assignment (i\&.e\&. two lyrics, separated
+"=")\&. In tha forma case tha kernel command line is searched fo' tha word appearin as is, or as left hand side of a assignment\&. In tha latta case tha exact assignment is looked fo' wit right n' left hand side matching\&.
+.sp
+\fIConditionVirtualization=\fR
+may be used ta check whether tha system is executed up in a virtualized environment n' optionally test whether it aint nuthin but a specific implementation\&. Takes either boolean value ta check if bein executed up in any virtualized environment, or one of
+\fIvm\fR
+and
+\fIcontainer\fR
+to test against a generic type of virtualization solution, or one of
+\fIqemu\fR,
+\fIkvm\fR,
+\fIvmware\fR,
+\fImicrosoft\fR,
+\fIoracle\fR,
+\fIxen\fR,
+\fIbochs\fR,
+\fIchroot\fR,
+\fIuml\fR,
+\fIopenvz\fR,
+\fIlxc\fR,
+\fIlxc\-libvirt\fR,
+\fIsystemd\-nspawn\fR
+to test against a specific implementation\&. If multiple virtualization technologies is nested, only tha innermost is considered\&. Da test may be negated by prependin a exclamation mark\&.
+.sp
+\fIConditionSecurity=\fR
+may be used ta check whether tha given securitizzle module is enabled on tha system\&. Currently tha recognized joints joints are
+\fIselinux\fR,
+\fIapparmor\fR,
+\fIima\fR
+and
+\fIsmack\fR\&. Da test may be negated by prependin a exclamation mark\&.
+.sp
+\fIConditionCapability=\fR
+may be used ta check whether tha given capabilitizzle exists up in tha capabilitizzle boundin set of tha steez manager (i\&.e\&. dis do not check whether capabilitizzle is straight-up available up in tha permitted or effectizzle sets, see
+\fBcapabilities\fR(7)
+for details)\&. Pass a cold-ass lil capabilitizzle name such as
+"CAP_MKNOD", possibly prefixed wit a exclamation mark ta negate tha check\&.
+.sp
+\fIConditionHost=\fR
+may be used ta match against tha hostname or machine ID of tha host\&. This either takes a hostname strang (optionally wit shell steez globs) which is tested against tha locally set hostname as returned by
+\fBgethostname\fR(2), or a machine ID formatted as strang (see
+\fBmachine-id\fR(5))\&. Da test may be negated by prependin a exclamation mark\&.
+.sp
+\fIConditionACPower=\fR
+may be used ta check whether tha system has AC power, or is exclusively battery powered all up in tha time of activation of tha unit\&. This takes a funky-ass boolean argument\&. If set to
+\fItrue\fR, tha condizzle will hold only if at least one AC connector of tha system is connected ta a juice source, or if no AC connectors is known\&. Conversely, if set to
+\fIfalse\fR, tha condizzle will hold only if there be at least one AC connector known n' all AC connectors is disconnected from a juice source\&.
+.sp
+Finally,
+\fIConditionNull=\fR
+may be used ta add a cold-ass lil constant condizzle check value ta tha unit\&. Well shiiiit, it takes a funky-ass boolean argument\&. If set to
+\fIfalse\fR, tha condizzle will always fail, otherwise succeed\&.
+.sp
+If multiple conditions is specified, tha unit is ghon be executed if all of dem apply (i\&.e\&. a logical AND be applied)\&. Condizzle checks can be prefixed wit a pipe symbol (|) up in which case a cold-ass lil condizzle becomes a triggerin condition\&. If at least one triggerin condizzle is defined fo' a unit, then tha unit is ghon be executed if at least one of tha triggerin conditions apply n' all of tha non\-triggerin conditions\&. If you prefix a argument wit tha pipe symbol n' a exclamation mark, tha pipe symbol must be passed first, tha exclamation second\&. Except for
+\fIConditionPathIsSymbolicLink=\fR, all path checks follow symlinks\&. If any of these options be assigned tha empty string, tha list of conditions is reset straight-up, all previous condizzle settings (of any kind) gonna git no effect\&.
+.RE
+.PP
+\fISourcePath=\fR
+.RS 4
+A path ta a cold-ass lil configuration file dis unit has been generated from\&. This is primarily useful fo' implementation of generator tools dat convert configuration from a external configuration file format tha fuck into natizzle unit files\&. Thus functionalitizzle should not be used up in aiiight units\&.
+.RE
+.PP
+Unit file may include a [Install] section, which carries installation shiznit fo' tha unit\&. This section aint interpreted by
+\fBsystemd\fR(1)
+durin runtime\&. Well shiiiit, it is used exclusively by the
+\fBenable\fR
+and
+\fBdisable\fR
+commandz of the
+\fBsystemctl\fR(1)
+tool durin installation of a unit:
+.PP
+\fIAlias=\fR
+.RS 4
+A space\-seperated list of additionizzle names dis unit shall be installed under\&. Da names listed here must have tha same suffix (i\&.e\&. type) as tha unit file name\&. This option may be specified mo' than once, up in which case all listed names is used\& fo' realz. At installation time,
+\fBsystemctl enable\fR
+will create symlinks from these names ta tha unit filename\&.
+.RE
+.PP
+\fIWantedBy=\fR, \fIRequiredBy=\fR
+.RS 4
+This option may be used mo' than once, or a space\-separated list of unit names may be given\& fo' realz. A symbolic link is pimped up in the
+\&.wants/
+or
+\&.requires/
+directory of each of tha listed units when dis unit is installed by
+\fBsystemctl enable\fR\&. This has tha effect dat a thugged-out dependency of type
+\fIWants=\fR
+or
+\fIRequires=\fR
+is added from tha listed unit ta tha current unit\&. Da primary result is dat tha current unit is ghon be started when tha listed unit is started\&. Right back up in yo muthafuckin ass. See tha description of
+\fIWants=\fR
+and
+\fIRequires=\fR
+in tha [Unit] section fo' details\&.
+.sp
+\fBWantedBy=foo\&.service\fR
+in a service
+bar\&.service
+is mostly equivalent to
+\fBAlias=foo\&.service\&.wants/bar\&.service\fR
+in tha same file\&. In case of template units,
+\fBsystemctl enable\fR
+must be called wit a instizzle name, n' dis instizzle is ghon be added ta the
+\&.wants/
+or
+\&.requires/
+list of tha listed unit\&. E\&.g\&.
+\fBWantedBy=getty\&.target\fR
+in a service
+getty@\&.service
+will result in
+\fBsystemctl enable getty@tty2\&.service\fR
+bustin a
+getty\&.target\&.wants/getty@tty2\&.service
+link to
+getty@\&.service\&.
+.RE
+.PP
+\fIAlso=\fR
+.RS 4
+Additionizzle units ta install/deinstall when dis unit is installed/deinstalled\&. If tha user requests installation/deinstallation of a unit wit dis option configured,
+\fBsystemctl enable\fR
+and
+\fBsystemctl disable\fR
+will automatically install/uninstall units listed up in dis option as well\&.
+.sp
+This option may be used mo' than once, or a space\-separated list of unit names may be given\&.
+.RE
+.PP
+Da followin specifiers is interpreted up in tha Install section: %n, %N, %p, %i, %U, %u, %m, %H, %b, %v\&. For they meanin peep tha next section\&.
+.SH "SPECIFIERS"
+.PP
+Many settings resolve specifiers which may be used ta write generic unit filez referrin ta runtime or unit parametas dat is replaced when tha unit filez is loaded\&. Da followin specifiers is understood:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table\ \&3.\ \&Specifiers available up in unit files
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%n"
+T}:T{
+Full unit name
+T}:T{
+\ \&
+T}
+T{
+"%N"
+T}:T{
+Unescaped full unit name
+T}:T{
+\ \&
+T}
+T{
+"%p"
+T}:T{
+Prefix name
+T}:T{
+For instantiated units dis refers ta tha strang before tha @\&. For non\-instantiated units dis refers ta ta tha name of tha unit wit tha type suffix removed\&.
+T}
+T{
+"%P"
+T}:T{
+Unescaped prefix name
+T}:T{
+\ \&
+T}
+T{
+"%i"
+T}:T{
+Instizzle name
+T}:T{
+For instantiated units: dis is tha strang between tha "@" characta n' tha suffix\&.
+T}
+T{
+"%I"
+T}:T{
+Unescaped instizzle name
+T}:T{
+\ \&
+T}
+T{
+"%f"
+T}:T{
+Unescaped filename
+T}:T{
+This is either tha unescaped instizzle name (if applicable) wit / prepended (if applicable), or tha prefix name similarly prepended wit /\&.
+T}
+T{
+"%c"
+T}:T{
+Control crew path of tha unit
+T}:T{
+\ \&
+T}
+T{
+"%r"
+T}:T{
+Root control crew path where units is placed\&.
+T}:T{
+For system instances dis probably resolves ta /system, except up in containers, where tha path might be prefixed wit tha container\*(Aqs root control group\&.
+T}
+T{
+"%R"
+T}:T{
+Parent directory of tha control crew path where units is placed\&.
+T}:T{
+For system instances dis usually
+                        resolves ta /, except in
+                        containers, where dis resolves ta the
+                        container\*(Aqs root directory\&.
+T}
+T{
+"%t"
+T}:T{
+Runtime socket dir
+T}:T{
+This is either /run (for tha system manager) or "$XDG_RUNTIME_DIR" (for user managers)\&.
+T}
+T{
+"%u"
+T}:T{
+User name
+T}:T{
+This is tha name of tha configured user of tha unit, or (if none is set) tha user hustlin tha systemd instance\&.
+T}
+T{
+"%U"
+T}:T{
+User UID
+T}:T{
+This is tha UID of tha configured user of tha unit, or (if none is set) tha user hustlin tha systemd instance\&.
+T}
+T{
+"%h"
+T}:T{
+User home directory
+T}:T{
+This is tha home directory of tha configured user of tha unit, or (if none is set) tha user hustlin tha systemd instance\&.
+T}
+T{
+"%s"
+T}:T{
+User shell
+T}:T{
+This is tha shell of tha configured user of tha unit, or (if none is set) tha user hustlin tha systemd instance\&.  If tha user is "root" (UID equal ta 0), tha shell configured up in account database is ignored n' /bin/sh be always used\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+Da machine ID of tha hustlin system, formatted as string\&. Right back up in yo muthafuckin ass. See \fBmachine-id\fR(5) fo' mo' shiznit\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+Da boot ID of tha hustlin system, formatted as string\&. Right back up in yo muthafuckin ass. See \fBrandom\fR(4) fo' mo' shiznit\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+Da hostname of tha hustlin system\&.
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical ta \fBuname \-r\fR output\&.
+T}
+T{
+"%%"
+T}:T{
+Escaped %
+T}:T{
+Single cement sign\&.
+T}
+.TE
+.sp 1
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fR(1),
+\fBsystemctl\fR(1),
+\fBsystemd.special\fR(7),
+\fBsystemd.service\fR(5),
+\fBsystemd.socket\fR(5),
+\fBsystemd.device\fR(5),
+\fBsystemd.mount\fR(5),
+\fBsystemd.automount\fR(5),
+\fBsystemd.swap\fR(5),
+\fBsystemd.target\fR(5),
+\fBsystemd.path\fR(5),
+\fBsystemd.timer\fR(5),
+\fBsystemd.snapshot\fR(5),
+\fBsystemd.scope\fR(5),
+\fBsystemd.slice\fR(5),
+\fBsystemd.time\fR(7),
+\fBcapabilities\fR(7),
+\fBsystemd.directives\fR(7),
+\fBuname\fR(1)
+.SH "NOTES"
+.IP " 1." 4
+XDG Desktop Entry Justification
+.RS 4
+\%http://standards.freedesktop.org/desktop-entry-spec/latest/
+.RE
+.IP " 2." 4
+Interface Stabilitizzle Promise
+.RS 4
+\%http://www.freedesktop.org/wiki/Software/systemd/InterfaceStabilityPromise
+.RE
+.IP " 3." 4
+Generators
+.RS 4
+\%http://www.freedesktop.org/wiki/Software/systemd/Generators/
+.RE

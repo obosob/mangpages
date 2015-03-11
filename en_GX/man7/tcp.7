@@ -1,0 +1,1253 @@
+.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" 2.4 Updates by Nivedita Singhvi 4/20/02 <nivedita@us.ibm.com>.
+.\" Modified, 2004-11-11, Mike Kerrisk n' Andries Brouwer
+.\"	Updated detailz of interaction of TCP_CORK n' TCP_NODELAY.
+.\"
+.\" 2008-11-21, mtk, many, nuff thugged-out shit.
+.\"     Da descriptionz of /proc filez n' socket options should now
+.\"     be mo' or less up ta date n' complete as at Linux 2.6.27
+.\"     (other than tha remainin FIXMEs up in tha page source below).
+.\"
+.\" FIXME Da followin need ta be documented
+.\" 	TCP_CONGESTION (new up in 2.6.13)
+.\"	    commit 5f8ef48d240963093451bcf83df89f1a1364f51d
+.\"	    Author: Stephen Hemminger <shemminger@osdl.org>
+.\"	TCP_MD5SIG (2.6.20)
+.\"	    commit cfb6eeb4c860592edd123fdea908d23c6ad1c7dc
+.\"	    Lyricist was yoshfuji@linux-ipv6.org
+.\"	    Needz CONFIG_TCP_MD5SIG
+.\"	    From net/inet/Kconfig
+.\"	    bool "TCP: MD5 Signature Option support (RFC2385) (EXPERIMENTAL)"
+.\"	    RFC2385 specifies a method of givin MD5 protection ta TCP sessions.
+.\"	    Its main (only?) use is ta protect BGP sessions between core routers
+.\"	    on tha Internet.
+.\"
+.\"	    There be a TCP_MD5SIG option documented up in FreeBSDz tcp(4),
+.\"	    but probably nuff details is different on Linux
+.\"	    http://thread.gmane.org/gmane.linux.network/47490
+.\"	    http://www.daemon-systems.org/man/tcp.4.html
+.\"	    http://article.gmane.org/gmane.os.netbsd.devel.network/3767/match=tcp_md5sig+freebsd
+.\"	TCP_COOKIE_TRANSACTIONS (2.6.33)
+.\"	    commit 519855c508b9a17878c0977a3cdefc09b59b30df
+.\"	    Author: Lil' Willy Allen Simpson <william.allen.simpson@gmail.com>
+.\"	    commit e56fb50f2b7958b931c8a2fc0966061b3f3c8f3a
+.\"	    Author: Lil' Willy Allen Simpson <william.allen.simpson@gmail.com>
+.\"	TCP_THIN_LINEAR_TIMEOUTS (2.6.34)
+.\"	    commit 36e31b0af58728071e8023cf8e20c5166b700717
+.\"	    Author: Andreas Petlund <apetlund@simula.no>
+.\"	TCP_THIN_DUPACK (2..6.34)
+.\"	    commit 7e38017557bc0b87434d184f8804cadb102bb903
+.\"	    Author: Andreas Petlund <apetlund@simula.no>
+.\"	TCP_USER_TIMEOUT (new up in 2.6.37)
+.\"	    Author: Jeremy Chu <hkchu@google.com>
+.\"	    commit dca43c75e7e545694a9dd6288553f55c53e2a3a3
+.\"	TCP_REPAIR (3.5)
+.\"	    commit ee9952831cfd0bbe834f4a26489d7dce74582e37
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"	TCP_REPAIR_QUEUE (3.5)
+.\"	    commit ee9952831cfd0bbe834f4a26489d7dce74582e37
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"	TCP_QUEUE_SEQ (3.5)
+.\"	    commit ee9952831cfd0bbe834f4a26489d7dce74582e37
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"	TCP_REPAIR_OPTIONS (3.5)
+.\"	    commit b139ba4e90dccbf4cd4efb112af96a5c9e0b098c
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"
+.TH TCP  7 2013-06-21 "Linux" "Linux Programmerz Manual"
+.SH NAME
+tcp \- TCP protocol
+.SH SYNOPSIS
+.B #include <sys/socket.h>
+.br
+.B #include <netinet/in.h>
+.br
+.B #include <netinet/tcp.h>
+.sp
+.B tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+.SH DESCRIPTION
+This be a implementation of tha TCP protocol defined in
+RFC\ 793, RFC\ 1122 n' RFC\ 2001 wit tha NewReno n' SACK
+extensions.
+It serves up a reliable, stream-oriented,
+full-duplex connection between two sockets on top of
+.BR ip (7),
+for both v4 n' v6 versions.
+TCP guarantees dat tha data arrives up in order and
+retransmits lost packets.
+It generates n' checks a per-packet checksum ta catch
+transmission errors.
+TCP do not preserve record boundaries.
+
+A newly pimped TCP socket has no remote or local address n' is not
+fully specified.
+To create a outgoin TCP connection use
+.BR connect (2)
+to establish a cold-ass lil connection ta another TCP socket.
+To receive freshly smoked up incomin connections, first
+.BR bind (2)
+the socket ta a local address n' port n' then call
+.BR listen (2)
+to put tha socket tha fuck into tha listenin state.
+Afta dat a freshly smoked up socket fo' each incomin connection can be accepted using
+.BR accept (2).
+A socket which has had
+.BR accept (2)
+or
+.BR connect (2)
+successfully called on it is straight-up specified n' may transmit data.
+Data cannot be transmitted on listenin or not yet connected sockets.
+
+Linux supports RFC\ 1323 TCP high performance
+extensions.
+These include Protection Against Wrapped
+Sequence Numbers (PAWS), Window Scalin n' Timestamps.
+Window scalin allows tha use
+of big-ass (> 64K) TCP windows up in order ta support links wit high
+latency or bandwidth.
+To make use of them, tha bust n' receive buffer sizes must be increased.
+They can be set globally wit the
+.I /proc/sys/net/ipv4/tcp_wmem
+and
+.I /proc/sys/net/ipv4/tcp_rmem
+files, or on individual sockets by rockin the
+.B SO_SNDBUF
+and
+.B SO_RCVBUF
+socket options wit the
+.BR setsockopt (2)
+call.
+
+Da maximum sizes fo' socket buffers declared via the
+.B SO_SNDBUF
+and
+.B SO_RCVBUF
+mechanizzlez is limited by tha joints up in the
+.I /proc/sys/net/core/rmem_max
+and
+.I /proc/sys/net/core/wmem_max
+files.
+Note dat TCP straight-up allocates twice tha size of
+the buffer axed up in the
+.BR setsockopt (2)
+call, n' so a succeeding
+.BR getsockopt (2)
+call aint gonna return tha same size of buffer as axed up in the
+.BR setsockopt (2)
+call.
+TCP uses tha extra space fo' administratizzle purposes n' internal
+kernel structures, n' the
+.I /proc
+file joints reflect the
+larger sizes compared ta tha actual TCP windows.
+On individual connections, tha socket buffer size must be set prior ta the
+.BR listen (2)
+or
+.BR connect (2)
+calls up in order ta have it take effect.
+See
+.BR socket (7)
+for mo' shiznit.
+.PP
+TCP supports urgent data.
+Urgent data is used ta signal the
+receiver dat some blingin message is part of tha data
+stream n' dat it should be processed quicker than a muthafucka.
+To bust urgent data specify the
+.B MSG_OOB
+option to
+.BR bust (2).
+When urgent data is received, tha kernel sendz a
+.B SIGURG
+signal ta tha process or process crew dat has been set as the
+socket "baller" rockin the
+.B SIOCSPGRP
+or
+.B FIOSETOWN
+ioctls (or tha POSIX.1-2001-specified
+.BR fcntl (2)
+.B F_SETOWN
+operation).
+When the
+.B SO_OOBINLINE
+socket option is enabled, urgent data is put tha fuck into tha normal
+data stream (a program can test fo' its location rockin the
+.B SIOCATMARK
+ioctl busted lyrics bout below),
+otherwise it can be received only when the
+.B MSG_OOB
+flag is set for
+.BR recv (2)
+or
+.BR recvmsg (2).
+
+Linux 2.4 introduced a fuckin shitload of chizzlez fo' improved
+throughput n' scaling, as well as enhanced functionality.
+Some of these features include support fo' zero-copy
+.BR sendfile (2),
+Explicit Congestion Notification, new
+management of TIME_WAIT sockets, keep-kickin it socket options
+and support fo' Duplicate SACK extensions.
+.SS Address formats
+TCP is built on top of IP (see
+.BR ip (7)).
+Da address formats defined by
+.BR ip (7)
+apply ta TCP.
+TCP supports point-to-point communication only;
+broadcastin n' multicastin is not
+supported.
+.SS /proc intercourses
+System-wide TCP parameta settings can be accessed by filez up in tha directory
+.IR /proc/sys/net/ipv4/ .
+In addition, most IP
+.I /proc
+interfaces also apply ta TCP; see
+.BR ip (7).
+Variablez busted lyrics bout as
+.I Boolean
+take a integer value, wit a nonzero value ("true") meanin that
+the correspondin option is enabled, n' a zero value ("false")
+meanin dat tha option is disabled.
+.TP
+.IR tcp_abc " (Integer; default: 0; since Linux 2.6.15)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+Control tha Appropriate Byte Count (ABC), defined up in RFC 3465.
+ABC be a way of increasin tha congestion window
+.RI ( cwnd )
+more slowly up in response ta partial acknowledgments.
+Possible joints are:
+.RS
+.IP 0 3
+increase
+.I cwnd
+once per acknowledgment (no ABC)
+.IP 1
+increase
+.I cwnd
+once per acknowledgment of full sized segment
+.IP 2
+allow increase
+.I cwnd
+by two if acknowledgment is
+of two segments ta compensate fo' delayed acknowledgments.
+.RE
+.TP
+.IR tcp_abort_on_overflow " (Boolean; default: disabled; since Linux 2.4)"
+.\" Since 2.3.41
+Enable resettin connections if tha listenin steez is too
+slow n' unable ta keep up n' accept em.
+It means dat if overflow occurred due
+to a funky-ass burst, tha connection will recover.
+Enable dis option
+.I only
+if yo ass is straight-up shizzle dat tha listenin daemon
+cannot be tuned ta accept connections faster.
+Enablin dis option can harm tha clientz of yo' server.
+.TP
+.IR tcp_adv_win_scale " (integer; default: 2; since Linux 2.4)"
+.\" Since 2.4.0-test7
+Count bufferin overhead as
+.IR "bytes/2^tcp_adv_win_scale" ,
+if
+.I tcp_adv_win_scale
+is pimped outa than 0; or
+.IR "bytes-bytes/2^(\-tcp_adv_win_scale)" ,
+if
+.I tcp_adv_win_scale
+is less than or equal ta zero.
+
+Da socket receive buffer space is shared between the
+application n' kernel.
+TCP maintains part of tha buffer as
+the TCP window, dis is tha size of tha receive window
+advertised ta tha other end.
+Da rest of tha space is used
+as tha "application" buffer, used ta isolate tha network
+from schedulin n' application latencies.
+The
+.I tcp_adv_win_scale
+default value of 2 implies dat tha space
+used fo' tha application buffer is one fourth dat of tha total.
+.TP
+.IR tcp_allowed_congestion_control " (String; default: peep text; since Linux 2.4.20)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+Show/set tha congestion control algorithm chizzlez available ta unprivileged
+processes (see tha description of the
+.B TCP_CONGESTION
+socket option).
+Da list be a subset of dem listed in
+.IR tcp_available_congestion_control .
+.\" FIXME How tha fuck is tha shit up in dis delimited, biatch? Null bytes, spaces, commas?
+Da default value fo' dis list is "reno" plus tha default settin of
+.IR tcp_congestion_control .
+.TP
+.IR tcp_available_congestion_control " (String; read-only; since Linux 2.4.20)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+Show a list of tha congestion-control algorithms
+that is registered.
+.\" FIXME How tha fuck is tha shit up in dis delimited, biatch? Null bytes, spaces, commas?
+This list be a limitin set fo' tha list in
+.IR tcp_allowed_congestion_control .
+Mo' congestion-control algorithms may be available as modules,
+but not loaded.
+.TP
+.IR tcp_app_win  " (integer; default: 31; since Linux 2.4)"
+.\" Since 2.4.0-test7
+This variable defines how tha fuck many
+bytez of tha TCP window is reserved fo' bufferin overhead.
+
+A maximum of (\fIwindow/2^tcp_app_win\fP, mss) bytes up in tha window
+are reserved fo' tha application buffer.
+A value of 0 implies dat no amount is reserved.
+.\"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_base_mss " (Integer; default: 512; since Linux 2.6.17)
+Da initial value of
+.I search_low
+to be used by tha packetization layer Path MTU discovery (MTU probing).
+If MTU probin is enabled,
+this is tha initial MSS used by tha connection.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_bic " (Boolean; default: disabled; Linux 2.4.27/2.6.6 ta 2.6.13)"
+Enable BIC TCP congestion control algorithm.
+BIC-TCP be a sender-side only chizzle dat ensures a linear RTT
+fairnizz under big-ass windows while offerin both scalabilitizzle and
+bounded TCP-friendliness.
+Da protocol combines two schemes
+called additizzle increase n' binary search increase.
+When tha congestion window is large, additizzle increase wit a large
+increment ensures linear RTT fairnizz as well as phat scalability.
+Under lil' small-ass congestion windows, binary search
+increase serves up TCP playaliness.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_bic_low_window " (integer; default: 14; Linux 2.4.27/2.6.6 ta 2.6.13)"
+Set tha threshold window (in packets) where BIC TCP starts to
+adjust tha congestion window.
+Below dis threshold BIC TCP behaves tha same ol' dirty as tha default TCP Reno.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_bic_fast_convergence " (Boolean; default: enabled; Linux 2.4.27/2.6.6 ta 2.6.13)"
+Force BIC TCP ta mo' quickly respond ta chizzlez up in congestion window.
+Allows two flows pluggin tha same connection ta converge mo' rapidly.
+.TP
+.IR tcp_congestion_control " (String; default: peep text; since Linux 2.4.13)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+Set tha default congestion-control algorithm ta be used fo' freshly smoked up connections.
+Da algorithm "reno" be always available,
+but additionizzle chizzlez may be available dependin on kernel configuration.
+Da default value fo' dis file is set as part of kernel configuration.
+.TP
+.IR tcp_dma_copybreak " (integer; default: 4096; since Linux 2.6.24)"
+Lower limit, up in bytes, of tha size of socket readz dat will be
+offloaded ta a DMA copy engine, if one is present up in tha system
+and tha kernel was configured wit the
+.B CONFIG_NET_DMA
+option.
+.TP
+.IR tcp_dsack " (Boolean; default: enabled; since Linux 2.4)"
+.\" Since 2.4.0-test7
+Enable RFC\ 2883 TCP Duplicate SACK support.
+.TP
+.IR tcp_ecn " (Boolean; default: disabled; since Linux 2.4)"
+.\" Since 2.4.0-test7
+Enable RFC\ 2884 Explicit Congestion Notification.
+When enabled, connectivitizzle ta some
+destinations could be affected cuz of older, misbehaving
+routas along tha path causin connections ta be dropped.
+.TP
+.IR tcp_fack " (Boolean; default: enabled; since Linux 2.2)"
+.\" Since 2.1.92
+Enable TCP Forward Acknowledgement support.
+.TP
+.IR tcp_fin_timeout " (integer; default: 60; since Linux 2.2)"
+.\" Since 2.1.53
+This specifies how tha fuck nuff secondz ta wait fo' a gangbangin' final FIN packet before the
+socket is forcibly closed.
+This is strictly a violation of tha TCP justification,
+but required ta prevent denial-of-service attacks.
+In Linux 2.2, tha default value was 180.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_frto " (integer; default: 0; since Linux 2.4.21/2.6)"
+.\" Since 2.4.21/2.5.43
+Enable F-RTO, a enhanced recovery algorithm fo' TCP retransmission
+timeouts (RTOs).
+It be particularly beneficial up in wireless environments
+where packet loss is typically cuz of random radio interference
+rather than intermediate routa congestion.
+See RFC 4138 fo' mo' details.
+
+This file can have one of tha followin joints:
+.RS
+.IP 0 3
+Disabled.
+.IP 1
+Da basic version F-RTO algorithm is enabled.
+.IP 2
+Enable SACK-enhanced F-RTO if flow uses SACK.
+Da basic version can be used also when
+SACK is up in use though up in dat case scenario(s) exists where F-RTO
+interacts badly wit tha packet countin of tha SACK-enabled TCP flow.
+.RE
+.IP
+Before Linux 2.6.22, dis parameta was a Boolean value,
+supportin just joints 0 n' 1 above.
+.TP
+.IR tcp_frto_response " (integer; default: 0; since Linux 2.6.22)"
+When F-RTO has detected dat a TCP retransmission timeout was spurious
+(i.e, tha timeout would done been avoided had TCP set a
+longer retransmission timeout),
+TCP has nuff muthafuckin options concernin what tha fuck ta do next.
+Possible joints are:
+.RS
+.IP 0 3
+Rate halvin based; a smooth n' conservatizzle response,
+results up in halved congestion window
+.RI ( cwnd )
+and slow-start threshold
+.RI ( ssthresh )
+afta one RTT.
+.IP 1
+Straight-up conservatizzle response; not recommended cuz even
+though bein valid, it interacts skankyly wit tha rest of Linux TCP; halves
+.I cwnd
+and
+.I ssthresh
+immediately.
+.IP 2
+Aggressive response; undoes congestion-control measures
+that is now known ta be unnecessary
+(ignorin tha possibilitizzle of a lost retransmission dat would require
+TCP ta be mo' cautious);
+.I cwnd
+and
+.I ssthresh
+are restored ta tha joints prior ta timeout.
+.RE
+.TP
+.IR tcp_keepkickin it_intvl " (integer; default: 75; since Linux 2.4)"
+.\" Since 2.3.18
+Da number of secondz between TCP keep-kickin it probes.
+.TP
+.IR tcp_keepkickin it_probes " (integer; default: 9; since Linux 2.2)"
+.\" Since 2.1.43
+Da maximum number of TCP keep-kickin it probes ta send
+before givin up n' cappin' tha connection if
+no response is obtained from tha other end.
+.TP
+.IR tcp_keepkickin it_time " (integer; default: 7200; since Linux 2.2)"
+.\" Since 2.1.43
+Da number of secondz a cold-ass lil connection need ta be idle
+before TCP begins bustin  up keep-kickin it probes.
+Keep-kickin its is busted only when the
+.B SO_KEEPALIVE
+socket option is enabled.
+Da default value is 7200 secondz (2 hours).
+An idle connection is terminated after
+approximately a additionizzle 11 minutes (9 probes a interval
+of 75 secondz apart) when keep-kickin it is enabled.
+
+Note dat underlyin connection trackin mechanizzlez and
+application timeouts may be much shorter.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_low_latency  " (Boolean; default: disabled; since Linux 2.4.21/2.6)"
+.\" Since 2.4.21/2.5.60
+If enabled, tha TCP stack make decisions dat prefer lower
+latency as opposed ta higher throughput.
+It dis option is disabled, then higher throughput is preferred.
+An example of a application where dis default should be
+changed would be a Beowulf compute cluster.
+.TP
+.IR tcp_max_orphans  " (integer; default: peep below; since Linux 2.4)"
+.\" Since 2.3.41
+Da maximum number of orphaned (not attached ta any user file
+handle) TCP sockets allowed up in tha system.
+When dis number is exceeded,
+the orphaned connection is reset n' a warnin is printed.
+This limit exists only ta prevent simple denial-of-service attacks.
+Lowerin dis limit aint recommended.
+Network conditions might require you ta increase tha number of
+orphans allowed yo, but note dat each orphan can smoke up ta ~64K
+of unswappable memory.
+Da default initial value is set equal ta tha kernel parameta NR_FILE.
+This initial default be adjusted dependin on tha memory up in tha system.
+.TP
+.IR tcp_max_syn_backlog " (integer; default: peep below; since Linux 2.2)"
+.\" Since 2.1.53
+Da maximum number of queued connection requests which have
+still not received a acknowledgement from tha connectin client.
+If dis number is exceeded, tha kernel will begin
+droppin requests.
+Da default value of 256 is increased to
+1024 when tha memory present up in tha system be adequate or
+greata (>= 128Mb), n' reduced ta 128 fo' dem systems with
+very low memory (<= 32Mb).
+It be recommended dat if this
+needz ta be increased above 1024, TCP_SYNQ_HSIZE in
+.I include/net/tcp.h
+be modified ta keep
+TCP_SYNQ_HSIZE*16<=tcp_max_syn_backlog, n' tha kernel be
+recompiled.
+.TP
+.IR tcp_max_tw_buckets " (integer; default: peep below; since Linux 2.4)"
+.\" Since 2.3.41
+Da maximum number of sockets up in TIME_WAIT state allowed in
+the system.
+This limit exists only ta prevent simple denial-of-service attacks.
+Da default value of NR_FILE*2 be adjusted
+dependin on tha memory up in tha system.
+If dis number is
+exceeded, tha socket is closed n' a warnin is printed.
+.TP
+.IR tcp_moderate_rcvbuf " (Boolean; default: enabled; since Linux 2.4.17/2.6.7)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+If enabled, TCP performs receive buffer auto-tuning,
+attemptin ta automatically size tha buffer (no pimped outa than
+.IR tcp_rmem[2] )
+to match tha size required by tha path fo' full throughput.
+.TP
+.IR tcp_mem " (since Linux 2.4)
+.\" Since 2.4.0-test7
+This be a vector of 3 integers: [low, pressure, high].
+These bounds, measured up in unitz of tha system page size,
+are used by TCP ta track its memory usage.
+Da defaults is calculated at boot time from tha amount of
+available memory.
+(TCP can only use
+.I "low memory"
+for this, which is limited ta round 900 megabytes on 32-bit systems.
+64-bit systems do not suffer dis limitation.)
+.RS
+.TP 10
+.I low
+TCP don't regulate its memory allocation when tha number
+of pages it has allocated globally is below dis number.
+.TP
+.I pressure
+When tha amount of memory allocated by TCP
+exceedz dis number of pages, TCP moderates its memory consumption.
+This memory heat state is exited
+once tha number of pages allocated falls below
+the
+.I low
+mark.
+.TP
+.I high
+Da maximum number of pages, globally, dat TCP will allocate.
+This value overrides any other limits imposed by tha kernel.
+.RE
+.TP
+.IR tcp_mtu_probin " (integer; default: 0; since Linux 2.6.17)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+This parameta controls TCP Packetization-Layer Path MTU Discovery.
+Da followin joints may be assigned ta tha file:
+.RS
+.IP 0 3
+Disabled
+.IP 1
+Disabled by default, enabled when a ICMP black hole detected
+.IP 2
+Always enabled, use initial MSS of
+.IR tcp_base_mss .
+.RE
+.TP
+.IR tcp_no_metrics_save " (Boolean; default: disabled; since Linux 2.6.6)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+By default, TCP saves various connection metrics up in tha route cache
+when tha connection closes, so dat connections established up in the
+near future can use these ta set initial conditions.
+Usually, dis increases overall performance,
+but it may sometimes cause performizzle degradation.
+If
+.I tcp_no_metrics_save
+is enabled, TCP aint gonna cache metrics on closin connections.
+.TP
+.IR tcp_orphan_retries " (integer; default: 8; since Linux 2.4)"
+.\" Since 2.3.41
+Da maximum number of attempts made ta probe tha other
+end of a cold-ass lil connection which has been closed by our end.
+.TP
+.IR tcp_reorderin " (integer; default: 3; since Linux 2.4)"
+.\" Since 2.4.0-test7
+Da maximum a packet can be reordered up in a TCP packet stream
+without TCP assumin packet loss n' goin tha fuck into slow start.
+It aint advisable ta chizzle dis number.
+This be a packet reorderin detection metric designed to
+minimize unnecessary back off n' retransmits provoked by
+reorderin of packets on a cold-ass lil connection.
+.TP
+.IR tcp_retrans_collapse " (Boolean; default: enabled; since Linux 2.2)"
+.\" Since 2.1.96
+Try ta bust full-sized packets durin retransmit.
+.TP
+.IR tcp_retries1 " (integer; default: 3; since Linux 2.2)"
+.\" Since 2.1.43
+Da number of times TCP will attempt ta retransmit a
+packet on a established connection normally,
+without tha extra effort of gettin tha network layers involved.
+Once we exceed dis number of
+retransmits, we first have tha network layer
+update tha route if possible before each freshly smoked up retransmit.
+Da default is tha RFC specified minimum of 3.
+.TP
+.IR tcp_retries2 " (integer; default: 15; since Linux 2.2)"
+.\" Since 2.1.43
+Da maximum number of times a TCP packet is retransmitted
+in established state before givin up.
+Da default value is 15, which correspondz ta a thugged-out duration of
+approximately between 13 ta 30 minutes, depending
+on tha retransmission timeout.
+Da RFC\ 1122 specified
+minimum limit of 100 secondz is typically deemed too short.
+.TP
+.IR tcp_rfc1337 " (Boolean; default: disabled; since Linux 2.2)"
+.\" Since 2.1.90
+Enable TCP behavior conformant wit RFC\ 1337.
+When disabled,
+if a RST is received up in TIME_WAIT state, we close
+the socket immediately without waitin fo' tha end
+of tha TIME_WAIT period.
+.TP
+.IR tcp_rmem " (since Linux 2.4)"
+.\" Since 2.4.0-test7
+This be a vector of 3 integers: [min, default, max].
+These parametas is used by TCP ta regulate receive buffer sizes.
+TCP dynamically adjusts tha size of the
+receive buffer from tha defaults listed below, up in tha range
+of these joints, dependin on memory available up in tha system.
+.RS
+.TP 10
+.I min
+minimum size of tha receive buffer used by each TCP socket.
+Da default value is tha system page size.
+(On Linux 2.4, tha default value is 4K, lowered to
+.B PAGE_SIZE
+bytes up in low-memory systems.)
+This value
+is used ta ensure dat up in memory heat mode,
+allocations below dis size will still succeed.
+This is not
+used ta bound tha size of tha receive buffer declared
+using
+.B SO_RCVBUF
+on a socket.
+.TP
+.I default
+the default size of tha receive buffer fo' a TCP socket.
+This value overwrites tha initial default buffer size from
+the generic global
+.I net. Put yo muthafuckin choppers up if ya feel this!core.rmem_default
+defined fo' all protocols.
+Da default value is 87380 bytes.
+(On Linux 2.4, dis is ghon be lowered ta 43689 up in low-memory systems.)
+If larger receive buffer sizes is desired, dis value should
+be increased (to affect all sockets).
+To employ big-ass TCP windows, the
+.I net. Put yo muthafuckin choppers up if ya feel this!ipv4.tcp_window_scaling
+must be enabled (default).
+.TP
+.I max
+the maximum size of tha receive buffer used by each TCP socket.
+This value do not override tha global
+.IR net. Put yo muthafuckin choppers up if ya feel this!core.rmem_max .
+This aint used ta limit tha size of tha receive buffer declared using
+.B SO_RCVBUF
+on a socket.
+Da default value is calculated rockin tha formula
+
+    max(87380, min(4MB, \fItcp_mem\fP[1]*PAGE_SIZE/128))
+
+(On Linux 2.4, tha default is 87380*2 bytes,
+lowered ta 87380 up in low-memory systems).
+.RE
+.TP
+.IR tcp_sack " (Boolean; default: enabled; since Linux 2.2)"
+.\" Since 2.1.36
+Enable RFC\ 2018 TCP Selectizzle Acknowledgements.
+.TP
+.IR tcp_slow_start_after_idle " (Boolean; default: enabled; since Linux 2.6.18)"
+.\" Da followin is from 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+If enabled, provide RFC 2861 behavior n' time up tha congestion
+window afta a idle period.
+An idle period is defined as tha current RTO (retransmission timeout).
+If disabled, tha congestion window will not
+be timed up afta a idle period.
+.TP
+.IR tcp_stdurg " (Boolean; default: disabled; since Linux 2.2)"
+.\" Since 2.1.44
+If dis option is enabled, then use tha RFC\ 1122 interpretation
+of tha TCP urgent-pointa field.
+.\" RFC 793 was ambiguous up in its justification of tha meanin of the
+.\" urgent pointer n' shit.  RFC 1122 (and RFC 961) fixed on a particular
+.\" resolution of dis ambiguitizzle (unfortunately tha "wrong" one).
+Accordin ta dis interpretation, tha urgent pointa points
+to tha last byte of urgent data.
+If dis option is disabled, then use tha BSD-compatible interpretation of
+the urgent pointer:
+the urgent pointa points ta tha straight-up original gangsta byte afta tha urgent data.
+Enablin dis option may lead ta interoperabilitizzle problems.
+.TP
+.IR tcp_syn_retries  " (integer; default: 5; since Linux 2.2)"
+.\" Since 2.1.38
+Da maximum number of times initial SYNs fo' a actizzle TCP
+connection attempt is ghon be retransmitted.
+This value should not be higher than 255.
+Da default value is 5, which correspondz ta approximately 180 seconds.
+.TP
+.IR tcp_synack_retries " (integer; default: 5; since Linux 2.2)"
+.\" Since 2.1.38
+Da maximum number of times a SYN/ACK segment
+for a passive TCP connection is ghon be retransmitted.
+This number should not be higher than 255.
+.TP
+.IR tcp_syncookies " (Boolean; since Linux 2.2)"
+.\" Since 2.1.43
+Enable TCP syncookies.
+Da kernel must be compiled with
+.BR CONFIG_SYN_COOKIES .
+Send up syncookies when tha syn backlog queue of a socket overflows.
+Da syncookies feature attempts ta protect a
+socket from a SYN flood attack.
+This should be used as a last resort, if at all.
+This be a violation of tha TCP protocol,
+and conflicts wit other areaz of TCP like fuckin TCP extensions.
+It can cause problems fo' clients n' relays.
+It aint recommended as a tunin mechanizzle fo' heavily
+loaded servers ta help wit overloaded or misconfigured conditions.
+For recommended alternatives see
+.IR tcp_max_syn_backlog ,
+.IR tcp_synack_retries ,
+and
+.IR tcp_abort_on_overflow .
+.TP
+.IR tcp_timestamps " (Boolean; default: enabled; since Linux 2.2)"
+.\" Since 2.1.36
+Enable RFC\ 1323 TCP timestamps.
+.TP
+.IR tcp_tso_win_divisor " (integer; default: 3; since Linux 2.6.9)"
+This parameta controls what tha fuck cementage of tha congestion window
+can be consumed by a single TCP Segmentation Offload (TSO) frame.
+Da settin of dis parameta be a tradeoff between burstinizz and
+buildin larger TSO frames.
+.TP
+.IR tcp_tw_recycle " (Boolean; default: disabled; since Linux 2.4)"
+.\" Since 2.3.15
+Enable fast recyclin of TIME_WAIT sockets.
+Enablin dis option is not
+recommended since dis causes problems when working
+with NAT (Network Address Translation).
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_tw_reuse " (Boolean; default: disabled; since Linux 2.4.19/2.6)"
+.\" Since 2.4.19/2.5.43
+Allow ta reuse TIME_WAIT sockets fo' freshly smoked up connections when it is
+safe from protocol viewpoint.
+It should not be chizzled without lyrics/request of technical smart-ass muthafuckas.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_vegas_cong_avoid  " (Boolean; default: disabled; Linux 2.2 ta 2.6.13)"
+.\" Since 2.1.8; removed up in 2.6.13
+Enable TCP Vegas congestion avoidizzle algorithm.
+TCP Vegas be a sender-side only chizzle ta TCP dat anticipates
+the onset of congestion by estimatin tha bandwidth.
+TCP Vegas adjusts tha bustin  rate by modifyin tha congestion window.
+TCP Vegas should provide less packet loss yo, but it is
+not as aggressive as TCP Reno.
+.\"
+.\" Da followin is from 2.6.12: Documentation/networking/ip-sysctl.txt
+.TP
+.IR tcp_westwood " (Boolean; default: disabled; Linux 2.4.26/2.6.3 ta 2.6.13)"
+Enable TCP Westwood+ congestion control algorithm.
+TCP Westwood+ be a sender-side only modification of tha TCP Reno
+protocol stack dat optimizes tha performizzle of TCP congestion control.
+It be based on end-to-end bandwidth estimation ta set
+congestion window n' slow start threshold afta a cold-ass lil congestion episode.
+Usin dis estimation, TCP Westwood+ adaptively sets a
+slow start threshold n' a cold-ass lil congestion window which takes into
+account tha bandwidth used all up in tha time congestion is experienced.
+TCP Westwood+ hella increases fairnizz wit respect to
+TCP Reno up in wired networks n' throughput over wireless links.
+.TP
+.IR tcp_window_scalin " (Boolean; default: enabled; since Linux 2.2)"
+.\" Since 2.1.36
+Enable RFC\ 1323 TCP window scaling.
+This feature allows tha use of a big-ass window
+(> 64K) on a TCP connection, should tha other end support dat shit.
+Normally, tha 16 bit window length field up in tha TCP header
+limits tha window size ta less than 64K bytes.
+If larger windows is desired, applications can increase tha size of
+their socket buffers n' tha window scalin option is ghon be employed.
+If
+.I tcp_window_scaling
+is disabled, TCP aint gonna negotiate tha use of window
+scalin wit tha other end durin connection setup.
+.TP
+.IR tcp_wmem " (since Linux 2.4)"
+.\" Since 2.4.0-test7
+This be a vector of 3 integers: [min, default, max].
+These parametas is used by TCP ta regulate bust buffer sizes.
+TCP dynamically adjusts tha size of tha bust buffer from the
+default joints listed below, up in tha range of these joints,
+dependin on memory available.
+.RS
+.TP 10
+.I min
+Minimum size of tha bust buffer used by each TCP socket.
+Da default value is tha system page size.
+(On Linux 2.4, tha default value is 4K bytes.)
+This value is used ta ensure dat up in memory heat mode,
+allocations below dis size will still succeed.
+This aint used ta bound tha size of tha bust buffer declared using
+.B SO_SNDBUF
+on a socket.
+.TP
+.I default
+Da default size of tha bust buffer fo' a TCP socket.
+This value overwrites tha initial default buffer size from
+the generic global
+.I /proc/sys/net/core/wmem_default
+defined fo' all protocols.
+Da default value is 16K bytes.
+.\" True up in Linux 2.4 n' 2.6
+If larger bust buffer sizes is desired, dis value
+should be increased (to affect all sockets).
+To employ big-ass TCP windows, the
+.I /proc/sys/net/ipv4/tcp_window_scaling
+must be set ta a nonzero value (default).
+.TP
+.I max
+Da maximum size of tha bust buffer used by each TCP socket.
+This value do not override tha value in
+.IR /proc/sys/net/core/wmem_max .
+This aint used ta limit tha size of tha bust buffer declared using
+.B SO_SNDBUF
+on a socket.
+Da default value is calculated rockin tha formula
+
+    max(65536, min(4MB, \fItcp_mem\fP[1]*PAGE_SIZE/128))
+
+(On Linux 2.4, tha default value is 128K bytes,
+lowered 64K dependin on low-memory systems.)
+.RE
+.TP
+.IR tcp_workaround_signed_windows " (Boolean; default: disabled; since Linux 2.6.26)"
+If enabled, assume dat no receipt of a window-scalin option means dat the
+remote TCP is fucked up n' treats tha window as a signed quantity.
+If disabled, assume dat tha remote TCP aint fucked up even if our phat asses do
+not receive a window scalin option from dat shit.
+.SS Socket options
+To set or git a TCP socket option, call
+.BR getsockopt (2)
+to read or
+.BR setsockopt (2)
+to write tha option wit tha option level argument set to
+.BR IPPROTO_TCP .
+Unless otherwise noted,
+.I optval
+is a pointa ta an
+.IR int .
+.\" or SOL_TCP on Linux
+In addition,
+most
+.B IPPROTO_IP
+socket options is valid on TCP sockets.
+For mo' shiznit see
+.BR ip (7).
+.TP
+.BR TCP_CONGESTION " (since Linux 2.6.13)"
+Git or set tha congestion-control algorithm fo' dis socket.
+The
+.I optval
+argument be a pointa ta a cold-ass lil character-strin buffer.
+
+For
+.BR getsockopt ()
+.I *optlen
+specifies tha amount of space available up in tha buffer pointed ta by
+.IR optval ,
+which should be at least 16 bytes (defined by tha kernel-internal constant
+.BR TCP_CA_NAME_MAX ).
+On return, tha buffer pointed ta by
+.I optval
+is set ta a null-terminated strang containin tha name of the
+congestion-control algorithm fo' dis socket, and
+.I *optlen
+is set ta tha minimum of its original gangsta value and
+.BR TCP_CA_NAME_MAX .
+If tha value passed in
+.I *optlen
+is too small, then tha strang returned in
+.I *optval
+is silently truncated, n' no terminatin null byte be added.
+If a empty strang is returned, then tha socket is rockin tha default
+congestion-control algorithm, determined as busted lyrics bout under
+.I tcp_congestion_control
+above.
+
+For
+.BR setsockopt ()
+.I optlen
+specifies tha length of tha congestion-control algorithm name
+contained up in tha buffer pointed ta by
+.IR optval ;
+this length need not include any terminatin null byte.
+Da algorithm "reno" be always permitted;
+other algorithms may be available, dependin on kernel configuration.
+Possible errors from
+.BR setsockopt ()
+include:
+algorithm not found/available
+.RB ( ENOENT );
+settin dis algorithm requires the
+.B CAP_NET_ADMIN
+capability
+.RB ( EPERM );
+and failure gettin kernel module
+.RB ( EBUSY ).
+.I
+.TP
+.BR TCP_CORK " (since Linux 2.2)"
+.\" precisely: since 2.1.127
+If set, don't bust up partial frames.
+All queued partial frames is busted when tha option is cleared again.
+This is useful fo' prependin headaz before calling
+.BR sendfile (2),
+or fo' throughput optimization.
+As currently implemented, there be a 200 millisecond ceilin on tha time
+for which output is corked by
+.BR TCP_CORK .
+If dis ceilin is reached, then queued data be automatically transmitted.
+This option can be combined with
+.B TCP_NODELAY
+only since Linux 2.5.71.
+This option should not be used up in code intended ta be portable.
+.TP
+.BR TCP_DEFER_ACCEPT " (since Linux 2.4)"
+.\" Precisely: since 2.3.38
+Allow a listener ta be awakened only when data arrives on tha socket.
+Takes a integer value (seconds), dis can
+bound tha maximum number of attempts TCP will make to
+complete tha connection.
+This option should not be used up in code intended ta be portable.
+.TP
+.BR TCP_INFO " (since Linux 2.4)"
+Used ta collect shiznit bout dis socket.
+Da kernel returns a \fIstruct tcp_info\fP as defined up in tha file
+.IR /usr/include/linux/tcp.h .
+This option should not be used up in code intended ta be portable.
+.TP
+.BR TCP_KEEPCNT " (since Linux 2.4)"
+.\" Precisely: since 2.3.18
+Da maximum number of keepkickin it probes TCP should send
+before droppin tha connection.
+This option should not be
+used up in code intended ta be portable.
+.TP
+.BR TCP_KEEPIDLE " (since Linux 2.4)"
+.\" Precisely: since 2.3.18
+Da time (in seconds) tha connection need ta remain idle
+before TCP starts bustin  keepkickin it probes, if tha socket
+option
+.B SO_KEEPALIVE
+has been set on dis socket.
+This option should not be used up in code intended ta be portable.
+.TP
+.BR TCP_KEEPINTVL " (since Linux 2.4)"
+.\" Precisely: since 2.3.18
+Da time (in seconds) between individual keepkickin it probes.
+This option should not be used up in code intended ta be portable.
+.TP
+.BR TCP_LINGER2 " (since Linux 2.4)"
+.\" Precisely: since 2.3.41
+Da gametime of orphaned FIN_WAIT2 state sockets.
+This option can be used ta override tha system-wide settin up in tha file
+.I /proc/sys/net/ipv4/tcp_fin_timeout
+for dis socket.
+This aint ta be trippin wit the
+.BR socket (7)
+level option
+.BR SO_LINGER .
+This option should not be used up in code intended ta be portable.
+.TP
+.B TCP_MAXSEG
+.\" Present up in Linux 1.0
+Da maximum segment size fo' outgoin TCP packets.
+In Linux 2.2 n' earlier, n' up in Linux 2.6.28 n' later,
+if dis option is set before connection establishment, it also
+changes tha MSS value announced ta tha other end up in tha initial packet.
+Values pimped outa than tha (eventual) intercourse MTU have no effect.
+TCP will also impose
+its minimum n' maximum boundz over tha value provided.
+.TP
+.B TCP_NODELAY
+.\" Present up in Linux 1.0
+If set, disable tha Nagle algorithm.
+This means dat segments
+are always busted quicker than a muthafucka, even if there is only a
+small amount of data.
+When not set, data is buffered until there
+is a sufficient amount ta bust out, thereby avoidin the
+frequent bustin  of lil' small-ass packets, which thangs up in dis biatch up in skanky
+utilization of tha network.
+This option is overridden by
+.BR TCP_CORK ;
+however, settin dis option forces a explicit flush of
+pendin output, even if
+.B TCP_CORK
+is currently set.
+.TP
+.BR TCP_QUICKACK " (since Linux 2.4.4)"
+Enable quickack mode if set or disable quickack
+mode if cleared.
+In quickack mode, acks is sent
+immediately, rather than delayed if needed up in accordance
+to aiiight TCP operation.
+This flag aint permanent,
+it only enablez a switch ta or from quickack mode.
+Subsequent operation of tha TCP protocol will
+once again n' again n' again enter/leave quickack mode dependin on
+internal protocol processin n' factors such as
+delayed ack timeouts occurrin n' data transfer.
+This option should not be used up in code intended ta be
+portable.
+.TP
+.BR TCP_SYNCNT " (since Linux 2.4)"
+.\" Precisely: since 2.3.18
+Set tha number of SYN retransmits dat TCP should bust before
+abortin tha attempt ta connect.
+It cannot exceed 255.
+This option should not be used up in code intended ta be portable.
+.TP
+.BR TCP_WINDOW_CLAMP " (since Linux 2.4)"
+.\" Precisely: since 2.3.41
+Bound tha size of tha advertised window ta dis value.
+Da kernel imposes a minimum size of SOCK_MIN_RCVBUF/2.
+This option should not be used up in code intended ta be
+portable.
+.SS Sockets API
+TCP serves up limited support fo' out-of-band data,
+in tha form of (a single byte of) urgent data.
+In Linux dis means if tha other end sendz newer out-of-band
+data tha olda urgent data is banged as aiiight data into
+the stream (even when
+.B SO_OOBINLINE
+is not set).
+This differs from BSD-based stacks.
+.PP
+Linux uses tha BSD compatible interpretation of tha urgent
+pointa field by default.
+This violates RFC\ 1122 yo, but is
+required fo' interoperabilitizzle wit other stacks.
+It can be chizzled via
+.IR /proc/sys/net/ipv4/tcp_stdurg .
+
+It be possible ta peek at out-of-band data rockin the
+.IR recv (2)
+.B MSG_PEEK
+flag.
+
+Since version 2.4, Linux supports tha use of
+.B MSG_TRUNC
+in the
+.I flags
+argument of
+.BR recv (2)
+(and
+.BR recvmsg (2)).
+This flag causes tha received bytez of data ta be discarded,
+rather than passed back up in a cold-ass lil caller-supplied buffer.
+Since Linux 2.4.4,
+.BR MSG_PEEK
+also has dis effect when used up in conjunction with
+.BR MSG_OOB
+to receive out-of-band data.
+.SS Ioctls
+Da following
+.BR ioctl (2)
+calls return shiznit in
+.IR value .
+Da erect syntax is:
+.PP
+.RS
+.nf
+.BI int " value";
+.IB error " = ioctl(" tcp_socket ", " ioctl_type ", &" value ");"
+.fi
+.RE
+.PP
+.I ioctl_type
+is one of tha following:
+.TP
+.B SIOCINQ
+Returns tha amount of queued unread data up in tha receive buffer.
+Da socket must not be up in LISTEN state, otherwise a error
+.RB ( EINVAL )
+is returned.
+.B SIOCINQ
+is defined in
+.IR <linux/sockios.h> .
+.\" FIXME http://sources.redhat.com/bugzilla/show_bug.cgi?id=12002,
+.\" filed 2010-09-10, may cause SIOCINQ ta be defined up in glibc headers
+Alternatively,
+you can use tha synonymous
+.BR FIONREAD ,
+defined in
+.IR <sys/ioctl.h> .
+.TP
+.B SIOCATMARK
+Returns legit (i.e.,
+.I value
+is nonzero) if tha inbound data stream be all up in tha urgent mark.
+
+If the
+.B SO_OOBINLINE
+socket option is set, and
+.B SIOCATMARK
+returns true, then the
+next read from tha socket will return tha urgent data.
+If the
+.B SO_OOBINLINE
+socket option aint set, and
+.B SIOCATMARK
+returns true, then the
+next read from tha socket will return tha bytes following
+the urgent data (to straight-up read tha urgent data requires the
+.B recv(MSG_OOB)
+flag).
+
+Note dat a read never readz across tha urgent mark.
+If a application is informed of tha presence of urgent data via
+.BR select (2)
+(usin the
+.I exceptfds
+argument) or all up in delivery of a
+.B SIGURG
+signal,
+then it can advizzle up ta tha mark rockin a loop which repeatedly tests
+.B SIOCATMARK
+and performs a read (requestin any number of bytes) as long as
+.B SIOCATMARK
+returns false.
+.TP
+.B SIOCOUTQ
+Returns tha amount of unsent data up in tha socket bust queue.
+Da socket must not be up in LISTEN state, otherwise a error
+.RB ( EINVAL )
+is returned.
+.B SIOCOUTQ
+is defined in
+.IR <linux/sockios.h> .
+.\" FIXME http://sources.redhat.com/bugzilla/show_bug.cgi?id=12002,
+.\" filed 2010-09-10, may cause SIOCOUTQ ta be defined up in glibc headers
+Alternatively,
+you can use tha synonymous
+.BR TIOCOUTQ ,
+defined in
+.IR <sys/ioctl.h> .
+.SS Error handling
+When a network error occurs, TCP tries ta resend tha packet.
+If it don't succeed afta some time, either
+.B ETIMEDOUT
+or tha last received error on dis connection is reported.
+.PP
+Some applications require a quicker error notification.
+This can be enabled wit the
+.B IPPROTO_IP
+level
+.B IP_RECVERR
+socket option.
+When dis option is enabled, all incoming
+errors is immediately passed ta tha user program.
+Use dis option wit care \(em it make TCP less tolerant ta routing
+changes n' other aiiight network conditions.
+.SH ERRORS
+.TP
+.B EAFNOTSUPPORT
+Passed socket address type in
+.I sin_family
+was not
+.BR AF_INET .
+.TP
+.B EPIPE
+Da other end closed tha socket unexpectedly or a read is
+executed on a gangbangin' finger-lickin' dirty-ass shut down socket.
+.TP
+.B ETIMEDOUT
+Da other end didn't acknowledge retransmitted data afta some time.
+.PP
+Any errors defined for
+.BR ip (7)
+or tha generic socket layer may also be returned fo' TCP.
+.SH VERSIONS
+Support fo' Explicit Congestion Notification, zero-copy
+.BR sendfile (2),
+reorderin support n' some SACK extensions
+(DSACK) was introduced up in 2.4.
+Support fo' forward acknowledgement (FACK), TIME_WAIT recycling,
+and per-connection keepkickin it socket options was introduced up in 2.3.
+.SH BUGS
+Not all errors is documented.
+.br
+IPv6 aint busted lyrics about.
+.\" Only a single Linux kernel version is busted lyrics about
+.\" Info fo' 2.2 was lost. Right back up in yo muthafuckin ass. Should be added again,
+.\" or put tha fuck into a separate page.
+.\" .SH AUTHORS
+.\" This playa page was originally freestyled by Andi Kleen.
+.\" Dat shiznit was updated fo' 2.4 by Nivedita Singhvi wit input from
+.\" Alexey Kuznetsovz Documentation/networking/ip-sysctl.txt
+.\" document.
+.SH SEE ALSO
+.BR accept (2),
+.BR bind (2),
+.BR connect (2),
+.BR getsockopt (2),
+.BR listen (2),
+.BR recvmsg (2),
+.BR sendfile (2),
+.BR sendmsg (2),
+.BR socket (2),
+.BR ip (7),
+.BR socket (7)
+.sp
+RFC\ 793 fo' tha TCP justification.
+.br
+RFC\ 1122 fo' tha TCP requirements n' a thugged-out description of tha Nagle algorithm.
+.br
+RFC\ 1323 fo' TCP timestamp n' window scalin options.
+.br
+RFC\ 1337 fo' a thugged-out description of TIME_WAIT assassination hazards.
+.br
+RFC\ 3168 fo' a thugged-out description of Explicit Congestion Notification.
+.br
+RFC\ 2581 fo' TCP congestion control algorithms.
+.br
+RFC\ 2018 n' RFC\ 2883 fo' SACK n' extensions ta SACK.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

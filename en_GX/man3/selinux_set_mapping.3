@@ -1,0 +1,88 @@
+.\" Yo Emacs muthafucka! This file is -*- nroff -*- source.
+.\"
+.\" Author: Eamon Walsh (ewalsh@tycho.nsa.gov) 2008
+.TH "selinux_set_mapping" "3" "12 Jun 2008" "" "SELinux API documentation"
+.SH "NAME"
+selinux_set_mappin \- establish dynamic object class n' permission mapping
+.
+.SH "SYNOPSIS"
+.B #include <selinux/selinux.h>
+.sp
+.nf
+struct security_class_mappin {
+	const char *name;
+	const char *perms[];
+};
+.fi
+.sp
+.BI "int selinux_set_mapping(struct security_class_mappin *" map ");"
+.
+.SH "DESCRIPTION"
+.BR selinux_set_mappin ()
+establishes a mappin from a user-provided orderin of object classes n' permissions ta tha numbers straight-up used by tha loaded system policy.  Use of dis function is highly preferred over tha generated constants up in tha libselinux header files, as dis method allows tha policyz class n' permission joints ta chizzle over time.
+
+Afta tha mappin is established, all libselinux functions dat operate on class n' permission joints take tha user-provided numbers, which is determined as bigs up:
+
+The
+.I map
+argument consistz of a array of 
+.B security_class_mapping
+structures, which must be terminated by a structure havin a NULL name field. Y'all KNOW dat shit, muthafucka!  Except fo' dis last structure, the
+.I name 
+field should refer ta tha strang name of a object class, n' tha corresponding
+.I perms
+field should refer ta a array of permission bit names terminated by a NULL string.
+
+Da object classes named up in tha mappin n' tha bit indexez of each set of permission bits named up in tha mappin is numbered up in order startin from 1.  These numbers is tha joints dat should be passed ta subsequent libselinux calls.
+.
+.SH "RETURN VALUE"
+Zero is returned on success.  On error, \-1 is returned and
+.I errno
+is set appropriately.
+.
+.SH "ERRORS"
+.TP
+.B EINVAL
+One of tha class or permission names axed up in tha mappin aint present up in tha loaded policy.
+.TP
+.B ENOMEM
+An attempt ta allocate memory failed.
+.
+.SH "EXAMPLE"
+.RS
+.ta 4n 10n
+.nf
+struct security_class_mappin map[] = {
+	{ "file", { "create", "unlink", "read", "write", NULL } },
+	{ "socket", { "bind", NULL } },
+	{ "process", { "signal", NULL } },
+	{ NULL }
+};
+
+if (selinux_set_mapping(map) < 0)
+	exit(1);
+.fi
+.ta
+.RE
+
+In dis example, afta tha call has succeeded, classes
+.BR file ,
+.BR socket ,
+and
+.B process
+will be identified by 1, 2 n' 3, respectively.  Permissions
+.IR create ,
+.IR unlink ,
+.IR read ,
+and
+.I write
+(for tha 
+.B file
+class) is ghon be identified by 1, 2, 4, n' 8 respectively.  Classes n' permissions not listed up in tha mappin cannot be used.
+.
+.SH "AUTHOR"
+Eamon Walsh <ewalsh@tycho.nsa.gov>
+.
+.SH "SEE ALSO"
+.BR avc_open (8),
+.BR selinux (8)

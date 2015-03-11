@@ -1,0 +1,271 @@
+.TH ANVIL 8 
+.ad
+.fi
+.SH NAME
+anvil
+\-
+Postfix session count n' request rate control
+.SH "SYNOPSIS"
+.na
+.nf
+\fBanvil\fR [generic Postfix daemon options]
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix \fBanvil\fR(8) server maintains statistics about
+client connection counts or client request rates. This
+information can be used ta defend against clients that
+hammer a server wit either too nuff simultaneous sessions,
+or wit too nuff successive requests within a cold-ass lil configurable
+time interval. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  This server is designed ta run under control
+by tha Postfix \fBmaster\fR(8) server.
+
+In tha followin text, \fBident\fR specifies a (service,
+client) combination. I aint talkin' bout chicken n' gravy biatch. Da exact syntax of dat shiznit
+is application-dependent; tha \fBanvil\fR(8) server do
+not care.
+.SH "CONNECTION COUNT/RATE CONTROL"
+.na
+.nf
+.ad
+.fi
+To regista a freshly smoked up connection bust tha followin request to
+the \fBanvil\fR(8) server:
+
+.nf
+    \fBrequest=connect\fR
+    \fBident=\fIstring\fR
+.fi
+
+Da \fBanvil\fR(8) server lyrics wit tha number of
+simultaneous connections n' tha number of connections per
+unit time fo' tha (service, client) combination specified
+with \fBident\fR:
+
+.nf
+    \fBstatus=0\fR
+    \fBcount=\fInumber\fR
+    \fBrate=\fInumber\fR
+.fi
+
+To regista a gangbangin' finger-lickin' disconnect event bust tha followin request
+to tha \fBanvil\fR(8) server:
+
+.nf
+    \fBrequest=disconnect\fR
+    \fBident=\fIstring\fR
+.fi
+
+Da \fBanvil\fR(8) server replies with:
+
+.nf
+    \fBstatus=0\fR
+.fi
+.SH "MESSAGE RATE CONTROL"
+.na
+.nf
+.ad
+.fi
+To regista a message delivery request bust tha following
+request ta tha \fBanvil\fR(8) server:
+
+.nf
+    \fBrequest=message\fR
+    \fBident=\fIstring\fR
+.fi
+
+Da \fBanvil\fR(8) server lyrics wit tha number of message
+delivery requests per unit time fo' tha (service, client)
+combination specified wit \fBident\fR:
+
+.nf
+    \fBstatus=0\fR
+    \fBrate=\fInumber\fR
+.fi
+.SH "RECIPIENT RATE CONTROL"
+.na
+.nf
+.ad
+.fi
+To regista a recipient request bust tha followin request
+to tha \fBanvil\fR(8) server:
+
+.nf
+    \fBrequest=recipient\fR
+    \fBident=\fIstring\fR
+.fi
+
+Da \fBanvil\fR(8) server lyrics wit tha number of recipient
+addresses per unit time fo' tha (service, client) combination
+specified wit \fBident\fR:
+
+.nf
+    \fBstatus=0\fR
+    \fBrate=\fInumber\fR
+.fi
+.SH "TLS SESSION NEGOTIATION RATE CONTROL"
+.na
+.nf
+.ad
+.fi
+Da features busted lyrics bout up in dis section is available with
+Postfix 2.3 n' later.
+
+To regista a request fo' a freshly smoked up (i.e. not cached) TLS session
+send tha followin request ta tha \fBanvil\fR(8) server:
+
+.nf
+    \fBrequest=newtls\fR
+    \fBident=\fIstring\fR
+.fi
+
+Da \fBanvil\fR(8) server lyrics wit tha number of new
+TLS session requests per unit time fo' tha (service, client)
+combination specified wit \fBident\fR:
+
+.nf
+    \fBstatus=0\fR
+    \fBrate=\fInumber\fR
+.fi
+
+To retrieve freshly smoked up TLS session request rate shiznit without
+uppimpin tha counta shiznit, send:
+
+.nf
+    \fBrequest=newtls_report\fR
+    \fBident=\fIstring\fR
+.fi
+
+Da \fBanvil\fR(8) server lyrics wit tha number of new
+TLS session requests per unit time fo' tha (service, client)
+combination specified wit \fBident\fR:
+
+.nf
+    \fBstatus=0\fR
+    \fBrate=\fInumber\fR
+.fi
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da \fBanvil\fR(8) server do not rap ta tha network or ta local
+users, n' can run chrooted at fixed low privilege.
+
+Da \fBanvil\fR(8) server maintains a in-memory table with
+information bout recent clients requests, n' you can put dat on yo' toast.  No persistent
+state is kept cuz standard system library routines are
+not sufficiently robust fo' update-intensive applications.
+
+Although tha in-memory state is kept only temporarily, this
+may require a shitload of memory on systems dat handle connections
+from nuff remote clients, n' you can put dat on yo' toast.  To reduce memory usage, reduce
+the time unit over which state is kept.
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+
+Upon exit, n' every last muthafuckin \fBanvil_status_update_time\fR
+seconds, tha server logs tha maximal count n' rate joints measured,
+together wit (service, client) shiznit n' tha time of day
+associated wit dem events.
+In order ta avoid unnecessary overhead, no measurements
+are done fo' activitizzle dat aint concurrency limited or
+rate limited.
+.SH BUGS
+.ad
+.fi
+Systems behind network address translatin routas or proxies
+appear ta have tha same client address n' can run tha fuck into connection
+count and/or rate limits falsely.
+
+In dis preliminary implementation, a cold-ass lil count (or rate) limited server
+process can have only one remote client at a time. If a
+server process reports
+multiple simultaneous clients, state is kept only fo' tha last
+reported client.
+
+Da \fBanvil\fR(8) server automatically discardz client
+request shiznit afta it expires.  To prevent the
+\fBanvil\fR(8) server from discardin client request rate
+information too early or too late, a rate limited service
+should always regista connect/disconnect events even when
+it do not explicitly limit em.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+On low-traffic mail systems, chizzlez ta \fBmain.cf\fR are
+picked up automatically as \fBanvil\fR(8) processes run for
+only a limited amount of time. On other mail systems, use
+the command "\fBpostfix reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP "\fBanvil_rate_time_unit (60s)\fR"
+Da time unit over which client connection rates n' other rates
+are calculated.
+.IP "\fBanvil_status_update_time (600s)\fR"
+How tha fuck frequently tha \fBanvil\fR(8) connection n' rate limitin server
+logs peak usage shiznit.
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdaemon_timeout (18000s)\fR"
+How tha fuck much time a Postfix daemon process may take ta handle a
+request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBipc_timeout (3600s)\fR"
+Da time limit fo' bustin  or receivin shiznit over a internal
+communication channel.
+.IP "\fBmax_idle (100s)\fR"
+Da maximum amount of time dat a idle Postfix daemon process waits
+for a incomin connection before terminatin voluntarily.
+.IP "\fBmax_use (100)\fR"
+Da maximal number of incomin connections dat a Postfix daemon
+process will steez before terminatin voluntarily.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.SH "SEE ALSO"
+.na
+.nf
+smtpd(8), Postfix SMTP server
+postconf(5), configuration parameters
+master(5), generic daemon options
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+TUNING_README, performizzle tuning
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+.ad
+.fi
+Da anvil steez be available up in Postfix 2.2 n' later.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

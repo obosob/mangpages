@@ -1,0 +1,2419 @@
+.\" shorthand fo' double quote dat works all over dis biiiatch.
+.ds q \N'34'
+.TH xorg.conf 5 "xorg-server 1.14.4" "X Version 11"
+.SH NAME
+xorg.conf, xorg.conf.d \- configuration filez for
+Xorg X server
+.SH INTRODUCTION
+.B Xorg
+supports nuff muthafuckin mechanizzlez fo' supplying/obtainin configuration and
+run-time parameters: command line options, environment variables, the
+xorg.conf n' xorg.conf.d configuration files, auto-detection,
+and fallback defaults, n' you can put dat on yo' toast. When tha same shiznit is supplied up in more
+than one way, tha highest precedence mechanizzle is used. Y'all KNOW dat shit, muthafucka! Da list of
+mechanizzlez is ordered from highest precedence ta lowest. Note dat not
+all parametas can be supplied via all methods. Da available command
+line options n' environment variablez (and some defaults) are
+busted lyrics bout up in tha Xserver(1) and
+Xorg(1) manual pages. Most configuration file
+parameters, wit they defaults, is busted lyrics bout below. Driver n' module
+specific configuration parametas is busted lyrics bout up in tha relevant driver
+or module manual page.
+.SH DESCRIPTION
+.B Xorg
+uses a cold-ass lil configuration file called
+.I xorg.conf
+and filez endin up in tha suffix
+.I .conf
+from tha directory
+.I xorg.conf.d
+for its initial setup.
+The
+.I xorg.conf
+configuration file is searched fo' up in tha followin places when the
+server is started as a aiiight user:
+.PP
+.RS 4
+.nf
+.IR /etc/X11/ <cmdline>
+.IR /usr/etc/X11/ <cmdline>
+.IB /etc/X11/ $XORGCONFIG
+.IB /usr/etc/X11/ $XORGCONFIG
+.I /etc/X11/xorg.conf
+.I /etc/xorg.conf
+.IR /usr/etc/X11/xorg.conf. <hostname>
+.I /usr/etc/X11/xorg.conf
+.IR /usr/lib/X11/xorg.conf. <hostname>
+.I /usr/lib/X11/xorg.conf
+.fi
+.RE
+.PP
+where
+.I <cmdline>
+is a relatizzle path (with no \(lq..\(rq components) specified wit the
+.B \-config
+command line option,
+.B $XORGCONFIG
+is tha relatizzle path (with no \(lq..\(rq components) specified by that
+environment variable, and
+.I <hostname>
+is tha machinez hostname as reported by
+.BR gethostname (3).
+.PP
+When tha Xorg server is started by tha \(lqroot\(rq user, tha config file
+search locations is as bigs up:
+.PP
+.RS 4
+.nf
+<cmdline>
+.IR /etc/X11/ <cmdline>
+.IR /usr/etc/X11/ <cmdline>
+.B $XORGCONFIG
+.IB /etc/X11/ $XORGCONFIG
+.IB /usr/etc/X11/ $XORGCONFIG
+.I /etc/X11/xorg.conf
+.I /etc/xorg.conf
+.IR /usr/etc/X11/xorg.conf. <hostname>
+.I /usr/etc/X11/xorg.conf
+.IR /usr/lib/X11/xorg.conf. <hostname>
+.I /usr/lib/X11/xorg.conf
+.fi
+.RE
+.PP
+where
+.I <cmdline>
+is tha path specified wit the
+.B \-config
+command line option (which may be absolute or relative),
+.B $XORGCONFIG
+is tha path specified by that
+environment variable (absolute or relative),
+.B $HOME
+is tha path specified by dat environment variable (usually tha home
+directory), and
+.I <hostname>
+is tha machinez hostname as reported by
+.BR gethostname (3).
+.PP
+Additionizzle configuration filez is searched fo' up in tha following
+directories when tha server is started as a aiiight user:
+.PP
+.RS 4
+.nf
+.IR /etc/X11/ <cmdline>
+.IR /etc/X11/ <cmdline>
+.I /etc/X11/xorg.conf.d
+.I /etc/X11/xorg.conf.d
+.fi
+.RE
+.PP
+where
+.I <cmdline>
+is a relatizzle path (with no \(lq..\(rq components) specified wit the
+.B \-configdir
+command line option.
+.PP
+When tha Xorg server is started by tha \(lqroot\(rq user, the
+config directory search locations is as bigs up:
+.PP
+.RS 4
+.nf
+<cmdline>
+.IR /etc/X11/ <cmdline>
+.IR /etc/X11/ <cmdline>
+.I /etc/X11/xorg.conf.d
+.I /etc/X11/xorg.conf.d
+.fi
+.RE
+.PP
+where
+.I <cmdline>
+is tha path specified wit the
+.B \-configdir
+command line option (which may be absolute or relative).
+.PP
+Finally, configuration filez will also be searched fo' up in directories
+reserved fo' system use. These is ta separate configuration filez from
+the vendor or 3rd jam packages from dem of local administration.
+These filez is found up in tha followin directories:
+.PP
+.RS 4
+.nf
+.I /usr/share/X11/xorg.conf.d
+.I /usr/share/X11/xorg.conf.d
+.fi
+.RE
+.PP
+The
+.I xorg.conf
+and
+.I xorg.conf.d
+filez is composed of a fuckin shitload of sections which may be present up in any order,
+or omitted ta use default configuration joints.
+Each section has tha form:
+.PP
+.RS 4
+.nf
+.BI "Section  \*q" SectionName \*q
+.RI "    " SectionEntry
+    ...
+.B EndSection
+.fi
+.RE
+.PP
+Da section names are:
+.PP
+.RS 4
+.nf
+.BR "Filez          " "File pathnames"
+.BR "ServerFlags    " "Server flags"
+.BR "Module         " "Dynamic module loading"
+.BR "Extensions     " "Extension enabling"
+.BR "InputDevice    " "Input thang description"
+.BR "InputClass     " "Input class description"
+.BR "Device         " "Graphics thang description"
+.BR "VideoAdaptor   " "Xv vizzle adaptor description"
+.BR "Monitor        " "Monitor description"
+.BR "Modes          " "Video modes descriptions"
+.BR "Screen         " "Screen configuration"
+.BR "ServerLayout   " "Overall layout"
+.BR "DRI            " "DRI\-specific configuration"
+.BR "Vendor         " "Vendor\-specific configuration"
+.fi
+.RE
+.PP
+Da followin obsolete section names is still recognised fo' compatibility
+purposes.
+In freshly smoked up config files, the
+.B InputDevice
+section should be used instead.
+.PP
+.RS 4
+.nf
+.BR "Keyboard       " "Keyboard configuration"
+.BR "Pointa        " "Pointer/mouse configuration"
+.fi
+.RE
+.PP
+Da old
+.B XInput
+section is no longer recognised.
+.PP
+The
+.B ServerLayout
+sections is all up in tha highest level.
+They bind together tha input n' output devices dat is ghon be used up in a session.
+Da input devices is busted lyrics bout up in the
+.B InputDevice
+sections.
+Output devices probably consist of multiple independent components (e.g.,
+a graphics board n' a monitor).
+These multiple components is bound together up in the
+.B Screen
+sections, n' it is these dat is referenced by the
+.B ServerLayout
+section.
+Each
+.B Screen
+section bindz together a graphics board n' a monitor.
+Da graphics boardz is busted lyrics bout up in the
+.B Device
+sections, n' tha monitors is busted lyrics bout up in the
+.B Monitor
+sections.
+.PP
+Config file keywordz is case\-insensitive, n' \(lq_\(rq charactas are
+ignored.
+Most strings (including
+.B Option
+names) is also case-insensitive, n' insensitizzle ta white space and
+\(lq_\(rq characters.
+.PP
+Each config file entry probably takes up a single line up in tha file.  They
+consist of a keyword, which is possibly followed by one or mo' arguments,
+with tha number n' typez of tha arguments dependin on tha keyword.
+Da argument types are:
+.PP
+.RS 4
+.nf
+.BR "Integer     " "an integer number up in decimal, hex or octal"
+.BR "Real        " "a floatin point number"
+.BR "Strin      " "a strang enclosed up in double quote marks (\*q)"
+.fi
+.RE
+.PP
+Note: hex integer joints must be prefixed wit \(lq0x\(rq, n' octal joints
+with \(lq0\(rq.
+.PP
+A special keyword called
+.B Option
+may be used ta provide free\-form data ta various componentz of tha server.
+The
+.B Option
+keyword takes either one or two strang arguments.
+Da first is tha option name, n' tha optionizzle second argument is the
+option value.
+Some commonly used option value types include:
+.PP
+.RS 4
+.nf
+.BR "Integer     " "an integer number up in decimal, hex or octal"
+.BR "Real        " "a floatin point number"
+.BR "Strin      " "a sequence of characters"
+.BR "Boolean     " "a boolean value (see below)"
+.BR "Frequency   " "a frequency value (see below)"
+.fi
+.RE
+.PP
+Note that
+.I all
+.B Option
+values, not just strings, must be enclosed up in quotes.
+.PP
+Boolean options may optionally gotz a value specified.
+When no value is specified, tha optionz value is
+.BR TRUE .
+Da followin boolean option joints is recognised as
+.BR TRUE :
+.PP
+.RS 4
+.BR 1 ,
+.BR on ,
+.BR legit ,
+.B yes
+.RE
+.PP
+and tha followin boolean option joints is recognised as
+.BR FALSE :
+.PP
+.RS 4
+.BR 0 ,
+.BR off ,
+.BR false ,
+.B no
+.RE
+.PP
+If a option name is prefixed with
+.RB \*q No \*q,
+then tha option value is negated.
+.PP
+Example: tha followin option entries is equivalent:
+.PP
+.RS 4
+.nf
+.B "Option \*qAccel\*q   \*qOff\*q"
+.B "Option \*qNoAccel\*q"
+.B "Option \*qNoAccel\*q \*qOn\*q"
+.B "Option \*qAccel\*q   \*qfalse\*q"
+.B "Option \*qAccel\*q   \*qno\*q"
+.fi
+.RE
+.PP
+Frequency option joints consist of a real number dat is optionally
+followed by one of tha followin frequency units:
+.PP
+.RS 4
+.BR Hz ,
+.BR k ,
+.BR kHz ,
+.BR M ,
+.B MHz
+.RE
+.PP
+When tha unit name is omitted, tha erect units is ghon be determined from
+the value n' tha expectationz of tha appropriate range of tha value.
+It be recommended dat tha units always be specified when rockin frequency
+option joints ta avoid any errors up in determinin tha value.
+.SH "FILES SECTION"
+The
+.B Files
+section is used ta specify some path names required by tha server.
+Some of these paths can also be set from tha command line (see
+.BR Xserver (1)
+and
+.BR Xorg (1)).
+Da command line settings override tha joints specified up in tha config
+file.
+The
+.B Files
+section is optional, as is all of tha entries dat may step tha fuck up in dat shit.
+.PP
+Da entries dat can step tha fuck up in dis section are:
+.TP 7
+.BI "FontPath \*q" path \*q
+sets tha search path fo' fonts.
+This path be a cold-ass lil comma separated list of font path elements which tha Xorg
+server searches fo' font databases.
+Multiple
+.B FontPath
+entries may be specified, n' they is ghon be concatenated ta build up the
+fontpath used by tha server n' shit.  Font path elements can be absolute
+directory paths, catalogue directories or a gangbangin' font server identifier n' shit. The
+formatz of tha lata two is explained below:
+.PP
+.RS 7
+Catalogue directories:
+.PP
+.RS 4
+Catalogue directories can be specified rockin tha prefix \fBcatalogue:\fR
+before tha directory name. Da directory can then be populated with
+symlinks pointin ta tha real font directories, rockin tha following
+syntax up in tha symlink name:
+.PP
+.RS 4
+.IR <identifier> : [attribute]: pri= <priority>
+.RE
+.PP
+where
+.I <identifier>
+is a alphanumeric identifier,
+.I [attribute]
+is a attribute which is ghon be passed ta tha underlyin FPE and
+.I <priority>
+is a number used ta order tha fontfile FPEs. Examples:
+.PP
+.RS 4
+.nf
+.I 75dpi:unscaled:pri=20  -> /usr/share/X11/fonts/75dpi
+.I gscript:pri=60 -> /usr/share/fonts/default/ghostscript
+.I misc:unscaled:pri=10 \-> /usr/share/X11/fonts/misc
+.fi
+.PP
+.RE
+.RE
+.RE
+.PP
+.RS 7
+Font server identifiers:
+.PP
+.RS 4
+Font server identifiers have tha form:
+.RS 4
+.PP
+.IR <trans> / <hostname> : <port\-number>
+.RE
+.PP
+where
+.I <trans>
+is tha transhiznit type ta use ta connect ta tha font server (e.g.,
+.B unix
+for UNIX\-domain sockets or
+.B tcp
+for a TCP/IP connection),
+.I <hostname>
+is tha hostname of tha machine hustlin tha font server, and
+.I <port\-number>
+is tha port number dat tha font server is listenin on (usually 7100).
+.RE
+.PP
+When dis entry aint specified up in tha config file, tha server falls back
+to tha compiled\-in default font path, which gotz nuff tha following
+font path elements (which can be set inside a cold-ass lil catalogue directory):
+.PP
+.RS 4
+.nf
+.I /usr/share/fonts/X11/misc/
+.I /usr/share/fonts/X11/TTF/
+.I /usr/share/fonts/X11/OTF/
+.I /usr/share/fonts/X11/Type1/
+.I /usr/share/fonts/X11/100dpi/
+.I /usr/share/fonts/X11/75dpi/
+.fi
+.RE
+.PP
+Font path elements dat is found ta be invalid is removed from the
+font path when tha server starts up.
+.RE
+.TP 7
+.BI "ModulePath \*q" path \*q
+sets tha search path fo' loadable Xorg server modules.
+This path be a cold-ass lil comma separated list of directories which tha Xorg server
+searches fo' loadable modulez loadin up in tha order specified.
+Multiple
+.B ModulePath
+entries may be specified, n' they is ghon be concatenated ta build the
+module search path used by tha server n' shit.  Da default module path is
+.PP
+.RS 11
+/usr/lib64/xorg/modules
+.RE
+.\" Da LogFile keyword aint currently implemented
+.ig
+.TP 7
+.BI "LogFile \*q" path \*q
+sets tha name of tha Xorg server log file.
+Da default log file name is
+.PP
+.RS 11
+.RI /var/log/Xorg. <n> .log
+.RE
+.PP
+.RS 7
+where
+.I <n>
+is tha display number fo' tha Xorg server.
+..
+.TP 7
+.BI "XkbDir \*q" path \*q
+sets tha base directory fo' keyboard layout files.  The
+.B \-xkbdir
+command line option can be used ta override all dis bullshit.  Da default directory is
+.PP
+.RS 11
+/usr/share/X11/xkb
+.RE
+.SH "SERVERFLAGS SECTION"
+In addizzle ta options specific ta dis section (busted lyrics bout below), the
+.B ServerFlags
+section is used ta specify some global
+Xorg server options.
+All of tha entries up in dis section are
+.BR Options ,
+although fo' compatibilitizzle purposes a shitload of tha oldschool steez entries are
+still recognised.
+Those oldschool steez entries is not documented here, n' rockin dem is
+discouraged.
+The
+.B ServerFlags
+section is optional, as is tha entries dat may be specified up in dat shit.
+.PP
+.B Options
+specified up in dis section (with tha exception of the
+.B \*qDefaultServerLayout\*q
+.BR Option )
+may be overridden by
+.B Options
+specified up in tha active
+.B ServerLayout
+section.
+Options wit command line equivalents is overridden when they command
+line equivalent is used.
+Da options recognised by dis section are:
+.TP 7
+.BI "Option \*qDefaultServerLayout\*q  \*q" layout\-id \*q
+This specifies tha default
+.B ServerLayout
+section ta use up in tha absence of the
+.B \-layout
+command line option.
+.TP 7
+.BI "Option \*qNoTrapSignals\*q  \*q" boolean \*q
+This prevents tha Xorg server from trappin a range of unexpected fatal
+signals n' exitin cleanly.
+Instead, tha Xorg server will take a thugged-out dirtnap n' drop core where tha fault occurred.
+Da default behaviour is fo' tha Xorg server ta exit cleanly yo, but still drop a
+core file.
+In general you never wanna use dis option unless yo ass is debuggin a Xorg
+server problem n' know how tha fuck ta deal wit tha consequences.
+.TP 7
+.BI "Option \*qUseSIGIO\*q  \*q" boolean \*q
+This controls whether tha Xorg server requests dat events from
+input devices be reported via a SIGIO signal handlez (also known as SIGPOLL
+on some platforms), or only reported via tha standard select(3) loop.
+Da default behaviour is platform specific.   In general you do not want to
+use dis option unless yo ass is debuggin tha Xorg server, or
+workin round a specific bug until it is fixed, n' KNOW the
+consequences.
+.TP 7
+.BI "Option \*qDontVTSwitch\*q  \*q" boolean \*q
+This disallows tha use of the
+.BI Ctrl+Alt+F n
+sequence (where
+.RI F n
+refers ta one of tha numbered function keys).
+That sequence is normally used ta switch ta another \*qvirtual terminal\*q
+on operatin systems dat have dis feature.
+When dis option is enabled, dat key sequence has no special meanin and
+is passed ta clients.
+Default: off.
+.TP 7
+.BI "Option \*qDontZap\*q  \*q" boolean \*q
+This disallows tha use of the
+.B Terminate_Server
+XKB action (usually on Ctrl+Alt+Backspace, dependin on XKB options).
+This action is normally used ta terminizzle tha Xorg server.
+When dis option is enabled, tha action has no effect.
+Default: off.
+.TP 7
+.BI "Option \*qDontZoom\*q  \*q" boolean \*q
+This disallows tha use of the
+.B Ctrl+Alt+Keypad\-Plus
+and
+.B Ctrl+Alt+Keypad\-Minus
+sequences.
+These sequences allows you ta switch between vizzle modes.
+When dis option is enabled, dem key sequences have no special meaning
+and is passed ta clients.
+Default: off.
+.TP 7
+.BI "Option \*qDisableVidModeExtension\*q  \*q" boolean \*q
+This disablez tha partz of tha VidMode extension used by tha xvidtune client
+that can be used ta chizzle tha vizzle modes.
+Default: tha VidMode extension is enabled.
+.TP 7
+.BI "Option \*qAllowNonLocalXvidtune\*q  \*q" boolean \*q
+This allows tha xvidtune client (and other clients dat use tha VidMode
+extension) ta connect from another host.
+Default: off.
+.TP 7
+.BI "Option \*qAllowMouseOpenFail\*q  \*q" boolean \*q
+This  drops some lyrics ta tha mousedrv(4) n' vmmouse(4)
+drivers ta not report failure if tha mouse thang can't be opened/initialised.
+It has no effect on tha evdev(4) or other drivers.
+Default: false.
+.TP 7
+.BI "Option \*qBlankTime\*q  \*q" time \*q
+sets tha inactivitizzle timeout fo' the
+.B blank
+phase of tha screensaver.
+.I time
+is up in minutes.
+This is equivalent ta tha Xorg server's
+.B \-s
+flag, n' tha value can be chizzled at run\-time with
+.BR xset(1).
+Default: 10 minutes.
+.TP 7
+.BI "Option \*qStandbyTime\*q  \*q" time \*q
+sets tha inactivitizzle timeout fo' the
+.B standby
+phase of DPMS mode.
+.I time
+is up in minutes, n' tha value can be chizzled at run\-time with
+.BR xset(1).
+Default: 10 minutes.
+This is only suitable fo' VESA DPMS compatible monitors, n' may not be
+supported by all vizzle drivers.
+It be only enabled fo' screens dat have the
+.B \*qDPMS\*q
+option set (see tha MONITOR section below).
+.TP 7
+.BI "Option \*qSuspendTime\*q  \*q" time \*q
+sets tha inactivitizzle timeout fo' the
+.B suspend
+phase of DPMS mode.
+.I time
+is up in minutes, n' tha value can be chizzled at run\-time with
+.BR xset(1).
+Default: 10 minutes.
+This is only suitable fo' VESA DPMS compatible monitors, n' may not be
+supported by all vizzle drivers.
+It be only enabled fo' screens dat have the
+.B \*qDPMS\*q
+option set (see tha MONITOR section below).
+.TP 7
+.BI "Option \*qOffTime\*q  \*q" time \*q
+sets tha inactivitizzle timeout fo' the
+.B off
+phase of DPMS mode.
+.I time
+is up in minutes, n' tha value can be chizzled at run\-time with
+.BR xset(1).
+Default: 10 minutes.
+This is only suitable fo' VESA DPMS compatible monitors, n' may not be
+supported by all vizzle drivers.
+It be only enabled fo' screens dat have the
+.B \*qDPMS\*q
+option set (see tha MONITOR section below).
+.TP 7
+.BI "Option \*qPixmap\*q  \*q" bpp \*q
+This sets tha pixmap format ta use fo' depth 24.
+Allowed joints for
+.I bpp
+are 24 n' 32.
+Default: 32 unless driver constraints don't allow dis (which is rare).
+Note: some clients don't behave well when dis value is set ta 24.
+.TP 7
+.BI "Option \*qNoPM\*q  \*q" boolean \*q
+Disablez suttin' ta do wit juice pimpment events.
+Default: PM enabled on platforms dat support dat shit.
+.TP 7
+.BI "Option \*qXinerama\*q  \*q" boolean \*q
+enable or disable XINERAMA extension.
+Default is disabled.
+.TP 7
+.BI "Option \*qAIGLX\*q \*q" boolean \*q
+enable or disable AIGLX fo' realz. AIGLX is enabled by default.
+.TP 7
+.BI "Option \*qDRI2\*q \*q" boolean \*q
+enable or disable DRI2. DRI2 is disabled by default.
+.TP 7
+.BI "Option \*qGlxVisuals\*q \*q" strang \*q
+This option controls how tha fuck nuff GLX visuals tha GLX modulez sets up.
+Da default value is
+.BR "typical" ,
+which will setup up a typical subset of
+the GLXFBConfigs provided by tha driver as GLX visuals.  Other options are
+.BR "minimal" ,
+which will set up tha minimal set allowed by tha GLX justification and
+.BR "all"
+which will setup GLX visuals fo' all GLXFBConfigs.
+.TP 7
+.BI "Option \*qUseDefaultFontPath\*q \*q" boolean \*q
+Include tha default font path even if other paths is specified in
+xorg.conf. If enabled, other font paths is included as well. Enabled by
+default.
+.TP 7
+.BI "Option \*qIgnoreABI\*q \*q" boolean \*q
+Allow modulez built fo' a gangbangin' finger-lickin' different, potentially incompatible version of
+the X server ta load. Y'all KNOW dat shit, muthafucka! Disabled by default.
+.TP 7
+.BI "Option \*qAutoAddDevices\*q \*q" boolean \*q
+If dis option is disabled, then no devices is ghon be added from tha HAL or
+udev backends. Enabled by default.
+.TP 7
+.BI "Option \*qAutoEnableDevices\*q \*q" boolean \*q
+If dis option is disabled, then tha devices is ghon be added (and the
+DevicePresenceNotify event sent) yo, but not enabled, thus leavin policy up
+to tha client.
+Enabled by default.
+.TP 7
+.BI "Option \*qLog\*q \*q" strang \*q
+This option controls whether tha log is flushed and/or synced ta disk after
+each message.
+Possible joints are
+.B flush
+or
+.BR sync .
+Unset by default.
+.SH "MODULE SECTION"
+The
+.B Module
+section is used ta specify which Xorg server modulez should be loaded.
+This section is ignored when tha Xorg server is built up in static form.
+Da type of modulez normally loaded up in dis section is Xorg server
+extension modules.
+Most other module types is loaded automatically when they is needed via
+other mechanisms.
+The
+.B Module
+section is optional, as is all of tha entries dat may be specified in
+it.
+.PP
+Entries up in dis section may be up in two forms.
+Da first n' most commonly used form be a entry dat uses the
+.B Load
+keyword, as busted lyrics bout here:
+.TP 7
+.BI "Load  \*q" modulename \*q
+This instructs tha server ta load tha module called
+.IR modulename .
+Da module name given should be tha modulez standard name, not the
+module file name.
+Da standard name is case\-sensitive, n' do not include tha \(lqlib\(rq
+or \(lqcyg\(rq prefixes, or tha \(lq.so\(rq or \(lq.dll\(rq suffixes.
+.PP
+.RS 7
+Example: tha DRI extension module can be loaded wit tha followin entry:
+.PP
+.RS 4
+.B "Load \*qdri\*q"
+.RE
+.RE
+.TP 7
+.BI "Disable  \*q" modulename \*q
+This instructs tha server ta not load tha module called
+.IR modulename .
+Some modulez is loaded by default up in tha server, n' dis overrides that
+default. If a
+.B Load
+instruction is given fo' tha same module, it overrides the
+.B Disable
+instruction n' tha module is loaded. Y'all KNOW dat shit, muthafucka! Da module name given should be the
+modulez standard name, not tha module file name fo' realz. As wit the
+.B Load
+instruction, tha standard name is case-sensitive, n' do not include the
+"lib" prefix, or tha ".a", ".o", or ".so" suffixes.
+.PP
+Da second form of entry be a
+.BR SubSection,
+with tha subsection name bein tha module name, n' tha contentz of the
+.B SubSection
+being
+.B Options
+that is passed ta tha module when it is loaded.
+.PP
+Example: tha extmod module (which gotz nuff a miscellaneous crew of
+server extensions) can be loaded, wit tha XFree86\-DGA extension
+disabled by rockin tha followin entry:
+.PP
+.RS 4
+.nf
+.B "SubSection \*qextmod\*q"
+.B "   Option  \*qomit XFree86\-DGA\*q"
+.B EndSubSection
+.fi
+.RE
+.PP
+Modulez is searched fo' up in each directory specified up in the
+.B ModulePath
+search path, n' up in tha drivers, extensions, input, internal, and
+multimedia subdirectoriez of each of dem directories.
+In addizzle ta this, operatin system specific subdirectoriez of all
+the above is searched first if they exist.
+.PP
+To peep what tha fuck extension modulez is available, check tha extensions
+subdirectory under:
+.PP
+.RS 4
+.nf
+/usr/lib64/xorg/modules
+.fi
+.RE
+.PP
+Da \(lqextmod\(rq, \(lqdbe\(rq, \(lqdri\(rq, \(lqdri2\(rq, \(lqglx\(rq,
+and \(lqrecord\(rq extension modulez is loaded automatically, if they
+are present, unless disabled wit \*qDisable\*q entries.
+It be recommended
+that at straight-up least tha \(lqextmod\(rq extension module be loaded.
+If it aint, some commonly used server extensions (like tha SHAPE
+extension) aint gonna be available.
+.SH "EXTENSIONS SECTION"
+The
+.B Extensions
+section is used ta specify which X11 protocol extensions should be enabled
+or disabled.
+The
+.B Extensions
+section is optional, as is all of tha entries dat may be specified in
+it.
+.PP
+Entries up in dis section is listed as Option statements wit tha name of
+the extension as tha straight-up original gangsta argument, n' a funky-ass boolean value as tha second.
+Da extension name is case\-sensitive, n' matches tha form shown up in tha output
+of \*qXorg -extension ?\*q.
+.PP
+.RS 7
+Example: tha MIT-SHM extension can be disabled wit tha followin entry:
+.PP
+.RS 4
+.nf
+.B "Section \*qExtensions\*q"
+.B "    Option \*qMIT-SHM\*q \*qDisable\*q"
+.B "EndSection"
+.fi
+.RE
+.RE
+.SH "INPUTDEVICE SECTION"
+Da config file may have multiple
+.B InputDevice
+sections.
+Recent X servers employ HAL or udev backendz fo' input thang enumeration
+and input hotplugging. Well shiiiit, it is probably not
+necessary ta provide
+.B InputDevice
+sections up in tha xorg.conf if hotpluggin is up in use (i.e fo' realz. AutoAddDevices is
+enabled). If hotpluggin is enabled,
+.B InputDevice
+sections rockin the
+.B mouse, kbd
+and
+.B vmmouse
+driver is ghon be ignored.
+.PP
+If hotpluggin is disabled, there will normally
+be at least two: one fo' tha core (primary) keyboard
+and one fo' tha core pointer.
+If either of these two is missing, a thugged-out default configuration fo' tha missing
+ones is ghon be used. Y'all KNOW dat shit, muthafucka! In tha absence of a explicitly specified core input
+device, tha first
+.B InputDevice
+marked as
+.B CorePointer
+(or
+.BR CoreKeyboard )
+is used.
+If there is no match there, tha first
+.B InputDevice
+that uses tha \(lqmouse\(rq (or \(lqkbd\(rq) driver is used.
+Da final fallback is ta use built\-in default configurations.
+Currently tha default configuration may not work as expected on all platforms.
+.PP
+.B InputDevice
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qInputDevice\*q"
+.BI "    Identifier \*q" name \*q
+.BI "    Driver     \*q" inputdriver \*q
+.I  "    options"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+The
+.B Identifier
+and
+.B Driver
+entries is required up in all
+.B InputDevice
+sections.
+All other entries is optional.
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis input device.
+The
+.B Driver
+entry specifies tha name of tha driver ta use fo' dis input device.
+When rockin tha loadable server, tha input driver module
+.RI \*q inputdriver \*q
+will be loaded fo' each active
+.B InputDevice
+section.
+An
+.B InputDevice
+section is considered actizzle if it is referenced by a active
+.B ServerLayout
+section, if it is referenced by the
+.B \-keyboard
+or
+.B \-pointer
+command line options, or if it is selected implicitly as tha core pointer
+or keyboard thang up in tha absence of such explicit references.
+Da most commonly used input drivers are
+.BR evdev (4)
+on Linux systems, and
+.BR kbd (4)
+and
+.BR mousedrv (4)
+on other platforms.
+.PP
+.PP
+.B InputDevice
+sections recognise some driver\-independent
+.BR Options ,
+which is busted lyrics bout here.
+See tha individual input driver manual pages fo' a thugged-out description of the
+device\-specific options.
+.TP 7
+.BI "Option \*qAutoServerLayout\*q  \*q" boolean \*q
+Always add tha thang ta tha ServerLayout section used by dis instizzle of
+the server n' shit. This affects implied layouts as well as explicit layouts
+specified up in tha configuration and/or on tha command line.
+.TP 7
+.BI "Option \*qCorePointer\*q"
+Deprecated, see
+.B Floating
+.TP 7
+.BI "Option \*qCoreKeyboard\*q"
+Deprecated, see
+.B Floating
+.TP 7
+.BI "Option \*qAlwaysCore\*q  \*q" boolean \*q
+Deprecated, see
+.B Floating
+.TP 7
+.BI "Option \*qSendCoreEvents\*q  \*q" boolean \*q
+Deprecated, see
+.B Floating
+
+.TP 7
+.BI "Option \*qFloating\*q  \*q" boolean \*q
+When enabled, tha input thang is set up floatin n' do not
+report events all up in any masta thang or control a cold-ass lil cursor. Shiiit, dis aint no joke. Da thang is
+only available ta clients rockin tha X Input Extension API. This option is
+disabled by default.
+Da options
+.B CorePointer,
+.B CoreKeyboard,
+.B AlwaysCore,
+and
+.B SendCoreEvents,
+are tha inverse of option
+.B Floating
+(i.e.
+.B SendCoreEvents \*qon\*q
+is equivalent to
+.B Floatin \*qoff\*q
+).
+
+This option controls tha startup behavior only, a thugged-out device
+may be reattached or set floatin at runtime.
+.TP 7
+.BI "Option \*qTransformationMatrix\*q \*q" a " " b " " c " " d " " e " " f " " g " " h " " i \*q
+Specifies tha 3x3 transformation matrix fo' absolute input devices. The
+input thang is ghon be bound ta tha area given up in tha matrix.  In most
+configurations, "a" n' "e" specify tha width n' height of tha area the
+device is bound to, n' "c" n' "f" specify tha x n' y offset of tha area.
+Da value range is 0 ta 1, where 1 represents tha width or height of all
+root windows together, 0.5 represents half tha area, etc. Da joints
+represent a 3x3 matrix, wit tha first, second n' third crew of three
+values representin tha first, second n' third row of tha matrix,
+respectively.  Da identitizzle matrix is "1 0 0 0 1 0 0 0 1".
+.SS POINTER ACCELERATION
+For pointin devices, tha followin options control how tha fuck tha pointer
+is accelerated or decelerated wit respect ta physical thang motion. I aint talkin' bout chicken n' gravy biatch. Most of
+these can be adjusted at runtime, peep tha xinput(1) playa page fo' details. Only
+da most thugged-out blingin acceleration options is discussed here.
+.TP 7
+.BI "Option \*qAccelerationProfile\*q  \*q" integer \*q
+Select tha profile. In laymanz terms, tha flava constitutes tha "feeling" of
+the acceleration. I aint talkin' bout chicken n' gravy biatch. Mo' formally, it defines how tha fuck tha transfer function (actual
+acceleration as a gangbangin' function of current thang velocitizzle n' acceleration controls)
+is constructed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. This is mainly a matta of underground preference.
+.PP
+.RS 6
+.nf
+.B  " 0      funky-ass (mostly compatible)"
+.B  "-1      none (only constant deceleration be applied)"
+.B  " 1      device-dependent"
+.B  " 2      polynomial (polynomial function)"
+.B  " 3      smooth linear (soft knee, then linear)"
+.B  " 4      simple (normal when slow, otherwise accelerated)"
+.B  " 5      juice (power function)"
+.B  " 6      linear (more speed, mo' acceleration)"
+.B  " 7      limited (like linear yo, but maxes up at threshold)"
+.fi
+.RE
+.TP 7
+.BI "Option \*qConstantDeceleration\*q  \*q" real \*q
+Makes tha pointa go
+.B deceleration
+times slower than normal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Most useful fo' high-resolution devices.
+.TP 7
+.BI "Option \*qAdaptiveDeceleration\*q  \*q" real \*q
+Allows ta straight-up decelerate tha pointa when goin slow fo' realz. At most, it will be
+.B adaptizzle deceleration
+times slower n' shit. Enablez precise pointa placement without sacrificin speed.
+.TP 7
+.BI "Option \*qAccelerationScheme\*q  \*q" strang \*q
+Selects tha scheme, which is tha underlyin algorithm.
+.PP
+.RS 7
+.nf
+.B  "predictable   default algorithm (behavin mo' predictable)"
+.B  "lightweight   oldschool acceleration code (as specified up in tha X protocol spec)"
+.B  "none          no acceleration or deceleration"
+.fi
+.RE
+.TP 7
+.BI "Option \*qAccelerationNumerator\*q  \*q" integer \*q
+.TP 7
+.BI "Option \*qAccelerationDenominator\*q  \*q" integer \*q
+Set numerator n' denominator of tha acceleration factor. Shiiit, dis aint no joke. Da acceleration
+factor be a rationizzle which, together wit threshold, can be used ta tweak
+profilez ta suit tha playas needs. The
+.B simple
+and
+.B limited
+profilez use it directly (i.e. they accelerate by tha factor), fo' other
+profilez it should hold dat a higher acceleration factor leadz ta a gangbangin' faster
+pointer n' shit. Typically, 1 is unaccelerated n' joints up ta 5 is sensible.
+.TP 7
+.BI "Option \*qAccelerationThreshold\*q  \*q" integer \*q
+Set tha threshold, which is roughly tha velocitizzle (usually thang units per 10
+ms) required fo' acceleration ta become effective. Da precise effect varies
+with tha flava however.
+
+.SH "INPUTCLASS SECTION"
+Da config file may have multiple
+.B InputClass
+sections.
+These sections is optionizzle n' is used ta provide configuration fo' a
+class of input devices as they is automatically added. Y'all KNOW dat shit, muthafucka! An input thang can
+match mo' than one
+.B InputClass
+section. I aint talkin' bout chicken n' gravy biatch. Each class can override settings from a previous class, so it is
+best ta arrange tha sections wit da most thugged-out generic matches first.
+.PP
+.B InputClass
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qInputClass\*q"
+.BI "    Identifier  \*q" name \*q
+.I  "    entries"
+.I  "    ..."
+.I  "    options"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+The
+.B Identifier
+entry is required up in all
+.B InputClass
+sections.
+All other entries is optional.
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis input class.
+The
+.B Driver
+entry specifies tha name of tha driver ta use fo' dis input device.
+Afta all classes done been examined, the
+.RI \*q inputdriver \*q
+module from tha first
+.B Driver
+entry is ghon be enabled when rockin tha loadable server.
+.PP
+When a input thang be automatically added, its characteristics are
+checked against all
+.B InputClass
+sections. Each section can contain optionizzle entries ta narrow tha match
+of tha class. If none of tha optionizzle entries appear, the
+.B InputClass
+section is generic n' will match any input device. If mo' than one of
+these entries appear, they all must match fo' tha configuration ta apply.
+.PP
+There is two typez of match entries used in
+.B InputClass
+sections. Da first allows various tokens ta be matched against attributes
+of tha device fo' realz. An entry can be constructed ta match attributes from different
+devices by separatin arguments wit a '|' character n' shit. Multiple entriez of the
+same type may be supplied ta add multiple matchin conditions on tha same
+attribute. For example:
+.PP
+.RS 4
+.nf
+.B  "Section \*qInputClass\*q"
+.B  "    Identifier   \*qMy fuckin Class\*q"
+.B  "    # thang strang must contain example and
+.B  "    # either gizmo or gadget
+.B  "    MatchProduct \*qexample\*q
+.B  "    MatchProduct \*qgizmo|gadget\*q
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.TP 7
+.BI "MatchProduct  \*q" matchthang \*q
+This entry can be used ta check if tha substring
+.RI \*q matchthang \*q
+occurs up in tha devicez thang name.
+.TP 7
+.BI "MatchVendor  \*q" matchvendor \*q
+This entry can be used ta check if tha substring
+.RI \*q matchvendor \*q
+occurs up in tha devicez vendor name.
+.TP 7
+.BI "MatchDevicePath \*q" matchdevice \*q
+This entry can be used ta check if tha thang file matches the
+.RI \*q matchdevice \*q
+pathname pattern.
+.TP 7
+.BI "MatchOS \*q" matchos \*q
+This entry can be used ta check if tha operatin system matches the
+case-insensitive
+.RI \*q matchos \*q
+string. This entry is only supported on platforms providin the
+.BR uname (2)
+system call.
+.TP 7
+.BI "MatchPnPID \*q" matchpnp \*q
+Da devicez Plug n' Play (PnP) ID can be checked against the
+.RI \*q matchpnp \*q
+shell wildcard pattern.
+.TP 7
+.BI "MatchSTDID \*q" matchusb \*q
+Da devicez STD ID can be checked against the
+.RI \*q matchusb \*q
+shell wildcard pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Da ID is constructed as lowercase hexadecimal numbers
+separated by a ':'. This is tha same ol' dirty format as the
+.BR lsusb (8)
+program.
+.TP 7
+.BI "MatchDriver \*q" matchdriver \*q
+Peep tha case-sensitizzle string
+.RI \*q matchdriver \*q
+against tha currently configured driver of tha device. Orderin of sections
+usin dis entry is blingin since it aint gonna match unless tha driver has
+been set by tha config backend or a previous
+.B InputClass
+section.
+.TP 7
+.BI "MatchTag \*q" matchtag \*q
+This entry can be used ta check if tags assigned by tha config backend
+matches the
+.RI \*q matchtag \*q
+pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch fo' realz. A match is found if at least one of tha tags given in
+.RI \*q matchtag \*q
+matches at least one of tha tags assigned by tha backend.
+.TP 7
+.BI "MatchLayout \*q" matchlayout \*q
+Peep tha case-sensitizzle string
+.RI \*q matchlayout \*q
+against tha currently active
+.B ServerLayout
+section. I aint talkin' bout chicken n' gravy biatch. Da empty strang "" matches a implicit layout which appears
+if no named
+.B ServerLayout
+sections done been found.
+.PP
+Da second type of entry is used ta match thang types. These entries take a
+boolean argument similar to
+.B Option
+entries.
+.TP 7
+.BI "MatchIsKeyboard     \*q" bool \*q
+.TP 7
+.BI "MatchIsPointa      \*q" bool \*q
+.TP 7
+.BI "MatchIsJoystick     \*q" bool \*q
+.TP 7
+.BI "MatchIsTablet       \*q" bool \*q
+.TP 7
+.BI "MatchIsTouchpad     \*q" bool \*q
+.TP 7
+.BI "MatchIsTouchscreen  \*q" bool \*q
+.PP
+When a input thang has been matched ta the
+.B InputClass
+section, any
+.B Option
+entries is applied ta tha device. One
+.B InputClass
+specific
+.B Option
+is recognized. Y'all KNOW dat shit, muthafucka! See the
+.B InputDevice
+section above fo' a thugged-out description of tha remaining
+.B Option
+entries.
+.TP 7
+.BI "Option \*qIgnore\*q \*q" boolean \*q
+This optionizzle entry specifies dat tha thang should be ignored entirely,
+and not added ta tha server n' shit. This can be useful when tha thang is handled
+by another program n' no X events should be generated.
+.SH "DEVICE SECTION"
+Da config file may have multiple
+.B Device
+sections.
+There must be at least one, fo' tha vizzle card bein used.
+.PP
+.B Device
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qDevice\*q"
+.BI "    Identifier \*q" name \*q
+.BI "    Driver     \*q" driver \*q
+.I  "    entries"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+The
+.B Identifier
+and
+.B Driver
+entries is required up in all
+.B Device
+sections.  All other entries is optional.
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis graphics device.
+The
+.B Driver
+entry specifies tha name of tha driver ta use fo' dis graphics device.
+When rockin tha loadable server, tha driver module
+.RI \*q driver \*q
+will be loaded fo' each active
+.B Device
+section.
+A
+.B Device
+section is considered actizzle if it is referenced by a active
+.B Screen
+section.
+.PP
+.B Device
+sections recognise some driver\-independent entries and
+.BR Options ,
+which is busted lyrics bout here.
+Not all drivers make use of these
+driver\-independent entries, n' nuff of dem dat do don't require them
+to be specified cuz tha shiznit be auto\-detected.
+See tha individual graphics driver manual pages fo' further shiznit
+about this, n' fo' a thugged-out description of tha device\-specific options.
+Note dat most of the
+.B Options
+listed here (but not tha other entries) may be specified up in the
+.B Screen
+section instead of here up in the
+.B Device
+section.
+.TP 7
+.BI "BusID  \*q" bus\-id \*q
+This specifies tha bus location of tha graphics card.
+For PCI/AGP cards,
+the
+.I bus\-id
+strin has tha form
+.BI PCI: bus : thang : function
+(e.g., \(lqPCI:1:0:0\(rq might be appropriate fo' a AGP card).
+This field is probably optionizzle up in single-head configurations when using
+the primary graphics card.
+In multi-head configurations, or when rockin a secondary graphics card up in a
+single-head configuration, dis entry is mandatory.
+Its main purpose is ta cook up a unambiguous connection between tha device
+section n' tha hardware it is representing.
+This shiznit can probably be found by hustlin tha pciaccess tool
+scanpci.
+.TP 7
+.BI "Screen  " number
+This option is mandatory fo' cardz where a single PCI entitizzle can drive more
+than one display (i.e., multiple CRTCs pluggin a single graphics accelerator
+and vizzle memory).
+One
+.B Device
+section is required fo' each head, n' this
+parameta determines which head each of the
+.B Device
+sections applies to.
+Da legal joints of
+.I number
+range from 0 ta one less than tha total number of headz per entity.
+Most drivers require dat tha primary screen (0) be present.
+.TP 7
+.BI "Chipset  \*q" chipset \*q
+This probably optionizzle entry specifies tha chipset used on tha graphics
+board.
+In most cases dis entry aint required cuz tha drivers will probe the
+hardware ta determine tha chipset type.
+Don't specify it unless tha driver-specific documentation recommendz dat you
+do.
+.TP 7
+.BI "Ramdac  \*q" ramdac\-type \*q
+This optionizzle entry specifies tha type of RAMDAC used on tha graphics
+board.
+This is only used by all dem of tha drivers, n' up in most cases it is not
+required cuz tha drivers will probe tha hardware ta determine the
+RAMDAC type where possible.
+Don't specify it unless tha driver-specific documentation recommendz dat you
+do.
+.TP 7
+.BI "DacSpeed  " speed
+.TP 7
+.BI "DacSpeed  " "speed\-8 speed\-16 speed\-24 speed\-32"
+This optionizzle entry specifies tha RAMDAC speed ratin (which is usually
+printed on tha RAMDAC chip).
+Da speed is up in MHz.
+When one value is given, it applies ta all framebuffer pixel sizes.
+When multiple joints is given, they apply ta tha framebuffer pixel sizes
+8, 16, 24 n' 32 respectively.
+This aint used by nuff drivers, n' only need ta be specified when the
+speed ratin of tha RAMDAC is different from tha defaults built up in to
+driver, or when tha driver can't auto-detect tha erect defaults.
+Don't specify it unless tha driver-specific documentation recommendz dat you
+do.
+.TP 7
+.BI "Clocks  " "clock ..."
+specifies tha pixel dat is on yo' graphics board.
+Da clocks is up in MHz, n' may be specified as a gangbangin' floatin point number.
+Da value is stored internally ta tha nearest kHz.
+Da orderin of tha clocks is blingin.
+It must match tha order up in which they is selected on tha graphics board.
+Multiple
+.B Clocks
+lines may be specified, n' each is concatenated ta form tha list.
+Most drivers do not use dis entry, n' it is only required fo' some older
+boardz wit non-programmable clocks.
+Don't specify dis entry unless tha driver-specific documentation explicitly
+recommendz dat you do.
+.TP
+.BI "ClockChip  \*q" clockchip\-type \*q
+This optionizzle entry is used ta specify tha clock chip type on graphics
+boardz which gotz a programmable clock generator.
+Only all dem Xorg drivers support programmable clock chips.
+For details, peep tha appropriate driver manual page.
+.TP 7
+.BI "VideoRam  " "mem"
+This optionizzle entry specifies tha amount of vizzle ram dat is installed
+on tha graphics board.
+This is measured up in kBytes.
+In most cases dis aint required cuz tha Xorg server probes
+the graphics board ta determine dis quantity.
+Da driver-specific documentation should indicate when it might be needed.
+.TP 7
+.BI "BiosBase  " "baseaddress"
+This optionizzle entry specifies tha base address of tha vizzle BIOS for
+the VGA board.
+This address is normally auto-detected, n' should only be specified if the
+driver-specific documentation recommendz dat shit.
+.TP 7
+.BI "MemBase  " "baseaddress"
+This optionizzle entry specifies tha memory base address of a graphics
+boardz linear frame buffer.
+This entry aint used by nuff drivers, n' it should only be specified if
+the driver-specific documentation recommendz dat shit.
+.TP 7
+.BI "IOBase  " "baseaddress"
+This optionizzle entry specifies tha IO base address.
+This entry aint used by nuff drivers, n' it should only be specified if
+the driver-specific documentation recommendz dat shit.
+.TP 7
+.BI "ChipID  " "id"
+This optionizzle entry specifies a numerical ID representin tha chip type.
+For PCI cards, it is probably tha thang ID.
+This can be used ta override tha auto-detection yo, but dat should only be done
+when tha driver-specific documentation recommendz dat shit.
+.TP 7
+.BI "ChipRev  " "rev"
+This optionizzle entry specifies tha chip revision number.
+This can be used ta override tha auto-detection yo, but dat should only be done
+when tha driver-specific documentation recommendz dat shit.
+.TP 7
+.BI "TextClockFreq  " "freq"
+This optionizzle entry specifies tha pixel clock frequency dat is used
+for tha regular text mode.
+Da frequency is specified up in MHz.
+This is rarely used.
+.TP 7
+.BI "Option \*qModeDebug\*q \*q" boolean \*q
+Enable printin of additionizzle debuggin shiznit bout modesettin to
+the server log.
+.ig
+.TP 7
+This optionizzle entry allows a IRQ number ta be specified.
+..
+.TP 7
+.B Options
+Option flags may be specified up in the
+.B Device
+sections.
+These include driver\-specific options n' driver\-independent options.
+Da forma is busted lyrics bout up in tha driver\-specific documentation.
+Some of tha latta is busted lyrics bout below up in tha section bout the
+.B Screen
+section, n' they may also be included here.
+
+.SH "VIDEOADAPTOR SECTION"
+No Muthafucka wants ta say how tha fuck dis works.
+Maybe no muthafucka knows ...
+
+.SH "MONITOR SECTION"
+Da config file may have multiple
+.B Monitor
+sections.
+There should normally be at least one, fo' tha monitor bein used,
+but a thugged-out default configuration is ghon be pimped when one aint specified.
+.PP
+.B Monitor
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qMonitor\*q"
+.BI "    Identifier \*q" name \*q
+.I  "    entries"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+Da only mandatory entry up in a
+.B Monitor
+section is the
+.B Identifier
+entry.
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis monitor.
+The
+.B Monitor
+section may be used ta provide shiznit bout tha justificationz of the
+monitor, monitor-specific
+.BR Options ,
+and shiznit bout tha vizzle modes ta use wit tha monitor.
+.PP
+With RandR 1.2-enabled drivers, monitor sections may be tied ta specific
+outputz of tha vizzle card. Y'all KNOW dat shit, muthafucka!  Usin tha name of tha output defined by tha vizzle
+driver plus tha identifier of a monitor section, one associates a monitor
+section wit a output by addin a option ta tha Device section up in the
+followin format:
+
+.BI "Option \*qMonitor-" outputname "\*q \*q" monitorsection \*q
+
+(for example,
+.B Option \*qMonitor-VGA\*q \*qVGA monitor\*q
+for a VGA output)
+.PP
+In tha absence of specific association of monitor sections ta outputs, if a
+monitor section is present tha server will associate it wit a output to
+preserve compatibilitizzle fo' previous single-head configurations.
+.PP
+Specifyin vizzle modes is optionizzle cuz tha server will use tha DDC or other
+information provided by tha monitor ta automatically configure tha list of
+modes available.
+When modes is specified explicitly up in the
+.B Monitor
+section (with the
+.BR Mode ,
+.BR ModeLine ,
+or
+.B UseModes
+keywords), built-in modes wit tha same names is not included.
+Built-in modes wit different names are, however, still implicitly included,
+when they hook up tha requirementz of tha monitor.
+.PP
+Da entries dat may be used in
+.B Monitor
+sections is busted lyrics bout below.
+.TP 7
+.BI "VendorName  \*q" vendor \*q
+This optionizzle entry specifies tha monitorz manufacturer.
+.TP 7
+.BI "ModelName  \*q" model \*q
+This optionizzle entry specifies tha monitorz model.
+.TP 7
+.BI "HorizSync  " "horizsync\-range"
+gives tha range(s) of horizontal sync frequencies supported by the
+monitor.
+.I horizsync\-range
+may be a cold-ass lil comma separated list of either discrete joints or ranges of
+values.
+A range of joints is two joints separated by a thugged-out dash.
+By default tha joints is up in unitz of kHz.
+They may be specified up in MHz or Hz
+if
+.B MHz
+or
+.B Hz
+is added ta tha end of tha line.
+Da data given here is used by tha Xorg server ta determine if vizzle
+modes is within tha justificationz of tha monitor.
+This shiznit should be available up in tha monitorz handbook.
+If dis entry is omitted, a thugged-out default range of 28\-33kHz is used.
+.TP 7
+.BI "VertRefresh  " "vertrefresh\-range"
+gives tha range(s) of vertical refresh frequencies supported by the
+monitor.
+.I vertrefresh\-range
+may be a cold-ass lil comma separated list of either discrete joints or ranges of
+values.
+A range of joints is two joints separated by a thugged-out dash.
+By default tha joints is up in unitz of Hz.
+They may be specified up in MHz or kHz
+if
+.B MHz
+or
+.B kHz
+is added ta tha end of tha line.
+Da data given here is used by tha Xorg server ta determine if vizzle
+modes is within tha justificationz of tha monitor.
+This shiznit should be available up in tha monitorz handbook.
+If dis entry is omitted, a thugged-out default range of 43\-72Hz is used.
+.TP 7
+.BI "DisplaySize  " "width height"
+This optionizzle entry gives tha width n' height, up in millimetres, of the
+picture area of tha monitor.
+If given dis is used ta calculate tha horizontal n' vertical pitch (DPI) of
+the screen.
+.TP 7
+.BI "Gamma  " "gamma\-value"
+.TP 7
+.BI "Gamma  " "red\-gamma green\-gamma blue\-gamma"
+This be a optionizzle entry dat can be used ta specify tha gamma erection
+for tha monitor.
+It may be specified as either a single value or as three separate RGB joints.
+Da joints should be up in tha range 0.1 ta 10.0, n' tha default is 1.0.
+Not all drivers is capable of rockin dis shiznit.
+.TP 7
+.BI "UseModes  \*q" modesection\-id \*q
+Include tha set of modes listed up in the
+.B Modes
+section called
+.IR modesection\-id.
+This make all of tha modes defined up in dat section available fo' use by
+this monitor.
+.TP 7
+.BI "Mode  \*q" name \*q
+This be a optionizzle multi-line entry dat can be used ta provide
+definitions fo' vizzle modes fo' tha monitor.
+In most cases dis aint necessary cuz tha built-in set of VESA standard
+modes is ghon be sufficient.
+The
+.B Mode
+keyword indicates tha start of a multi-line vizzle mode description.
+Da mode description is terminated wit the
+.B EndMode
+keyword.
+Da mode description consistz of tha followin entries:
+.RS 7
+.TP 4
+.BI "DotClock  " clock
+is tha dot (pixel) clock rate ta be used fo' tha mode.
+.TP 4
+.BI "HTimings  " "hdisp hsyncstart hsyncend htotal"
+specifies tha horizontal timings fo' tha mode.
+.TP 4
+.BI "VTimings  " "vdisp vsyncstart vsyncend vtotal"
+specifies tha vertical timings fo' tha mode.
+.TP 4
+.BI "Flags  \*q" flag \*q " ..."
+specifies a optionizzle set of mode flags, each of which be a separate
+strin up in double quotes.
+.B \*qInterlace\*q
+indicates dat tha mode is interlaced.
+.B \*qDoubleScan\*q
+indicates a mode where each scanline is doubled.
+.B \*q+HSync\*q
+and
+.B \*q\-HSync\*q
+can be used ta select tha polaritizzle of tha HSync signal.
+.B \*q+VSync\*q
+and
+.B \*q\-VSync\*q
+can be used ta select tha polaritizzle of tha VSync signal.
+.B \*qComposite\*q
+can be used ta specify composite sync on hardware where dis is supported.
+Additionally, on some hardware,
+.B \*q+CSync\*q
+and
+.B \*q\-CSync\*q
+may be used ta select tha composite sync polarity.
+.TP 4
+.BI "HSkew  " hskew
+specifies tha number of pixels (towardz tha right edge of tha screen) by
+which tha display enable signal is ta be skewed.
+Not all drivers use dis shiznit.
+This option might become necessary ta override tha default value supplied
+by tha server (if any).
+\(lqRoving\(rq horizontal lines indicate dis value need ta be increased.
+If tha last few pixels on a scan line step tha fuck up on tha left of tha screen,
+this value should be decreased.
+.TP 4
+.BI "VScan  " vscan
+specifies tha number of times each scanline is painted on tha screen.
+Not all drivers use dis shiznit.
+Values less than 1 is treated as 1, which is tha default.
+Generally, the
+.B \*qDoubleScan\*q
+.B Flag
+mentioned above doublez dis value.
+.RE
+.TP 7
+.BI "ModeLine  \*q" name \*q " mode\-description"
+This entry be a mo' compact version of the
+.B Mode
+entry, n' it also can be used ta specify vizzle modes fo' tha monitor.
+This be a single line format fo' specifyin vizzle modes.
+In most cases dis aint necessary cuz tha built\-in set of VESA
+standard modes is ghon be sufficient.
+.PP
+.RS 7
+The
+.I mode\-description
+is up in four sections, tha straight-up original gangsta three of which is mandatory.
+Da first is tha dot (pixel) clock.
+This be a single number specifyin tha pixel clock rate fo' tha mode in
+MHz.
+Da second section be a list of four numbers specifyin tha horizontal
+timings.
+These numbers is the
+.IR hdisp ,
+.IR hsyncstart ,
+.IR hsyncend ,
+and
+.I htotal
+values.
+Da third section be a list of four numbers specifyin tha vertical
+timings.
+These numbers is the
+.IR vdisp ,
+.IR vsyncstart ,
+.IR vsyncend ,
+and
+.I vtotal
+values.
+Da final section be a list of flags specifyin other characteristics of
+the mode.
+.B Interlace
+indicates dat tha mode is interlaced.
+.B DoubleScan
+indicates a mode where each scanline is doubled.
+.B +HSync
+and
+.B \-HSync
+can be used ta select tha polaritizzle of tha HSync signal.
+.B +VSync
+and
+.B \-VSync
+can be used ta select tha polaritizzle of tha VSync signal.
+.B Composite
+can be used ta specify composite sync on hardware where dis is supported.
+Additionally, on some hardware,
+.B +CSync
+and
+.B \-CSync
+may be used ta select tha composite sync polarity.
+The
+.B HSkew
+and
+.B VScan
+options mentioned above up in the
+.B Mode
+entry description can also be used here.
+.RE
+.TP 7
+.BI "Option \*qDPMS\*q \*q" bool \*q
+This option controls whether tha server should enable tha DPMS extension
+for juice pimpment fo' dis screen. I aint talkin' bout chicken n' gravy biatch.  Da default is ta enable the
+extension.
+.TP 7
+.BI "Option \*qSyncOnGreen\*q \*q" bool \*q
+This option controls whether tha vizzle card should drive tha sync signal
+on tha chronic color pin. I aint talkin' bout chicken n' gravy biatch.  Not all cardz support dis option, n' most
+monitors do not require dat shit.  Da default is off.
+.TP 7
+.BI "Option \*qPrimary\*q \*q" bool \*q
+This optionizzle entry specifies dat tha monitor should be treated as tha primary
+monitor. Shiiit, dis aint no joke. (RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qPreferredMode\*q \*q" name \*q
+This optionizzle entry specifies a mode ta be marked as tha preferred initial mode
+of tha monitor.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qPosition\*q \*q" x " " y \*q
+This optionizzle entry specifies tha posizzle of tha monitor within tha X
+screen.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qLeftOf\*q \*q" output \*q
+This optionizzle entry specifies dat tha monitor should be positioned ta the
+left of tha output (not monitor) of tha given name.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qRightOf\*q \*q" output \*q
+This optionizzle entry specifies dat tha monitor should be positioned ta the
+right of tha output (not monitor) of tha given name.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qAbove\*q \*q" output \*q
+This optionizzle entry specifies dat tha monitor should be positioned above the
+output (not monitor) of tha given name.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qBelow\*q \*q" output \*q
+This optionizzle entry specifies dat tha monitor should be positioned below the
+output (not monitor) of tha given name.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qEnable\*q \*q" bool \*q
+This optionizzle entry specifies whether tha monitor should be turned on
+at startup.  By default, tha server will attempt ta enable all connected
+monitors.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qDefaultModes\*q \*q" bool \*q
+This optionizzle entry specifies whether tha server should add supported default
+modes ta tha list of modes offered on dis monitor. Shiiit, dis aint no joke. By default, tha server
+will add default modes; you should only disable dis if you can guarantee
+that EDID is ghon be available at all times, or if you have added custom modelines
+which tha server can use.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qMinClock\*q \*q" frequency \*q
+This optionizzle entry specifies tha minimum dot clock, up in kHz, dat is supported
+by tha monitor.
+.TP 7
+.BI "Option \*qMaxClock\*q \*q" frequency \*q
+This optionizzle entry specifies tha maximum dot clock, up in kHz, dat is supported
+by tha monitor.
+.TP 7
+.BI "Option \*qIgnore\*q \*q" bool \*q
+This optionizzle entry specifies dat tha monitor should be ignored entirely,
+and not reported all up in RandR.  This is useful if tha hardware reports the
+presence of outputs dat don't exist.
+(RandR 1.2-supportin drivers only)
+.TP 7
+.BI "Option \*qRotate\*q \*q" rotation \*q
+This optionizzle entry specifies tha initial rotation of tha given monitor.
+Valid joints fo' rotation is \*qnormal\*q, \*qleft\*q, \*qright\*q, and
+\*qinverted\*q.
+(RandR 1.2-supportin drivers only)
+
+.SH "MODES SECTION"
+Da config file may have multiple
+.B Modes
+sections, or none.
+These sections provide a way of definin setz of vizzle modes independently
+of the
+.B Monitor
+sections.
+.B Monitor
+sections may include tha definitions provided up in these sections by
+usin the
+.B UseModes
+keyword.
+In most cases the
+.B Modes
+sections is not necessary cuz tha built\-in set of VESA standard modes
+will be sufficient.
+.PP
+.B Modes
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qModes\*q"
+.BI "    Identifier \*q" name \*q
+.I  "    entries"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis set of mode descriptions.
+Da other entries permitted in
+.B Modes
+sections is the
+.B Mode
+and
+.B ModeLine
+entries dat is busted lyrics bout above up in the
+.B Monitor
+section.
+.SH "SCREEN SECTION"
+Da config file may have multiple
+.B Screen
+sections.
+There must be at least one, fo' tha \(lqscreen\(rq bein used.
+A \(lqscreen\(rq represents tha bindin of a graphics device
+.RB ( Device
+section) n' a monitor
+.RB ( Monitor
+section).
+A
+.B Screen
+section is considered \(lqactive\(rq if it is referenced by a active
+.B ServerLayout
+section or by the
+.B \-screen
+command line option.
+If neither of dem is present, tha first
+.B Screen
+section found up in tha config file is considered tha actizzle one.
+.PP
+.B Screen
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qScreen\*q"
+.BI "    Identifier \*q" name \*q
+.BI "    Device     \*q" devid \*q
+.BI "    Monitor    \*q" monid \*q
+.I  "    entries"
+.I  "    ..."
+.BI "    SubSection \*qDisplay\*q"
+.I  "       entries"
+.I  "       ...
+.B  "    EndSubSection"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+The
+.B Identifier
+entry is mandatory.
+All others is optional.
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis screen.
+The
+.B Screen
+section serves up shiznit specific ta tha whole screen, including
+screen\-specific
+.BR Options .
+In multi\-head configurations, there is ghon be multiple active
+.B Screen
+sections, one fo' each head.
+Da entries available
+for dis section are:
+.TP 7
+.BI "Device  \*q" device\-id \*q
+This entry specifies the
+.B Device
+section ta be used fo' dis screen. I aint talkin' bout chicken n' gravy biatch.  When multiple graphics cardz are
+present, dis is what tha fuck tizzles a specific card ta a screen. I aint talkin' bout chicken n' gravy biatch.  The
+.I device\-id
+must match the
+.B Identifier
+of a
+.B Device
+section up in tha config file.
+.TP 7
+.BI "Monitor  \*q" monitor\-id \*q
+specifies which monitor description is ta be used fo' dis screen.
+If a
+.B Monitor
+name aint specified, a thugged-out default configuration is used.
+Currently tha default configuration may not function as expected on all
+platforms.
+.TP 7
+.BI "VideoAdaptor  \*q" xv\-id \*q
+specifies a optionizzle Xv vizzle adaptor description ta be used wit this
+screen.
+.TP 7
+.BI "DefaultDepth  " depth
+specifies which color depth tha server should use by default.
+The
+.B \-depth
+command line option can be used ta override all dis bullshit.
+If neither is specified, tha default depth is driver\-specific yo, but up in most
+cases is 8.
+.TP 7
+.BI "DefaultFbBpp  " bpp
+specifies which framebuffer layout ta use by default.
+The
+.B \-fbbpp
+command line option can be used ta override all dis bullshit.
+In most cases tha driver will chose tha dopest default value fo' all dis bullshit.
+Da only case where there is even a cold-ass lil chizzle up in dis value is fo' depth 24,
+where some hardware supports both a packed 24 bit framebuffer layout n' a
+sparse 32 bit framebuffer layout.
+.TP 7
+.B Options
+Various
+.B Option
+flags may be specified up in the
+.B Screen
+section.
+Some is driver\-specific n' is busted lyrics bout up in tha driver documentation.
+Others is driver\-independent, n' will eventually be busted lyrics bout here.
+.\" XXX These should straight-up be up in a xaa playa page.
+.TP 7
+.BI "Option \*qAccel\*q"
+Enablez 2D hardware acceleration.
+This option is on by default yo, but it may be necessary ta turn it off if
+there is bugs up in tha driver.
+There is nuff options ta disable specific accelerated operations, listed
+below.
+Note dat disablin a operation gonna git no effect if tha operation is
+not accelerated (whether cuz of lack of support up in tha hardware or up in the
+driver).
+.TP 7
+.BI "Option \*qInitPrimary\*q \*q" boolean \*q
+Use tha Int10 module ta initialize tha primary graphics card.
+Normally, only secondary cardz is soft-booted rockin tha Int10 module, as the
+primary card has already been initialized by tha BIOS at boot time.
+Default: false.
+.TP 7
+.BI "Option \*qNoInt10\*q \*q" boolean \*q
+Disablez tha Int10 module, a module dat uses tha int10 call ta tha BIOS
+of tha graphics card ta initialize dat shit.
+Default: false.
+.TP 7
+.BI "Option \*qNoMTRR\*q"
+Disablez MTRR (Memory Type Range Register) support, a gangbangin' feature of modern
+processors which can improve vizzle performizzle by a gangbangin' factor of up ta 2.5.
+Some hardware has buggy MTRR support, n' some vizzle drivers have been
+known ta exhibit problems when MTRRz is used.
+.PP
+Each
+.B Screen
+section may optionally contain one or more
+.B Display
+subsections.
+Those subsections provide depth/fbbpp specific configuration shiznit,
+and tha one chosen dependz on tha depth and/or fbbpp dat is bein used for
+the screen.
+The
+.B Display
+subsection format is busted lyrics bout up in tha section below.
+
+.SH "DISPLAY SUBSECTION"
+Each
+.B Screen
+section may have multiple
+.B Display
+subsections.
+Da \(lqactive\(rq
+.B Display
+subsection is tha straight-up original gangsta dat matches tha depth and/or fbbpp joints being
+used, or failin that, tha straight-up original gangsta dat has neither a thugged-out depth or fbbpp value
+specified.
+The
+.B Display
+subsections is optional.
+When there aint one dat matches tha depth and/or fbbpp joints bein used,
+all tha parametas dat can be specified here fall back ta they defaults.
+.PP
+.B Display
+subsections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "    SubSection \*qDisplay\*q"
+.BI "        Depth  " depth
+.I  "        entries"
+.I  "        ..."
+.B  "    EndSubSection"
+.fi
+.RE
+.TP 7
+.BI "Depth  " depth
+This entry specifies what tha fuck colour depth the
+.B Display
+subsection is ta be used for.
+This entry is probably specified yo, but it may be omitted ta create a match\-all
+.B Display
+subsection or when wishin ta match only against the
+.B FbBpp
+parameter.
+Da range of
+.I depth
+values dat is allowed dependz on tha driver.
+Most drivers support 8, 15, 16 n' 24.
+Some also support 1 and/or 4, n' some may support other joints (like 30).
+Note:
+.I depth
+means tha number of bits up in a pixel dat is straight-up used ta determine
+the pixel colour.
+32 aint a valid
+.I depth
+value.
+Most hardware dat uses 32 bits per pixel only uses 24 of dem ta hold the
+colour shiznit, which means dat tha colour depth is 24, not 32.
+.TP 7
+.BI "FbBpp  " bpp
+This entry specifies tha framebuffer format this
+.B Display
+subsection is ta be used for.
+This entry is only needed when providin depth 24 configurations dat allow
+a chizzle between a 24 bpp packed framebuffer format n' a 32bpp sparse
+framebuffer format.
+In most cases dis entry should not be used.
+.TP 7
+.BI "Weight  " "red\-weight green\-weight blue\-weight"
+This optionizzle entry specifies tha relatizzle RGB weightin ta be used
+for a screen is bein used at depth 16 fo' drivers dat allow multiple
+formats.
+This may also be specified from tha command line wit the
+.B \-weight
+option (see
+.BR Xorg(1)).
+.TP 7
+.BI "Virtual  " "xdim ydim"
+This optionizzle entry specifies tha virtual screen resolution ta be used.
+.I xdim
+must be a multiple of either 8 or 16 fo' most drivers, n' a multiple
+of 32 when hustlin up in monochrome mode.
+Da given value is ghon be rounded down if dis aint tha case.
+Video modes which is too big-ass fo' tha specified virtual size will be
+rejected.
+If dis entry aint present, tha virtual screen resolution is ghon be set to
+accommodate all tha valid vizzle modes given up in the
+.B Modes
+entry.
+Some drivers/hardware combinations do not support virtual screens.
+Refer ta tha appropriate driver\-specific documentation fo' details.
+.TP 7
+.BI "ViewPort  " "x0 y0"
+This optionizzle entry sets tha upper left corner of tha initial display.
+This is only relevant when tha virtual screen resolution is different
+from tha resolution of tha initial vizzle mode.
+If dis entry aint given, then tha initial display is ghon be centered in
+the virtual display area.
+.TP 7
+.BI "Modes  \*q" mode\-name \*q " ..."
+This optionizzle entry specifies tha list of vizzle modes ta use.
+Each
+.I mode\-name
+specified must be up in double quotes.
+They must correspond ta dem specified or referenced up in tha appropriate
+.B Monitor
+section (includin implicitly referenced built\-in VESA standard modes).
+Da server will delete modes from dis list which don't satisfy various
+requirements.
+Da first valid mode up in dis list is ghon be tha default display mode for
+startup.
+Da list of valid modes is converted internally tha fuck into a cold-ass lil circular list.
+It be possible ta switch ta tha next mode with
+.B Ctrl+Alt+Keypad\-Plus
+and ta tha previous mode with
+.BR Ctrl+Alt+Keypad\-Minus .
+When dis entry is omitted, tha valid modes referenced by tha appropriate
+.B Monitor
+section is ghon be used. Y'all KNOW dat shit, muthafucka!  If the
+.B Monitor
+section gotz nuff no modes, then tha selection is ghon be taken from the
+built-in VESA standard modes.
+.TP 7
+.BI "Visual  \*q" visual\-name \*q
+This optionizzle entry sets tha default root visual type.
+This may also be specified from tha command line (see the
+.BR Xserver(1)
+man page).
+Da visual types available fo' depth 8 is (default is
+.BR PseudoColor ):
+.PP
+.RS 11
+.nf
+.B StaticGray
+.B GrayScale
+.B StaticColor
+.B PseudoColor
+.B TrueColor
+.B DirectColor
+.fi
+.RE
+.PP
+.RS 7
+Da visual type available fo' tha depths 15, 16 n' 24 is (default is
+.BR TrueColor ):
+.PP
+.RS 4
+.nf
+.B TrueColor
+.B DirectColor
+.fi
+.RE
+.PP
+Not all drivers support
+.B DirectColor
+at these depths.
+.PP
+Da visual types available fo' tha depth 4 is (default is
+.BR StaticColor ):
+.PP
+.RS 4
+.nf
+.B StaticGray
+.B GrayScale
+.B StaticColor
+.B PseudoColor
+.fi
+.RE
+.PP
+Da visual type available fo' tha depth 1 (monochrome) is
+.BR StaticGray .
+.RE
+.TP 7
+.BI "Black  " "red chronic blue"
+This optionizzle entry allows tha \(lqblack\(rq colour ta be specified.
+This is only supported at depth 1.
+Da default is black.
+.TP 7
+.BI "White  " "red chronic blue"
+This optionizzle entry allows tha \(lqwhite\(rq colour ta be specified.
+This is only supported at depth 1.
+Da default is white.
+.TP 7
+.B Options
+Option flags may be specified up in the
+.B Display
+subsections.
+These may include driver\-specific options n' driver\-independent options.
+Da forma is busted lyrics bout up in tha driver\-specific documentation.
+Some of tha latta is busted lyrics bout above up in tha section bout the
+.B Screen
+section, n' they may also be included here.
+.SH "SERVERLAYOUT SECTION"
+Da config file may have multiple
+.B ServerLayout
+sections.
+A \(lqserver layout\(rq represents tha bindin of one or mo' screens
+.RB ( Screen
+sections) n' one or mo' input devices
+.RB ( InputDevice
+sections) ta form a cold-ass lil complete configuration.
+In multi\-head configurations, it also specifies tha relatizzle layout of the
+heads.
+A
+.B ServerLayout
+section is considered \(lqactive\(rq if it is referenced by the
+.B \-layout
+command line option or by an
+.B "Option \*qDefaultServerLayout\*q"
+entry up in the
+.B ServerFlags
+section (the forma takes precedence over tha latter).
+If dem options is not used, tha first
+.B ServerLayout
+section found up in tha config file is considered tha actizzle one.
+If no
+.B ServerLayout
+sections is present, tha single actizzle screen n' two actizzle (core)
+input devices is selected as busted lyrics bout up in tha relevant sections above.
+.PP
+.B ServerLayout
+sections have tha followin format:
+.PP
+.RS 4
+.nf
+.B  "Section \*qServerLayout\*q"
+.BI "    Identifier   \*q" name \*q
+.BI "    Screen       \*q" screen\-id \*q
+.I  "    ..."
+.BI "    InputDevice  \*q" idev\-id \*q
+.I  "    ..."
+.I  "    options"
+.I  "    ..."
+.B  "EndSection"
+.fi
+.RE
+.PP
+Each
+.B ServerLayout
+section must have an
+.B Identifier
+entry n' at least one
+.B Screen
+entry.
+.PP
+The
+.B Identifier
+entry specifies tha unique name fo' dis server layout.
+The
+.B ServerLayout
+section serves up shiznit specific ta tha whole session, including
+session\-specific
+.BR Options .
+The
+.B ServerFlags
+options (busted lyrics bout above) may be specified here, n' ones given here
+override dem given up in the
+.B ServerFlags
+section.
+.PP
+Da entries dat may be used up in dis section is busted lyrics bout here.
+.TP 7
+.BI "Screen  " "screen\-num" " \*qscreen\-id\*q " "position\-information"
+One of these entries must be given fo' each screen bein used in
+a session.
+The
+.I screen\-id
+field is mandatory, n' specifies the
+.B Screen
+section bein referenced.
+The
+.I screen\-num
+field is optional, n' may be used ta specify tha screen number
+in multi\-head configurations.
+When dis field is omitted, tha screens is ghon be numbered up in tha order that
+they is listed in.
+Da numberin starts from 0, n' must be consecutive.
+The
+.I position\-information
+field raps bout tha way multiple screens is positioned.
+There is a fuckin shitload of different ways dat dis shiznit can be provided:
+.RS 7
+.TP 4
+.I  "x y"
+.TP 4
+.BI "Absolute  " "x y"
+These both specify dat tha upper left cornerz coordinates are
+.RI ( x , y ).
+The
+.B Absolute
+keyword is optional.
+Some olda versionz of XFree86 (4.2 n' earlier) don't recognise the
+.B Absolute
+keyword, so itz safest ta just specify tha coordinates without dat shit.
+.TP 4
+.BI "RightOf   \*q" screen\-id \*q
+.TP 4
+.BI "LeftOf    \*q" screen\-id \*q
+.TP 4
+.BI "Above     \*q" screen\-id \*q
+.TP 4
+.BI "Below     \*q" screen\-id \*q
+.TP 4
+.BI "Relatizzle  \*q" screen\-id \*q " x y"
+These give tha screenz location relatizzle ta another screen.
+Da first four posizzle tha screen immediately ta tha right, left, above or
+below tha other screen.
+When positionin ta tha right or left, tha top edges is aligned.
+When positionin above or below, tha left edges is aligned.
+The
+.B Relative
+form specifies tha offset of tha screenz origin (upper left corner)
+relatizzle ta tha origin of another screen.
+.RE
+.TP 7
+.BI "InputDevice  \*q" idev\-id "\*q \*q" option \*q " ..."
+One of these entries should be given fo' each input thang bein used in
+a session.
+Normally at least two is required, one each fo' tha core pointa and
+keyboard devices.
+If either of dem is missing, suitable
+.B InputDevice
+entries is searched fo' rockin tha method busted lyrics bout above up in the
+.B INPUTDEVICE
+section. I aint talkin' bout chicken n' gravy biatch.  The
+.I idev\-id
+field is mandatory, n' specifies tha name of the
+.B InputDevice
+section bein referenced.
+Multiple
+.I option
+fieldz may be specified, each up in double quotes.
+Da options permitted here is any dat may also be given up in the
+.B InputDevice
+sections.
+Normally only session\-specific input thang options would be used here.
+Da most commonly used options are:
+.PP
+.RS 11
+.nf
+.B \*qCorePointer\*q
+.B \*qCoreKeyboard\*q
+.B \*qSendCoreEvents\*q
+.fi
+.RE
+.PP
+.RS 7
+and tha straight-up original gangsta two should normally be used ta indicate tha core pointer
+and core keyboard devices respectively.
+.RE
+.TP 7
+.B Options
+In addizzle ta tha following, any option permitted up in the
+.B ServerFlags
+section may also be specified here.
+When tha same option appears up in both places, tha value given here overrides
+the one given up in the
+.B ServerFlags
+section.
+.TP 7
+.BI "Option \*qIsolateDevice\*q  \*q" bus\-id \*q
+Restrict thang resets ta tha specified
+.IR bus\-id .
+See the
+.B BusID
+option (busted lyrics bout in
+.BR "DEVICE SECTION" ,
+above) fo' tha format of the
+.I bus\-id
+parameter.
+This option overrides
+.BR SingleCard ,
+if specified.
+At present, only PCI devices can be isolated up in dis manner.
+.TP 7
+.BI "Option \*qSingleCard\*q  \*q" boolean \*q
+As
+.BR IsolateDevice ,
+except dat tha bus ID of tha straight-up original gangsta thang up in tha layout is used.
+.PP
+Here be a example of a
+.B ServerLayout
+section fo' a thugged-out dual headed configuration wit two mice:
+.PP
+.RS 4
+.nf
+.B "Section \*qServerLayout\*q"
+.B "    Identifier  \*qLayout 1\*q"
+.B "    Screen      \*qMGA 1\*q"
+.B "    Screen      \*qMGA 2\*q RightOf \*qMGA 1\*q"
+.B "    InputDevice \*qKeyboard 1\*q \*qCoreKeyboard\*q"
+.B "    InputDevice \*qMouse 1\*q    \*qCorePointer\*q"
+.B "    InputDevice \*qMouse 2\*q    \*qSendCoreEvents\*q"
+.B "    Option      \*qBlankTime\*q  \*q5\*q"
+.B "EndSection"
+.fi
+.RE
+.SH "DRI SECTION"
+This optionizzle section is used ta provide some shiznit fo' the
+Direct Renderin Infrastructure.
+Details bout tha format of dis section can be found on-line at
+.IR <http://dri.freedesktop.org/> .
+.SH "VENDOR SECTION"
+Da optional
+.B Vendor
+section may be used ta provide vendor\-specific configuration shiznit.
+Multiple
+.B Vendor
+sections may be present, n' they may contain an
+.B Identifier
+entry n' multiple
+.B Option
+flags.
+Da data therein aint used up in dis release.
+.PP
+.SH "SEE ALSO"
+General:
+.BR X (7),
+.BR Xserver (1),
+.BR Xorg (1),
+.BR cvt (1),
+.BR gtf (1).
+.PP
+.B "Not all modulez or intercourses is available on all platforms."
+.PP
+Display drivers:
+.BR apm (4),
+.BR ati (4),
+.BR chips (4),
+.BR cirrus (4),
+.BR cyrix (4),
+.BR fbdev (4),
+.BR glide (4),
+.BR glint (4),
+.BR i128 (4),
+.BR i740 (4),
+.BR imstt (4),
+.BR intel (4),
+.BR mga (4),
+.BR neomagic (4),
+.BR nv (4),
+.BR openchrome (4),
+.BR r128 (4),
+.BR radeon (4),
+.BR rendizzle (4),
+.BR savage (4),
+.BR s3virge (4),
+.BR siliconmotion (4),
+.BR sis (4),
+.BR sisusb (4),
+.BR sunbw2 (4),
+.BR suncg14 (4),
+.BR suncg3 (4),
+.BR suncg6 (4),
+.BR sunffb (4),
+.BR sunleo (4),
+.BR suntcx (4),
+.BR tdfx (4),
+.\" .BR tga (4),
+.BR trident (4),
+.BR tseng (4),
+.BR vesa (4),
+.BR vmware (4),
+.BR voodoo (4),
+.BR wsfb (4),
+.BR xgi (4),
+.BR xgixp (4).
+.PP
+Input drivers:
+.BR acecad (4),
+.BR citron (4),
+.BR elographics (4),
+.BR evdev (4),
+.BR fpit (4),
+.BR joystick (4),
+.BR kbd (4),
+.BR mousedrv (4),
+.BR mutouch (4),
+.BR penmount (4),
+.BR synaptics (4),
+.BR vmmouse (4),
+.BR void (4),
+.BR wacom (4).
+.PP
+Other modulez n' intercourses:
+.BR exa (4),
+.BR fbdevhw (4),
+.\" .BR shadowfb (4),
+.BR v4l (4).
+.br
+.SH AUTHORS
+This manual page was largely rewritten by Dizzy Dawes
+.IR <dawes@xfree86.org> .

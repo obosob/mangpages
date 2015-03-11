@@ -1,0 +1,262 @@
+
+.\" A few fragments remain from a earlier (1992) page by
+.\" Drew Eckhardt (drew@cs.colorado.edu),
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt (michael@moria.de)
+.\" Modified Sat Jul 24 13:22:07 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 21 Aug 1994 by Mike Chastain (mec@shell.portal.com):
+.\"   Referenced 'clone(2)'.
+.\" Modified 1995-06-10, 1996-04-18, 1999-11-01, 2000-12-24
+.\"   by Andries Brouwer (aeb@cwi.nl)
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\" 2006-09-04, Mike Kerrisk
+.\"     Greatly expanded, ta describe all attributes dat differ
+.\"	parent n' child.
+.\"
+.TH FORK 2 2013-03-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+fork \- create a cold-ass lil lil pimp process
+.SH SYNOPSIS
+.B #include <unistd.h>
+.sp
+.B pid_t fork(void);
+.SH DESCRIPTION
+.BR fork ()
+creates a freshly smoked up process by duplicatin tha callin process.
+Da freshly smoked up process, referred ta as tha \fIchild\fP,
+is a exact duplicate of tha callin process,
+referred ta as tha \fIparent\fP, except fo' tha followin points:
+.IP * 3
+Da lil pimp has its own unique process ID,
+and dis PID do not match tha ID of any existin process group
+.RB ( setpgid (2)).
+.IP *
+Da childz parent process ID is tha same ol' dirty as tha parentz process ID.
+.IP *
+Da lil pimp do not inherit its parentz memory locks
+.RB ( mlock (2),
+.BR mlockall (2)).
+.IP *
+Process resource utilizations
+.RB ( getrusage (2))
+and CPU time counters
+.RB ( times (2))
+are reset ta zero up in tha child.
+.IP *
+Da childz set of pendin signals is initially empty
+.RB ( sigpendin (2)).
+.IP *
+Da lil pimp do not inherit semaphore adjustments from its parent
+.RB ( semop (2)).
+.IP *
+Da lil pimp do not inherit record locks from its parent
+.RB ( fcntl (2)).
+.IP *
+Da lil pimp do not inherit timers from its parent
+.RB ( setitimer (2),
+.BR alarm (2),
+.BR timer_create (2)).
+.IP *
+Da lil pimp do not inherit outstandin asynchronous I/O operations
+from its parent
+.RB ( aio_read (3),
+.BR aio_write (3)),
+nor do it inherit any asynchronous I/O contexts from its parent (see
+.BR io_setup (2)).
+.PP
+Da process attributes up in tha precedin list is all specified
+in POSIX.1-2001.
+Da parent n' lil pimp also differ wit respect ta tha following
+Linux-specific process attributes:
+.IP * 3
+Da lil pimp do not inherit directory chizzle notifications (dnotify)
+from its parent
+(see tha description of
+.B F_NOTIFY
+in
+.BR fcntl (2)).
+.IP *
+The
+.BR prctl (2)
+.B PR_SET_PDEATHSIG
+settin is reset so dat tha lil pimp do not receive a signal
+when its parent terminates.
+.IP *
+Da default timer slack value is set ta tha parent's
+current timer slack value.
+See tha description of
+.BR PR_SET_TIMERSLACK
+in
+.BR prctl (2).
+.IP *
+Memory mappings dat done been marked wit the
+.BR madvise (2)
+.B MADV_DONTFORK
+flag is not inherited across a
+.BR fork ().
+.IP *
+Da termination signal of tha lil pimp be always
+.B SIGCHLD
+(see
+.BR clone (2)).
+.IP *
+Da port access permission bits set by
+.BR ioperm (2)
+are not inherited by tha child;
+the lil pimp must turn on any bits dat it requires using
+.BR ioperm (2).
+.PP
+Note tha followin further points:
+.IP * 3
+Da lil pimp process is pimped wit a single thread\(emthe
+one dat called
+.BR fork ().
+Da entire virtual address space of tha parent is replicated up in tha child,
+includin tha statez of mutexes, condizzle variables,
+and other pthreadz objects; tha use of
+.BR pthread_atfork (3)
+may be helpful fo' dealin wit problems dat dis can cause.
+.IP *
+Da lil pimp inherits copiez of tha parentz set of open file descriptors.
+Each file descriptor up in tha lil pimp refers ta tha same
+open file description (see
+.BR open (2))
+as tha correspondin file descriptor up in tha parent.
+This means dat tha two descriptors share open file status flags,
+current file offset,
+and signal-driven I/O attributes (see tha description of
+.B F_SETOWN
+and
+.B F_SETSIG
+in
+.BR fcntl (2)).
+.IP *
+Da lil pimp inherits copiez of tha parentz set of open message
+queue descriptors (see
+.BR mq_overview (7)).
+Each descriptor up in tha lil pimp refers ta tha same
+open message queue description
+as tha correspondin descriptor up in tha parent.
+This means dat tha two descriptors share tha same flags
+.RI ( mq_flags ).
+.IP *
+Da lil pimp inherits copiez of tha parentz set of open directory streams (see
+.BR opendir (3)).
+POSIX.1-2001 say dat tha correspondin directory streams
+in tha parent n' child
+.I may
+share tha directory stream positioning;
+on Linux/glibc they do not.
+.SH RETURN VALUE
+On success, tha PID of tha lil pimp process is returned up in tha parent,
+and 0 is returned up in tha child.
+On failure, \-1 is returned up in tha parent,
+no lil pimp process is pimped, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EAGAIN
+.BR fork ()
+cannot allocate sufficient memory ta copy tha parentz page tablez and
+allocate a task structure fo' tha child.
+.TP
+.B EAGAIN
+Dat shiznit was not possible ta create a freshly smoked up process cuz tha caller's
+.B RLIMIT_NPROC
+resource limit was encountered.
+To exceed dis limit, tha process must have either the
+.B CAP_SYS_ADMIN
+or the
+.B CAP_SYS_RESOURCE
+capability.
+.TP
+.B ENOMEM
+.BR fork ()
+failed ta allocate tha necessary kernel structures cuz memory is tight.
+.TP
+.B ENOSYS
+.BR fork ()
+is not supported on dis platform (for example,
+.\" e.g., arm (optionally), blackfin, c6x, frv, h8300, microblaze, xtensa
+hardware without a Memory-Management Unit).
+.SH CONFORMING TO
+SVr4, 4.3BSD, POSIX.1-2001.
+.SH NOTES
+.PP
+Under Linux,
+.BR fork ()
+is implemented rockin copy-on-write pages, so tha only penalty dat it incurs
+is tha time n' memory required ta duplicate tha parentz page tables,
+and ta create a unique task structure fo' tha child.
+
+Since version 2.3.3,
+.\" nptl/sysdeps/unix/sysv/linux/fork.c
+rather than invokin tha kernel's
+.BR fork ()
+system call,
+the glibc
+.BR fork ()
+wrapper dat is provided as part of the
+NPTL threadin implementation invokes
+.BR clone (2)
+with flags dat provide tha same effect as tha traditionizzle system call.
+(A call to
+.BR fork ()
+is equivalent ta a cold-ass lil call to
+.BR clone (2)
+specifying
+.I flags
+as just
+.BR SIGCHLD .)
+Da glibc wrapper invokes any fork handlezs dat have been
+established using
+.BR pthread_atfork (3).
+.\" n' do some magic ta ensure dat getpid(2) returns tha right value.
+.SH EXAMPLE
+See
+.BR pipe (2)
+and
+.BR wait (2).
+.SH SEE ALSO
+.BR clone (2),
+.BR execve (2),
+.BR exit (2),
+.BR setrlimit (2),
+.BR unshare (2),
+.BR vfork (2),
+.BR wait (2),
+.BR daemon (3),
+.BR capabilitizzles (7),
+.BR credentials (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

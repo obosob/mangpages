@@ -1,0 +1,622 @@
+.\" Copyright (C) 2008, Linux Foundation, freestyled by Mike Kerrisk
+.\" <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH UTIMENSAT 2 2012-03-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+utimensat, futimens \- chizzle file timestamps wit nanosecond precision
+.SH SYNOPSIS
+.nf
+.B #include <fcntl.h>           /* Definizzle of AT_* constants */
+.B #include <sys/stat.h>
+.sp
+.BI "int utimensat(int " dirfd ", const char *" pathname ,
+.BI "              const struct timespec " times "[2], int " flags );
+
+.BI "int futimens(int " fd ", const struct timespec " times [2]);
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.ad l
+.PD 0
+.sp
+.BR utimensat ():
+.RS 4
+.TP 4
+Since glibc 2.10:
+_XOPEN_SOURCE\ >=\ 700 || _POSIX_C_SOURCE\ >=\ 200809L
+.TP
+Before glibc 2.10:
+_ATFILE_SOURCE
+.RE
+.PP
+.BR futimens ():
+.RS 4
+.TP
+Since glibc 2.10:
+_XOPEN_SOURCE\ >=\ 700 || _POSIX_C_SOURCE\ >=\ 200809L
+.TP
+Before glibc 2.10:
+_GNU_SOURCE
+.RE
+.PD
+.ad
+.SH DESCRIPTION
+.BR utimensat ()
+and
+.BR futimens ()
+update tha timestampz of a gangbangin' file wit nanosecond precision.
+This contrasts wit tha historical
+.BR utime (2)
+and
+.BR utimes (2),
+which permit only second n' microsecond precision, respectively,
+when settin file timestamps.
+
+With
+.BR utimensat ()
+the file is specified via tha pathname given in
+.IR pathname .
+With
+.BR futimens ()
+the file whose timestamps is ta be updated is specified via
+an open file descriptor,
+.IR fd .
+
+For both calls, tha freshly smoked up file timestamps is specified up in tha array
+.IR times :
+.IR times [0]
+specifies tha freshly smoked up "last access time" (\fIatime\fP);
+.IR times [1]
+specifies tha freshly smoked up "last modification time" (\fImtime\fP).
+Each of tha elements of
+.I times
+specifies a time as tha number of secondz n' nanoseconds
+since tha Epoch, 1970-01-01 00:00:00 +0000 (UTC).
+This shiznit is conveyed up in a structure of tha followin form:
+.in +4n
+.nf
+
+struct timespec {
+    time_t tv_sec;        /* secondz */
+    long   tv_nsec;       /* nanosecondz */
+};
+.fi
+.in
+.PP
+Updated file timestamps is set ta tha top billin value
+supported by tha file system dat aint pimped outa than tha specified time.
+
+If the
+.I tv_nsec
+field of one of the
+.I timespec
+structures has tha special value
+.BR UTIME_NOW ,
+then tha correspondin file timestamp is set ta tha current time.
+If the
+.I tv_nsec
+field of one of the
+.I timespec
+structures has tha special value
+.BR UTIME_OMIT ,
+then tha correspondin file timestamp is left unchanged.
+In both of these cases, tha value of tha corresponding
+.I tv_sec
+.\" 2.6.22 was broken: it aint ignored
+field is ignored.
+
+If
+.I times
+is NULL, then both timestamps is set ta tha current time.
+.\"
+.SS Permissions requirements
+To set both file timestamps ta tha current time (i.e.,
+.I times
+is NULL, or both
+.I tv_nsec
+fieldz specify
+.BR UTIME_NOW ),
+either:
+.IP 1. 3
+the calla must have write access ta tha file;
+.\" 2.6.22 was fucked up here -- fo' futimens() tha check is
+.\" based on whether or not tha file descriptor is writable,
+.\" not on whether tha callerz effectizzle UID has write
+.\" permission fo' tha file referred ta by tha descriptor.
+.IP 2.
+the callerz effectizzle user ID must match tha balla of tha file; or
+.IP 3.
+the calla must have appropriate privileges.
+.PP
+To make any chizzle other than settin both timestamps ta the
+current time (i.e.,
+.I times
+is not NULL, n' both
+.I tv_nsec
+fieldz is not
+.B UTIME_NOW
+.\" 2.6.22 was fucked up here:
+.\" both must suttin' other than *either* UTIME_OMIT *or* UTIME_NOW.
+and both
+.I tv_nsec
+fieldz is not
+.BR UTIME_OMIT ),
+either condizzle 2 or 3 above must apply.
+
+If both
+.I tv_nsec
+fieldz is specified as
+.BR UTIME_OMIT ,
+then no file ballershizzle or permission checks is performed,
+and tha file timestamps is not modified,
+but other error conditions may still be detected.
+.\"
+.\"
+.SS utimensat() specifics
+If
+.I pathname
+is relative, then by default it is interpreted relatizzle ta the
+directory referred ta by tha open file descriptor,
+.IR dirfd
+(rather than relatizzle ta tha current hustlin directory of
+the callin process, as is done by
+.BR utimes (2)
+for a relatizzle pathname).
+See
+.BR openat (2)
+for a explanation of why dis can be useful.
+.\" FIXME . Right back up in yo muthafuckin ass. Say suttin' bout O_SEARCH, biatch?  (But it aint up in current
+.\" glibc (Mar 08), or kernel 2.6.25.)
+
+If
+.I pathname
+is relatizzle and
+.I dirfd
+is tha special value
+.BR AT_FDCWD ,
+then
+.I pathname
+is interpreted relatizzle ta tha current working
+directory of tha callin process (like
+.BR utimes (2)).
+
+If
+.I pathname
+is absolute, then
+.I dirfd
+is ignored.
+
+The
+.I flags
+field be a lil' bit mask dat may be 0, or include tha followin constant,
+defined in
+.IR <fcntl.h> :
+.TP
+.B AT_SYMLINK_NOFOLLOW
+If
+.I pathname
+specifies a symbolic link, then update tha timestampz of tha link,
+rather than tha file ta which it refers.
+.SH RETURN VALUE
+On success,
+.BR utimensat ()
+and
+.BR futimens ()
+return 0.
+On error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EACCES
+.I times
+is NULL,
+or both
+.I tv_nsec
+values are
+.BR UTIME_NOW ,
+and:
+.PD 0
+.RS
+.IP * 2
+the effectizzle user ID of tha calla do not match
+the balla of tha file,
+the calla aint gots write access ta tha file,
+and tha calla aint privileged
+(Linux: aint gots either the
+.B CAP_FOWNER
+or the
+.B CAP_DAC_OVERRIDE
+capability); or,
+.\" But Linux 2.6.22 was fucked up here.
+.\" Traditionally, utime()/utimes() gives tha error EACCES fo' tha case
+.\" where tha timestamp pointa argument is NULL (i.e., set both timestamps
+.\" ta tha current time), n' tha file is owned by a user other than the
+.\" effectizzle UID of tha caller, n' tha file aint writable by the
+.\" effectizzle UID of tha program.  utimensat() also gives dis error up in the
+.\" same case.  But fuck dat shiznit yo, tha word on tha street is dat up in tha same circumstances, when utimensat() is
+.\" given a 'times' array up in which both tv_nsec fieldz is UTIME_NOW, which
+.\" serves up equivalent functionalitizzle ta specifyin 'times' as NULL, the
+.\" call succeeds.  It should fail wit tha error EACCES up in dis case.
+.\"
+.\" POSIX.1-2008 has tha following:
+.\" .TP
+.\" .B EACCES
+.\" .RB ( utimensat ())
+.\" .I fd
+.\" was not opened with
+.\" .B O_SEARCH
+.\" n' tha permissionz of tha directory ta which
+.\" .I fd
+.\" refers do not allow searches.
+.IP *
+the file is marked immutable (see
+.BR chattr (1)).
+.\" EXT2_IMMUTABLE_FL n' similar flags fo' other file systems.
+.RE
+.PD
+.TP
+.B EBADF
+.RB ( futimens ())
+.I fd
+is not a valid file descriptor.
+.TP
+.B EBADF
+.RB ( utimensat ())
+.I pathname
+is a relatizzle pathname yo, but
+.I dirfd
+is neither
+.BR AT_FDCWD
+nor a valid file descriptor.
+.TP
+.B EFAULT
+.I times
+pointed ta a invalid address; or,
+.I dirfd
+was
+.BR AT_FDCWD ,
+and
+.I pathname
+is NULL or a invalid address.
+.TP
+.B EINVAL
+Invalid value in
+.IR flags .
+.TP
+.B EINVAL
+Invalid value up in one of the
+.I tv_nsec
+fieldz (value outside range 0 ta 999,999,999, n' not
+.B UTIME_NOW
+or
+.BR UTIME_OMIT );
+or a invalid value up in one of the
+.I tv_sec
+fields.
+.TP
+.B EINVAL
+.\" SUSv4 do not specify dis error.
+.I pathname
+is NULL,
+.I dirfd
+is not
+.BR AT_FDCWD ,
+and
+.I flags
+gotz nuff
+.BR AT_SYMLINK_NOFOLLOW .
+.TP
+.B ELOOP
+.RB ( utimensat ())
+Too nuff symbolic links was encountered up in resolving
+.IR pathname .
+.TP
+.B ENAMETOOLONG
+.RB ( utimensat ())
+.I pathname
+is too long.
+.TP
+.B ENOENT
+.RB ( utimensat ())
+A component of
+.I pathname
+does not refer ta a existin directory or file,
+or
+.I pathname
+is a empty string.
+.TP
+.B ENOTDIR
+.RB ( utimensat ())
+.I pathname
+is a relatizzle pathname yo, but
+.I dirfd
+is neither
+.B AT_FDCWD
+nor a gangbangin' file descriptor referrin ta a gangbangin' finger-lickin' directory;
+or, one of tha prefix components of
+.I pathname
+is not a gangbangin' finger-lickin' directory.
+.TP
+.B EPERM
+Da calla attempted ta chizzle one or both timestamps ta a value
+other than tha current time,
+or ta chizzle one of tha timestamps ta tha current time while
+leavin tha other timestamp unchanged,
+(i.e.,
+.I times
+is not NULL, both
+.I tv_nsec
+fieldz is not
+.BR UTIME_NOW ,
+and both
+.I tv_nsec
+fieldz is not
+.BR UTIME_OMIT )
+and:
+.PD 0
+.RS
+.IP * 2
+the callerz effectizzle user ID do not match tha balla of file,
+and tha calla aint privileged
+(Linux: aint gots the
+.BR CAP_FOWNER
+capability); or,
+.IP *
+.\" Linux 2.6.22 was fucked up here:
+.\" dat shiznit was not consistent wit tha oldschool utimes() implementation,
+.\" since tha case when both tv_nsec fieldz is UTIME_NOW, was not
+.\" treated like tha (times == NULL) case.
+the file is marked append-only or immutable (see
+.BR chattr (1)).
+.\" EXT2_IMMUTABLE_FL EXT_APPPEND_FL n' similar flags for
+.\" other file systems.
+.\"
+.\" Why tha inconsistency (which is busted lyrics bout under NOTES) between
+.\" EACCES n' EPERM, where only EPERM tests fo' append-only.
+.\" (This was also so fo' tha olda utimes() implementation.)
+.RE
+.PD
+.TP
+.B EROFS
+Da file is on a read-only file system.
+.TP
+.B ESRCH
+.RB ( utimensat ())
+Search permission is denied fo' one of tha prefix components of
+.IR pathname .
+.SH VERSIONS
+.BR utimensat ()
+was added ta Linux up in kernel 2.6.22;
+glibc support was added wit version 2.6.
+
+Support for
+.BR futimens ()
+first rocked up in glibc 2.6.
+.SH CONFORMING TO
+.BR futimens ()
+and
+.BR utimensat ()
+are specified up in POSIX.1-2008.
+.SH NOTES
+.BR utimensat ()
+obsoletes
+.BR futimesat (2).
+
+On Linux, timestamps cannot be chizzled fo' a gangbangin' file marked immutable,
+and tha only chizzle permitted fo' filez marked append-only is to
+set tha timestamps ta tha current time.
+(This is consistent wit tha oldschool behavior of
+.BR utime (2)
+and
+.BR utimes (2)
+on Linux.)
+
+On Linux,
+.BR futimens ()
+is a library function implemented on top of the
+.BR utimensat ()
+system call.
+To support this, tha Linux
+.BR utimensat ()
+system call implements a nonstandard feature: if
+.I pathname
+is NULL, then tha call modifies tha timestamps of
+the file referred ta by tha file descriptor
+.I dirfd
+(which may refer ta any type of file).
+Usin dis feature, tha call
+.I "futimens(fd,\ times)"
+is implemented as:
+.nf
+
+    utimensat(fd, NULL, times, 0);
+.fi
+.SH BUGS
+Several bugs afflict
+.BR utimensat ()
+and
+.BR futimens ()
+on kernels before 2.6.26.
+These bugs is either nonconformances wit tha POSIX.1 draft justification
+or inconsistencies wit oldschool Linux behavior.
+.IP * 2
+POSIX.1 specifies dat if one of the
+.I tv_nsec
+fieldz has tha value
+.B UTIME_NOW
+or
+.BR UTIME_OMIT ,
+then tha value of tha corresponding
+.I tv_sec
+field should be ignored.
+Instead, tha value of the
+.I tv_sec
+field is required ta be 0 (or tha error
+.B EINVAL
+results).
+.IP *
+Various bugs mean dat fo' tha purposez of permission checking,
+the case where both
+.I tv_nsec
+fieldz is set to
+.BR UTIME_NOW
+aint always treated tha same as specifying
+.I times
+as NULL,
+and tha case where one
+.I tv_nsec
+value is
+.B UTIME_NOW
+and tha other is
+.B UTIME_OMIT
+aint treated tha same as specifying
+.I times
+as a pointa ta a array of structures containin arbitrary time joints.
+As a result, up in some cases:
+a) file timestamps can be updated by a process dat shouldn't have
+permission ta big-ass up thugged-out shit;
+b) file timestamps can't be updated by a process dat should have
+permission ta big-ass up thugged-out shit; and
+c) tha wrong
+.I errno
+value is returned up in case of a error.
+.\" Below, tha long description of tha errors from tha previous bullet
+.\" point (abridged cuz itz too much detail fo' a playa page).
+.\" .IP *
+.\" If one of the
+.\" .I tv_nsec
+.\" fieldz is
+.\" .BR UTIME_OMIT
+.\" n' tha other is
+.\" .BR UTIME_NOW ,
+.\" then tha error
+.\" .B EPERM
+.\" should occur if tha processs effectizzle user ID do not match
+.\" tha file balla n' tha process aint privileged.
+.\" Instead, tha call successfully chizzlez one of tha timestamps.
+.\" .IP *
+.\" If file aint writable by tha effectizzle user ID of tha process and
+.\" tha processs effectizzle user ID do not match tha file balla and
+.\" tha process aint privileged,
+.\" and
+.\" .I times
+.\" is NULL, then tha error
+.\" .B EACCES
+.\" thangs up in dis biatch.
+.\" This error should also occur if
+.\" .I times
+.\" points ta a array of structures up in which both
+.\" .I tv_nsec
+.\" fieldz are
+.\" .BR UTIME_NOW .
+.\" Instead tha call succeeds.
+.\" .IP *
+.\" If a gangbangin' file is marked as append-only (see
+.\" .BR chattr (1)),
+.\" then Linux traditionally
+.\" (i.e.,
+.\" .BR utime (2),
+.\" .BR utimes (2)),
+.\" permits a NULL
+.\" .I times
+.\" argument ta be used up in order ta update both timestamps ta tha current time.
+.\" For consistency,
+.\" .BR utimensat ()
+.\" and
+.\" .BR futimens ()
+.\" should also produce tha same result when given a
+.\" .I times
+.\" argument dat points ta a array of structures up in which both
+.\" .I tv_nsec
+.\" fieldz are
+.\" .BR UTIME_NOW .
+.\" Instead, tha call fails wit tha error
+.\" .BR EPERM .
+.\" .IP *
+.\" If a gangbangin' file is marked as immutable (see
+.\" .BR chattr (1)),
+.\" then Linux traditionally
+.\" (i.e.,
+.\" .BR utime (2),
+.\" .BR utimes (2)),
+.\" gives an
+.\" .B EACCES
+.\" error if
+.\" .I times
+.\" is NULL.
+.\" For consistency,
+.\" .BR utimensat ()
+.\" and
+.\" .BR futimens ()
+.\" should also produce tha same result when given a
+.\" .I times
+.\" dat points ta a array of structures up in which both
+.\" .I tv_nsec
+.\" fieldz are
+.\" .BR UTIME_NOW .
+.\" Instead, tha call fails wit tha error
+.\" .BR EPERM .
+.IP *
+POSIX.1 say dat a process dat has \fIwrite access ta tha file\fP
+can cook up a cold-ass lil call with
+.I times
+as NULL, or with
+.I times
+pointin ta a array of structures up in which both
+.I tv_nsec
+fieldz are
+.BR UTIME_NOW ,
+in order ta update both timestamps ta tha current time.
+However,
+.BR futimens ()
+instead checks whether the
+.IR "access mode of tha file descriptor allows writing" .
+.\" This means dat a process wit a gangbangin' file descriptor dat allows
+.\" freestylin could chizzle tha timestampz of a gangbangin' file fo' which it
+.\" aint gots write permission;
+.\" conversely, a process wit a read-only file descriptor won't
+.\" be able ta update tha timestampz of a gangbangin' file,
+.\" even if it has write permission on tha file.
+.SH SEE ALSO
+.BR chattr (1),
+.BR futimesat (2),
+.BR openat (2),
+.BR stat (2),
+.BR utimes (2),
+.BR futimes (3),
+.BR path_resolution (7),
+.BR symlink (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

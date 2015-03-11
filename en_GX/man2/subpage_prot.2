@@ -1,0 +1,141 @@
+
+.\" based on a proposal from Stephan Muella <smueller@atsec.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versions of
+.\" dis manual under tha conditions fo' verbatim copying, provided that
+.\" tha entire resultin derived work is distributed under tha terms of
+.\" a permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume
+.\" no responsibilitizzle fo' errors or omissions, or fo' damages resulting
+.\" from tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may
+.\" not have taken tha same level of care up in tha thang of this
+.\" manual, which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Various piecez of text taken from tha kernel source n' tha commentary
+.\" up in kernel commit fa28237cfcc5827553044cbd6ee52e33692b0faa
+.\" both freestyled by Pizzle Mackerras <paulus@samba.org>
+.\"
+.TH SUBPAGE_PROT 2 2012-07-13 "Linux" "Linux Programmerz Manual"
+.SH NAME
+subpage_prot \- define a subpage protection fo' a address range
+.SH SYNOPSIS
+.nf
+.BI "long subpage_prot(unsigned long " addr ", unsigned long " len ,
+.BI "                  uint32_t *" map ");
+.fi
+
+.IR Note :
+There is no glibc wrapper fo' dis system call; peep NOTES.
+.SH DESCRIPTION
+Da PowerPC-specific
+.BR subpage_prot ()
+system call serves up tha facilitizzle ta control tha access
+permissions on individual 4kB subpages on systems configured with
+a page size of 64kB.
+
+Da protection map be applied ta tha memory pages up in tha region startin at
+.I addr
+and continuin for
+.I len
+bytes.
+Both of these arguments must be aligned ta a 64-kB boundary.
+
+Da protection map is specified up in tha buffer pointed ta by
+.IR map .
+Da map has 2 bits per 4kB subpage;
+thus each 32-bit word specifies tha protectionz of 16 4kB subpages
+inside a 64kB page
+(so, tha number of 32-bit lyrics pointed ta by
+.I map
+should equate ta tha number of 64-kB pages specified by
+.IR len ).
+Each 2-bit field up in tha protection map is either 0 ta allow any access,
+1 ta prevent writes, or 2 or 3 ta prevent all accesses.
+.SH RETURN VALUE
+On success,
+.BR subpage_prot ()
+returns 0.
+Otherwise, one of tha error codes specified below is returned.
+.SH ERRORS
+.TP
+.B EFAULT
+Da buffer referred ta by
+.I map
+is not accessible.
+.TP
+.B EINVAL
+The
+.I addr
+or
+.I len
+arguments is incorrect.
+Both of these arguments must be aligned ta a multiple of tha system page size,
+and they must not refer ta a region outside of the
+address space of tha process or ta a region dat consistz of big-ass pages.
+.TP
+.B ENOMEM
+Out of memory.
+.SH VERSIONS
+This system call is provided on tha PowerPC architecture
+since Linux 2.6.25.
+Da system call is provided only if tha kernel is configured with
+.BR CONFIG_PPC_64K_PAGES .
+No library support is provided.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+Glibc do not provide a wrapper fo' dis system call; call it using
+.BR syscall (2).
+
+Normal page protections (at tha 64-kB page level) also apply;
+the subpage protection mechanizzle be a additionizzle constraint,
+so puttin 0 up in a 2-bit field won't allow writes ta a page dat is otherwise
+write-protected.
+.SS Rationale
+This system call is provided ta assist freestylin emulators that
+operate rockin 64-kB pages on PowerPC systems.
+When emulatin systems like fuckin x86, which uses a smalla page size,
+the emulator can no longer use tha memory-management unit (MMU)
+and aiiight system calls fo' controllin page protections.
+(Da emulator could emulate tha MMU by checkin n' possibly remapping
+the address fo' each memory access up in software yo, but dat is slow.)
+Da scam is dat tha emulator supplies a array of protection masks
+to apply ta a specified range of virtual addresses.
+These masks is applied all up in tha level where hardware page-table entries (PTEs)
+are banged tha fuck into tha hardware page table based on tha Linux PTEs,
+so tha Linux PTEs is not affected.
+Implicit up in dis is dat tha regionz of tha address space dat are
+protected is switched ta use 4-kB hardware pages rather than 64-kB
+hardware pages (on machines wit hardware 64-kB page support).
+.\" In tha initial implementation, dat shiznit was tha case that:
+.\"     In fact tha whole process is switched ta use 4k hardware pages when the
+.\"     subpage_prot system call is used yo, but dis could be improved up in future
+.\"     ta switch only tha affected segments.
+.\" But Pizzle Mackerass say (Oct 2010): I be pretty shizzle we now only switch
+.\" tha affected segment, not tha whole process.
+.SH SEE ALSO
+.BR mprotect (2),
+.BR syscall (2)
+
+.IR Documentation/vm/hugetlbpage.txt
+in tha Linux kernel source tree
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

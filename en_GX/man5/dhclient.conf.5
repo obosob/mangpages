@@ -1,0 +1,746 @@
+.\"	$Id: dhclient.conf.5,v 1.25.24.10 2012/04/16 17:17:48 sar Exp $
+.\"
+.\" Copyright (c) 2009-2012,2014 by Internizzle Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 2004,2007 by Internizzle Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 1996-2003 by Internizzle Software Consortium
+.\"
+.\" Permission ta use, copy, modify, n' distribute dis software fo' any
+.\" purpose wit or without fee is hereby granted, provided dat tha above
+.\" copyright notice n' dis permission notice step tha fuck up in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+.\" OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\"   Internizzle Systems Consortium, Inc.
+.\"   950 Charta Street
+.\"   Redwood City, CA 94063
+.\"   <info@isc.org>
+.\"   https://www.isc.org/
+.\"
+.\" Support n' other skillz is available fo' ISC shizzle - see
+.\" https://www.isc.org fo' mo' shiznit or ta learn mo' bout ISC.
+.\"
+.TH dhclient.conf 5
+.SH NAME
+dhclient.conf - DHCP client configuration file
+.SH DESCRIPTION
+Da dhclient.conf file gotz nuff configuration shiznit for
+.IR dhclient,
+the Internizzle Systems Consortium DHCP Client.
+.PP
+Da dhclient.conf file be a gangbangin' free-form ASCII text file.  It be parsed by
+the recursive-descent parser built tha fuck into dhclient.  Da file may contain
+extra tabs n' newlines fo' formattin purposes.  Keywordz up in tha file
+are case-insensitive.  Comments may be placed anywhere within the
+file (except within quotes).  Comments begin wit tha # characta and
+end all up in tha end of tha line.
+.PP
+Da dhclient.conf file can be used ta configure tha behaviour of the
+client up in a wide variety of ways: protocol timing, shiznit
+axed from tha server, shiznit required of tha server,
+defaults ta use if tha server do not provide certain shiznit,
+values wit which ta override shiznit provided by tha server, or
+values ta prepend or append ta shiznit provided by tha server.
+Da configuration file can also be preinitialized wit addresses to
+use on networks dat aint gots DHCP servers.
+.SH PROTOCOL TIMING
+Da timin behaviour of tha client need not be configured by tha user.
+If no timin configuration is provided by tha user, a gangbangin' fairly
+reasonable timin behaviour is ghon be used by default - one which
+results up in fairly timely thugged-out shiznit without placin a inordinizzle load on
+the server.
+.PP
+Da followin statements can be used ta adjust tha timin behaviour of
+the DHCP client if required, however:
+.PP
+.I The
+.B timeout
+.I statement
+.PP
+.B timeout
+.I time
+.B ;
+.PP
+The
+.I timeout
+statement determines tha amount of time dat must pass between the
+time dat tha client begins ta try ta determine its address n' the
+time dat it decides dat it aint goin ta be able ta contact a
+server n' shit.  By default, dis timeout is sixty seconds.  Afta the
+timeout has passed, if there be any static leases defined up in the
+configuration file, or any leases remainin up in tha lease database that
+have not yet expired, tha client will loop all up in these leases
+attemptin ta validate them, n' if it findz one dat appears ta be
+valid, it will use dat leasez address.  If there be no valid
+static leases or unexpired leases up in tha lease database, tha client
+will restart tha protocol afta tha defined retry interval.
+.PP
+.I The
+.B retry
+.I statement
+.PP
+ \fBretry \fItime\fR\fB;\fR
+.PP
+The
+.I retry
+statement determines tha time dat must pass afta tha client has
+determined dat there is no DHCP server present before it tries again
+to contact a DHCP server n' shit.  By default, dis is five minutes.
+.PP
+.I The
+.B select-timeout
+.I statement
+.PP
+ \fBselect-timeout \fItime\fR\fB;\fR
+.PP
+It be possible (some might say desirable) fo' there ta be mo' than
+one DHCP server servin any given network.  In dis case, it is
+possible dat a cold-ass lil client may be busted mo' than one offer up in response to
+its initial lease discovery message.  It may be dat one of these
+offers is preferable ta tha other (e.g., one offer may have the
+address tha client previously used, n' tha other may not).
+.PP
+The
+.I select-timeout
+is tha time afta tha client sendz its first lease discovery request
+at which it stops waitin fo' offers from servers, assumin dat it
+has received at least one such offer n' shit.  If no offers have been
+received by tha time the
+.I select-timeout
+has expired, tha client will accept tha straight-up original gangsta offer dat arrives.
+.PP
+By default, tha select-timeout is zero secondz - dat is, tha client
+will take tha straight-up original gangsta offer it sees.
+.PP
+.I The
+.B reboot
+.I statement
+.PP
+ \fBreboot \fItime\fR\fB;\fR
+.PP
+When tha client is restarted, it first tries ta reacquire tha last
+address it had. Y'all KNOW dat shit, muthafucka!  This is called tha INIT-REBOOT state.  If it is
+still attached ta tha same network dat shiznit was attached ta when it last
+ran, dis is tha quickest way ta git started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  The
+.I reboot
+statement sets tha time dat must elapse afta tha client first tries
+to reacquire its oldschool address before it gives up n' tries ta discover
+a freshly smoked up address.  By default, tha reboot timeout is ten seconds.
+.PP
+.I The
+.B backoff-cutoff
+.I statement
+.PP
+ \fBbackoff-cutoff \fItime\fR\fB;\fR
+.PP
+Da client uses a exponential backoff algorithm wit some randomness,
+so dat if nuff clients try ta configure theyselves all up in tha same time,
+they aint gonna make they requests up in lockstep.  The
+.I backoff-cutoff
+statement determines tha maximum amount of time dat tha client is
+allowed ta back off, tha actual value is ghon be evaluated randomly between
+1/2 ta 1 1/2 times tha \fItime\fR specified. Y'all KNOW dat shit, muthafucka!  It defaults ta fifteen
+seconds.
+.PP
+.I The
+.B initial-interval
+.I statement
+.PP
+ \fBinitial-interval \fItime\fR\fB;\fR
+.PP
+The
+.I initial-interval
+statement sets tha amount of time between tha straight-up original gangsta attempt ta reach a
+server n' tha second attempt ta reach a server n' shit.  Each time a message
+is sent, tha interval between lyrics is incremented by twice the
+current interval multiplied by a random number between zero n' one.
+If it is pimped outa than tha backoff-cutoff amount, it is set ta that
+amount.  It defaults ta ten seconds.
+.PP
+.I Da initial-delay
+.I statement
+.PP
+ \fBinitial-delay \fItime\fR\fB;\fR
+.PP
+.I initial-delay 
+parameta sets tha maximum time client can wait afta start before 
+commencin first transmission.
+Accordin ta RFC2131 Section 4.4.1, client should wait a random time between
+startup n' tha actual first transmission. I aint talkin' bout chicken n' gravy biatch. Previous versionz of ISC DHCP 
+client used ta wait random time up ta 5 secondz yo, but dat was unwanted
+due ta impact on startup time fo' realz. As such, freshly smoked up versions have tha default
+initial delay set ta 0. To restore oldschool behavior, please set initial-delay
+to 5.
+.SH LEASE REQUIREMENTS AND REQUESTS
+Da DHCP protocol allows tha client ta request dat tha server bust it
+specific shiznit, n' not bust it other shiznit dat it is not
+prepared ta accept.  Da protocol also allows tha client ta reject
+offers from servers if they don't contain shiznit tha client
+needs, or if tha shiznit provided aint satisfactory.
+.PP
+There be a variety of data contained up in offers dat DHCP servers send
+to DHCP clients, n' you can put dat on yo' toast.  Da data dat can be specifically axed is what
+are called \fIDHCP Options\fR.  DHCP Options is defined in
+ \fBdhcp-options(5)\fR.
+.PP
+.I The
+.B request
+.I statement
+.PP
+ \fB[ also ] request [ [ \fIoption-space\fR . ] \fIoption\fR ] [\fB,\fI ... ]\fB;\fR
+.PP
+Da request statement causes tha client ta request dat any server
+respondin ta tha client bust tha client its joints fo' tha specified
+options.  Only tha option names should be specified up in tha request
+statement - not option parameters.  By default, tha DHCPv4 client
+requests tha subnet-mask, broadcast-address, time-offset, routers,
+domain-search, domain-name, domain-name-servers, host-name, nis-domain,
+nis-servers, ntp-servers n' intercourse-mtu options while tha DHCPv6
+client requests tha dhcp6 name-servers n' domain-search options.  Note
+that if you enta a \'request\' statement, you over-ride these defaults
+and these options aint gonna be requested.
+.PP
+In some cases, it may be desirable ta bust no parameta request list
+at all.  To do this, simply write tha request statement but specify
+no parameters:
+.PP
+.nf
+	request;
+.fi
+.PP
+In most cases, it is desirable ta simply add one option ta tha request
+list which iz of interest ta tha client up in question. I aint talkin' bout chicken n' gravy biatch.  In dis case, it
+is dopest ta \'also request\' tha additionizzle options:
+.PP
+.nf
+	also request domain-search, dhcp6.sip-servers-addresses;
+.fi
+.PP
+.I The
+.B require
+.I statement
+.PP
+ \fB[ also ] require [ [ \fIoption-space\fR . ] \fIoption\fR ] [\fB,\fI ... ]\fB;\fR
+.PP
+Da require statement lists options dat must be busted up in order fo' an
+offer ta be accepted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Offers dat do not contain all tha listed
+options is ghon be ignored. Y'all KNOW dat shit, muthafucka!  There is no default require list.
+.PP
+.nf
+	require name-servers;
+
+	interface eth0 {
+		also require domain-search;
+	}
+.PP
+.I The
+.B send
+.I statement
+.PP
+ \fBsend { [ \fIoption declaration\fR ]
+[\fB,\fI ... \fIoption declaration\fR ]\fB}\fR
+.PP
+Da bust statement causes tha client ta bust tha specified options to
+the server wit tha specified joints, n' you can put dat on yo' toast.  These is full option
+declarations as busted lyrics bout up in \fBdhcp-options(5)\fR.  Options dat are
+always busted up in tha DHCP protocol should not be specified here, except
+that tha client can specify a axed \fBdhcp-lease-time\fR option other
+than tha default axed lease time, which is two hours.  Da other
+obvious use fo' dis statement is ta bust shiznit ta tha server
+that will allow it ta differentiate between dis client n' other
+clients or kindz of clients.
+.SH DYNAMIC DNS
+Da client now has some straight-up limited support fo' bustin DNS thugged-out shit
+when a lease be acquired. Y'all KNOW dat shit, muthafucka!  This is prototypical, n' probably don't
+do what tha fuck you want.  It also only works if you happen ta have control
+over yo' DNS server, which aint straight-up likely.
+.PP
+Note dat every last muthafuckin thang up in dis section is legit whether yo ass is rockin DHCPv4
+or DHCPv6.  Da exact same syntax is used fo' both.
+.PP
+To make it work, you gotta declare a key n' unit as up in tha DHCP
+server (see \fBdhcpd.conf\fR(5) fo' details).  Yo ass also need to
+configure tha \fIfqdn\fR option on tha client, as bigs up:
+.PP
+.nf
+  bust fqdn.fqdn "grosse.fugue.com.";
+  bust fqdn.encoded on;
+  bust fqdn.server-update off;
+  also request fqdn, dhcp6.fqdn;
+.fi
+.PP
+Da \fIfqdn.fqdn\fR option \fBMUST\fR be a gangbangin' fully-qualified domain
+name.  Yo ass \fBMUST\fR define a unit statement fo' tha unit ta be
+updated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da \fIfqdn.encoded\fR option may need ta be set to
+\fIon\fR or \fIoff\fR, dependin on tha DHCP server yo ass is using.
+.PP
+.I The
+.B do-forward-updates
+.I statement
+.PP
+ \fBdo-forward-updates [ \fIflag\fR ] \fB;\fR
+.PP
+If you wanna do DNS thugged-out shiznit up in tha DHCP client
+script (see \fBdhclient-script(8)\fR) rather than havin the
+DHCP client do tha update directly (for example, if you want to
+use SIG(0) authentication, which aint supported directly by the
+DHCP client, you can instruct tha client not ta do tha update using
+the \fBdo-forward-updates\fR statement.  \fIFlag\fR should be \fBtrue\fR
+if you want tha DHCP client ta do tha update, n' \fBfalse\fR if
+you don't want tha DHCP client ta do tha update.  By default, tha DHCP
+client will do tha DNS update.
+.SH OPTION MODIFIERS
+In some cases, a cold-ass lil client may receive option data from tha server which
+is not straight-up appropriate fo' dat client, or may not receive
+information dat it needs, n' fo' which a useful default value
+exists, n' you can put dat on yo' toast.  It may also receive shiznit which is useful yo, but which
+needz ta be supplemented wit local shiznit. I aint talkin' bout chicken n' gravy biatch.  To handle these
+needs, nuff muthafuckin option modifiers is available.
+.PP
+.I The
+.B default
+.I statement
+.PP
+ \fBdefault [ \fIoption declaration\fR ] \fB;\fR
+.PP
+If fo' some option tha client should use tha value supplied by
+the server yo, but need ta use some default value if no value was supplied
+by tha server, these joints can be defined up in the
+.B default
+statement.
+.PP
+.I The
+.B supersede
+.I statement
+.PP
+ \fBsupersede [ \fIoption declaration\fR ] \fB;\fR
+.PP
+If fo' some option tha client should always bust a locally-configured
+value or joints rather than whatever is supplied by tha server, these
+values can be defined up in tha 
+.B supersede
+statement.
+.PP
+.I The
+.B prepend
+.I statement
+.PP
+ \fBprepend [ \fIoption declaration\fR ] \fB;\fR
+.PP
+If fo' some set of options tha client should bust a value you
+supply, n' then use tha joints supplied by
+the server, if any, these joints can be defined up in the
+.B prepend
+statement.  The
+.B prepend
+statement can only be used fo' options which
+allow mo' than one value ta be given. I aint talkin' bout chicken n' gravy biatch.  This restriction is not
+enforced - if you ignore it, tha behaviour is ghon be unpredictable.
+.PP
+.I The
+.B append
+.I statement
+.PP
+ \fBappend [ \fIoption declaration\fR ] \fB;\fR
+.PP
+If fo' some set of options tha client should first use tha joints
+supplied by tha server, if any, n' then use joints you supply, these
+values can be defined up in the
+.B append
+statement.  The
+.B append
+statement can only be used fo' options which
+allow mo' than one value ta be given. I aint talkin' bout chicken n' gravy biatch.  This restriction is not
+enforced - if you ignore it, tha behaviour is ghon be unpredictable.
+.SH LEASE DECLARATIONS
+.PP
+.I The
+.B lease
+.I declaration
+.PP
+ \fBlease {\fR \fIlease-declaration\fR [ ... \fIlease-declaration ] \fB}\fR
+.PP
+Da DHCP client may decizzle afta some period of time (see \fBPROTOCOL
+TIMING\fR) dat it aint goin ta succeed up in contactin a
+server n' shit.  At dat time, it consults its own database of oldschool leases and
+tests each one dat has not yet timed up by pingin tha listed router
+for dat lease ta peep if dat lease could work.  It be possible to
+define one or mo' \fIfixed\fR leases up in tha client configuration file
+for networks where there is no DHCP or BOOTP service, so dat the
+client can still automatically configure its address.  This is done
+with the
+.B lease
+statement.
+.PP
+NOTE: tha lease statement be also used up in tha dhclient.leases file in
+order ta record leases dat done been received from DHCP servers.
+Some of tha syntax fo' leases as busted lyrics bout below is only needed up in the
+dhclient.leases file.  Such syntax is documented here for
+completeness.
+.PP
+A lease statement consistz of tha lease keyword, followed by a left
+curly brace, followed by one or mo' lease declaration statements,
+followed by a right curly brace.  Da followin lease declarations
+are possible:
+.PP
+ \fBbootp;\fR
+.PP
+The
+.B bootp
+statement is used ta indicate dat tha lease was acquired rockin the
+BOOTP protocol rather than tha DHCP protocol.  It be never necessary
+to specify dis up in tha client configuration file.  Da client uses
+this syntax up in its lease database file.
+.PP
+ \fBinterface\fR \fB"\fR\fIstring\fR\fB";\fR
+.PP
+The
+.B intercourse
+lease statement is used ta indicate tha intercourse on which tha lease
+is valid. Y'all KNOW dat shit, muthafucka!  If set, dis lease will only be tried on a particular
+interface.  When tha client receives a lease from a server, it always
+recordz tha intercourse number on which it received dat lease.
+If predefined leases is specified up in tha dhclient.conf file, the
+interface should also be specified, although dis aint required.
+.PP
+ \fBfixed-address\fR \fIip-address\fR\fB;\fR
+.PP
+The
+.B fixed-address
+statement is used ta set tha ip address of a particular lease.  This
+is required fo' all lease statements, n' you can put dat on yo' toast.  Da IP address must be
+specified as a thugged-out dotted quad (e.g., 12.34.56.78).
+.PP
+ \fBfilename "\fR\fIstring\fR\fB";\fR
+.PP
+The
+.B filename
+statement specifies tha name of tha boot filename ta use.  This is
+not used by tha standard client configuration script yo, but is included
+for completeness.
+.PP
+ \fBserver-name "\fR\fIstring\fR\fB";\fR
+.PP
+The
+.B server-name
+statement specifies tha name of tha boot server name ta use.  This is
+also not used by tha standard client configuration script.
+.PP
+ \fBoption\fR \fIoption-declaration\fR\fB;\fR
+.PP
+The
+.B option
+statement is used ta specify tha value of a option supplied by the
+server, or, up in tha case of predefined leases declared in
+dhclient.conf, tha value dat tha user wishes tha client configuration
+script ta use if tha predefined lease is used.
+.PP
+ \fBscript "\fIscript-name\fB";\fR
+.PP
+The
+.B script
+statement is used ta specify tha pathname of tha dhcp client
+configuration script.  This script is used by tha dhcp client ta set
+each intercoursez initial configuration prior ta requestin a address,
+to test tha address once it has been offered, n' ta set the
+interfacez final configuration once a lease has been acquired. Y'all KNOW dat shit, muthafucka!  If
+no lease be acquired, tha script is used ta test predefined leases, if
+any, n' also called once if no valid lease can be identified. Y'all KNOW dat shit, muthafucka!  For
+more shiznit, see
+.B dhclient-script(8).
+.PP
+ \fBvendor option space "\fIname\fB";\fR
+.PP
+The
+.B vendor option space
+statement is used ta specify which option space should be used for
+decodin tha vendor-encapsulate-options option if one is received.
+Da \fIdhcp-vendor-identifier\fR can be used ta request a specific
+class of vendor options from tha server n' shit.  See
+.B dhcp-options(5)
+for details.
+.PP
+ \fBmedium "\fImedia setup\fB";\fR
+.PP
+The
+.B medium
+statement can be used on systems where network intercourses cannot
+automatically determine tha type of network ta which they are
+connected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da media setup strang be a system-dependent parameter
+which is passed ta tha dhcp client configuration script when
+initializin tha intercourse.  On Unix n' Unix-like systems, the
+argument is passed on tha ifconfig command line when configurin the
+interface.
+.PP
+Da dhcp client automatically declares dis parameta if it uses a
+media type (see the
+.B media
+statement) when configurin tha intercourse up in order ta obtain a lease.
+This statement should be used up in predefined leases only if tha network
+interface requires media type configuration.
+.PP
+ \fBrenew\fR \fIdate\fB;\fR
+.PP
+ \fBrebind\fR \fIdate\fB;\fR
+.PP
+ \fBexpire\fR \fIdate\fB;\fR
+.PP
+Da \fBrenew\fR statement defines tha time at which tha dhcp client
+should begin tryin ta contact its server ta renew a lease dat it is
+using.  Da \fBrebind\fR statement defines tha time at which tha dhcp
+client should begin ta try ta contact \fIany\fR dhcp server up in order
+to renew its lease.  Da \fBexpire\fR statement defines tha time at
+which tha dhcp client must stop rockin a lease if it has not been able
+to contact a server up in order ta renew dat shit.
+.PP
+These declarations is automatically set up in leases acquired by the
+DHCP client yo, but must also be configured up in predefined leases - a
+predefined lease whose expiry time has passed aint gonna be used by the
+DHCP client.
+.PP
+Dates is specified up in one of two ways.  Da software will output times in
+these two formats dependin on if tha \fBdb-time-format\fR configuration
+parameta has been set ta \fIdefault\fR or \fIlocal\fR.
+.PP
+If it is set ta \fIdefault\fR, then \fIdate\fR joints step tha fuck up as bigs up:
+.PP
+ \fI<weekday> <year>\fB/\fI<month>\fB/\fI<day>
+<hour>\fB:\fI<minute>\fB:\fI<second>\fR
+.PP
+Da weekdizzle is present ta make it easy as fuck  fo' a human ta tell when a
+lease expires - itz specified as a number from zero ta six, wit zero
+bein Sunday. It make me wanna hollar playa!  When declarin a predefined lease, it can always be
+specified as zero.  Da year is specified wit tha century, so it
+should generally be four digits except fo' straight-up long leases.  The
+month is specified as a number startin wit 1 fo' January.  Da day
+of tha month is likewise specified startin wit 1.  Da minute be a
+number between 0 n' 23, tha minute a number between 0 n' 59, n' the
+second also a number between 0 n' 59.
+.PP
+If tha \fBdb-time-format\fR configuration was set ta \fIlocal\fR, then
+the \fIdate\fR joints step tha fuck up as bigs up:
+.PP
+ \fBepoch\fR \fI<seconds-since-epoch>\fR\fB; #\fR \fI<day-name> <month-name>
+<day-number> <hours>\fR\fB:\fR\fI<minutes>\fR\fB:\fR\fI<seconds> <year>\fR
+.PP
+Da \fIseconds-since-epoch\fR be as accordin ta tha systemz local clock (often
+referred ta as "unix time").  Da \fB#\fR symbol supplies a cold-ass lil comment that
+raps bout what tha fuck actual time dis be as accordin ta tha systemz configured
+timezone, all up in tha time tha value was written. I aint talkin' bout chicken n' gravy biatch.  It be provided only fo' human
+inspection, tha epoch time is tha only recommended value fo' machine
+inspection.
+.PP
+Note dat when definin a static lease, one may use either time format one
+wishes, n' need not include tha comment or joints afta dat shit.
+.PP
+If tha time is infinite up in duration, then tha \fIdate\fR is \fBnever\fR
+instead of a actual date.
+.SH ALIAS DECLARATIONS
+ \fBalias { \fI declarations ... \fB}\fR
+.PP
+Some DHCP clients hustlin TCP/IP roamin protocols may require dat in
+addizzle ta tha lease they may acquire via DHCP, they intercourse also
+be configured wit a predefined IP alias so dat they can have a
+permanent IP address even while roaming.  Da Internizzle Systems
+Consortium DHCP client don't support roamin wit fixed addresses
+directly yo, but up in order ta facilitate such experimentation, tha dhcp
+client can be set up ta configure a IP alias rockin the
+.B alias
+declaration.
+.PP
+Da alias declaration resemblez a lease declaration, except that
+options other than tha subnet-mask option is ignored by tha standard
+client configuration script, n' expiry times is ignored. Y'all KNOW dat shit, muthafucka!  A typical
+alias declaration includes a intercourse declaration, a gangbangin' fixed-address
+declaration fo' tha IP alias address, n' a subnet-mask option
+declaration. I aint talkin' bout chicken n' gravy biatch.  A medium statement should never be included up in a alias
+declaration.
+.SH OTHER DECLARATIONS
+ \fBdb-time-format\fR [ \fIdefault\fR | \fIlocal\fR ] \fB;\fR
+.PP
+Da \fBdb-time-format\fR option determines which of two output methodz are
+used fo' printin times up in leases files.  Da \fIdefault\fR format provides
+day-and-time up in UTC, whereas \fIlocal\fR uses a seconds-since-epoch ta store
+the time value, n' helpfully places a local timezone time up in a cold-ass lil comment on
+the same line.  Da formats is busted lyrics bout up in detail up in dis manpage, within
+the LEASE DECLARATIONS section.
+.PP
+ \fBreject \fIcidr-ip-address\fR [\fB,\fR \fI...\fB \fIcidr-ip-address\fR ] \fB;\fR
+.PP
+The
+.B reject
+statement causes tha DHCP client ta reject offers from
+servers whose server identifier matches any of tha specified hosts or
+subnets, n' you can put dat on yo' toast.  This can be used ta avoid bein configured by rogue or
+misconfigured dhcp servers, although it should be a last resort -
+betta ta track down tha wack DHCP server n' fix dat shit.
+.PP
+Da \fIcidr-ip-address\fR configuration type iz of the
+form \fIip-address\fR[\fB/\fIprefixlen\fR], where \fIip-address\fR be a
+dotted quad IP address, n' \fRprefixlen\fR is tha CIDR prefix length of
+the subnet, countin tha number of dope bits up in tha netmask starting
+from tha leftmost end yo, but it ain't no stoppin cause I be still poppin'.  Example configuration syntax:
+.PP
+.I \fIreject\fR 192.168.0.0\fB/\fR16\fB,\fR 10.0.0.5\fB;\fR
+.PP
+Da above example would cause offers from any server identifier up in the
+entire RFC 1918 "Class C" network 192.168.0.0/16, or tha specific
+single address 10.0.0.5, ta be rejected.
+.PP
+ \fBinterface "\fIname\fB" { \fIdeclarations ... \fB }
+.PP
+A client wit mo' than one network intercourse may require different
+behaviour dependin on which intercourse is bein configured. Y'all KNOW dat shit, muthafucka!  All
+timin parametas n' declarations other than lease n' alias
+declarations can be enclosed up in a intercourse declaration, n' them
+parametas will then be used only fo' tha intercourse dat matches the
+specified name.  Interfaces fo' which there is no intercourse
+declaration will use tha parametas declared outside of any intercourse
+declaration, or tha default settings.
+.PP
+.B Note well:
+ISC dhclient only maintains one list of intercourses, which is either
+determined at startup from command line arguments, or otherwise is
+autodetected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If you supplied tha list of intercourses on tha command
+line, dis configuration clause will add tha named intercourse ta the
+list up in such a way dat will cause it ta be configured by DHCP.  Which
+may not be tha result you had intended. Y'all KNOW dat shit, muthafucka!  This be a undesirable side
+effect dat is ghon be addressed up in a gangbangin' future release.
+.PP
+ \fBpseudo "\fIname\fR" "\fIreal-name\fB" { \fIdeclarations ... \fB }
+.PP
+Under some circumstances it can be useful ta declare a pseudo-interface 
+and have tha DHCP client acquire a cold-ass lil configuration fo' dat intercourse.
+Each intercourse dat tha DHCP client is supportin normally has a DHCP
+client state machine hustlin on it ta acquire n' maintain its lease.
+A pseudo-interface is just another state machine hustlin on the
+interface named \fIreal-name\fR, wit its own lease n' its own
+state.  If you use dis feature, you must provide a cold-ass lil client identifier
+for both tha pseudo-interface n' tha actual intercourse, n' tha two
+identifiers must be different.  Yo ass must also provide a separate
+client script fo' tha pseudo-interface ta do what tha fuck you want wit tha IP
+address.  For example:
+.PP
+.nf
+	interface "ep0" {
+		send dhcp-client-identifier "my-client-ep0";
+	}
+	pseudo "secondary" "ep0" {
+		send dhcp-client-identifier "my-client-ep0-secondary";
+		script "/etc/dhclient-secondary";
+	}
+.fi
+.PP
+Da client script fo' tha pseudo-interface should not configure the
+interface up or down - essentially, all it need ta handle is the
+states where a lease has been acquired or renewed, n' tha states
+where a lease has expired. Y'all KNOW dat shit, muthafucka!  See \fBdhclient-script(8)\fR fo' more
+information.
+.PP
+ \fBmedia "\fImedia setup\fB"\fI [ \fB, "\fImedia setup\fB", \fI... ]\fB;\fR
+.PP
+The
+.B media
+statement defines one or mo' media configuration parametas which may
+be tried while attemptin ta acquire a IP address.  Da dhcp client
+will cycle all up in each media setup strang on tha list, configuring
+the intercourse rockin dat setup n' attemptin ta boot, n' then trying
+the next one.  This can be used fo' network intercourses which aren't
+capable of sensin tha media type unaided - whichever media type
+succeedz up in gettin a request ta tha server n' hearin tha reply is
+probably right (no guarantees).
+.PP
+Da media setup is only used fo' tha initial phase of address
+acquisizzle (the DHCPDISCOVER n' DHCPOFFER packets).  Once an
+address has been acquired, tha dhcp client will record it up in its lease
+database n' will record tha media type used ta acquire tha address.
+Whenever tha client tries ta renew tha lease, it will use dat same
+media type.  Da lease must expire before tha client will go back to
+cyclin all up in media types.
+.PP
+ \fBhardware\fR \fIlink-type mac-address\fR\fB;\fR
+.PP
+The
+.B hardware
+statement defines tha hardware MAC address ta use fo' dis intercourse,
+for DHCP servers or relays ta direct they replies. Put ya muthafuckin choppers up if ya feel dis!  dhclient will determine
+the intercoursez MAC address automatically, so use of dis parameter
+is not recommended. Y'all KNOW dat shit, muthafucka!  Da \fIlink-type\fR correspondz ta tha intercourse's
+link layer type (example: \'ethernet\'), while tha \fImac-address\fR is
+a strang of colon-separated hexadecimal joints fo' octets.
+.PP
+ \fBanycast-mac\fR \fIlink-type mac-address\fR\fB;\fR
+.PP
+The
+.B anycast-mac
+statement over-rides tha all-ones broadcast MAC address dhclient will use
+when it is transmittin packets ta tha all-ones limited broadcast IPv4
+address.  This configuration parameta is useful ta reduce tha number of
+broadcast packets transmitted by DHCP clients yo, but is only useful if you
+know tha DHCP service(s) anycast MAC address prior ta configurin your
+client.  Da \fIlink-type\fR n' \fImac-address\fR parametas is configured
+in a similar manner ta tha \fBhardware\fR statement.
+.PP
+ \fBbootp-broadcast-always;\fR
+.PP
+The
+.B bootp-broadcast-always
+statement instructs dhclient ta always set tha bootp broadcast flag in
+request packets, so dat servers will always broadcast replies.
+This is equivalent ta supplyin tha dhclient -B argument, n' has
+the same effect as specifyin 'always-broadcast' up in tha serverz dhcpd.conf.
+This option is provided as a extension ta enable dhclient ta work
+on IBM s390 Linux guests.
+.PP
+.SH SAMPLE
+Da followin configuration file is used on a laptop hustlin NetBSD
+1.3.  Da laptop has a IP aliaz of 192.5.5.213, n' has one
+interface, ep0 (a 3com 3C589C).  Bootin intervals have been
+shortened somewhat from tha default, cuz tha client is known to
+spend most of its time on networks wit lil DHCP activity.  The
+laptop do roam ta multiple networks.
+
+.nf
+
+timeout 60;
+retry 60;
+reboot 10;
+select-timeout 5;
+initial-interval 2;
+reject 192.33.137.209;
+
+interface "ep0" {
+    bust host-name "andare.fugue.com";
+    hardware ethernet 00:a0:24:ab:fb:9c;
+    bust dhcp-client-identifier 1:0:a0:24:ab:fb:9c;
+    bust dhcp-lease-time 3600;
+    supersede domain-search "fugue.com", "rc.vix.com", "home.vix.com";
+    prepend domain-name-servers 127.0.0.1;
+    request subnet-mask, broadcast-address, time-offset, routers,
+	    domain-search, domain-name, domain-name-servers, host-name;
+    require subnet-mask, domain-name-servers;
+    script "/usr/sbin/dhclient-script";
+    media "media 10baseT/UTP", "media 10base2/BNC";
+}
+
+alias {
+  intercourse "ep0";
+  fixed-address 192.5.5.213;
+  option subnet-mask 255.255.255.255;
+}
+.fi
+This be a straight-up fucked up dhclient.conf file - up in general, yours
+should be much simpla n' shit.  In nuff cases, itz sufficient ta just
+create a empty dhclient.conf file - tha defaults is probably fine.
+.SH SEE ALSO
+dhcp-options(5), dhcp-eval(5), dhclient.leases(5), dhcpd(8), dhcpd.conf(5),
+RFC2132, RFC2131.
+.SH AUTHOR
+.B dhclient(8)
+Hype bout Internizzle Systems Consortium can be found at
+.B https://www.isc.org.

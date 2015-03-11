@@ -1,0 +1,516 @@
+.\" Copyright (c) 1983, 1990, 1991 Da Regentz of tha Universitizzle of California.
+.\" All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_4_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 3 fo' realz. All advertisin shiznit mentionin features or use of dis software
+.\"    must display tha followin acknowledgement:
+.\"	This thang includes software pimped by tha Universitizzle of
+.\"	California, Berkeley n' its contributors.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\"     $Id: recv.2,v 1.3 1999/05/13 11:33:38 freitag Exp $
+.\"
+.\" Modified Sat Jul 24 00:22:20 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Tue Oct 22 17:45:19 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998,1999 by Andi Kleen
+.\" 2001-06-19 erected SO_EE_OFFENDER, bug report by Jizzy Hawtin
+.\"
+.TH RECV 2 2013-04-19 "Linux" "Linux Programmerz Manual"
+.SH NAME
+recv, recvfrom, recvmsg \- receive a message from a socket
+.SH SYNOPSIS
+.\" .B #include <sys/uio.h>
+.\" .br
+.nf
+.B #include <sys/types.h>
+.br
+.B #include <sys/socket.h>
+.sp
+.BI "ssize_t recv(int " sockfd ", void *" buf ", size_t " len ", int " flags );
+.sp
+.BI "ssize_t recvfrom(int " sockfd ", void *" buf ", size_t " len ", int " flags ,
+.BI "                 struct sockaddr *" src_addr ", socklen_t *" addrlen );
+.sp
+.BI "ssize_t recvmsg(int " sockfd ", struct msghdr *" msg ", int " flags );
+.fi
+.SH DESCRIPTION
+The
+.BR recvfrom ()
+and
+.BR recvmsg ()
+calls is used ta receive lyrics from a socket, n' may be used
+to receive data on a socket whether or not it is connection-oriented.
+.PP
+If
+.I src_addr
+is not NULL, n' tha underlyin protocol serves up tha source address,
+this source address is filled in.
+When
+.I src_addr
+is NULL, not a god damn thang is filled in; up in dis case,
+.I addrlen
+is not used, n' should also be NULL.
+.\" (Note: fo' datagram sockets up in both tha UNIX n' Internizzle domains,
+.\" .I src_addr
+.\" is filled in.
+.\" .I src_addr
+.\" be also filled up in fo' stream sockets up in tha UNIX domain yo, but is not
+.\" filled up in fo' stream sockets up in tha Internizzle domain.)
+.\" [Da above notes on AF_UNIX n' AF_INET sockets apply as at
+.\" Kernel 2.4.18. (MTK, 22 Jul 02)]
+Da argument
+.I addrlen
+is a value-result argument,
+which tha calla should initialize before tha call to
+the size of tha buffer associated with
+.IR src_addr ,
+and modified on return ta indicate tha actual size of tha source address.
+Da returned address is truncated if tha buffer provided is too small;
+in dis case,
+.I addrlen
+will return a value pimped outa than was supplied ta tha call.
+.PP
+The
+.BR recv ()
+call is normally used only on a
+.I connected
+socket (see
+.BR connect (2))
+and is identical to
+.BR recvfrom ()
+with a NULL
+.I src_addr
+argument.
+.PP
+All three routines return tha length of tha message on successful
+completion.
+If a message is too long ta fit up in tha supplied buffer, excess
+bytes may be discarded dependin on tha type of socket tha message is
+received from.
+.PP
+If no lyrics is available all up in tha socket, tha receive calls wait fo' a
+message ta arrive, unless tha socket is nonblockin (see
+.BR fcntl (2)),
+in which case tha value \-1 is returned n' tha external variable
+.I errno
+is set to
+.BR EAGAIN " or " EWOULDBLOCK .
+Da receive calls normally return any data available, up ta tha requested
+amount, rather than waitin fo' receipt of tha full amount requested.
+.PP
+The
+.BR select (2)
+or
+.BR poll (2)
+call may be used ta determine when mo' data arrives.
+.PP
+The
+.I flags
+argument ta a
+.BR recv ()
+call is formed by ORin one or mo' of tha followin joints:
+.TP
+.BR MSG_CMSG_CLOEXEC " (" recvmsg "() only; since Linux 2.6.23)"
+Set tha close-on-exec flag fo' tha file descriptor received
+via a UNIX domain file descriptor rockin the
+.B SCM_RIGHTS
+operation (busted lyrics bout in
+.BR unix (7)).
+This flag is useful fo' tha same reasons as the
+.B O_CLOEXEC
+flag of
+.BR open (2).
+.TP
+.BR MSG_DONTWAIT " (since Linux 2.2)"
+Enablez nonblockin operation; if tha operation would block,
+the call fails wit tha error
+.BR EAGAIN " or " EWOULDBLOCK
+(this can also be enabled rockin the
+.B O_NONBLOCK
+flag wit the
+.B F_SETFL
+.BR fcntl (2)).
+.TP
+.BR MSG_ERRQUEUE " (since Linux 2.2)"
+This flag
+specifies dat queued errors should be received from tha socket error queue.
+Da error is passed in
+an ancillary message wit a type dependent on tha protocol (for IPv4
+.BR IP_RECVERR ).
+Da user should supply a funky-ass buffer of sufficient size.
+See
+.BR cmsg (3)
+and
+.BR ip (7)
+for mo' shiznit.
+Da payload of tha original gangsta packet dat caused tha error
+is passed as aiiight data via
+.IR msg_iovec .
+Da original gangsta destination address of tha datagram dat caused tha error
+is supplied via
+.IR msg_name .
+.IP
+For local errors, no address is passed (this can be checked wit the
+.I cmsg_len
+gangmember of the
+.IR cmsghdr ).
+For error receives, the
+.B MSG_ERRQUEUE
+is set up in the
+.IR msghdr .
+Afta a error has been passed, tha pendin socket error
+is regenerated based on tha next queued error n' is ghon be passed
+on tha next socket operation.
+
+Da error is supplied up in a
+.I sock_extended_err
+structure:
+.in +4n
+.nf
+
+#define SO_EE_ORIGIN_NONE    0
+#define SO_EE_ORIGIN_LOCAL   1
+#define SO_EE_ORIGIN_ICMP    2
+#define SO_EE_ORIGIN_ICMP6   3
+
+struct sock_extended_err
+{
+    uint32_t ee_errno;   /* error number */
+    uint8_t  ee_origin;  /* where tha error originated */
+    uint8_t  ee_type;    /* type */
+    uint8_t  ee_code;    /* code */
+    uint8_t  ee_pad;     /* paddin */
+    uint32_t ee_info;    /* additionizzle shiznit */
+    uint32_t ee_data;    /* other data */
+    /* Mo' data may follow */
+};
+
+struct sockaddr *SO_EE_OFFENDER(struct sock_extended_err *);
+.fi
+.in
+.IP
+.I ee_errno
+gotz nuff the
+.I errno
+number of tha queued error.
+.I ee_origin
+is tha origin code of where tha error originated.
+Da other fieldz is protocol-specific.
+Da macro
+.B SOCK_EE_OFFENDER
+returns a pointa ta tha address of tha network object
+where tha error originated from given a pointa ta tha ancillary message.
+If dis address aint known, the
+.I sa_family
+gangmember of the
+.I sockaddr
+gotz nuff
+.B AF_UNSPEC
+and tha other fieldz of the
+.I sockaddr
+are undefined.
+Da payload of tha packet dat caused tha error is passed as aiiight data.
+.IP
+For local errors, no address is passed (this
+can be checked wit the
+.I cmsg_len
+gangmember of the
+.IR cmsghdr ).
+For error receives,
+the
+.B MSG_ERRQUEUE
+is set up in the
+.IR msghdr .
+Afta a error has been passed, tha pendin socket error
+is regenerated based on tha next queued error n' is ghon be passed
+on tha next socket operation.
+.TP
+.B MSG_OOB
+This flag requests receipt of out-of-band data dat would not be received
+in tha aiiight data stream.
+Some protocols place expedited data
+at tha head of tha aiiight data queue, n' thus dis flag cannot
+be used wit such protocols.
+.TP
+.B MSG_PEEK
+This flag causes tha receive operation to
+return data from tha beginnin of the
+receive queue without removin dat data from tha queue.
+Thus, a
+subsequent receive call will return tha same data.
+.TP
+.BR MSG_TRUNC " (since Linux 2.2)"
+For raw
+.RB ( AF_PACKET ),
+Internizzle datagram (since Linux 2.4.27/2.6.8),
+netlink (since Linux 2.6.22) n' UNIX datagram (since Linux 3.4) sockets:
+return tha real length of tha packet or datagram,
+even when dat shiznit was longer than tha passed buffer.
+Not implemented fo' UNIX domain
+.RB ( unix (7))
+sockets.
+
+For use wit Internizzle stream sockets, see
+.BR tcp (7).
+.TP
+.BR MSG_WAITALL " (since Linux 2.2)"
+This flag requests dat tha operation block until tha full request is
+satisfied.
+But fuck dat shiznit yo, tha word on tha street is dat tha call may still return less data than axed if
+a signal is caught, a error or disconnect occurs, or tha next data ta be
+received iz of a gangbangin' finger-lickin' different type than dat returned.
+.PP
+The
+.BR recvmsg ()
+call uses a
+.I msghdr
+structure ta minimize tha number of directly supplied arguments.
+This structure is defined as bigs up in
+.IR <sys/socket.h> :
+.in +4n
+.nf
+
+struct iovec {                    /* Scatter/gather array shit */
+    void  *iov_base;              /* Startin address */
+    size_t iov_len;               /* Number of bytes ta transfer */
+};
+
+struct msghdr {
+    void         *msg_name;       /* optionizzle address */
+    socklen_t     msg_namelen;    /* size of address */
+    struct iovec *msg_iov;        /* scatter/gather array */
+    size_t        msg_iovlen;     /* # elements up in msg_iov */
+    void         *msg_control;    /* ancillary data, peep below */
+    size_t        msg_controllen; /* ancillary data buffer len */
+    int           msg_flags;      /* flags on received message */
+};
+.fi
+.in
+.PP
+Here
+.I msg_name
+and
+.I msg_namelen
+specify tha source address if tha socket is unconnected;
+.I msg_name
+may be given as a NULL pointa if no names is desired or required.
+Da fields
+.I msg_iov
+and
+.I msg_iovlen
+describe scatter-gather locations, as discussed in
+.BR readv (2).
+Da field
+.IR msg_control ,
+which has length
+.IR msg_controllen ,
+points ta a funky-ass buffer fo' other protocol control-related lyrics or
+miscellaneous ancillary data.
+When
+.BR recvmsg ()
+is called,
+.I msg_controllen
+should contain tha length of tha available buffer in
+.IR msg_control ;
+upon return from a successful call it will contain tha length
+of tha control message sequence.
+.PP
+Da lyrics iz of tha form:
+.in +4n
+.nf
+
+struct cmsghdr {
+    socklen_t     cmsg_len;     /* data byte count, includin hdr */
+    int           cmsg_level;   /* originatin protocol */
+    int           cmsg_type;    /* protocol-specific type */
+/* followed by
+    unsigned char cmsg_data[]; */
+};
+.fi
+.in
+.PP
+Ancillary data should be accessed only by tha macros defined in
+.BR cmsg (3).
+.PP
+As a example, Linux uses dis ancillary data mechanizzle ta pass extended
+errors, IP options, or file descriptors over UNIX domain sockets.
+.PP
+The
+.I msg_flags
+field up in the
+.I msghdr
+is set on return of
+.BR recvmsg ().
+It can contain nuff muthafuckin flags:
+.TP
+.B MSG_EOR
+indicates end-of-record; tha data returned completed a record (generally
+used wit socketz of type
+.BR SOCK_SEQPACKET ).
+.TP
+.B MSG_TRUNC
+indicates dat tha trailin portion of a thugged-out datagram was discarded cuz the
+datagram was larger than tha buffer supplied.
+.TP
+.B MSG_CTRUNC
+indicates dat some control data was discarded cuz of lack of space up in the
+buffer fo' ancillary data.
+.TP
+.B MSG_OOB
+is moonwalked back ta indicate dat expedited or out-of-band data was received.
+.TP
+.B MSG_ERRQUEUE
+indicates dat no data was received but a extended error from tha socket
+error queue.
+.SH RETURN VALUE
+These calls return tha number of bytes received, or \-1
+if a error occurred.
+In tha event of a error,
+.I errno
+is set ta indicate tha error.
+Da return value is ghon be 0 when the
+peer has performed a orderly shutdown.
+.SH ERRORS
+These is some standard errors generated by tha socket layer.
+Additionizzle errors
+may be generated n' returned from tha underlyin protocol modules;
+see they manual pages.
+.TP
+.BR EAGAIN " or " EWOULDBLOCK
+.\" Actually EAGAIN on Linux
+Da socket is marked nonblockin n' tha receive operation
+would block, or a receive timeout had been set n' tha timeout expired
+before data was received.
+POSIX.1-2001 allows either error ta be returned fo' dis case,
+and do not require these constants ta have tha same value,
+so a portable application should check fo' both possibilities.
+.TP
+.B EBADF
+Da argument
+.I sockfd
+is a invalid descriptor.
+.TP
+.B ECONNREFUSED
+A remote host refused ta allow tha network connection (typically
+because it aint hustlin tha axed service).
+.TP
+.B EFAULT
+Da receive buffer pointer(s) point outside tha process's
+address space.
+.TP
+.B EINTR
+Da receive was interrupted by delivery of a signal before
+any data was available; see
+.BR signal (7).
+.TP
+.B EINVAL
+Invalid argument passed.
+.\" e.g., msg_namelen < 0 fo' recvmsg() or addrlen < 0 fo' recvfrom()
+.TP
+.B ENOMEM
+Could not allocate memory for
+.BR recvmsg ().
+.TP
+.B ENOTCONN
+Da socket be associated wit a cold-ass lil connection-oriented protocol
+and has not been connected (see
+.BR connect (2)
+and
+.BR accept (2)).
+.TP
+.B ENOTSOCK
+Da argument
+.I sockfd
+does not refer ta a socket.
+.SH CONFORMING TO
+4.4BSD (these function calls first rocked up in 4.2BSD),
+POSIX.1-2001.
+.LP
+POSIX.1-2001 raps bout only the
+.BR MSG_OOB ,
+.BR MSG_PEEK ,
+and
+.B MSG_WAITALL
+flags.
+.SH NOTES
+Da prototypes given above follow glibc2.
+Da Single UNIX Justification agrees, except dat it has return joints
+of type \fIssize_t\fP (while 4.x BSD n' libc4 n' libc5 all have \fIint\fP).
+The
+.I flags
+argument is \fIint\fP up in 4.x BSD yo, but \fIunsigned int\fP up in libc4 n' libc5.
+The
+.I len
+argument is \fIint\fP up in 4.x BSD yo, but \fIsize_t\fP up in libc4 n' libc5.
+The
+.I addrlen
+argument is \fIint\ *\fP up in 4.x BSD, libc4 n' libc5.
+Da present  \fIsocklen_t\ *\fP was invented by POSIX.
+See also
+.BR accept (2).
+
+Accordin ta POSIX.1-2001, the
+.I msg_controllen
+field of the
+.I msghdr
+structure should be typed as
+.IR socklen_t ,
+but glibc currently types it as
+.IR size_t .
+.\" glibc bug raised 12 Mar 2006
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=2448
+.\" Da problem be a underlyin kernel issue: tha size of the
+.\" __kernel_size_t type used ta type dis field varies
+.\" across architectures yo, but socklen_t be always 32 bits.
+
+See
+.BR recvmmsg (2)
+for shiznit on some Linux-specific system call
+that can be used ta receive multiple datagrams up in a single call.
+.SH EXAMPLE
+An example of tha use of
+.BR recvfrom ()
+is shown in
+.BR getaddrinfo (3).
+.SH SEE ALSO
+.BR fcntl (2),
+.BR getsockopt (2),
+.BR read (2),
+.BR recvmmsg (2),
+.BR select (2),
+.BR shutdown (2),
+.BR socket (2),
+.BR cmsg (3),
+.BR sockatmark (3),
+.BR socket (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

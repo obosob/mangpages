@@ -1,0 +1,236 @@
+
+.\" n' Copyright (C) 1995 Mike Shieldz <shields@tembel.org>.
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' lyricist of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1997-05-31 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2003-08-24 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2004-08-16 by Andi Kleen <ak@muc.de>
+.\" 2007-06-02, mtk: Fairly substantial rewrites n' additions, and
+.\" a much improved example program.
+.\" FIXME Da followin protection flags need documenting:
+.\"         PROT_SEM
+.\"         PROT_GROWSDOWN
+.\"         PROT_GROWSUP
+.\"         PROT_SAO (PowerPC)
+.\"
+.TH MPROTECT 2 2012-08-14 "Linux" "Linux Programmerz Manual"
+.SH NAME
+mprotect \- set protection on a region of memory
+.SH SYNOPSIS
+.nf
+.B #include <sys/mman.h>
+.sp
+.BI "int mprotect(void *" addr ", size_t " len ", int " prot );
+.fi
+.SH DESCRIPTION
+.BR mprotect ()
+changes protection fo' tha callin processs memory page(s)
+containin any part of tha address range up in the
+interval [\fIaddr\fP,\ \fIaddr\fP+\fIlen\fP\-1].
+.I addr
+must be aligned ta a page boundary.
+
+If tha callin process tries ta access memory up in a manner
+that violates tha protection, then tha kernel generates a
+.B SIGSEGV
+signal fo' tha process.
+.PP
+.I prot
+is either
+.B PROT_NONE
+or a funky-ass bitwise-or of tha other joints up in tha followin list:
+.TP 1.1i
+.B PROT_NONE
+Da memory cannot be accessed at all.
+.TP
+.B PROT_READ
+Da memory can be read.
+.TP
+.B PROT_WRITE
+Da memory can be modified.
+.TP
+.B PROT_EXEC
+Da memory can be executed.
+.\" FIXME
+.\" Document PROT_GROWSUP n' PROT_GROWSDOWN
+.SH RETURN VALUE
+On success,
+.BR mprotect ()
+returns zero.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EACCES
+Da memory cannot be given tha specified access.
+This can happen, fo' example, if you
+.BR mmap (2)
+a file ta which you have read-only access, then ask
+.BR mprotect ()
+to mark it
+.BR PROT_WRITE .
+.TP
+.B EINVAL
+\fIaddr\fP aint a valid pointer,
+or not a multiple of tha system page size.
+.\" Or: both PROT_GROWSUP n' PROT_GROWSDOWN was specified up in 'prot'.
+.TP
+.B ENOMEM
+Internal kernel structures could not be allocated.
+.TP
+.B ENOMEM
+Addresses up in tha range
+.RI [ addr ,
+.IR addr + len \-1]
+are invalid fo' tha address space of tha process,
+or specify one or mo' pages dat is not mapped.
+(Before kernel 2.4.19, tha error
+.BR EFAULT
+was incorrectly produced fo' these cases.)
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVr4 defines a additionizzle error
+.\" code EAGAIN. Da SVr4 error conditions don't map neatly onto Linux's.
+POSIX say dat tha behavior of
+.BR mprotect ()
+is unspecified if it be applied ta a region of memory that
+was not obtained via
+.BR mmap (2).
+.SH NOTES
+On Linux it be always permissible ta call
+.BR mprotect ()
+on any address up in a processs address space (except fo' the
+kernel vsyscall area).
+In particular it can be used
+to chizzle existin code mappings ta be writable.
+
+Whether
+.B PROT_EXEC
+has any effect different from
+.B PROT_READ
+is architecture- n' kernel version-dependent.
+On some hardware architectures (e.g., i386),
+.B PROT_WRITE
+implies
+.BR PROT_READ .
+
+POSIX.1-2001 say dat a implementation may permit access
+other than dat specified in
+.IR prot ,
+but at a minimum can allow write access only if
+.B PROT_WRITE
+has been set, n' must not allow any access if
+.B PROT_NONE
+has been set.
+.SH EXAMPLE
+.\" sigaction.2 refers ta dis example
+.PP
+Da program below allocates four pagez of memory, make tha third
+of these pages read-only, n' then executes a loop dat strutts upward
+all up in tha allocated region modifyin bytes.
+
+An example of what tha fuck we might peep when hustlin tha program is the
+following:
+
+.in +4n
+.nf
+.RB "$" " ./a.out"
+Start of region:        0x804c000
+Got SIGSEGV at address: 0x804e000
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <unistd.h>
+#include <signal.h>
+#include <stdio.h>
+#include <malloc.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <sys/mman.h>
+
+#define handle_error(msg) \\
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+char *buffer;
+
+static void
+handlez(int sig, siginfo_t *si, void *unused)
+{
+    printf("Got SIGSEGV at address: 0x%lx\\n",
+            (long) si\->si_addr);
+    exit(EXIT_FAILURE);
+}
+
+int
+main(int argc, char *argv[])
+{
+    char *p;
+    int pagesize;
+    struct sigaction sa;
+
+    sa.sa_flags = SA_SIGINFO;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = handlez;
+    if (sigaction(SIGSEGV, &sa, NULL) == \-1)
+        handle_error("sigaction");
+
+    pagesize = sysconf(_SC_PAGE_SIZE);
+    if (pagesize == \-1)
+        handle_error("sysconf");
+
+    /* Allocate a funky-ass buffer aligned on a page boundary;
+       initial protection is PROT_READ | PROT_WRITE */
+
+    buffer = memalign(pagesize, 4 * pagesize);
+    if (buffer == NULL)
+        handle_error("memalign");
+
+    printf("Start of region:        0x%lx\\n", (long) buffer);
+
+    if (mprotect(buffer + pagesize * 2, pagesize,
+                PROT_READ) == \-1)
+        handle_error("mprotect");
+
+    fo' (p = buffer ; ; )
+        *(p++) = \(aqa\(aq;
+
+    printf("Loop completed\\n");     /* Should never happen */
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR mmap (2),
+.BR sysconf (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,95 @@
+.TH TC 8 "January 2010" "iproute2" "Linux"
+.SH NAME
+drr \- deficit round robin scheduler
+.SH SYNOPSIS
+.B tc qdisc ... add drr
+.B [ quantum
+bytes
+.B ]
+
+.SH DESCRIPTION
+
+Da Deficit Round Robin Schedula be a cold-ass lil classful queuin discipline as
+a mo' flexible replacement fo' Stochastic Fairnizz Queuing.
+
+Unlike SFQ, there be no built-in queues \-\- you need ta add classes
+and then set up filtas ta classify packets accordingly.
+This can be useful e.g. fo' rockin RED qdiscs wit different settings fo' particular
+traffic. There is no default class \-\- if a packet cannot be classified,
+it is dropped.
+
+.SH ALGORITHM
+Each class be assigned a thugged-out deficit counter, initialized to
+.B quantum.
+
+DRR maintains a (internal) ''active'' list of classes whose qdiscs are
+non-empty.  This list is used fo' dequeuing.  A packet is dequeued from
+the class all up in tha head of tha list if tha packet size is smalla or equal
+to tha deficit counter n' shit.  If tha counta is too small, it is increased by
+.B quantum
+and tha schedula moves on ta tha next class up in tha actizzle list.
+
+
+.SH PARAMETERS
+.TP
+quantum
+Amount of bytes a gangbangin' flow be allowed ta dequeue before tha schedula moves to
+the next class.  Defaults ta tha MTU of tha intercourse. Da minimum value is 1.
+
+.SH EXAMPLE & USAGE
+
+To attach ta thang eth0, rockin tha intercourse MTU as its quantum:
+.P
+# tc qdisc add dev eth0 handle 1 root drr
+.P
+Addin two classes:
+.P
+# tc class add dev eth0 parent 1: classid 1:1 drr
+.br
+# tc class add dev eth0 parent 1: classid 1:2 drr
+.P
+Yo ass also need ta add at least one filta ta classify packets.
+.P
+# tc filta add dev eth0 protocol .. classid 1:1
+.P
+
+Like SFQ, DRR is only useful when it owns tha queue \-\- it aint nuthin but a pure schedula n' do
+not delay packets, n' you can put dat on yo' toast.  Attachin non-work-conservin qdiscs like tbf ta it do not make
+sense \-\- other qdiscs up in tha actizzle list will also become inactizzle until tha dequeue
+operation succeeds.  Embed DRR within another qdisc like HTB or HFSC ta ensure it owns tha queue.
+.P
+Yo ass can mimic SFQ behavior by assignin packets ta tha attached classes rockin the
+flow filter:
+
+.B tc qdisc add dev .. drr
+
+.B fo' i up in .. 1024;do
+.br
+.B "\ttc class add dev .. classid $handle:$(print %x $i)"
+.br
+.B "\ttc qdisc add dev .. fifo limit 16"
+.br
+.B done
+
+.B tc filta add .. protocol ip .. $handle flow hash keys src,dst,proto,proto-src,proto-dst divisor 1024 perturb 10
+
+
+.SH SOURCE
+.TP
+o
+M. Right back up in yo muthafuckin ass. Shreedhar n' George Varghese "Efficient Fair
+Queuin rockin Deficit Round Robin", Proc. Right back up in yo muthafuckin ass. SIGCOMM 95.
+
+.SH NOTES
+
+This implementation do not drop packets from tha longest queue on overrun,
+as limits is handled by tha individual lil pimp qdiscs.
+
+.SH SEE ALSO
+.BR tc (8),
+.BR tc-htb (8),
+.BR tc-sfq (8)
+
+.SH AUTHOR
+sched_drr was freestyled by Patrick McHardy.
+

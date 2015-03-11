@@ -1,0 +1,425 @@
+.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: ipv6.7,v 1.3 2000/12/20 18:10:31 ak Exp $
+.\"
+.\" Da followin socket options is undocumented
+.\"	All of tha folloin is from:
+.\"	    commit 333fad5364d6b457c8d837f7d05802d2aaf8a961
+.\"	    Author: YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>
+.\"	    Support nuff muthafuckin freshly smoked up sockopt / ancillary data up in Advanced API (RFC3542).
+.\"		IPV6_2292PKTINFO (2.6.14)
+.\"		    Formerly IPV6_PKTINFO
+.\"		IPV6_2292HOPOPTS (2.6.14)
+.\"		    Formerly IPV6_HOPOPTS, which is documented
+.\"		IPV6_2292DSTOPTS (2.6.14)
+.\"		    Formerly IPV6_DSTOPTS, which is documented
+.\"		IPV6_2292RTHDR (2.6.14)
+.\"		    Formerly IPV6_RTHDR, which is documented
+.\"		IPV6_2292PKTOPTIONS (2.6.14)
+.\"		    Formerly IPV6_PKTOPTIONS
+.\"		IPV6_2292HOPLIMIT (2.6.14)
+.\"		    Formerly IPV6_HOPLIMIT, which is documented
+.\"
+.\"		IPV6_RECVHOPLIMIT (2.6.14)
+.\"		IPV6_RECVHOPOPTS (2.6.14)
+.\"		IPV6_RTHDRDSTOPTS (2.6.14)
+.\"		IPV6_RECVRTHDR (2.6.14)
+.\"		IPV6_RECVDSTOPTS (2.6.14)
+.\"
+.\"	IPV6_RECVPATHMTU (2.6.35, flag value added up in 2.6.14)
+.\"	    commit 793b14731686595a741d9f47726ad8b9a235385a
+.\"	    Author: Brian Haley <brian.haley@hp.com>
+.\"	IPV6_PATHMTU (2.6.35, flag value added up in 2.6.14)
+.\"	    commit 793b14731686595a741d9f47726ad8b9a235385a
+.\"	    Author: Brian Haley <brian.haley@hp.com>
+.\"	IPV6_DONTFRAG (2.6.35, flag value added up in 2.6.14)
+.\"	    commit 793b14731686595a741d9f47726ad8b9a235385a
+.\"	    Author: Brian Haley <brian.haley@hp.com>
+.\"	    commit 4b340ae20d0e2366792abe70f46629e576adaf5e
+.\"	    Author: Brian Haley <brian.haley@hp.com>
+.\"
+.\"	IPV6_RECVTCLASS (2.6.14)
+.\"	    commit 41a1f8ea4fbfcdc4232f023732584aae2220de31
+.\"	    Author: YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>
+.\"		Based on patch from Dizzy L Stevens <dlstevens@us.ibm.com>
+.\"
+.\"	IPV6_CHECKSUM (2.2)
+.\"	IPV6_NEXTHOP (2.2)
+.\"	IPV6_JOIN_ANYCAST (2.4.21 / 2.6)
+.\"	IPV6_LEAVE_ANYCAST (2.4.21 / 2.6)
+.\"	IPV6_FLOWLABEL_MGR (2.2.7 / 2.4)
+.\"	IPV6_FLOWINFO_SEND (2.2.7 / 2.4)
+.\"	IPV6_IPSEC_POLICY (2.6)
+.\"	IPV6_XFRM_POLICY (2.6)
+.\"	IPV6_TCLASS (2.6)
+.\"
+.\"	IPV6_ADDR_PREFERENCES (2.6.26)
+.\"	    commit 7cbca67c073263c179f605bdbbdc565ab29d801d
+.\"	    Author: YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>
+.\"	IPV6_MINHOPCOUNT (2.6.35)
+.\"	    commit e802af9cabb011f09b9c19a82faef3dd315f27eb
+.\"	    Author: Stephen Hemminger <shemminger@vyatta.com>
+.\"	IPV6_ORIGDSTADDR (2.6.37)
+.\"	    Actually a CMSG rather than a sockopt?
+.\"	    In header file, our crazy asses have IPV6_RECVORIGDSTADDR == IPV6_ORIGDSTADDR
+.\"	    commit 6c46862280c5f55eda7750391bc65cd7e08c7535
+.\"	    Author: Balazs Scheidla <bazsi@balabit.hu>
+.\"	IPV6_RECVORIGDSTADDR (2.6.37)
+.\"	    commit 6c46862280c5f55eda7750391bc65cd7e08c7535
+.\"	    Author: Balazs Scheidla <bazsi@balabit.hu>
+.\"	        Support fo' IPV6_RECVORIGDSTADDR sockopt fo' UDP sockets
+.\"		were contributed by Harry Mason.
+.\"	IPV6_TRANSPARENT (2.6.37)
+.\"	    commit 6c46862280c5f55eda7750391bc65cd7e08c7535
+.\"	    Author: Balazs Scheidla <bazsi@balabit.hu>
+.\"	IPV6_UNICAST_IF (3.4)
+.\"	    commit c4062dfc425e94290ac427a98d6b4721dd2bc91f
+.\"	    Author: Erich E yo. Hoover <ehoover@mines.edu>
+.\"
+.TH IPV6 7 2012-12-16 "Linux" "Linux Programmerz Manual"
+.SH NAME
+ipv6 \- Linux IPv6 protocol implementation
+.SH SYNOPSIS
+.B #include <sys/socket.h>
+.br
+.B #include <netinet/in.h>
+.sp
+.IB tcp6_socket " = socket(AF_INET6, SOCK_STREAM, 0);"
+.br
+.IB raw6_socket " = socket(AF_INET6, SOCK_RAW, " protocol ");"
+.br
+.IB udp6_socket " = socket(AF_INET6, SOCK_DGRAM, " protocol ");"
+.SH DESCRIPTION
+Linux 2.2 optionally implements tha Internizzle Protocol, version 6.
+This playa page gotz nuff a thugged-out description of tha IPv6 basic API as
+implemented by tha Linux kernel n' glibc 2.1.
+Da intercourse
+is based on tha BSD sockets intercourse; see
+.BR socket (7).
+.PP
+Da IPv6 API aims ta be mostly compatible wit the
+IPv4 API (see
+.BR ip (7)).
+Only differences is busted lyrics bout up in dis playa page.
+.PP
+To bind an
+.B AF_INET6
+socket ta any process, tha local address should be copied from the
+.I in6addr_any
+variable which has
+.I in6_addr
+type.
+In static initializations,
+.B IN6ADDR_ANY_INIT
+may also be used, which expandz ta a cold-ass lil constant expression.
+Both of dem is up in network byte order.
+.PP
+Da IPv6 loopback address (::1) be available up in tha global
+.I in6addr_loopback
+variable.
+For initializations,
+.B IN6ADDR_LOOPBACK_INIT
+should be used.
+.PP
+IPv4 connections can be handled wit tha v6 API by rockin the
+v4-mapped-on-v6 address type;
+thus a program only need ta support dis API type to
+support both protocols.
+This is handled transparently by tha address
+handlin functions up in tha C library.
+.PP
+IPv4 n' IPv6 share tha local port space.
+When you git a IPv4 connection
+or packet ta a IPv6 socket, its source address is ghon be mapped
+to v6 n' it is ghon be mapped ta v6.
+.SS Address format
+.in +4n
+.nf
+struct sockaddr_in6 {
+    sa_family_t     sin6_family;   /* AF_INET6 */
+    in_port_t       sin6_port;     /* port number */
+    uint32_t        sin6_flowinfo; /* IPv6 flow shiznit */
+    struct in6_addr sin6_addr;     /* IPv6 address */
+    uint32_t        sin6_scope_id; /* Scope ID (new up in 2.4) */
+};
+
+struct in6_addr {
+    unsigned char   s6_addr[16];   /* IPv6 address */
+};
+.fi
+.in
+.sp
+.I sin6_family
+is always set to
+.BR AF_INET6 ;
+.I sin6_port
+is tha protocol port (see
+.I sin_port
+in
+.BR ip (7));
+.I sin6_flowinfo
+is tha IPv6 flow identifier;
+.I sin6_addr
+is tha 128-bit IPv6 address.
+.I sin6_scope_id
+is a ID dependin on tha scope of tha address.
+It be freshly smoked up in Linux 2.4.
+Linux supports it only fo' link-local addresses, up in dat case
+.I sin6_scope_id
+gotz nuff tha intercourse index (see
+.BR netdevice (7))
+.PP
+IPv6 supports nuff muthafuckin address types: unicast ta address a single
+host, multicast ta address a crew of hosts,
+anycast ta address tha nearest gangmember of a crew of hosts
+(not implemented up in Linux), IPv4-on-IPv6 to
+address a IPv4 host, n' other reserved address types.
+.PP
+Da address notation fo' IPv6 be a crew of 8 4-digit hexadecimal
+numbers, separated wit a \(aq:\(aq.
+\&"::" standz fo' a strang of 0 bits.
+Special addresses is ::1 fo' loopback n' ::FFFF:<IPv4 address>
+for IPv4-mapped-on-IPv6.
+.PP
+Da port space of IPv6 is shared wit IPv4.
+.SS Socket options
+IPv6 supports some protocol-specific socket options dat can be set with
+.BR setsockopt (2)
+and read with
+.BR getsockopt (2).
+Da socket option level fo' IPv6 is
+.BR IPPROTO_IPV6 .
+A boolean integer flag is zero when it is false, otherwise true.
+.TP
+.B IPV6_ADDRFORM
+Turn an
+.B AF_INET6
+socket tha fuck into a socket of a gangbangin' finger-lickin' different address crew.
+Only
+.B AF_INET
+is currently supported fo' dis shit.
+It be allowed only fo' IPv6 sockets
+that is connected n' bound ta a v4-mapped-on-v6 address.
+Da argument be a pointa ta a integer containing
+.BR AF_INET .
+This is useful ta pass v4-mapped sockets as file descriptors to
+programs dat don't give a fuck how tha fuck ta deal wit tha IPv6 API.
+.TP
+.B IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP
+Control membershizzle up in multicast groups.
+Argument be a pointa ta a
+.IR "struct ipv6_mreq" .
+.TP
+.B IPV6_MTU
+.BR getsockopt ():
+Retrieve tha current known path MTU of tha current socket.
+Only valid when tha socket has been connected.
+Returns a integer.
+
+.BR setsockopt ():
+Set tha MTU ta be used fo' tha socket.
+Da MTU is limited by tha device
+MTU or tha path MTU when path MTU discovery is enabled.
+Argument be a pointa ta integer.
+.TP
+.B IPV6_MTU_DISCOVER
+Control path-MTU discovery on tha socket.
+See
+.B IP_MTU_DISCOVER
+in
+.BR ip (7)
+for details.
+.TP
+.B IPV6_MULTICAST_HOPS
+Set tha multicast hop limit fo' tha socket.
+Argument be a pointa ta an
+integer.
+\-1 up in tha value means use tha route default, otherwise it should be
+between 0 n' 255.
+.TP
+.B IPV6_MULTICAST_IF
+Set tha thang fo' outgoin multicast packets on tha socket.
+This be allowed only for
+.B SOCK_DGRAM
+and
+.B SOCK_RAW
+socket.
+Da argument be a pointa ta a intercourse index (see
+.BR netdevice (7))
+in a integer.
+.TP
+.B IPV6_MULTICAST_LOOP
+Control whether tha socket sees multicast packets dat it has bust itself.
+Argument be a pointa ta boolean.
+.TP
+.BR IPV6_RECVPKTINFO " (since Linux 2.6.14)"
+Set delivery of the
+.B IPV6_PKTINFO
+control message on incomin datagrams.
+Such control lyrics contain a
+.IR "struct in6_pktinfo" ,
+as per RFC 3542.
+Only allowed for
+.B SOCK_DGRAM
+or
+.B SOCK_RAW
+sockets.
+Argument be a pointa ta a funky-ass boolean value up in a integer.
+.TP
+.nh
+.B IPV6_RTHDR, IPV6_AUTHHDR, IPV6_DSTOPTS, IPV6_HOPOPTS, IPV6_FLOWINFO, IPV6_HOPLIMIT
+.hy
+Set delivery of control lyrics fo' incomin datagrams containing
+extension headaz from tha received packet.
+.B IPV6_RTHDR
+delivers tha routin header,
+.B IPV6_AUTHHDR
+delivers tha authentication header,
+.B IPV6_DSTOPTS
+delivers tha destination options,
+.B IPV6_HOPOPTS
+delivers tha hop options,
+.B IPV6_FLOWINFO
+delivers a integer containin tha flow ID,
+.B IPV6_HOPLIMIT
+delivers a integer containin tha hop count of tha packet.
+Da control lyrics have tha same type as tha socket option.
+All these header options can also be set fo' outgoin packets
+by puttin tha appropriate control message tha fuck into tha control buffer of
+.BR sendmsg (2).
+Only allowed for
+.B SOCK_DGRAM
+or
+.B SOCK_RAW
+sockets.
+Argument be a pointa ta a funky-ass boolean value.
+.TP
+.B IPV6_RECVERR
+Control receivin of asynchronous error options.
+See
+.B IP_RECVERR
+in
+.BR ip (7)
+for details.
+Argument be a pointa ta boolean.
+.TP
+.B IPV6_ROUTER_ALERT
+Pass forwarded packets containin a routa alert hop-by-hop option to
+this socket.
+Only allowed fo' SOCK_RAW sockets.
+Da tapped packets is not forwarded by tha kernel, it is the
+userz responsibilitizzle ta bust dem up again.
+Argument be a pointa ta a integer.
+A positizzle integer indicates a routa alert option value ta intercept.
+Packets carryin a routa alert option wit a value field containing
+this integer is ghon be served up ta tha socket.
+A wack integer disablez delivery of packets wit routa alert options
+to dis socket.
+.TP
+.B IPV6_UNICAST_HOPS
+Set tha unicast hop limit fo' tha socket.
+Argument be a pointa ta a integer.
+\-1 up in tha value means use tha route default,
+otherwise it should be between 0 n' 255.
+.TP
+.BR IPV6_V6ONLY " (since Linux 2.4.21 n' 2.6)"
+.\" See RFC 3493
+If dis flag is set ta legit (nonzero), then tha socket is restricted
+to bustin  n' receivin IPv6 packets only.
+In dis case, a IPv4 n' a IPv6 application can bind
+to a single port all up in tha same time.
+
+If dis flag is set ta false (zero),
+then tha socket can be used ta bust n' receive packets
+to n' from a IPv6 address or a IPv4-mapped IPv6 address.
+
+Da argument be a pointa ta a funky-ass boolean value up in a integer.
+
+Da default value fo' dis flag is defined by tha contentz of tha file
+.IR /proc/sys/net/ipv6/bindv6only .
+Da default value fo' dat file is 0 (false).
+.\" FLOWLABEL_MGR, FLOWINFO_SEND
+.SH ERRORS
+.\" FIXME document all errors.
+.TP
+.B ENODEV
+Da user tried to
+.BR bind (2)
+to a link-local IPv6 address yo, but the
+.I sin6_scope_id
+in tha supplied
+.I sockaddr_in6
+structure aint a valid
+interface index.
+.SH VERSIONS
+Da older
+.I libinet6
+libc5 based IPv6 API implementation fo' Linux aint busted lyrics bout here
+and may vary up in details.
+.PP
+Linux 2.4 will break binary compatibilitizzle fo' the
+.I sockaddr_in6
+for 64-bit
+hosts by changin tha alignment of
+.I in6_addr
+and addin a additional
+.I sin6_scope_id
+field.
+Da kernel intercourses stay compatible yo, but a program including
+.I sockaddr_in6
+or
+.I in6_addr
+into other structures may not be.
+This is not
+a problem fo' 32-bit hosts like i386.
+.PP
+The
+.I sin6_flowinfo
+field is freshly smoked up in Linux 2.4.
+It be transparently passed/read by tha kernel
+when tha passed address length gotz nuff dat shit.
+Some programs dat pass a longer address buffer n' then
+check tha outgoin address length may break.
+.SH NOTES
+The
+.I sockaddr_in6
+structure is bigger than tha generic
+.IR sockaddr .
+Programs dat assume dat all address types can be stored safely up in a
+.I struct sockaddr
+need ta be chizzled ta use
+.I struct sockaddr_storage
+for dat instead.
+.SH BUGS
+Da IPv6 extended API as up in RFC\ 2292 is currently only kinda
+implemented;
+although tha 2.2 kernel has near complete support fo' receivin options,
+the macros fo' generatin IPv6 options is missin up in glibc 2.1.
+.PP
+IPSec support fo' EH n' AH headaz is missing.
+.PP
+Flow label pimpment aint complete n' not documented here.
+.PP
+This playa page aint complete.
+.SH SEE ALSO
+.BR cmsg (3),
+.BR ip (7)
+.PP
+RFC\ 2553: IPv6 BASIC API;
+Linux tries ta be compliant ta all dis bullshit.
+RFC\ 2460: IPv6 justification.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

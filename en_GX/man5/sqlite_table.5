@@ -1,0 +1,304 @@
+.TH SQLITE_TABLE 5 
+.ad
+.fi
+.SH NAME
+sqlite_table
+\-
+Postfix SQLite configuration
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap -q "\fIstring\fB" sqlite:/etc/postfix/filename\fR
+
+\fBpostmap -q - sqlite:/etc/postfix/\fIfilename\fR <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix mail system uses optionizzle tablez fo' address
+rewritin or mail routing. These tablez is probably in
+\fBdbm\fR or \fBdb\fR format.
+
+Alternatively, lookup tablez can be specified as SQLite databases.
+In order ta use SQLite lookups, define a SQLite source as a lookup
+table up in main.cf, fo' example:
+.nf
+    alias_maps = sqlite:/etc/sqlite-aliases.cf
+.fi
+
+Da file /etc/postfix/sqlite-aliases.cf has tha same ol' dirty format as
+the Postfix main.cf file, n' can specify tha parameters
+busted lyrics bout below.
+.SH "BACKWARDS COMPATIBILITY"
+.na
+.nf
+.ad
+.fi
+For compatibilitizzle wit other Postfix lookup tables, SQLite
+parametas can also be defined up in main.cf.  In order ta do that,
+specify as SQLite source a name dat don't begin wit a slash
+or a thugged-out dot.  Da SQLite parametas will then be accessible as the
+name you've given tha source up in its definition, a underscore,
+and tha name of tha parameter n' shit.  For example, if tha map is
+specified as "sqlite:\fIsqlitename\fR", tha parameta "query"
+below would be defined up in main.cf as "\fIsqlitename\fR_query".
+
+Normally, tha SQL query is specified via a single \fBquery\fR
+parameta (busted lyrics bout up in mo' detail below).  When this
+parameta aint specified up in tha map definition, Postfix
+reverts ta a olda intercourse, wit tha SQL query constructed
+from tha \fBselect_field\fR, \fBtable\fR, \fBwhere_field\fR
+and \fBadditional_conditions\fR parameters.  Da oldschool intercourse
+will be gradually phased out. To migrate ta tha freshly smoked up intercourse
+set:
+
+.nf
+    \fBquery\fR = SELECT [\fIselect_field\fR]
+        FROM [\fItable\fR]
+        WHERE [\fIwhere_field\fR] = '%s'
+            [\fIadditional_conditions\fR]
+.fi
+
+Insert tha value, not tha name, of each legacy parameter n' shit. Note
+that tha \fBadditional_conditions\fR parameta is optional
+and if not empty, will always start wit \fBAND\fR.
+.SH "LIST MEMBERSHIP"
+.na
+.nf
+.ad
+.fi
+When rockin SQL ta store lists like fuckin $mynetworks,
+$mydestination, $relay_domains, $local_recipient_maps,
+etc., it is blingin ta KNOW dat tha table must
+store each list member as a separate key. Da table lookup
+verifies tha *existence* of tha key. Right back up in yo muthafuckin ass. See "Postfix lists
+versus tables" up in tha DATABASE_README document fo' a
+rap.
+
+Do NOT create tablez dat return tha full list of domains
+in $mydestination or $relay_domains etc., or IP addresses
+in $mynetworks.
+
+DO create tablez wit each matchin item as a key n' with
+an arbitrary value. With SQL databases it aint uncommon to
+return tha key itself or a cold-ass lil constant value.
+.SH "SQLITE PARAMETERS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBdbpath\fR"
+Da SQLite database file location. I aint talkin' bout chicken n' gravy biatch. Example:
+.nf
+    dbpath = hustla_database
+.fi
+.IP "\fBquery\fR"
+Da SQL query template used ta search tha database, where \fB%s\fR
+is a substitute fo' tha address Postfix is tryin ta resolve,
+e.g.
+.nf
+    query = SELECT replacement FROM aliases WHERE mailbox = '%s'
+.fi
+
+This parameta supports tha followin '%' expansions:
+.RS
+.IP "\fB\fB%%\fR\fR"
+This is replaced by a literal '%' character.
+.IP "\fB\fB%s\fR\fR"
+This is replaced by tha input key.
+SQL quotin is used ta make shizzle dat tha input key do not
+add unexpected metacharacters.
+.IP "\fB\fB%u\fR\fR"
+When tha input key be a address of tha form user@domain, \fB%u\fR
+is replaced by tha SQL quoted local part of tha address.
+Otherwise, \fB%u\fR is replaced by tha entire search string.
+If tha localpart is empty, tha query is suppressed n' returns
+no thangs up in dis biatch.
+.IP "\fB\fB%d\fR\fR"
+When tha input key be a address of tha form user@domain, \fB%d\fR
+is replaced by tha SQL quoted domain part of tha address.
+Otherwise, tha query is suppressed n' returns no thangs up in dis biatch.
+.IP "\fB\fB%[SUD]\fR\fR"
+Da upper-case equivalentz of tha above expansions behave up in the
+\fBquery\fR parameta identically ta they lower-case counter-parts.
+With tha \fBresult_format\fR parameta (see below), they expand the
+input key rather than tha result value.
+.IP "\fB\fB%[1-9]\fR\fR"
+Da patterns %1, %2, ... %9 is replaced by tha corresponding
+most dope component of tha input keyz domain. I aint talkin' bout chicken n' gravy biatch. If the
+input key is \fIuser@mail.example.com\fR, then %1 is \fBcom\fR,
+%2 is \fBexample\fR n' %3 is \fBmail\fR. If tha input key is
+unqualified or aint gots enough domain components ta satisfy
+all tha specified patterns, tha query is suppressed n' returns
+no thangs up in dis biatch.
+.RE
+.IP
+Da \fBdomain\fR parameta busted lyrics bout below limits tha input
+keys ta addresses up in matchin domains. When tha \fBdomain\fR
+parameta is non-empty, SQL queries fo' unqualified addresses
+or addresses up in non-matchin domains is suppressed
+and return no thangs up in dis biatch.
+
+This parameta be available wit Postfix 2.2. In prior releases
+the SQL query was built from tha separate parameters:
+\fBselect_field\fR, \fBtable\fR, \fBwhere_field\fR and
+\fBadditional_conditions\fR. Da mappin from tha oldschool parameters
+to tha equivalent query is:
+
+.nf
+    SELECT [\fBselect_field\fR]
+    FROM [\fBtable\fR]
+    WHERE [\fBwhere_field\fR] = '%s'
+          [\fBadditional_conditions\fR]
+.fi
+
+Da '%s' up in tha \fBWHERE\fR clause expandz ta tha escaped search string.
+With Postfix 2.2 these legacy parametas is used if tha \fBquery\fR
+parameta aint specified.
+
+NOTE: DO NOT put quotes round tha query parameter.
+.IP "\fBresult_format (default: \fB%s\fR)\fR"
+Format template applied ta result attributes. Most commonly used
+to append (or prepend) text ta tha result. This parameta supports
+the followin '%' expansions:
+.RS
+.IP "\fB\fB%%\fR\fR"
+This is replaced by a literal '%' character.
+.IP "\fB\fB%s\fR\fR"
+This is replaced by tha value of tha result attribute. When
+result is empty it is skipped.
+.IP "\fB%u\fR
+When tha result attribute value be a address of tha form
+user@domain, \fB%u\fR is replaced by tha local part of the
+address. When tha result has a empty localpart it is skipped.
+.IP "\fB\fB%d\fR\fR"
+When a result attribute value be a address of tha form
+user@domain, \fB%d\fR is replaced by tha domain part of
+the attribute value. When tha result is unqualified it
+is skipped.
+.IP "\fB\fB%[SUD1-9]\fR\fB"
+Da upper-case n' decimal digit expansions interpolate
+the partz of tha input key rather than tha result. Their
+behavior is identical ta dat busted lyrics bout wit \fBquery\fR,
+and up in fact cuz tha input key is known up in advance, queries
+whose key do not contain all tha shiznit specified in
+the result template is suppressed n' return no thangs up in dis biatch.
+.RE
+.IP
+For example, rockin "result_format = smtp:[%s]" allows one
+to bust a mailHost attribute as tha basiz of a transport(5)
+table fo' realz. Afta applyin tha result format, multiple joints
+are concatenated as comma separated strings. Da expansion_limit
+and parameta explained below allows one ta restrict tha number
+of joints up in tha result, which is especially useful fo' maps that
+must return at most one value.
+
+Da default value \fB%s\fR specifies dat each result value should
+be used as is.
+
+This parameta be available wit Postfix 2.2 n' later.
+
+NOTE: DO NOT put quotes round tha result format!
+.IP "\fBdomain (default: no domain list)\fR"
+This be a list of domain names, paths ta files, or
+dictionaries. Put ya muthafuckin choppers up if ya feel dis! When specified, only straight-up qualified search
+keys wit a *non-empty* localpart n' a matchin domain
+are eligible fo' lookup: 'user' lookups, bare domain lookups
+and "@domain" lookups is not performed. Y'all KNOW dat shit, muthafucka! This can significantly
+reduce tha query load on tha SQLite server.
+.nf
+    domain = postfix.org, hash:/etc/postfix/searchdomains
+.fi
+
+It be dopest not ta use SQL ta store tha domains eligible
+for SQL lookups.
+
+This parameta be available wit Postfix 2.2 n' later.
+
+NOTE: DO NOT define dis parameta fo' local(8) aliases,
+because tha input keys is always unqualified.
+.IP "\fBexpansion_limit (default: 0)\fR"
+A limit on tha total number of result elements returned
+(as a cold-ass lil comma separated list) by a lookup against tha map.
+A settin of zero disablez tha limit. Lookups fail wit a
+temporary error if tha limit is exceeded. Y'all KNOW dat shit, muthafucka!  Settin the
+limit ta 1 ensures dat lookups do not return multiple
+values.
+.SH "OBSOLETE QUERY INTERFACE"
+.na
+.nf
+.ad
+.fi
+This section raps bout a intercourse dat is deprecated as
+of Postfix 2.2. Well shiiiit, it is replaced by tha mo' general \fBquery\fR
+interface busted lyrics bout above.  If tha \fBquery\fR parameter
+is defined, tha legacy parametas busted lyrics bout here ignored.
+Please migrate ta tha freshly smoked up intercourse as tha legacy intercourse
+may be removed up in a gangbangin' future release.
+
+Da followin parametas can be used ta fill up in a
+SELECT template statement of tha form:
+
+.nf
+    SELECT [\fBselect_field\fR]
+    FROM [\fBtable\fR]
+    WHERE [\fBwhere_field\fR] = '%s'
+          [\fBadditional_conditions\fR]
+.fi
+
+Da specifier %s is replaced by tha search string, n' is
+escaped so if it gotz nuff single quotes or other odd characters,
+it aint gonna cause a parse error, or worse, a securitizzle problem.
+.IP "\fBselect_field\fR"
+Da SQL "select" parameter n' shit. Example:
+.nf
+    \fBselect_field\fR = forw_addr
+.fi
+.IP "\fBtable\fR"
+Da SQL "select .. from" table name. Example:
+.nf
+    \fBtable\fR = mxaliases
+.fi
+.IP "\fBwhere_field\fR
+Da SQL "select .. where" parameter n' shit. Example:
+.nf
+    \fBwhere_field\fR = alias
+.fi
+.IP "\fBadditional_conditions\fR
+Additionizzle conditions ta tha SQL query. Example:
+.nf
+    \fBadditional_conditions\fR = AND status = 'paid'
+.fi
+.SH "SEE ALSO"
+.na
+.nf
+postmap(1), Postfix lookup table maintenance
+postconf(5), configuration parameters
+ldap_table(5), LDAP lookup tables
+mysql_table(5), MySQL lookup tables
+pgsql_table(5), PostgreSQL lookup tables
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+SQLITE_README, Postfix SQLITE howto
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+SQLite support was introduced wit Postfix version 2.8.
+.SH "AUTHOR(S)"
+.na
+.nf
+Original Gangsta implementation by:
+Axel Steiner

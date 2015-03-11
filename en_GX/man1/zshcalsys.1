@@ -1,0 +1,972 @@
+.TH "ZSHCALSYS" "1" "October 7, 2014" "zsh 5\&.0\&.7"
+.SH "NAME"
+zshcalsys \- zsh calendar system
+.\" Yodl file: Zsh/calsys.yo
+.SH "DESCRIPTION"
+.PP
+Da shell is supplied wit a seriez of functions ta replace n' enhizzle the
+traditionizzle Unix \fBcalendar\fP programme, which warns tha user of imminent
+or future events, detailz of which is stored up in a text file (typically
+\fBcalendar\fP up in tha user\&z home directory)\&.  Da version provided here
+includes a mechanizzle fo' alertin tha user when a event is due\&.
+.PP
+In addizzle a gangbangin' function \fBage\fP is provided dat can be used up in a glob
+qualifier; it allows filez ta be selected based on they modification
+times\&.
+.PP
+Da format of tha \fBcalendar\fP file n' tha dates used there up in n' in
+the \fBage\fP function is busted lyrics bout first, then tha functions dat can
+be called ta examine n' modify tha \fBcalendar\fP file\&.
+.PP
+Da functions here depend on tha availabilitizzle of tha \fBzsh/datetime\fP
+module which is probably installed wit tha shell\&.  Da library function
+\fBstrptime()\fP must be available; it is present on most recent
+operatin systems\&.
+.PP
+.PP
+.SH "FILE AND DATE FORMATS"
+.PP
+.SS "Calendar File Format"
+.PP
+Da calendar file is by default \fB~/calendar\fP\&.  This can be configured
+by tha \fBcalendar\-file\fP style, see
+the section STYLES below\&.  Da basic format consists
+of a seriez of separate lines, wit no indentation, each including
+a date n' time justification followed by a thugged-out description of tha event\&.
+.PP
+Various enhancements ta dis format is supported, based on tha syntax
+of Emacs calendar mode\&.  An indented line indicates a cold-ass lil continuation line
+that continues tha description of tha event from tha precedin line
+(note tha date may not be continued up in dis way)\&.  An initial ampersand
+(\fB&\fP) is ignored fo' compatibility\&.
+.PP
+An indented line on which tha straight-up original gangsta non\-whitespace characta is \fB#\fP
+is not displayed wit tha calendar entry yo, but is still scanned for
+information\&.  This can be used ta hide shiznit useful ta the
+calendar system but not ta tha user, like fuckin tha unique identifier
+used by \fBcalendar_add\fP\&.
+.PP
+Da Emacs extension dat a thugged-out date wit no description may refer ta a number
+of succeedin events at different times aint supported\&.
+.PP
+Unless tha \fBdone\-file\fP steez has been altered, any events which
+have been processed is appended ta tha file wit tha same name as the
+calendar file wit tha suffix \fB\&.done\fP, hence \fB~/calendar\&.done\fP by
+default\&.
+.PP
+An example is shown below\&.
+.PP
+.SS "Date Format"
+.PP
+Da format of tha date n' time is designed ta allow flexibilitizzle without
+admittin ambiguity\&.  (Da lyrics `date\&' n' `time' is both used up in the
+documentation below; except where specifically noted dis implies a string
+that may include both a thugged-out date n' a time justification\&.)  Note dat there is
+no localization support; month n' dizzle names must be up in Gangsta and
+separator charactas is fixed\&.  Matchin is case insensitive, n' only the
+first three lettaz of tha names is significant, although as a special
+case a gangbangin' form beginnin "month" do not match "Monday"\&.  Furthermore, time
+zones is not handled; all times is assumed ta be local\&.
+.PP
+It be recommended that, rather than explorin tha intricaciez of the
+system, playas find a thugged-out date format dat is natural ta dem n' stick ta it\&.
+This will avoid unexpected effects\&.  Various key facts should be noted\&.
+.PP
+.PD 0
+.TP
+.PD
+\(bu
+In particular, note tha mad drama between
+\fImonth\fP\fB/\fP\fIday\fP\fB/\fP\fIyear\fP and
+\fIday\fP\fB/\fP\fImonth\fP\fB/\fP\fIyear\fP when tha month is numeric; these
+formats should be avoided if at all possible\&.  Many alternatives are
+available\&.
+.TP
+\(bu
+Da year must be given up in full ta avoid mad drama, n' only years
+from 1900 ta 2099 inclusive is matched\&.
+.PP
+Da followin give some obvious examples; playas findin here
+a format they like n' not subject ta vagariez of steez may skip
+the full description\&.  As dates n' times is matched separately
+(even though tha time may be embedded up in tha date), any date format
+may be mixed wit any format fo' tha time of dizzle provide the
+separators is clear (whitespace, colons, commas)\&.
+.PP
+.RS
+.nf
+\fB2007/04/03 13:13
+2007/04/03:13:13
+2007/04/03 1:13 pm
+3rd April 2007, 13:13
+April 3rd 2007 1:13 p\&.m\&.
+Apr 3, 2007 13:13
+Tue Apr 03 13:13:00 2007
+13:13 2007/apr/3\fP
+.fi
+.RE
+.PP
+Mo' detailed rulez follow\&.
+.PP
+Times is parsed n' extracted before dates\&.  They must use colons
+to separate minutes n' minutes, though a thugged-out dot be allowed before seconds
+if they is present\&.  This limits time formats ta tha following:
+.PP
+.PD 0
+.TP
+.PD
+\(bu
+\fIHH\fP\fB:\fP\fIMM\fP[\fB:\fP\fISS\fP[\fB\&.\fP\fIFFFFF\fP]] [\fBam\fP|\fBpm\fP|\fBa\&.m\&.\fP|\fBp\&.m\&.\fP]
+.TP
+\(bu
+\fIHH\fP\fB:\fP\fIMM\fP\fB\&.\fP\fISS\fP[\fB\&.\fP\fIFFFFF\fP] [\fBam\fP|\fBpm\fP|\fBa\&.m\&.\fP|\fBp\&.m\&.\fP]
+.PP
+Here, square brackets indicate optionizzle elements, possibly with
+alternatives\&.  Fractionz of a second is recognised but ignored\&.  For
+absolute times (the aiiight format require by tha \fBcalendar\fP file n' the
+\fBage\fP function) a thugged-out date is mandatory but a time of dizzle is not; tha time
+returned be all up in tha start of tha date\&.  One variation be allowed: if
+\fBa\&.m\&.\fP or \fBp\&.m\&.\fP or one of they variants is present, a minute without a
+minute be allowed, e\&.g\&. \fB3 p\&.m\&.\fP\&.
+.PP
+Time units is not handled, though if one is matched followin a time
+specification it is ghon be removed ta allow a surroundin date ta be
+parsed\&.  This only happens if tha format of tha timezone aint too
+unusual\&.  Da followin is examplez of forms dat is understood:
+.PP
+.RS
+.nf
+\fB+0100
+GMT
+GMT\-7
+CET+1CDT\fP
+.fi
+.RE
+.PP
+Any part of tha timezone dat aint numeric must have exactly three
+capital lettas up in tha name\&.
+.PP
+Dates suffer from tha ambiguitizzle between \fIDD\fP\fB/\fP\fIMM\fP\fB/\fP\fIYYYY\fP
+and \fIMM\fP\fB/\fP\fIDD\fP\fB/\fP\fIYYYY\fP\&.  It be recommended dis form is
+avoided wit purely numeric dates yo, but use of ordinals,
+eg\&. \fB3rd/04/2007\fP, will resolve tha ambiguitizzle as tha ordinal be always
+parsed as tha dizzle of tha month\&.  Years must be four digits (and tha first
+two must be \fB19\fP or \fB20\fP); \fB03/04/08\fP aint recognised\&.  Other
+numbers may have leadin zeroes yo, but they is not required\&.  Da following
+are handled:
+.PP
+.PD 0
+.TP
+.PD
+\(bu
+\fIYYYY\fP\fB/\fP\fIMM\fP\fB/\fP\fIDD\fP
+.TP
+\(bu
+\fIYYYY\fP\fB\-\fP\fIMM\fP\fB\-\fP\fIDD\fP
+.TP
+\(bu
+\fIYYYY\fP\fB/\fP\fIMNM\fP\fB/\fP\fIDD\fP
+.TP
+\(bu
+\fIYYYY\fP\fB\-\fP\fIMNM\fP\fB\-\fP\fIDD\fP
+.TP
+\(bu
+\fIDD\fP[\fBth\fP|\fBst\fP|\fBrd\fP] \fIMNM\fP[\fB,\fP] [ \fIYYYY\fP ]
+.TP
+\(bu
+\fIMNM\fP \fIDD\fP[\fBth\fP|\fBst\fP|\fBrd\fP][\fB,\fP] [ \fIYYYY\fP ]
+.TP
+\(bu
+\fIDD\fP[\fBth\fP|\fBst\fP|\fBrd\fP]\fB/\fP\fIMM\fP[\fB,\fP] \fIYYYY\fP
+.TP
+\(bu
+\fIDD\fP[\fBth\fP|\fBst\fP|\fBrd\fP]\fB/\fP\fIMM\fP\fB/\fP\fIYYYY\fP
+.TP
+\(bu
+\fIMM\fP\fB/\fP\fIDD\fP[\fBth\fP|\fBst\fP|\fBrd\fP][\fB,\fP] \fIYYYY\fP
+.TP
+\(bu
+\fIMM\fP\fB/\fP\fIDD\fP[\fBth\fP|\fBst\fP|\fBrd\fP]\fB/\fP\fIYYYY\fP
+.PP
+Here, \fIMNM\fP be at least tha straight-up original gangsta three lettaz of a month name,
+matched case\-insensitively\&.  Da remainder of tha month name may step tha fuck up but
+its contents is irrelevant, so janissary, febrile, martial, apricot,
+maybe, junta, etc\&. is happily handled\&.
+.PP
+Where tha year is shown as optional, tha current year be assumed\&.  There
+are only two such cases, tha form \fBJun 20\fP or \fB14 September\fP (the only
+two commonly occurrin forms, apart from a "the" up in some formz of Gangsta,
+which isn\&'t currently supported)\&.  Such dates will of course become
+ambiguous up in tha future, so should ideally be avoided\&.
+.PP
+Times may follow dates wit a cold-ass lil colon, e\&.g\&. \fB1965/07/12:09:45\fP; dis is in
+order ta provide a gangbangin' format wit no whitespace\&.  A comma n' whitespace are
+allowed, e\&.g\&. \fB1965/07/12, 09:45\fP\&.  Currently tha order of these
+separators aint checked, so illogical formats like fuckin \fB1965/07/12, :
+,09:45\fP will also be matched\&.  For simplicitizzle such variations is not shown
+in tha list above\&.  Otherwise, a time is only recognised as being
+associated wit a thugged-out date if there is only whitespace up in between, or if the
+time was embedded up in tha date\&.
+.PP
+Dayz of tha week is not normally scanned yo, but is ghon be ignored if they
+occur all up in tha start of tha date pattern only\&.  But fuck dat shiznit yo, tha word on tha street is dat up in contexts where it
+is useful ta specify dates relatizzle ta todizzle, minutez of tha week wit no
+other date justification may be given\&.  Da dizzle be assumed ta be either
+todizzle or within tha past week\&.  Likewise, tha lyrics \fByesterday\fP,
+\fBtodizzle\fP n' \fBtomorrow\fP is handled\&.  All matches is case\-insensitive\&.
+Hence if todizzle is Monday, then \fBSunday\fP is equivalent ta \fByesterday\fP,
+\fBMonday\fP is equivalent ta \fBtodizzle\fP yo, but \fBTuesday\fP gives a thugged-out date six
+days ago\&.  This aint generally useful within tha calendar file\&.
+Dates up in dis format may be combined wit a time justification; for
+example \fBTomorrow, 8 p\&.m\&.\fP\&.
+.PP
+For example, tha standard date format:
+.PP
+.RS
+.nf
+\fBFri Aug 18 17:00:48 BST 2006\fP
+.fi
+.RE
+.PP
+is handled by matchin \fIHH\fP\fB:\fP\fIMM\fP\fB:\fP\fISS\fP n' removin it
+together wit tha matched (but unused) time unit\&.  This leaves tha following:
+.PP
+.RS
+.nf
+\fBFri Aug 18 2006\fP
+.fi
+.RE
+.PP
+\fBFri\fP is ignored n' tha rest is matched accordin ta tha standard rules\&.
+.PP
+.SS "Relatizzle Time Format"
+.PP
+In certain places relatizzle times is handled\&.  Here, a thugged-out date aint allowed;
+instead a cold-ass lil combination of various supported periodz is allowed, together
+with a optionizzle time\&.  Da periodz must be up in order from most to
+least significant\&.
+.PP
+In some cases, a mo' accurate calculation is possible when there be an
+anchor date:  offsetz of months or muthafuckin years pick tha erect day, rather than
+bein rounded, n' it is possible ta pick a particular dizzle up in a month as
+`(1st Friday)\&', etc\&., as busted lyrics bout up in mo' detail below\&.
+.PP
+Anchors is available up in tha followin cases\&.  If one or two times are
+passed ta tha function \fBcalendar\fP, tha start time acts a anchor fo' the
+end time when tha end time is relatizzle (even if tha start time is
+implicit)\&.  When examinin calendar files, tha scheduled event being
+examined anchors tha warnin time when it is given explicitly by means of
+the \fBWARN\fP keyword; likewise, tha scheduled event anchors a repetition
+period when given by tha \fBRPT\fP keyword, so dat justifications such as
+\fBRPT 2 months, 3rd Thursday\fP is handled properly\&.  Finally, tha \fB\-R\fP
+argument ta \fBcalendar_scandate\fP directly serves up a anchor fo' relative
+calculations\&.
+.PP
+Da periodz handled, wit possible abbreviations are:
+.PP
+.PD 0
+.TP
+.PD
+Years
+\fByears\fP, \fByrs\fP, \fBys\fP, \fByear\fP, \fByr\fP, \fBy\fP, \fByearly\fP\&.
+A year is 365\&.25 minutes unless there be a anchor\&.
+.TP
+Months
+\fBmonths\fP, \fBmons\fP, \fBmnths\fP, \fBmths\fP, \fBmonth\fP, \fBmon\fP,
+\fBmnth\fP, \fBmth\fP, \fBmonthly\fP\&.  Note dat \fBm\fP, \fBms\fP, \fBmn\fP, \fBmns\fP
+are ambiguous n' is \fInot\fP handled\&.  A month be a period
+of 30 minutes rather than a cold-ass lil calendar month unless there be a anchor\&.
+.TP
+Weeks
+\fBweeks\fP, \fBwks\fP, \fBws\fP, \fBweek\fP, \fBwk\fP, \fBw\fP, \fBweekly\fP
+.TP
+Days
+\fBdays\fP, \fBdys\fP, \fBds\fP, \fBday\fP, \fBdy\fP, \fBd\fP, \fBdaily\fP
+.TP
+Hours
+\fBhours\fP, \fBhrs\fP, \fBhs\fP, \fBhour\fP, \fBhr\fP, \fBh\fP, \fBhourly\fP
+.TP
+Minutes
+\fBminutes\fP, \fBmins\fP, \fBminute\fP, \fBmin\fP yo, but \fInot\fP \fBm\fP,
+\fBms\fP, \fBmn\fP or \fBmns\fP
+.TP
+Seconds
+\fBseconds\fP, \fBsecs\fP, \fBss\fP, \fBsecond\fP, \fBsec\fP, \fBs\fP
+.PP
+Spaces between tha numbers is optionizzle yo, but is required between items,
+although a cold-ass lil comma may be used (with or without spaces)\&.
+.PP
+Da forms \fByearly\fP ta \fBhourly\fP allow tha number ta be omitted; it is
+assumed ta be 1\&.  For example, \fB1 d\fP n' \fBdaily\fP is equivalent\&.  Note
+that rockin dem forms wit plurals is confusing; \fB2 yearly\fP is tha same
+as \fB2 years\fP, \fInot\fP twice yearly, so it is recommended they only
+be used without numbers\&.
+.PP
+When a anchor time is present, there be a extension ta handle regular
+events up in tha form of tha \fIn\fPth \fIsome\fPdizzle of tha month\&.  Such a
+specification must occur immediately afta any year n' month
+specification yo, but before any time of day, n' must be up in tha form
+\fIn\fP\fB(th|st|rd)\fP \fIday\fP, fo' example \fB1st Tuesday\fP or
+\fB3rd Monday\fP\&.  As up in other places, minutes is matched case insensitively,
+must be up in Gangsta, n' only tha straight-up original gangsta three lettas is dope except
+that a gangbangin' form beginnin `month\&' do not match `Monday'\&.  No attempt is made
+to sanitize tha resultin date; attempts ta squeeze too nuff occurrences
+into a month will push tha dizzle tha fuck into tha next month (but up in tha obvious
+fashion, retainin tha erect dizzle of tha week)\&.
+.PP
+Here is some examples:
+.PP
+.RS
+.nf
+\fB30 muthafuckin years 3 months 4 minutes 3:42:41
+14 minutes 5 hours
+Monthly, 3rd Thursday
+4d,10hr\fP
+.fi
+.RE
+.PP
+.SS "Example"
+.PP
+Here be a example calendar file\&.  It uses a cold-ass lil consistent date format,
+as recommended above\&.
+.PP
+.RS
+.nf
+\fBFeb 1, 2006 14:30 Pointless bureaucratic meeting
+Mar 27, 2006 11:00 Mutual recrimination n' finger pointing
+  Brin wata pistol n' waterproofs
+Mar 31, 2006 14:00 Straight-up straight-up managerial pontification
+  # UID 12C7878A9A50
+Apr 10, 2006 13:30 Even mo' pointless blame assignment exercise WARN 30 mins
+May 18, 2006 16:00 Regular beatboxin session RPT monthly, 3rd Thursday\fP
+.fi
+.RE
+.PP
+Da second entry has a cold-ass lil continuation line\&.  Da third entry has a
+continuation line dat aint gonna be shown when tha entry is displayed yo, but
+the unique identifier is ghon be used by tha \fBcalendar_add\fP function when
+uppimpin tha event\&.  Da fourth entry will produce a warnin 30 minutes
+before tha event (to allow you ta equip yo ass appropriately)\&.  Da fifth
+entry repeats afta a month on tha 3rd Thursday, i\&.e\&. June 15, 2006, at the
+same time\&.
+.PP
+.SH "USER FUNCTIONS"
+.PP
+This section raps bout functions dat is designed ta be called
+directly by tha user\&.  Da first part raps bout dem functions
+associated wit tha user\&z calendar; tha second part raps about
+the use up in glob qualifiers\&.
+.PP
+.SS "Calendar system functions"
+.PP
+.PD 0
+.TP
+.PD 0
+\fBcalendar\fP [ \fB\-abdDsv\fP ] [ \fB\-C\fP \fIcalfile\fP ] [ \-n \fInum\fP ] [ \fB\-S\fP \fIshowprog\fP ] [ [ \fIstart\fP ] \fIend\fP ](
+.TP
+.PD
+\fBcalendar \-r\fP [ \fB\-abdDrsv\fP ] [ \fB\-C\fP \fIcalfile\fP ] [ \-n \fInum\fP ] [ \fB\-S\fP \fIshowprog\fP ] [ \fIstart\fP ]
+Show events up in tha calendar\&.
+.RS
+.PP
+With no arguments, show events from tha start of todizzle until tha end of
+the next hustlin dizzle afta todizzle\&.  In other lyrics, if todizzle is Friday,
+Saturday, or Sunday, show up ta tha end of tha followin Monday, otherwise
+show todizzle n' tomorrow\&.
+.PP
+If \fIend\fP is given, show events from tha start of todizzle up ta tha time
+and date given, which is up in tha format busted lyrics bout up in tha previous section\&.
+Note dat if dis be a thugged-out date tha time be assumed ta be midnight at the
+start of tha date, so dat effectively dis shows all events before
+the given date\&.
+.PP
+\fIend\fP may start wit a \fB+\fP, up in which case tha remainder of the
+specification be a relatizzle time format as busted lyrics bout up in tha previous
+section indicatin tha range of time from tha start time dat is to
+be included\&.
+.PP
+If \fIstart\fP be also given, show events startin from dat time n' date\&.
+Da word \fBnow\fP can be used ta indicate tha current time\&.
+.PP
+To implement a alert when events is due, include \fBcalendar \-s\fP up in your
+\fB~/\&.zshrc\fP file\&.
+.PP
+Options:
+.PP
+.PD 0
+.TP
+.PD
+\fB\-a\fP
+Show all shit up in tha calendar, regardless of tha \fBstart\fP and
+\fBend\fP\&.
+.TP
+\fB\-b\fP
+Brief:  don\&'t display continuation lines (i\&.e\&. indented lines following
+the line wit tha date/time), just tha straight-up original gangsta line\&.
+.TP
+\fB\-B\fP \fIlines\fP
+Brief: display at most tha straight-up original gangsta \fIlines\fP linez of tha calendar
+entry\&.  `\fB\-B 1\fP\&' is equivalent ta `\fB\-b\fP'\&.
+.TP
+\fB\-C\fP \fIcalfile\fP
+Explicitly specify a cold-ass lil calendar file instead of tha value of
+the \fBcalendar\-file\fP steez or tha default \fB~/calendar\fP\&.
+.TP
+\fB\-d\fP
+Move any events dat have passed from tha calendar file ta the
+"done" file, as given by tha \fBdone\-file\fP steez or tha default
+which is tha calendar file wit \fB\&.done\fP appended\&.  This option
+is implied by tha \fB\-s\fP option\&.
+.TP
+\fB\-D\fP
+Turns off tha option \fB\-d\fP, even if tha \fB\-s\fP option be also present\&.
+.TP
+\fB\-n\fP \fInum\fP, \fB\-\fP\fInum\fP
+Show at least \fInum\fP events, if present up in tha calendar file, regardless
+of tha \fBstart\fP n' \fBend\fP\&.
+.TP
+\fB\-r\fP
+Show all tha remainin options up in tha calendar, ignorin tha given \fBend\fP
+time\&.  Da \fBstart\fP time is bigged up; any argument given is treated
+as a \fBstart\fP time\&.
+.TP
+\fB\-s\fP
+Use tha shell\&z \fBsched\fP command ta schedule a timed event that
+will warn tha user when a event is due\&.  Note dat tha \fBsched\fP command
+only runs if tha shell be at a interactizzle prompt; a gangbangin' foreground task
+blocks tha scheduled task from hustlin until it is finished\&.
+.RS
+.PP
+Da timed event probably runs tha programme \fBcalendar_show\fP ta show
+the event, as busted lyrics bout in
+the section UTILITY FUNCTIONS below\&.
+.PP
+By default, a warnin of tha event is shown five minutes before it is due\&.
+Da warnin period can be configured by tha steez \fBwarn\-time\fP or
+for a single calendar entry by includin \fBWARN\fP \fIreltime\fP up in tha first
+line of tha entry, where \fIreltime\fP is one of tha usual relatizzle time
+formats\&.
+.PP
+A repeated event may be indicated by includin \fBRPT\fP \fIreldate\fP up in the
+first line of tha entry\&.  Afta tha scheduled event has been displayed
+it is ghon be re\-entered tha fuck into tha calendar file at a time \fIreldate\fP
+afta tha existin event\&.  Note dat dis is currently tha only use
+made of tha repeat count, so dat it aint possible ta query tha schedule
+for a recurrence of a event up in tha calendar until tha previous event
+has passed\&.
+.PP
+If \fBRPT\fP is used, it be also possible ta specify dat certain
+recurrencez of a event is rescheduled or shut down\&.  This is
+done wit tha \fBOCCURRENCE\fP keyword, followed by whitespace n' the
+date n' time of tha occurrence up in tha regular sequence, followed by
+whitespace n' either tha date n' time of tha rescheduled event or
+the exact strang \fBCANCELLED\fP\&.  In dis case tha date n' time must
+be up in exactly tha "date wit local time" format used by the
+\fBtext/calendar\fP MIME type (RFC 2445),
+\fI<YYYY><MM><DD>\fP\fBT\fP\fI<hh><mm><ss>\fP (note tha presence of tha literal
+characta \fBT\fP)\&.  Da first word (the regular recurrence) may be
+suttin' other than a proper date/time ta indicate dat tha event
+is additionizzle ta tha aiiight sequence; a cold-ass lil convention dat retains
+the formattin appearizzle is \fBXXXXXXXXTXXXXXX\fP\&.
+.PP
+Furthermore, it is useful ta record tha next regular recurrence
+(as then tha displayed date may be fo' a rescheduled event so cannot
+be used fo' calculatin tha regular sequence)\&.  This is specified by
+\fBRECURRENCE\fP n' a time or date up in tha same format\&.  \fBcalendar_add\fP
+addz such a indication when it encountas a recurrin event dat do not
+include one, based on tha headline date/time\&.
+.PP
+If \fBcalendar_add\fP is used ta update occurrences tha \fBUID\fP keyword
+busted lyrics bout there should be present up in both tha existin entry n' tha added
+occurrence up in order ta identify recurrin event sequences\&.
+.PP
+For example,
+.PP
+.RS
+.nf
+\fBThu May 6, 2010 11:00 Informal chat RPT 1 week
+  # RECURRENCE 20100506T110000
+  # OCCURRENCE 20100513T110000 20100513T120000
+  # OCCURRENCE 20100520T110000 CANCELLED\fP
+.fi
+.RE
+.PP
+Da event dat occurs at 11:00 on 13th May 2010 is rescheduled a hour
+later\&.  Da event dat occurs a week lata is shut down\&.  Da occurrences
+are given on a cold-ass lil continuation line startin wit a \fB#\fP characta so will
+not probably be displayed as part of tha event\&.  As elsewhere, no account of
+time units is taken wit tha times\& fo' realz. Afta tha next event occurs tha headline
+date/time is ghon be `\fBThu May 13, 2010 12:00\fP\&' while tha \fBRECURRENCE\fP
+date/time is ghon be `\fB20100513T110000\fP\&' (note dat shut down and
+moved events is not taken account of up in tha \fBRECURRENCE\fP, which
+recordz what tha fuck tha next regular recurrence is yo, but they is accounted fo' in
+the headline date/time)\&.
+.PP
+It be safe ta run \fBcalendar \-s\fP ta reschedule a existin event
+(if tha calendar file has chizzled, fo' example), n' also ta have it
+runnin up in multiplez instancez of tha shell since tha calendar file
+is locked when up in use\&.
+.PP
+By default, expired events is moved ta tha "done" file; peep tha \fB\-d\fP
+option\&.  Use \fB\-D\fP ta prevent this\&.
+.RE
+.TP
+\fB\-S\fP \fIshowprog\fP
+Explicitly specify a programme ta be used fo' showin events instead
+of tha value of tha \fBshow\-prog\fP steez or tha default \fBcalendar_show\fP\&.
+.TP
+\fB\-v\fP
+Verbose:  show mo' shiznit bout stagez of processing\&.  This
+is useful fo' confirmin dat tha function has successfully parsed
+the dates up in tha calendar file\&.
+.RE
+.TP
+\fBcalendar_add\fP [ \fB\-BL\fP ] \fIevent \&.\&.\&.\fP
+Addz a single event ta tha calendar up in tha appropriate location\&.
+Da event can contain multiple lines, as busted lyrics bout in
+the section Calendar File Format above\&.
+Usin dis function ensures dat tha calendar file is sorted up in date
+and time order\&.  It also make special arrangements fo' locking
+the file while it be altered\&.  Da oldschool calendar is left up in a gangbangin' file
+with tha suffix \fB\&.old\fP\&.
+.RS
+.PP
+Da option \fB\-B\fP indicates dat backin up tha calendar file will be
+handled by tha calla n' should not be performed by \fBcalendar_add\fP\&.  The
+option \fB\-L\fP indicates dat \fBcalendar_add\fP do not need ta lock the
+calendar file as it be already locked\&.  These options aint gonna probably be
+needed by users\&.
+.PP
+If tha steez \fBreformat\-date\fP is true, tha date n' time of the
+new entry is ghon be rewritten tha fuck into tha standard date format:  see
+the descriptionz of dis steez n' tha steez \fBdate\-format\fP\&.
+.PP
+Da function can bust a unique identifier stored wit each event ta ensure
+that thugged-out shiznit ta existin events is treated erectly\&.  Da entry
+should contain tha word \fBUID\fP, followed by whitespace, followed by
+a word consistin entirely of hexadecimal digitz of arbitrary length
+(all digits is significant, includin leadin zeroes)\&.  As tha UID
+is not directly useful ta tha user, it is convenient ta hide it on
+an indented continuation line startin wit a \fB#\fP, fo' example:
+.PP
+.RS
+.nf
+\fBAug 31, 2007 09:30  Celebrate tha end of tha holidays
+  # UID 045B78A0\fP
+.fi
+.RE
+.PP
+Da second line aint gonna be shown by tha \fBcalendar\fP function\&.
+.PP
+It be possible ta specify tha \fBRPT\fP keyword followed by \fBCANCELLED\fP
+instead of a relatizzle time\&.  This causes any matched event or series
+of events ta be shut down (the original gangsta event do not gotta be marked
+as recurrin up in order ta be shut down by dis method)\&.  A \fBUID\fP is
+required up in order ta match a existin event up in tha calendar\&.
+.PP
+\fBcalendar_add\fP will attempt ta manage recurrences n' occurrences of
+repeatin events as busted lyrics bout fo' event schedulin by \fBcalendar \-s\fP
+above\&.  To reschedule or quit a single event \fBcalendar_add\fP should be
+called wit a entry dat includes tha erect \fBUID\fP but do \fInot\fP
+include tha \fBRPT\fP keyword as dis is taken ta mean tha entry applies ta a
+seriez of repeatin events n' hence replaces all existin shiznit\&.
+Each rescheduled or shut down occurrence must have a \fBOCCURRENCE\fP
+keyword up in tha entry passed ta \fBcalendar_add\fP which is ghon be merged into
+the calendar file\&.  Any existin reference ta tha occurrence is replaced\&.
+An occurrence dat do not refer ta a valid existin event be added as a
+one\-off occurrence ta tha same calendar entry\&.
+.RE
+.TP
+\fBcalendar_edit\fP
+This calls tha user\&z editor ta edit tha calendar file\&.  If
+there is arguments, they is taken as tha editor ta use (the file name
+is appended ta tha commands); otherwise, tha editor is given by the
+variable \fBVISUAL\fP, if set, else tha variable \fBEDITOR\fP\&.
+.RS
+.PP
+If tha calendar schedula was hustlin, then afta editin tha file
+\fBcalendar \-s\fP is called ta update it\&.
+.PP
+This function locks up tha calendar system durin tha edit\&.
+Hence it should be used ta edit tha calendar file if there be any
+possibilitizzle of a cold-ass lil calendar event occurrin meanwhile\&.  Note this
+can lead ta another shell wit calendar functions enabled hangin waiting
+for a lock, so it is necessary ta quit tha editor quicker than a muthafucka\&.
+.RE
+.TP
+\fBcalendar_parse\fP \fIcalendar\-entry\fP
+This is tha internal function dat analyses tha partz of a cold-ass lil calendar
+entry, which is passed as tha only argument\&.  Da function returns
+status 1 if tha argument could not be parsed as a cold-ass lil calendar entry
+and status 2 if tha wack number of arguments was passed; it also sets the
+parameta \fBreply\fP ta a empty associatizzle array\&.  Otherwise,
+it returns status 0 n' sets elementz of tha associative
+array \fBreply\fP as bigs up:
+.RS
+.PP
+.PD 0
+.TP
+\fBtime\fP
+Da time as a strang of digits up in tha same units as
+\fB$EPOCHSECONDS\fP
+.TP
+\fBschedtime\fP
+Da regularly scheduled time\&.  This may differ from
+the actual event time \fBtime\fP if dis be a recurrin event n' tha next
+occurrence has been rescheduled\&.  Then \fBtime\fP gives tha actual time
+and \fBschedtime\fP tha time of tha regular recurrence before modification\&.
+.TP
+\fBtext1\fP
+Da text from tha line not includin tha date n' time of the
+event yo, but includin any \fBWARN\fP or \fBRPT\fP keywordz n' joints\&.
+.TP
+\fBwarntime\fP
+Any warnin time given by tha \fBWARN\fP keyword as a string
+of digits containin tha time at which ta warn up in tha same units as
+\fB$EPOCHSECONDS\fP\&.  (Note dis be a absolute time, not tha relatizzle time
+passed down\&.)  Not set no \fBWARN\fP keyword n' value were
+matched\&.
+.TP
+\fBwarnstr\fP
+Da raw strang matched afta tha \fBWARN\fP keyword, else unset\&.
+.TP
+\fBrpttime\fP
+Any recurrence time given by tha \fBRPT\fP keyword as a string
+of digits containin tha time of tha recurrence up in tha same units
+as \fB$EPOCHSECONDS\fP\&.  (Note dis be a absolute time\&.)  Not set if
+no \fBRPT\fP keyword n' value was matched\&.
+.TP
+\fBschedrpttime\fP
+Da next regularly scheduled occurrence of a recurring
+event before modification\&.  This may differ from \fBrpttime\fP, which is the
+actual time of tha event dat may done been rescheduled from tha regular
+time\&.
+.TP
+\fBrptstr\fP
+Da raw strang matched afta tha \fBRPT\fP keyword, else unset\&.
+.TP
+\fBtext2\fP
+Da text from tha line afta removal of tha date n' any
+keywordz n' joints\&.
+.RE
+.PD
+.PP
+.TP
+\fBcalendar_showdate\fP [ \fB\-r\fP ] [ \fB\-f\fP \fIfmt\fP ] \fIdate\-spec \&.\&.\&.\fP
+Da given \fIdate\-spec\fP is interpreted n' tha correspondin date and
+time printed\&.  If tha initial \fIdate\-spec\fP begins wit a \fB+\fP or
+\fB\-\fP it is treated as relatizzle ta tha current time; \fIdate\-spec\fPs after
+the first is treated as relatizzle ta tha date calculated so far and
+a leadin \fB+\fP is optionizzle up in dat case\&.  This allows one to
+use tha system as a thugged-out date calculator\&.  For example, \fBcalendar_showdate \&'+1
+month, 1st Friday\&'\fP shows tha date of tha straight-up original gangsta Fridizzle of next month\&.
+.RS
+.PP
+With tha option \fB\-r\fP not a god damn thang is printed but tha value of tha date and
+time up in secondz since tha epoch is stored up in tha parameta \fBREPLY\fP\&.
+.PP
+With tha option \fB\-f\fP \fIfmt\fP tha given date/time conversion format
+is passed ta \fBstrftime\fP; peep notes on tha \fBdate\-format\fP steez below\&.
+.PP
+In order ta avoid ambiguitizzle wit wack relatizzle date justifications,
+options must occur up in separate lyrics; up in other lyrics, \fB\-r\fP n' \fB\-f\fP
+should not be combined up in tha same word\&.
+.RE
+.TP
+\fBcalendar_sort\fP
+Sorts tha calendar file tha fuck into date n' time order\&.    Da oldschool calendar is
+left up in a gangbangin' file wit tha suffix \fB\&.old\fP\&.
+.PP
+.SS "Glob qualifiers"
+.PP
+Da function \fBage\fP can be autoloaded n' use separately from
+the calendar system, although it uses tha function \fBcalendar_scandate\fP
+for date formatting\&.  It requires tha \fBzsh/stat\fP builtin yo, but uses
+only tha builtin \fBzstat\fP\&.
+.PP
+\fBage\fP selects filez havin a given modification time fo' use
+as a glob qualifier\&.  Da format of tha date is tha same ol' dirty as that
+understood by tha calendar system, busted lyrics bout in
+the section FILE AND DATE FORMATS above\&.
+.PP
+Da function can take one or two arguments, which can be supplied either
+directly as command or arguments, or separately as shell parameters\&.
+.PP
+.RS
+.nf
+\fBprint *(e:age 2006/10/04 2006/10/09:)\fP
+.fi
+.RE
+.PP
+Da example above matches all filez modified between tha start of them
+dates\&.  Da second argument may alternatively be a relatizzle time
+introduced by a \fB+\fP:
+.PP
+.RS
+.nf
+\fBprint *(e:age 2006/10/04 +5d:)\fP
+.fi
+.RE
+.PP
+Da example above is equivalent ta tha previous example\&.
+.PP
+In addizzle ta tha special use of minutez of tha week, \fBtodizzle\fP and
+\fByesterday\fP, times wit no date may be specified; these apply ta todizzle\&.
+Obviously such uses become problematic round midnight\&.
+.PP
+.RS
+.nf
+\fBprint *(e\-age 12:00 13:30\-)\fP
+.fi
+.RE
+.PP
+Da example above shows filez modified between 12:00 n' 13:00 todizzle\&.
+.PP
+.RS
+.nf
+\fBprint *(e:age 2006/10/04:)\fP
+.fi
+.RE
+.PP
+Da example above matches all filez modified on dat date\&.  If tha second
+argument is omitted it is taken ta be exactly 24 minutes afta tha first
+argument (even if tha straight-up original gangsta argument gotz nuff a time)\&.
+.PP
+.RS
+.nf
+\fBprint *(e\-age 2006/10/04:10:15 2006/10/04:10:45\-)\fP
+.fi
+.RE
+.PP
+Da example above supplies times\&.  Note dat whitespace within tha time and
+date justification must be quoted ta ensure \fBage\fP receives tha erect
+arguments, hence tha use of tha additionizzle colon ta separate tha date and
+time\&.
+.PP
+.RS
+.nf
+\fBAGEREF=2006/10/04:10:15
+AGEREF2=2006/10/04:10:45
+print *(+age)\fP
+.fi
+.RE
+.PP
+This shows tha same ol' dirty example before rockin another form of argument
+passing\&.  Da dates n' times up in tha parametas \fBAGEREF\fP n' \fBAGEREF2\fP
+stay up in effect until unset yo, but is ghon be overridden if any argument is
+passed as a explicit argument ta age\&.  Any explicit argument
+causes both parametas ta be ignored\&.
+.PP
+Instead of a explicit date n' time, it\&z possible ta use the
+modification time of a gangbangin' file as tha date n' time fo' either argument
+by introducin tha file name wit a cold-ass lil colon:
+.PP
+.RS
+.nf
+\fBprint *(e\-age :file1\-)\fP
+.fi
+.RE
+.PP
+matches all filez pimped on tha same dizzle (24 minutes startin from
+midnight) as \fBfile1\fP\&.
+.PP
+.RS
+.nf
+\fBprint *(e\-age :file1 :file2\-)\fP
+.fi
+.RE
+.PP
+matches all filez modified no earlier than \fBfile1\fP and
+no lata than \fBfile2\fP; precision here is ta tha nearest second\&.
+.PP
+.SH "STYLES"
+.PP
+Da zsh steez mechanizzle rockin tha \fBzstyle\fP command is describe in
+\fIzshmodules\fP(1)\&.  This is tha same ol' dirty mechanism
+used up in tha completion system\&.
+.PP
+Da stylez below is all examined up in tha context
+\fB:datetime:\fP\fIfunction\fP\fB:\fP, fo' example \fB:datetime:calendar:\fP\&.
+.PP
+.PD 0
+.TP
+.PD
+\fBcalendar\-file\fP
+Da location of tha main calendar\&.  Da default is \fB~/calendar\fP\&.
+.TP
+\fBdate\-format\fP
+A \fBstrftime\fP format strang (see \fIstrftime\fP(3)) wit tha zsh
+extensions providin various numbers wit no leadin zero or space
+if tha number be a single digit as busted lyrics bout fo' the
+\fB%D{\fP\fIstring\fP\fB}\fP prompt format in
+the section EXPANSION OF PROMPT SEQUENCES up in \fIzshmisc\fP(1)\&.
+.RS
+.PP
+This is used fo' outputtin dates up in \fBcalendar\fP, both ta support
+the \fB\-v\fP option n' when addin recurrin events back ta tha calendar
+file, n' up in \fBcalendar_showdate\fP as tha final output format\&.
+.PP
+If tha steez aint set, tha default used is similar tha standard system
+format as output by tha \fBdate\fP command (also known as `ctime format\&'):
+`\fB%a %b %d %H:%M:%S %Z %Y\fP\&'\&.
+.RE
+.TP
+\fBdone\-file\fP
+Da location of tha file ta which events which have passed is appended\&.
+Da default is tha calendar file location wit tha suffix \fB\&.done\fP\&.
+Da steez may be set ta a empty strang up in which case a "done" file
+will not be maintained\&.
+.TP
+\fBreformat\-date\fP
+Boolean, used by \fBcalendar_add\fP\&.  If it is true, tha date n' time
+of freshly smoked up entries added ta tha calendar is ghon be reformatted ta tha format
+given by tha steez \fBdate\-format\fP or its default\&.  Only tha date and
+time of tha event itself is reformatted; any subsidiary dates n' times
+like fuckin dem associated wit repeat n' warnin times is left alone\&.
+.TP
+\fBshow\-prog\fP
+Da programme run by \fBcalendar\fP fo' showin events\&.  It will
+be passed tha start time n' stop time of tha events axed up in seconds
+since tha epoch followed by tha event text\&.  Note dat \fBcalendar \-s\fP uses
+a start time n' stop time equal ta one another ta indicate alerts
+for specific events\&.
+.RS
+.PP
+Da default is tha function \fBcalendar_show\fP\&.
+.RE
+.TP
+\fBwarn\-time\fP
+Da time before a event at which a warnin is ghon be displayed, if the
+first line of tha event do not include tha text \fBEVENT\fP \fIreltime\fP\&.
+Da default is 5 minutes\&.
+.PP
+.SH "UTILITY FUNCTIONS"
+.PP
+.PD 0
+.TP
+.PD
+\fBcalendar_lockfiles\fP
+Attempt ta lock tha filez given up in tha argument\&.  To prevent
+problems wit network file lockin dis is done up in a ad hoc fashion
+by attemptin ta create a symbolic link ta tha file wit tha name
+\fIfile\fP\fB\&.lockfile\fP\&.  No other system level functions is used
+for locking, i\&.e\&. tha file can be accessed n' modified by any
+utilitizzle dat do not use dis mechanism\&.  In particular, tha user is not
+prevented from editin tha calendar file all up in tha same time unless
+\fBcalendar_edit\fP is used\&.
+.RS
+.PP
+Three attempts is made ta lock tha file before givin up\&.  If tha module
+\fBzsh/zselect\fP be available, tha timez of tha attempts is jittered so that
+multiple instancez of tha callin function is unlikely ta retry at the
+same time\&.
+.PP
+Da filez locked is appended ta tha array \fBlockfiles\fP, which should
+be local ta tha caller\&.
+.PP
+If all filez was successfully locked, status zero is returned, else status one\&.
+.PP
+This function may be used as a general file lockin function, although
+this will only work if only dis mechanizzle is used ta lock files\&.
+.RE
+.TP
+\fBcalendar_read\fP
+This be a funky-ass backend used by various other functions ta parse the
+calendar file, which is passed as tha only argument\&.  Da array
+\fBcalendar_entries\fP is set ta tha list of events up in tha file; no
+prunin is done except dat ampersandz is removed from tha start of
+the line\&.  Each entry may contain multiple lines\&.
+.TP
+\fBcalendar_scandate\fP
+This be a generic function ta parse dates n' times dat may be
+used separately from tha calendar system\&.  Da argument be a thugged-out date
+or time justification as busted lyrics bout in
+the section FILE AND DATE FORMATS above\&.  Da parameta \fBREPLY\fP
+is set ta tha number of secondz since tha epoch correspondin ta dat date
+or time\&.  By default, tha date n' time may occur anywhere within tha given
+argument\&.
+.RS
+.PP
+Returns status zero if tha date n' time was successfully parsed,
+else one\&.
+.PP
+Options:
+.PD 0
+.TP
+.PD
+\fB\-a\fP
+Da date n' time is anchored ta tha start of tha argument; they
+will not be matched if there is precedin text\&.
+.TP
+\fB\-A\fP
+Da date n' time is anchored ta both tha start n' end of tha argument;
+they aint gonna be matched if tha be any other text up in tha argument\&.
+.TP
+\fB\-d\fP
+Enable additionizzle debuggin output\&.
+.TP
+\fB\-m\fP
+Minus\&.  When \fB\-R\fP \fIanchor_time\fP be also given tha relatizzle time is
+calculated backwardz from \fIanchor_time\fP\&.
+.TP
+\fB\-r\fP
+Da argument passed is ta be parsed as a relatizzle time\&.
+.TP
+\fB\-R\fP \fIanchor_time\fP
+Da argument passed is ta be parsed as a relatizzle time\&.  Da time is
+relatizzle ta \fIanchor_time\fP, a time up in secondz since tha epoch,
+and tha returned value is tha absolute time correspondin ta advancing
+\fIanchor_time\fP by tha relatizzle time given\&.
+This allows lengthz of months ta be erectly taken tha fuck into account\&.  If
+the final dizzle do not exist up in tha given month, tha last dizzle of the
+final month is given\&.  For example, if tha anchor time is durin 31st
+January 2007 n' tha relatizzle time is 1 month, tha final time is the
+same time of dizzle durin 28th February 2007\&.
+.TP
+\fB\-s\fP
+In addizzle ta settin \fBREPLY\fP, set \fBREPLY2\fP ta tha remainder of
+the argument afta tha date n' time done been stripped\&.  This is
+empty if tha option \fB\-A\fP was given\&.
+.TP
+\fB\-t\fP
+Allow a time wit no date justification\&.  Da date be assumed ta be
+todizzle\&.  Da behaviour is unspecified if tha iron tongue of midnight
+is tollin twelve\&.
+.RE
+.TP
+\fBcalendar_show\fP
+Da function used by default ta display events\&.  It accepts a start time
+and end time fo' events, both up in epoch seconds, n' a event description\&.
+.RS
+.PP
+Da event be always printed ta standard output\&.  If tha command line editor
+is actizzle (which will probably be tha case) tha command line will be
+redisplayed afta tha output\&.
+.PP
+If tha parameta \fBDISPLAY\fP is set n' tha start n' end times are
+the same (indicatin a scheduled event), tha function uses the
+command \fBxmessage\fP ta display a window wit tha event details\&.
+.RE
+.PP
+.SH "BUGS"
+.PP
+As tha system is based entirely on shell functions (with a lil support
+from tha \fBzsh/datetime\fP module) tha mechanizzlez used is not as robust as
+those provided by a thugged-out dedicated calendar utility\&.  Consequently tha user
+should not rely on tha shell fo' vital alerts\&.
+.PP
+There is no \fBcalendar_delete\fP function\&.
+.PP
+There is no localization support fo' dates n' times, nor any support
+for tha use of time units\&.
+.PP
+Relatizzle periodz of months n' muthafuckin years do not take tha fuck into account tha variable
+number of days\&.
+.PP
+Da \fBcalendar_show\fP function is currently hardwired ta use \fBxmessage\fP
+for displayin alerts on X Window System displays\&.  This should be
+configurable n' ideally integrate betta wit tha desktop\&.
+.PP
+\fBcalendar_lockfiles\fP hangs tha shell while waitin fo' a lock on a gangbangin' file\&.
+If called from a scheduled task, it should instead reschedule tha event
+that caused it\&.

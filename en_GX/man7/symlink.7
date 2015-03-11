@@ -1,0 +1,496 @@
+.\" Copyright (c) 1992, 1993, 1994
+.\"	Da Regentz of tha Universitizzle of California.  All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_3_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\"	@(#)symlink.7	8.3 (Berkeley) 3/31/94
+.\" $FreeBSD: src/bin/ln/symlink.7,v 1.30 2005/02/13 22:25:09 ru Exp $
+.\"
+.\" 2008-06-11, mtk, Taken from FreeBSD 6.2 n' heavily edited for
+.\"     specific Linux details, improved readability, n' man-pages style.
+.\"
+.TH SYMLINK 7 2008-06-18 "Linux" "Linux Programmerz Manual"
+.SH NAME
+symlink \- symbolic link handling
+.SH SYMBOLIC LINK HANDLING
+Symbolic links is filez dat act as pointas ta other files.
+To KNOW they behavior, you must first KNOW how tha fuck hard links
+work.
+
+A hard link ta a gangbangin' file is indistinguishable from tha original gangsta file cuz
+it be a reference ta tha object underlyin tha original gangsta filename.
+(To be precise: each of tha hard links ta a gangbangin' file be a reference to
+the same
+.IR "i-node number" ,
+where a i-node number be a index tha fuck into tha i-node table,
+which gotz nuff metadata bout all filez on a gangbangin' file system.
+See
+.BR stat (2).)
+Changes ta a gangbangin' file is independent of tha name used ta reference tha file.
+Hard links may not refer ta directories
+(to prevent tha possibilitizzle of loops within tha file system tree,
+which would confuse nuff programs)
+and may not refer ta filez on different file systems
+(because i-node numbers is not unique across file systems).
+
+A symbolic link be a special type of file whose contents is a string
+that is tha pathname another file, tha file ta which tha link refers.
+In other lyrics, a symbolic link be a pointa ta another name,
+and not ta a underlyin object.
+For dis reason, symbolic links may refer ta directories n' may cross
+file system boundaries.
+
+There is no requirement dat tha pathname referred ta by a symbolic link
+should exist.
+A symbolic link dat refers ta a pathname dat do not exist is holla'd
+to be a
+.IR "danglin link" .
+
+Because a symbolic link n' its referenced object coexist up in tha file system
+name space, mad drama can arise up in distinguishin between tha link itself
+and tha referenced object.
+On oldschool systems,
+commandz n' system calls adopted they own link-following
+conventions up in a somewhat ad-hoc fashion.
+Rulez fo' a mo' uniform approach,
+as they is implemented on Linux n' other systems,
+are outlined here.
+It be blingin dat crib-local applications also conform ta these rules,
+so dat tha user intercourse can be as consistent as possible.
+.SS Symbolic link ballership, permissions, n' timestamps
+Da balla n' crew of a existin symbolic link can be chizzled
+using
+.BR lchown (2).
+Da only time dat tha ballershizzle of a symbolic link mattas is
+when tha link is bein removed or renamed up in a gangbangin' finger-lickin' directory that
+has tha sticky bit set (see
+.BR stat (2)).
+
+Da last access n' last modification timestamps
+of a symbolic link can be chizzled using
+.BR utimensat (2)
+or
+.BR lutimes (3).
+
+On Linux, tha permissionz of a symbolic link is not used
+in any operations; tha permissions is always
+0777 (read, write, n' execute fo' all user categories),
+.\" Linux do not currently implement a lchmod(2).
+and can't be chizzled.
+.\"
+.\" The
+.\" 4.4BSD
+.\" system differs from historical
+.\" 4BSD
+.\" systems up in dat tha system call
+.\" .BR chown (2)
+.\" has been chizzled ta follow symbolic links.
+.\" The
+.\" .BR lchown (2)
+.\" system call was added lata when tha limitationz of tha new
+.\" .BR chown (2)
+.\" became apparent.
+.SS Handlin of symbolic links by system calls n' commands
+Symbolic links is handled either by operatin on tha link itself,
+or by operatin on tha object referred ta by tha link.
+In tha latta case,
+an application or system call is holla'd to
+.I follow
+the link.
+Symbolic links may refer ta other symbolic links,
+in which case tha links is dereferenced until a object dat is
+not a symbolic link is found,
+a symbolic link dat refers ta a gangbangin' file which do not exist is found,
+or a loop is detected.
+(Loop detection is done by placin a upper limit on tha number of
+links dat may be followed, n' a error thangs up in dis biatch if dis limit is
+exceeded.)
+
+There is three separate areas dat need ta be discussed.
+They is as bigs up:
+.IP 1. 3
+Symbolic links used as filename arguments fo' system calls.
+.IP 2.
+Symbolic links specified as command-line arguments ta utilitizzles that
+are not traversin a gangbangin' file tree.
+.IP 3.
+Symbolic links encountered by utilitizzles dat is traversin a gangbangin' file tree
+(either specified on tha command line or encountered as part of the
+file hierarchy strutt).
+.SS System calls
+Da first area is symbolic links used as filename arguments for
+system calls.
+
+Except as noted below, all system calls follow symbolic links.
+For example, if there was a symbolic link
+.I slink
+which pointed ta a gangbangin' file named
+.IR afile ,
+the system call
+.I "open(""slink"" ...\&)"
+would return a gangbangin' file descriptor referrin ta tha file
+.IR afile .
+
+Various system calls do not follow links, n' operate
+on tha symbolic link itself.
+They are:
+.BR lchown (2),
+.BR lgetxattr (2),
+.BR llistxattr (2),
+.BR lremovexattr (2),
+.BR lsetxattr (2),
+.BR lstat (2),
+.BR readlink (2),
+.BR rename (2),
+.BR rmdir (2),
+and
+.BR unlink (2).
+Certain other system calls optionally follow symbolic links.
+They are:
+.BR faccessat (2),
+.\" Maybe one day: .BR fchownat (2)
+.BR fchownat (2),
+.BR fstatat (2),
+.BR linkat (2),
+.BR open (2),
+.BR openat (2),
+and
+.BR utimensat (2);
+see they manual pages fo' details.
+Because
+.BR remove (3)
+is a alias for
+.BR unlink (2),
+that library function also do not follow symbolic links.
+When
+.BR rmdir (2)
+is applied ta a symbolic link, it fails wit tha error
+.BR ENOTDIR .
+The
+.BR link (2)
+warrants special rap.
+POSIX.1-2001 specifies that
+.BR link (2)
+should dereference
+.I oldpath
+if it aint nuthin but a symbolic link.
+But fuck dat shiznit yo, tha word on tha street is dat Linux do not do all dis bullshit.
+(By default Solaris is tha same,
+but tha POSIX.1-2001 specified behavior can be obtained with
+suitable compila options.)
+Da upcomin POSIX.1 revision chizzlez tha justification ta allow
+either behavior up in a implementation.
+.SS Commandz not traversin a gangbangin' file tree
+Da second area is symbolic links, specified as command-line
+filename arguments, ta commandz which is not traversin a gangbangin' file tree.
+
+Except as noted below, commandz follow symbolic links named as
+command-line arguments.
+For example, if there was a symbolic link
+.I slink
+which pointed ta a gangbangin' file named
+.IR afile ,
+the command
+.I "cat slink"
+would display tha contentz of tha file
+.IR afile .
+
+It be blingin ta realize dat dis rule includes commandz which may
+optionally traverse file trees, e.g., tha command
+.I "chown file"
+is included up in dis rule, while tha command
+.IR "chown\ \-R file" ,
+which performs a tree traversal, is not.
+(Da latta is busted lyrics bout up in tha third area, below.)
+
+If it is explicitly intended dat tha command operate on tha symbolic
+link instead of followin tha symbolic link, e.g., it is desired that
+.I "chown slink"
+change tha ballershizzle of tha file that
+.I slink
+is, whether it aint nuthin but a symbolic link or not, the
+.I \-h
+option should be used.
+In tha above example,
+.I "chown root slink"
+would chizzle tha ballershizzle of tha file referred ta by
+.IR slink ,
+while
+.I "chown\ \-h root slink"
+would chizzle tha ballershizzle of
+.I slink
+itself.
+
+There is some exceptions ta dis rule:
+.IP * 2
+The
+.BR mv (1)
+and
+.BR rm (1)
+commandz do not follow symbolic links named as arguments,
+but respectively attempt ta rename n' delete em.
+(Note, if tha symbolic link references a gangbangin' file via a relatizzle path,
+movin it ta another directory may straight-up well cause it ta stop working,
+since tha path may no longer be erect.)
+.IP *
+The
+.BR ls (1)
+command be also a exception ta dis rule.
+For compatibilitizzle wit phat systems (when
+.BR ls (1)
+is not bustin a tree strutt, i.e., the
+.I \-R
+option aint specified),
+the
+.BR ls (1)
+command bigs up symbolic links named as arguments if the
+.I \-H
+or
+.I \-L
+option is specified,
+or if the
+.IR \-F ,
+.IR \-d ,
+or
+.I \-l
+options is not specified.
+(The
+.BR ls (1)
+command is tha only command where the
+.I \-H
+and
+.I \-L
+options affect its behavior even though it aint bustin a strutt of
+a file tree.)
+.IP *
+The
+.BR file (1)
+command be also a exception ta dis rule.
+The
+.BR file (1)
+command do not follow symbolic links named as argument by default.
+The
+.BR file (1)
+command do follow symbolic links named as argument if the
+.I \-L
+option is specified.
+.\"
+.\"Da 4.4BSD system differs from oldschool 4BSD systems up in dat the
+.\".BR chown (1)
+.\"and
+.\".BR chgrp (1)
+.\"commandz follow symbolic links specified on tha command line.
+.SS Commandz traversin a gangbangin' file tree
+Da followin commandz either optionally or always traverse file trees:
+.BR chgrp (1),
+.BR chmod (1),
+.BR chown (1),
+.BR cp (1),
+.BR du (1),
+.BR find (1),
+.BR ls (1),
+.BR pax (1),
+.BR rm (1),
+and
+.BR tar (1).
+
+It be blingin ta realize dat tha followin rulez apply equally to
+symbolic links encountered durin tha file tree traversal n' symbolic
+links listed as command-line arguments.
+
+Da \fIfirst rule\fP applies ta symbolic links dat reference filez other
+than directories.
+Operations dat apply ta symbolic links is performed on tha links
+themselves yo, but otherwise tha links is ignored.
+
+Da command
+.I "rm\ \-r slink directory"
+will remove
+.IR slink ,
+as well as any symbolic links encountered up in tha tree traversal of
+.IR directory ,
+because symbolic links may be removed.
+In no case will
+.BR rm (1)
+affect tha file referred ta by
+.IR slink .
+
+Da \fIsecond rule\fP applies ta symbolic links dat refer ta directories.
+Symbolic links dat refer ta directories is never followed by default.
+This is often referred ta as a "physical" strutt, as opposed ta a "logical"
+walk (where symbolic links tha refer ta directories is followed).
+
+Certain conventions is (should be) followed as consistently as
+possible by commandz dat big-ass up file tree strutts:
+.IP * 2
+A command can be made ta follow
+any symbolic links named on tha command line,
+regardless of tha type of file they reference, by specifyin the
+.I \-H
+(for "half-logical") flag.
+This flag is intended ta make tha command-line name space look
+like tha logical name space.
+(Note, fo' commandz dat do not always do file tree traversals, the
+.I \-H
+flag is ghon be ignored if the
+.I \-R
+flag aint also specified.)
+
+For example, tha command
+.I "chown\ \-HR user slink"
+will traverse tha file hierarchy rooted up in tha file pointed ta by
+.IR slink .
+Note, the
+.I \-H
+is not tha same as tha previously discussed
+.I \-h
+flag.
+The
+.I \-H
+flag causes symbolic links specified on tha command line ta be
+dereferenced fo' tha purposez of both tha action ta be performed
+and tha tree strutt, n' it be as if tha user had specified the
+name of tha file ta which tha symbolic link pointed.
+.IP *
+A command can be made to
+follow any symbolic links named on tha command line,
+as well as any symbolic links encountered durin tha traversal,
+regardless of tha type of file they reference, by specifyin the
+.I \-L
+(for "logical") flag.
+This flag is intended ta make tha entire name space look like
+the logical name space.
+(Note, fo' commandz dat do not always do file tree traversals, the
+.I \-L
+flag is ghon be ignored if the
+.I \-R
+flag aint also specified.)
+
+For example, tha command
+.I "chown\ \-LR user slink"
+will chizzle tha balla of tha file referred ta by
+.IR slink .
+If
+.I slink
+refers ta a gangbangin' finger-lickin' directory,
+.B chown
+will traverse tha file hierarchy rooted up in tha directory dat it
+references.
+In addition, if any symbolic links is encountered up in any file tree that
+.B chown
+traverses, they is ghon be treated up in tha same fashizzle as
+.IR slink .
+.IP *
+A command can be made to
+provide tha default behavior by specifyin the
+.I \-P
+(for "physical") flag.
+This flag is intended ta make tha entire name space be lookin like the
+physical name space.
+.PP
+For commandz dat do not by default do file tree traversals, the
+.IR \-H ,
+.IR \-L ,
+and
+.I \-P
+flags is ignored if the
+.I \-R
+flag aint also specified.
+In addition, you may specify the
+.IR \-H ,
+.IR \-L ,
+and
+.I \-P
+options mo' than once;
+the last one specified determines tha commandz behavior.
+This is intended ta permit you ta alias commandz ta behave one way
+or tha other, n' then override dat behavior on tha command line.
+
+The
+.BR ls (1)
+and
+.BR rm (1)
+commandz have exceptions ta these rules:
+.IP * 2
+The
+.BR rm (1)
+command operates on tha symbolic link, n' not tha file it references,
+and therefore never bigs up a symbolic link.
+The
+.BR rm (1)
+command do not support the
+.IR \-H ,
+.IR \-L ,
+or
+.I \-P
+options.
+.IP *
+To maintain compatibilitizzle wit phat systems,
+the
+.BR ls (1)
+command acts a lil differently.
+If you do not specify the
+.IR \-F ,
+.IR \-d
+or
+.I \-l
+options,
+.BR ls (1)
+will follow symbolic links specified on tha command line.
+If the
+.I \-L
+flag is specified,
+.BR ls (1)
+bigs up all symbolic links,
+regardless of they type,
+whether specified on tha command line or encountered up in tha tree strutt.
+.SH SEE ALSO
+.BR chgrp (1),
+.BR chmod (1),
+.BR find (1),
+.BR ln (1),
+.BR ls (1),
+.BR mv (1),
+.BR rm (1),
+.BR lchown (2),
+.BR link (2),
+.BR lstat (2),
+.BR readlink (2),
+.BR rename (2),
+.BR symlink (2),
+.BR unlink (2),
+.BR utimensat (2),
+.BR lutimes (3),
+.BR path_resolution (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

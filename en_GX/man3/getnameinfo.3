@@ -1,0 +1,315 @@
+.\" %%%LICENSE_START(PUBLIC_DOMAIN)
+.\" This page is up in tha hood domain.
+.\" %%%LICENSE_END
+.\"
+.\" Almost all details is from RFC 2553.
+.\"
+.\" 2004-12-14, mtk, Added EAI_OVERFLOW error
+.\" 2004-12-14 Fixed description of error return
+.\"
+.TH GETNAMEINFO 3 2013-01-15 "GNU" "Linux Programmerz Manual"
+.SH NAME
+getnameinfo \- address-to-name translation up in protocol-independent manner
+.SH SYNOPSIS
+.nf
+.B #include <sys/socket.h>
+.B #include <netdb.h>
+.sp
+.BI "int getnameinfo(const struct sockaddr *" "sa" ", socklen_t " "salen" ,
+.BI "                char *" "host" ", size_t " "hostlen" ,
+.BI "                char *" "serv" ", size_t " "servlen" ", int " "flags" );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.ad l
+.in
+.sp
+.BR getnameinfo ():
+_POSIX_C_SOURCE\ >=\ 1 || _XOPEN_SOURCE || _POSIX_SOURCE
+.ad b
+.SH DESCRIPTION
+The
+.BR getnameinfo ()
+function is tha inverse of
+.BR getaddrinfo (3):
+it converts a socket address ta a cold-ass lil correspondin host n' service,
+in a protocol-independent manner.
+It combines tha functionalitizzle of
+.BR gethostbyaddr (3)
+and
+.BR getservbyport (3),
+but unlike dem functions,
+.BR getnameinfo ()
+is reentrant n' allows programs ta eliminate
+IPv4-versus-IPv6 dependencies.
+
+The
+.I sa
+argument be a pointa ta a generic socket address structure
+(of type
+.I sockaddr_in
+or
+.IR sockaddr_in6 )
+of size
+.I salen
+that holdz tha input IP address n' port number.
+Da arguments
+.I host
+and
+.I serv
+are pointas ta caller-allocated buffers (of size
+.I hostlen
+and
+.I servlen
+respectively) tha fuck into which
+.BR getnameinfo ()
+places null-terminated strings containin tha host and
+service names respectively.
+
+Da calla can specify dat no hostname (or no steez name)
+is required by providin a NULL
+.I host
+(or
+.IR serv )
+argument or a zero
+.I hostlen
+(or
+.IR servlen )
+argument.
+But fuck dat shiznit yo, tha word on tha street is dat at least one of hostname or steez name
+must be requested.
+
+The
+.I flags
+argument modifies tha behavior of
+.BR getnameinfo ()
+as bigs up:
+.TP
+.B NI_NAMEREQD
+If set, then a error is returned if tha hostname cannot be determined.
+.TP
+.B NI_DGRAM
+If set, then tha steez is datagram (UDP) based rather than
+stream (TCP) based.
+This is required fo' tha few ports (512-514)
+that have different skillz fo' UDP n' TCP.
+.TP
+.B NI_NOFQDN
+If set, return only tha hostname part of tha straight-up qualified domain name
+for local hosts.
+.TP
+.B NI_NUMERICHOST
+If set, then tha numeric form of tha hostname is returned.
+.\" For example, by calling
+.\" .BR inet_ntop ()
+.\" instead of
+.\" .BR gethostbyaddr ().
+(When not set, dis will still happen up in case tha nodez name
+cannot be determined.)
+.\" POSIX.1-2003 has NI_NUMERICSCOPE yo, but glibc aint gots dat shit.
+.TP
+.B NI_NUMERICSERV
+If set, then tha numeric form of tha steez address is returned.
+(When not set, dis will still happen up in case tha servicez name
+cannot be determined.)
+.SS Extensions ta getnameinfo() fo' Internationalized Domain Names
+.PP
+Startin wit glibc 2.3.4,
+.BR getnameinfo ()
+has been extended ta selectively allow
+hostnames ta be transparently converted ta n' from the
+Internationalized Domain Name (IDN) format (see RFC 3490,
+.IR "Internationalizin Domain Names up in Applications (IDNA)" ).
+Three freshly smoked up flags is defined:
+.TP
+.B NI_IDN
+If dis flag is used, then tha name found up in tha lookup process is
+converted from IDN format ta tha localez encodin if necessary.
+ASCII-only names is not affected by tha conversion, which
+makes dis flag usable up in existin programs n' environments.
+.TP
+.BR NI_IDN_ALLOW_UNASSIGNED ", " NI_IDN_USE_STD3_ASCII_RULES
+Settin these flags will enable the
+IDNA_ALLOW_UNASSIGNED (allow unassigned Unicode code points) and
+IDNA_USE_STD3_ASCII_RULES (check output ta make shizzle it aint nuthin but a STD3
+conformin hostname)
+flags respectively ta be used up in tha IDNA handling.
+.SH RETURN VALUE
+.\" FIXME glibc defines tha followin additionizzle errors, some which
+.\" can probably be returned by getnameinfo(); they need to
+.\" be documented.
+.\" #ifdef __USE_GNU
+.\" #define EAI_INPROGRESS  -100  /* Processin request up in progress.  */
+.\" #define EAI_CANCELED    -101  /* Request canceled. Y'all KNOW dat shit, muthafucka!  */
+.\" #define EAI_NOTCANCELED -102  /* Request not canceled. Y'all KNOW dat shit, muthafucka!  */
+.\" #define EAI_ALLDONE     -103  /* All requests done.  */
+.\" #define EAI_INTR        -104  /* Interrupted by a signal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  */
+.\" #define EAI_IDN_ENCODE  -105  /* IDN encodin failed. Y'all KNOW dat shit, muthafucka!  */
+.\" #endif
+On success 0 is returned, n' node n' steez names, if requested,
+are filled wit null-terminated strings, possibly truncated ta fit
+the specified buffer lengths.
+On error one of tha followin nonzero error codes is returned:
+.TP
+.B EAI_AGAIN
+Da name could not be resolved at dis time.
+Try again n' again n' again later.
+.TP
+.B EAI_BADFLAGS
+The
+.I flags
+argument has a invalid value.
+.TP
+.B EAI_FAIL
+A nonrecoverable error occurred.
+.TP
+.B EAI_FAMILY
+Da address crew was not recognized,
+or tha address length was invalid fo' tha specified crew.
+.TP
+.B EAI_MEMORY
+Out of memory.
+.TP
+.B EAI_NONAME
+Da name do not resolve fo' tha supplied arguments.
+.B NI_NAMEREQD
+is set n' tha hostz name cannot be located,
+or neither hostname nor steez name was requested.
+.TP
+.B EAI_OVERFLOW
+Da buffer pointed ta by
+.I host
+or
+.I serv
+was too small.
+.TP
+.B EAI_SYSTEM
+A system error occurred.
+Da error code can be found in
+.IR errno .
+.PP
+The
+.BR gai_strerror (3)
+function translates these error codes ta a human readable string,
+suitable fo' error reporting.
+.SH FILES
+/etc/hosts
+.br
+/etc/nsswitch.conf
+.br
+/etc/resolv.conf
+.SH VERSIONS
+.BR getnameinfo ()
+is provided up in glibc since version 2.1.
+.SH CONFORMING TO
+RFC\ 2553, POSIX.1-2001.
+.SH NOTES
+In order ta assist tha programmer up in choosin reasonable sizes
+for tha supplied buffers,
+.I <netdb.h>
+defines tha constants
+.in +4n
+.nf
+
+#define NI_MAXHOST      1025
+#define NI_MAXSERV      32
+.fi
+.in
+
+Since glibc 2.8,
+these definitions is exposed only if one of tha feature test macros
+.BR _BSD_SOURCE ,
+.BR _SVID_SOURCE ,
+or
+.BR _GNU_SOURCE
+is defined.
+.PP
+Da forma is tha constant
+.B MAXDNAME
+in recent versionz of BIND's
+.I <arpa/nameser.h>
+header file.
+Da latta be a guess based on tha skillz listed
+in tha current Assigned Numbers RFC.
+.SH EXAMPLE
+Da followin code tries ta git tha numeric hostname n' steez name,
+for a given socket address.
+Note dat there is no hardcoded reference to
+a particular address crew.
+
+.in +4n
+.nf
+struct sockaddr *sa;    /* input */
+socklen_t len;         /* input */
+char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+
+if (getnameinfo(sa, len, hbuf, sizeof(hbuf), sbuf,
+            sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV) == 0)
+    printf("host=%s, serv=%s\en", hbuf, sbuf);
+.fi
+.in
+
+Da followin version checks if tha socket address has a
+reverse address mapping.
+
+.in +4n
+.nf
+struct sockaddr *sa;    /* input */
+socklen_t len;         /* input */
+char hbuf[NI_MAXHOST];
+
+if (getnameinfo(sa, len, hbuf, sizeof(hbuf),
+            NULL, 0, NI_NAMEREQD))
+    printf("could not resolve hostname");
+else
+    printf("host=%s\en", hbuf);
+.fi
+.in
+.PP
+An example program using
+.BR getnameinfo ()
+can be found in
+.BR getaddrinfo (3).
+.SH SEE ALSO
+.BR accept (2),
+.BR getpeername (2),
+.BR getsockname (2),
+.BR recvfrom (2),
+.BR socket (2),
+.BR getaddrinfo (3),
+.BR gethostbyaddr (3),
+.BR getservbyname (3),
+.BR getservbyport (3),
+.BR inet_ntop (3),
+.BR hosts (5),
+.BR skillz (5),
+.BR hostname (7),
+.BR named (8)
+
+R. Gilligan, S. Thomson, J. Bound n' W. Right back up in yo muthafuckin ass. Stevens,
+.IR "Basic Socket Interface Extensions fo' IPv6" ,
+RFC\ 2553, March 1999.
+
+Tatsuya Jinmei n' Atsushi Onoe,
+.IR "An Extension of Format fo' IPv6 Scoped Addresses" ,
+internizzle draft, work up in progress
+.UR ftp://ftp.ietf.org\:/internet\-drafts\:/draft\-ietf\-ipngwg\-scopedaddr\-format\-02.txt
+.UE .
+
+Craig Metz,
+.IR "Protocol Independence Usin tha Sockets API" ,
+Proceedingz of tha freenix track:
+2000 USENIX annual technical conference, June 2000
+.ad l
+.UR http://www.usenix.org\:/publications\:/library\:/proceedings\:/usenix2000\:/freenix\:/metzprotocol.html
+.UE .
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

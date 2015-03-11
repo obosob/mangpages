@@ -1,0 +1,262 @@
+.TH GENERIC 5 
+.ad
+.fi
+.SH NAME
+generic
+\-
+Postfix generic table format
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap /etc/postfix/generic\fR
+
+\fBpostmap -q "\fIstring\fB" /etc/postfix/generic\fR
+
+\fBpostmap -q - /etc/postfix/generic <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da optionizzle \fBgeneric\fR(5) table specifies a address
+mappin dat applies when mail is delivered. Y'all KNOW dat shit, muthafucka! This is the
+opposite of \fBcanonical\fR(5) mapping, which applies when
+mail is received.
+
+Typically, one would use tha \fBgeneric\fR(5) table on a
+system dat aint gots a valid Internizzle domain name and
+that uses suttin' like \fIlocaldomain.local\fR instead.
+Da \fBgeneric\fR(5) table is then used by tha \fBsmtp\fR(8)
+client ta transform local mail addresses tha fuck into valid Internet
+mail addresses when mail has ta be busted across tha Internet.
+See tha EXAMPLE section all up in tha end of dis document.
+
+Da \fBgeneric\fR(5) mappin affects both message header
+addresses (i.e. addresses dat step tha fuck up inside lyrics) and
+message envelope addresses (for example, tha addresses that
+are used up in SMTP protocol commands).
+
+Normally, tha \fBgeneric\fR(5) table is specified as a
+text file dat serves as input ta tha \fBpostmap\fR(1)
+command. Y'all KNOW dat shit, muthafucka!  Da result, a indexed file up in \fBdbm\fR or
+\fBdb\fR format, is used fo' fast searchin by tha mail
+system. Execute tha command "\fBpostmap /etc/postfix/generic\fR"
+to rebuild a indexed file afta changin tha corresponding
+text file.
+
+When tha table is provided via other means like fuckin NIS, LDAP
+or SQL, tha same lookups is done as fo' ordinary indexed files.
+
+Alternatively, tha table can be provided as a regular-expression
+map where patterns is given as regular expressions, or lookups
+can be pimped up ta TCP-based server n' shit. In dem case, tha lookups
+are done up in a slightly different way as busted lyrics bout below under
+"REGULAR EXPRESSION TABLES" or "TCP-BASED TABLES".
+.SH "CASE FOLDING"
+.na
+.nf
+.ad
+.fi
+Da search strang is folded ta lowercase before database
+lookup fo' realz. Az of Postfix 2.3, tha search strang aint case
+folded wit database types like fuckin regexp: or pcre: whose
+lookup fieldz can match both upper n' lower case.
+.SH "TABLE FORMAT"
+.na
+.nf
+.ad
+.fi
+Da input format fo' tha \fBpostmap\fR(1) command be as bigs up:
+.IP "\fIpattern result\fR"
+When \fIpattern\fR matches a mail address, replace it by the
+correspondin \fIresult\fR.
+.IP "blank lines n' comments"
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP "multi-line text"
+A logical line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.SH "TABLE SEARCH ORDER"
+.na
+.nf
+.ad
+.fi
+With lookups from indexed filez like fuckin DB or DBM, or from networked
+tablez like fuckin NIS, LDAP or SQL, patterns is tried up in tha order as
+listed below:
+.IP "\fIuser\fR@\fIdomain address\fR"
+Replace \fIuser\fR@\fIdomain\fR by \fIaddress\fR. This form
+has tha highest precedence.
+.IP "\fIuser address\fR"
+Replace \fIuser\fR@\fIsite\fR by \fIaddress\fR when \fIsite\fR is
+equal ta $\fBmyorigin\fR, when \fIsite\fR is listed in
+$\fBmydestination\fR, or when it is listed up in $\fBinet_interfaces\fR
+or $\fBproxy_interfaces\fR.
+.IP "@\fIdomain address\fR"
+Replace other addresses up in \fIdomain\fR by \fIaddress\fR.
+This form has tha lowest precedence.
+.SH "RESULT ADDRESS REWRITING"
+.na
+.nf
+.ad
+.fi
+Da lookup result is subject ta address rewriting:
+.IP \(bu
+When tha result has tha form @\fIotherdomain\fR, the
+result becomes tha same ol' dirty \fIuser\fR up in \fIotherdomain\fR.
+.IP \(bu
+When "\fBappend_at_myorigin=yes\fR", append "\fB@$myorigin\fR"
+to addresses without "@domain".
+.IP \(bu
+When "\fBappend_dot_mydomain=yes\fR", append
+"\fB.$mydomain\fR" ta addresses without ".domain".
+.SH "ADDRESS EXTENSION"
+.na
+.nf
+.fi
+.ad
+When a mail address localpart gotz nuff tha optionizzle recipient delimiter
+(e.g., \fIuser+foo\fR@\fIdomain\fR), tha lookup order becomes:
+\fIuser+foo\fR@\fIdomain\fR, \fIuser\fR@\fIdomain\fR, \fIuser+foo\fR,
+\fIuser\fR, n' @\fIdomain\fR.
+
+Da \fBpropagate_unmatched_extensions\fR parameta controls whether
+an unmatched address extension (\fI+foo\fR) is propagated ta the
+result of table lookup.
+.SH "REGULAR EXPRESSION TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when tha table
+is given up in tha form of regular expressions. For a thugged-out description of
+regular expression lookup table syntax, peep \fBregexp_table\fR(5)
+or \fBpcre_table\fR(5).
+
+Each pattern be a regular expression dat be applied ta tha entire
+address bein looked up. Thus, \fIuser@domain\fR mail addresses is not
+broken up tha fuck into they \fIuser\fR n' \fI@domain\fR constituent parts,
+nor is \fIuser+foo\fR fucked up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Patterns is applied up in tha order as specified up in tha table, until a
+pattern is found dat matches tha search string.
+
+Results is tha same as wit indexed file lookups, with
+the additionizzle feature dat parenthesized substrings from the
+pattern can be interpolated as \fB$1\fR, \fB$2\fR n' so on.
+.SH "TCP-BASED TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when lookups
+are pimped up ta a TCP-based server n' shit. For a thugged-out description of tha TCP
+client/server lookup protocol, peep \fBtcp_table\fR(5).
+This feature aint available up ta n' includin Postfix version 2.4.
+
+Each lookup operation uses tha entire address once.  Thus,
+\fIuser@domain\fR mail addresses is not fucked up tha fuck into their
+\fIuser\fR n' \fI@domain\fR constituent parts, nor is
+\fIuser+foo\fR fucked up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Results is tha same as wit indexed file lookups.
+.SH "EXAMPLE"
+.na
+.nf
+.ad
+.fi
+Da followin shows a generic mappin wit a indexed file.
+When mail is busted ta a remote host via SMTP, dis replaces
+\fIhis@localdomain.local\fR by his ISP mail address, replaces
+\fIher@localdomain.local\fR by her ISP mail address, and
+replaces other local addresses by his ISP account, with
+an address extension of \fI+local\fR (this example assumes
+that tha ISP supports "+" steez address extensions).
+
+.na
+.nf
+/etc/postfix/main.cf:
+    smtp_generic_maps = hash:/etc/postfix/generic
+
+/etc/postfix/generic:
+    his@localdomain.local   hisaccount@hisisp.example
+    her@localdomain.local   heraccount@herisp.example
+    @localdomain.local      hisaccount+local@hisisp.example
+
+.ad
+.fi
+Execute tha command "\fBpostmap /etc/postfix/generic\fR"
+whenever tha table is chizzled. Y'all KNOW dat shit, muthafucka!  Instead of \fBhash\fR, some
+systems use \fBdbm\fR database files. To smoke up what
+tablez yo' system supports use tha command "\fBpostconf
+-m\fR".
+.SH BUGS
+.ad
+.fi
+Da table format do not KNOW quotin conventions.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da followin \fBmain.cf\fR parametas is especially relevant.
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP \fBsmtp_generic_maps\fR
+Address mappin lookup table fo' envelope n' header sender
+and recipient addresses while deliverin mail via SMTP.
+.IP \fBpropagate_unmatched_extensions\fR
+A list of address rewritin or forwardin mechanizzlez dat propagate
+an address extension from tha original gangsta address ta tha result.
+Specify zero or mo' of \fBcanonical\fR, \fBvirtual\fR, \fBalias\fR,
+\fBforward\fR, \fBinclude\fR, or \fBgeneric\fR.
+.PP
+Other parametaz of interest:
+.IP \fBinet_interfaces\fR
+Da network intercourse addresses dat dis system receives mail on.
+Yo ass need ta stop n' start Postfix when dis parameta chizzles.
+.IP \fBproxy_interfaces\fR
+Other intercourses dat dis machine receives mail on by way of a
+proxy agent or network address translator.
+.IP \fBmydestination\fR
+List of domains dat dis mail system considaz local.
+.IP \fBmyorigin\fR
+Da domain dat be appended ta locally-posted mail.
+.IP \fBballer_request_special\fR
+Give special treatment ta \fBballer-\fIxxx\fR n' \fIxxx\fB-request\fR
+addresses.
+.SH "SEE ALSO"
+.na
+.nf
+postmap(1), Postfix lookup table manager
+postconf(5), configuration parameters
+smtp(8), Postfix SMTP client
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+ADDRESS_REWRITING_README, address rewritin guide
+DATABASE_README, Postfix lookup table overview
+STANDARD_CONFIGURATION_README, configuration examples
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+A genericstable feature appears up in tha Sendmail MTA.
+
+This feature be available up in Postfix 2.2 n' later.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

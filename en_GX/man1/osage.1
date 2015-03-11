@@ -1,0 +1,443 @@
+.TH OSAGE 1 "27 May 2009"
+.SH NAME
+osage \- filta fo' drawin clustered graphs
+.SH SYNOPSIS
+\fBosage\fR
+[\fB\-\fR(\fBG\fR|\fBN\fR|\fBE\fR)\fIname=value\fR]
+[\fB\-T\fIlang\fR]
+[\fB\-l\fIlibfile\fR]
+[\fB\-o\fIoutfile\fR]
+[\fB\-O\fR]
+[\fB\-P\fR]
+[\fB\-v\fR]
+[\fB\-V\fR]
+[files]
+.SH DESCRIPTION
+.I osage
+draws clustered graphs fo' realz. As input, it takes any graph up in the
+.I dot
+format. Well shiiiit, it draws tha graph recursively fo' realz. At each level, there will
+be a cold-ass lil collection of nodes n' a cold-ass lil collection of clusta subgraphs.
+Da internalz of each clusta subgraph is laid out, then tha 
+clusta subgraphs n' nodes all up in tha current level is positioned
+relatizzle ta each other, treatin each clusta subgraph as a node. 
+.P
+At each level, tha nodes n' clusta subgraphs is viewed as rectangles
+to be packed together n' shiznit fo' realz. At present, edges is ignored durin packing.
+Packin is done rockin tha standard packin functions. In particular,
+the graph attributes \fBpack\fP n' \fBpackmode\fP control tha layout.
+Each graph n' clusta can specify its own joints fo' these attributes.
+Remember also dat a cold-ass lil clusta inherits its attribute joints from
+its parent graph.
+.P
+Afta all nodes n' clusters, edges is routed based on tha value of
+the \fBsplines\fP attribute.
+.SH OUTPUT FORMATS
+Osage uses a extensible plugin mechanizzle fo' its output renderers,
+so ta peep what tha fuck output formats yo' installation of osage supports
+you can use ``osage \-Txxx'' (where xxx be a unlikely format)
+and check tha warnin message.
+Also, Da plugin mechanizzle supports multiple implementations
+of tha output formats.
+To peep what tha fuck variants is available, use, fo' example: ``osage \-Tpng:''
+and ta force a particular variant, use, fo' example: ``osage \-Tpng:gd''
+.P
+Traditionally, osage supports tha following:
+\fB\-Tps\fP (PostScript),
+\fB\-Tsvg\fP \fB\-Tsvgz\fP (Structured Vector Graphics),
+\fB\-Tfig\fP (XFIG graphics),
+\fB\-Tmif\fP (FrameMaker graphics),
+\fB\-Thpgl\fP (HP pen plotters), n' \fB\-Tpcl\fP (Laserjet printers),
+\fB\-Tpng\fP \fB\-Tgif\fP (bitmap graphics),
+\fB\-Tdia\fP (GTK+ based diagrams),
+\fB\-Timap\fP (imagemap filez fo' httpd servers fo' each node or edge
+that has a non\(hynull "href" attribute.),
+\fB\-Tcmapx\fP (client\(hyside imagemap fo' use up in html n' xhtml).
+Additionizzle less common or mo' special\(hypurpose output formats
+can be found at http://www.graphviz.org/cvs/doc/info/output.html.)
+.P
+Alternatizzle plugins providin support fo' a given output format
+can be found from tha error message resultin from appendin a ':' ta tha format. e.g. \fB-Tpng:\fP
+Da first plugin listed be always tha default.
+.SH GRAPH FILE LANGUAGE
+Here be a synopsiz of tha graph file language, normally rockin tha extension \fB.gv\fR, fo' graphs:
+.PP
+[\fBstrict\fR] (\fBgraph\fR|\fBdigraph\fR) \fIname\fP { \fIstatement\(hylist\fP }\fR
+.br 
+Is tha top level graph. If tha graph is \fBstrict\fR then multiple edges are
+not allowed between tha same pairz of nodes.
+If it aint nuthin but a gangbangin' finger-lickin' pimped up graph, indicated by \fBdigraph\fR,
+then tha \fIedgeop\fR must be "\->". If it be a unpimped up \fBgraph\fR
+then tha \fIedgeop\fR must be "\-\-".
+Statements may be:
+.PP
+\fIname\fB=\fIval\fB;\fR
+.br
+\fBnode [\fIname\fB=\fIval\fB];\fR
+.br
+\fBedge [\fIname\fB=\fIval\fB];\fR
+.br
+Set default graph, node, or edge attribute \fIname\fP ta \fIval\fP.
+Any subgraph, node, or edge appearin afta dis inherits tha new
+default attributes.
+.PP
+\fBn0 [\fIname0=val0,name1=val1,...\fB];\fR
+Creates node \fBn0\fP (if it do not already exist)
+and sets its attributes accordin ta tha optionizzle list. 
+.PP
+\fBn0 \fIedgeop\fR n1 \fIedgeop\fR \fI...\fB \fIedgeop\fR nn [\fIname0=val0,name1=val1,...\fB];\fR
+.br
+Creates edges between nodes \fBn0\fP, \fBn1\fP, ..., \fBnn\fP n' sets
+their attributes accordin ta tha optionizzle list.
+Creates nodes as necessary.
+.PP
+[\fBsubgraph \fIname\fB] { \fIstatement\(hylist \fB}\fR
+.br
+Creates a subgraph.  Subgraphs may be used up in place
+of \fBn0\fP, ..., \fBnn\fP up in tha above statements ta create edges.
+[\fBsubgraph \fIname\fR] is optional;
+if missing, tha subgraph be assigned a internal name. 
+.PP
+Comments may be /*C\(hylike*/ or //C++\(hylike.
+
+.PP
+Attribute names n' joints is ordinary (C\(hystyle) strings.
+Da followin sections describe attributes dat control graph layout.
+
+.SH "GRAPH ATTRIBUTES"
+.PP
+\fBsize="\fIx,y\fP"\fR sets boundin box of drawin up in inches.
+.PP
+\fBpage="\fIx,y\fP"\fR sets tha PostScript pagination unit.
+.PP
+\fBratio=\fIf\fR sets tha aspect ratio ta \fIf\fP which may be
+a floatin point number, or one of tha keywordz \fBfill\fP,
+\fBcompress\fP, or \fBauto\fP.
+.PP
+\fBpagedir=\fR[TBLR][TBLR] sets tha major n' minor order of pagination.
+.PP
+\fBrotate=90\fR sets landscape mode. 
+(\fBorientation=land\fR is backward compatible but obsolete.)
+.PP
+\fBcenter=\fIn\fR a non\(hyzero value centas tha drawin on tha page.
+.PP
+\fBlayers="\fIid:id:id:id\fR" be a sequence of layer identifiers for
+overlay diagrams.  Da PostScript array variable \fIlayercolorseq\fR
+sets tha assignment of flavas ta layers. Da least index is 1 n' 
+each element must be a 3\(hyelement array ta be interpreted as a cold-ass lil color coordinate.
+.PP
+\fBcolor=\fIcolorvalue\fR sets foreground color (\fBbgcolor\fP fo' background).
+.PP
+\fBhref=\fI"url"\fR tha default url fo' image map files; up in PostScript files,
+the base URL fo' all relatizzle URLs, as recognized by Acrobat Distiller
+3.0 n' up.
+.PP
+\fBURL=\fI"url"\fR ("URL" be a synonym fo' "href".)
+.PP
+\fBstylesheet=\fI"file.css"\fR includes a reference ta a stylesheet
+in \-Tsvg n' \-Tsvgz outputs, n' you can put dat on yo' toast.  Ignored by other formats.
+.PP
+\fBsplines\fR. If set ta \fItrue\fR, edges are
+drawn as splines.
+If set ta \fIpolyline\fR, edges is 
+drawn as polylines.
+If set ta \fIortho\fR, edges is 
+drawn as orthogonal polylines.
+In all of these cases, tha nodes may not overlap.
+If \fBsplines=\fIfalse\fR or \fBsplines=\fIline\fR, edges is 
+drawn as line segments.
+Da default is \fIfalse\fR.
+
+.SH "NODE ATTRIBUTES"
+.PP
+\fBheight=\fId\fR or \fBwidth=\fId\fR sets minimum height or width.
+Addin \fBfixedsize=true\fP forces these ta be tha actual size
+(text labels is ignored).
+.PP
+\fBshape=record polygon epsf \fIbuiltin_polygon\fR
+.br
+\fIbuiltin_polygon\fR is one of: \fBplaintext ellipse oval circle egg 
+triangle box diamond trapezium parallelogram doggy den hexagon octagon
+note tab box3d component.\fR
+(Polygons is defined or modified by tha followin node attributes:
+\fBregular\fR, \fBperipheries\fR, \fBsides\fR, \fBorientation\fR,
+\fBdistortion\fR n' \fBskew\fR.)  \fBepsf\fR uses tha node's
+\fBshapefile\fR attribute as tha path name of a external
+EPSF file ta be automatically loaded fo' tha node shape.
+.PP
+\fBlabel=\fItext\fR where \fItext\fP may include escaped newlines
+\\\|n, \\\|l, or \\\|r fo' center, left, n' right justified lines.
+Da strang '\\N' value is ghon be replaced by tha node name.
+Da strang '\\G' value is ghon be replaced by tha graph name.
+Record labels may contain recursive box lists delimited by { | }.
+Port identifiers up in labels is set off by angle brackets < >.
+In tha graph file, use colon (such as, \fBnode0:port28\fR).
+.PP
+\fBfontsize=\fIn\fR sets tha label type size ta \fIn\fP points.
+.PP
+\fBfontname=\fIname\fR sets tha label font crew name.
+.PP
+\fBcolor=\fIcolorvalue\fR sets tha outline color, n' tha default fill color
+if style=filled n' \fBfillcolor\fR aint specified.
+.PP
+\fBfillcolor=\fIcolorvalue\fR sets tha fill color
+when style=filled. Y'all KNOW dat shit, muthafucka!  If not specified, tha fillcolor when style=filled defaults
+to be tha same as tha outline color.
+.PP
+\fBfontcolor=\fIcolorvalue\fR sets tha label text color.
+.PP
+A \fIcolorvalue\fP may be "\fIh,s,v\fB"\fR (hue, saturation, brightness)
+floatin point numbers between 0 n' 1, or a X11 color name such as
+\fBwhite black red chronic blue yellow magenta cyan\fR or \fBburlywood\fR,
+or a "\fI#rrggbb" (red, green, blue, 2 hex charactas each) value.
+.PP
+\fBstyle=filled solid dashed dotted bold invis\fP or any Postscript code.
+.PP
+\fBlayer=\fIid\fR or \fIid:id\fR or "all" sets tha nodez actizzle layers.
+Da empty strang means no layers (invisible).
+.PP
+Da followin attributes apply only ta polygon shape nodes:
+.PP
+\fBregular=\fIn\fR if \fIn\fR is non\(hyzero then tha polygon is made 
+regular, i.e. symmetric bout tha x n' y axis, otherwise the
+polygon takes on tha aspect ratio of tha label. 
+\fIbuiltin_polygons\fR dat is not already regular is made regular
+by dis attribute.
+\fIbuiltin_polygons\fR dat is already regular is not affected (i.e.
+they cannot be made asymmetric).
+.PP
+\fBperipheries=\fIn\fR sets tha number of periphery lines drawn around
+the polygon. I aint talkin' bout chicken n' gravy biatch.  This value supersedes tha number of periphery lines
+of \fIbuiltin_polygons\fR.
+.PP
+\fBsides=\fIn\fR sets tha number of sides ta tha polygon. I aint talkin' bout chicken n' gravy biatch. \fIn\fR<3
+results up in a ellipse.
+This attribute is ignored by \fIbuiltin_polygons\fR.
+.PP
+\fBorientation=\fIf\fR sets tha orientation of tha straight-up original gangsta apex of the
+polygon counterclockwise from tha vertical, up in degrees.
+\fIf\fR may be a gangbangin' floatin point number.
+Da orientation of labels aint affected by dis attribute.
+This attribute be added ta tha initial orientation of \fIbuiltin_polygons.\fR
+.PP
+\fBdistortion=\fIf\fR sets tha amount of broadenin of tha top and
+narrowin of tha bottom of tha polygon (relatizzle ta its orientation). 
+Floatin point joints between \-1 n' +1 is suggested.
+This attribute is ignored by \fIbuiltin_polygons\fR.
+.PP                                                            
+\fBskew=\fIf\fR sets tha amount of right\(hydisplacement of tha top and
+left\(hydisplacement of tha bottom of tha polygon (relatizzle ta its
+orientation).
+Floatin point joints between \-1 n' +1 is suggested.
+This attribute is ignored by \fIbuiltin_polygons\fR.
+.PP
+\fBhref=\fI"url"\fR sets tha url fo' tha node up in imagemap, PostScript n' SVG
+files.
+Da substrings '\\N' n' '\\G' is substituted up in tha same manner as
+for tha node label attribute.
+Additionally tha substrin '\\L' is substituted wit tha node label string.
+.PP
+\fBURL=\fI"url"\fR ("URL" be a synonym fo' "href".)
+.PP
+\fBtarget=\fI"target"\fR be a target strang fo' client\(hyside imagemaps
+and SVG, effectizzle when nodes gotz a URL.
+Da target strang is used ta determine which window of tha browser is used
+for tha URL.  Settin it ta "_graphviz" will open a freshly smoked up window if it don't
+already exist, or reuse it if it do.
+If tha target strang is empty, tha default,
+then no target attribute is included up in tha output.
+Da substrings '\\N' n' '\\G' is substituted up in tha same manner as
+for tha node label attribute.
+Additionally tha substrin '\\L' is substituted wit tha node label string.
+.PP
+\fBtooltip=\fI"tooltip"\fR be a tooltip strang fo' client\(hyside imagemaps
+and SVG, effectizzle when nodes gotz a URL.  Da tooltip strang defaults ta be the
+same as tha label strin yo, but dis attribute permits nodes without
+labels ta still have tooltips thus permittin denser graphs.
+Da substrings '\\N' n' '\\G' is substituted up in tha same manner as
+for tha node label attribute.
+Additionally tha substrin '\\L' is substituted wit tha node label string.
+
+
+.SH "EDGE ATTRIBUTES"
+.PP
+\fBlabel=\fItext\fR where \fItext\fR may include escaped newlines
+\\\|n, \\\|l, or \\\|r fo' centered, left, or right justified lines.
+If tha substrin '\\T' is found up in a label it is ghon be replaced by tha tail_node name.
+If tha substrin '\\H' is found up in a label it is ghon be replaced by tha head_node name.
+If tha substrin '\\E' value is found up in a label it is ghon be replaced by: tail_node_name\->head_node_name
+If tha substrin '\\G' is found up in a label it is ghon be replaced by tha graph name.
+or by: tail_node_name\-\-head_node_name fo' unpimped up graphs.
+.PP
+\fBfontsize=\fIn\fR sets tha label type size ta \fIn\fP points.
+.PP
+\fBfontname=\fIname\fR sets tha label font crew name.
+.PP
+\fBfontcolor=\fIcolorvalue\fR sets tha label text color.
+.PP
+\fBstyle=solid dashed dotted bold invis\fP
+.PP
+\fBcolor=\fIcolorvalue\fR sets tha line color fo' edges.
+.PP
+\fBcolor=\fIcolorvaluelist\fR a ':' separated list of \fIcolorvalue\fR creates
+parallel edges, one edge fo' each color.
+.PP
+\fBdir=forward back both none\fP controls arrow direction.
+.PP
+\fBtailclip,headclip=false\fP disablez endpoint shape clipping.
+.PP
+\fBhref=\fI"url"\fR sets tha url fo' tha node up in imagemap, PostScript n' SVG
+files.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBURL=\fI"url"\fR ("URL" be a synonym fo' "href".)
+.PP
+\fBtarget=\fI"target"\fR be a target strang fo' client\(hyside imagemaps
+and SVG, effectizzle when edges gotz a URL.
+If tha target strang is empty, tha default,
+then no target attribute is included up in tha output.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBtooltip=\fI"tooltip"\fR be a tooltip strang fo' client\(hyside imagemaps
+effectizzle when edges gotz a URL.  Da tooltip strang defaults ta be the
+same as tha edge label string. 
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBarrowhead,arrowtail=none, normal, inv, dot, odot, invdot, invodot,
+tee, empty, invempty, open, halfopen, diamond, odiamond, box, obox, crow\fP.
+.PP
+\fBarrowsize\fP (norm_length=10,norm_width=5,
+inv_length=6,inv_width=7,dot_radius=2) 
+.PP
+\fBheadlabel,taillabel=string\fP fo' port labels.
+\fBlabelfontcolor\fP,\fBlabelfontname\fP,\fBlabelfontsize\fP
+for head n' tail labels.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBheadhref=\fI"url"\fR sets tha url fo' tha head port up in imagemap, PostScript n' SVG files.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBheadURL=\fI"url"\fR ("headURL" be a synonym fo' "headhref".)
+.PP
+\fBheadtarget=\fI"headtarget"\fR be a target strang fo' client\(hyside imagemaps
+and SVG, effectizzle when edge headz gotz a URL.
+Da headtarget strang is used ta determine which window of tha browser is used
+for tha URL.  If tha headtarget strang is empty, tha default,
+then headtarget defaults ta tha same value as target fo' tha edge.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBheadtooltip=\fI"tooltip"\fR be a tooltip strang fo' client\(hyside imagemaps
+effectizzle when head ports gotz a URL.  Da tooltip strang defaults ta be the
+same as tha headlabel string. 
+Da substrings '\\T', '\\H', n' '\\E' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBtailhref=\fI"url"\fR sets tha url fo' tha tail port up in imagemap, PostScript n' SVG files.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBtailURL=\fI"url"\fR ("tailURL" be a synonym fo' "tailhref".)
+.PP
+\fBtailtarget=\fI"tailtarget"\fR be a target strang fo' client\(hyside imagemaps
+and SVG, effectizzle when edge tails gotz a URL.
+Da tailtarget strang is used ta determine which window of tha browser is used
+for tha URL.  If tha tailtarget strang is empty, tha default,
+then tailtarget defaults ta tha same value as target fo' tha edge.
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBtailtooltip=\fI"tooltip"\fR be a tooltip strang fo' client\(hyside imagemaps
+effectizzle when tail ports gotz a URL.  Da tooltip strang defaults ta be the
+same as tha taillabel string. 
+Da substrings '\\T', '\\H', '\\E' n' '\\G' is substituted up in tha same manner as
+for tha edge label attribute.
+Additionally tha substrin '\\L' is substituted wit tha edge label string.
+.PP
+\fBlabeldistance\fP n' \fPport_label_distance\fP set distance; also
+\fBlabelangle\fP (in degrees CCW)
+.PP
+\fBdecorate\fP draws line from edge ta label.
+.PP
+\fBsamehead,sametail\fP aim edges havin tha same value ta the
+same port, rockin tha average landin point.
+.PP
+\fBlayer=\fIid\fR or \fIid:id\fR or "all" sets tha edgez actizzle layers.
+Da empty strang means no layers (invisible).
+
+.PP
+\fB(neato\(hyspecific attributes)\fR
+.br
+\fBw=\fIf\fR sets tha weight (sprin constant) of a edge
+to tha given floatin point value.  Da default is 1.0;
+greata joints make tha edge tend mo' toward its optimal length.
+.PP
+\fBlen=\fIf\fR sets tha optimal length of a edge.
+Da default is 1.0.
+.SH "COMMAND LINE OPTIONS"
+\fB\-G\fP sets a thugged-out default graph attribute.
+.br
+\fB\-N\fP sets a thugged-out default node attribute.
+.br
+\fB\-E\fP sets a thugged-out default edge attribute.
+Example: \fB\-Gsize="7,8" \-Nshape=box \-Efontsize=8\fR
+.PP
+\fB\-l\fIfile\fR loadz custom PostScript library files.
+Usually these define custom shapes or styles.
+If \fB\-l\fP is given by itself, tha standard library is omitted.
+.PP
+\fB\-T\fIlang\fR sets tha output language as busted lyrics bout above.
+.PP
+\fB\-O\fP automatically generate output filenames based on tha input filename n' tha \-T format.
+.PP
+\fB\-v\fP (verbose) prints various shiznit useful fo' debugging.
+.PP
+\fB\-V\fP (version) prints version shiznit n' exits.
+.PP
+\fB\-?\fP prints tha usage n' exits.
+.SH "EXAMPLES"
+.nf
+digraph test123 {
+        pack=8
+        subgraph cluster0 {
+          packmode=array
+          x y x0 y0 x1
+          subgraph cluster1 {
+            m n
+          }
+        }
+        b [shape=box];
+        c [label="hello\enworld",color=blue,fontsize=24,
+             fontname="Palatino\-Italic",fontcolor=red,style=filled];
+        a \-> z
+        x \-> z
+        a \-> b \-> c;
+        a \-> {x y};
+        edge [style=dashed,color=red];
+        b \-> x;
+}
+.fi
+.SH AUTHORS
+Emden R. Gansner <erg@research.att.com>
+.SH "SEE ALSO"
+This playa page gotz nuff only a lil' small-ass amount of tha shiznit related
+to tha Graphviz layout programs. Da most complete shiznit can be
+found at http://www.graphviz.org/Documentation.php, especially up in the
+on\(hyline reference pages. Most of these documents is also available up in the
+\fIdoc\fP n' \fIdoc/info\fP subtrees up in tha source n' binary distributions.
+.PP
+dot(1)

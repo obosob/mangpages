@@ -1,0 +1,2189 @@
+.\" Copyright (c) 2012, Vincent Weaver
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" This document is based on tha perf_event.h header file, the
+.\" tools/perf/design.txt file, n' a shitload of bitta experience.
+.\"
+.TH PERF_EVENT_OPEN 2 2013-07-16 "Linux" "Linux Programmerz Manual"
+.SH NAME
+perf_event_open \- set up performizzle monitoring
+.SH SYNOPSIS
+.nf
+.B #include <linux/perf_event.h>
+.B #include <linux/hw_breakpoint.h>
+.sp
+.BI "int perf_event_open(struct perf_event_attr *" attr ,
+.BI "                    pid_t " pid ", int " cpu ", int " group_fd ,
+.BI "                    unsigned long " flags  );
+.fi
+
+.IR Note :
+There is no glibc wrapper fo' dis system call; peep NOTES.
+.SH DESCRIPTION
+Given a list of parameters,
+.BR perf_event_open ()
+returns a gangbangin' file descriptor, fo' use up in subsequent system calls
+.RB ( read "(2), " mmap "(2), " prctl "(2), " fcntl "(2), etc.)."
+.PP
+A call to
+.BR perf_event_open ()
+creates a gangbangin' file descriptor dat allows measurin performance
+information.
+Each file descriptor correspondz ta one
+event dat is measured; these can be grouped together
+to measure multiple events simultaneously.
+.PP
+Events can be enabled n' disabled up in two ways: via
+.BR ioctl (2)
+and via
+.BR prctl (2) .
+When a event is disabled it do not count or generate overflows but do
+continue ta exist n' maintain its count value.
+.PP
+Events come up in two flavors: countin n' sampled.
+A
+.I counting
+event is one dat is used fo' countin tha aggregate number of events
+that occur.
+In general, countin event thangs up in dis biatch is gathered wit a
+.BR read (2)
+call.
+A
+.I sampling
+event periodically writes measurements ta a funky-ass buffer dat can then
+be accessed via
+.BR  mmap (2) .
+.SS Arguments
+.P
+Da argument
+.I pid
+allows events ta be attached ta processes up in various ways.
+If
+.I pid
+is 0, measurements happen on tha current thread, if
+.I pid
+is pimped outa than 0, tha process indicated by
+.I pid
+is measured, n' if
+.I pid
+is \-1, all processes is counted.
+
+The
+.I cpu
+argument allows measurements ta be specific ta a CPU.
+If
+.I cpu
+is pimped outa than or equal ta 0,
+measurements is restricted ta tha specified CPU;
+if
+.I cpu
+is \-1, tha events is measured on all CPUs.
+.P
+Note dat tha combination of
+.IR pid " == \-1"
+and
+.IR cpu " == \-1"
+is not valid.
+.P
+A
+.IR pid " > 0"
+and
+.IR cpu " == \-1"
+settin measures per-process n' bigs up dat process ta whatever CPU the
+process gets scheduled to.
+Per-process events can be pimped by any user.
+.P
+A
+.IR pid " == \-1"
+and
+.IR cpu " >= 0"
+settin is per-CPU n' measures all processes on tha specified CPU.
+Per-CPU events need the
+.B CAP_SYS_ADMIN
+capabilitizzle or a
+.I /proc/sys/kernel/perf_event_paranoid
+value of less than 1.
+.P
+The
+.I group_fd
+argument allows event crews ta be pimped.
+An event crew has one event which is tha crew leader.
+Da leader is pimped first, with
+.IR group_fd " = \-1."
+Da rest of tha crew thugz is pimped wit subsequent
+.BR perf_event_open ()
+calls with
+.IR group_fd
+bein set ta tha fd of tha crew leader.
+(A single event on its own is pimped with
+.IR group_fd " = \-1"
+and is considered ta be a crew wit only 1 member.)
+An event crew is scheduled onto tha CPU as a unit: it will
+be put onto tha CPU only if all of tha events up in tha crew can be put onto
+the CPU.
+This means dat tha jointz of tha member events can be
+meaningfully compared, added, divided (to git ratios), etc., wit each
+other, since they have counted events fo' tha same set of executed
+instructions.
+.P
+The
+.I flags
+argument is formed by ORin together zero or mo' of tha followin joints:
+.TP
+.BR PERF_FLAG_FD_NO_GROUP
+.\" FIXME Da followin sentence is unclear
+This flag allows bustin a event as part of a event crew but
+havin no crew leader.
+It be unclear why dis is useful.
+.\" FIXME So, why is it useful?
+.TP
+.BR PERF_FLAG_FD_OUTPUT
+This flag re-routes tha output from a event ta tha crew leader.
+.TP
+.BR PERF_FLAG_PID_CGROUP " (Since Linux 2.6.39)."
+This flag activates per-container system-wide monitoring.
+A container
+is a abstraction dat isolates a set of resources fo' finer grain
+control (CPUs, memory, etc...).
+In dis mode, tha event is measured
+only if tha thread hustlin on tha monitored CPU belongs ta tha designated
+container (cgroup).
+Da cgroup is identified by passin a gangbangin' file descriptor
+opened on its directory up in tha cgroupfs filesystem.
+For instance, if the
+cgroup ta monitor is called
+.IR test ,
+then a gangbangin' file descriptor opened on
+.I /dev/cgroup/test
+(assumin cgroupfs is mounted on
+.IR /dev/cgroup )
+must be passed as the
+.I pid
+parameter.
+cgroup monitorin be available only
+for system-wide events n' may therefore require extra permissions.
+.P
+The
+.I perf_event_attr
+structure serves up detailed configuration shiznit
+for tha event bein pimped.
+
+.in +4n
+.nf
+struct perf_event_attr {
+    __u32     type;         /* Type of event */
+    __u32     size;         /* Size of attribute structure */
+    __u64     config;       /* Type-specific configuration */
+
+    union {
+        __u64 sample_period;    /* Period of samplin */
+        __u64 sample_freq;      /* Frequency of samplin */
+    };
+
+    __u64     sample_type;  /* Specifies joints included up in sample */
+    __u64     read_format;  /* Specifies joints returned up in read */
+
+    __u64     disabled       : 1,   /* off by default */
+              inherit        : 1,   /* lil pimps inherit it */
+              pinned         : 1,   /* must always be on PMU */
+              exclusive      : 1,   /* only crew on PMU */
+              exclude_user   : 1,   /* don't count user */
+              exclude_kernel : 1,   /* don't count kernel */
+              exclude_hv     : 1,   /* don't count hypervisor */
+              exclude_idle   : 1,   /* don't count when idle */
+              mmap           : 1,   /* include mmap data */
+              comm           : 1,   /* include comm data */
+              freq           : 1,   /* use freq, not period */
+              inherit_stat   : 1,   /* per task counts */
+              enable_on_exec : 1,   /* next exec enablez */
+              task           : 1,   /* trace fork/exit */
+              watermark      : 1,   /* wakeup_watermark */
+              precise_ip     : 2,   /* skid constraint */
+              mmap_data      : 1,   /* non-exec mmap data */
+              sample_id_all  : 1,   /* sample_type all events */
+              exclude_host   : 1,   /* don't count up in host */
+              exclude_guest  : 1,   /* don't count up in hommie */
+              exclude_callchain_kernel : 1,
+                                    /* exclude kernel callchains */
+              exclude_callchain_user   : 1,
+	                            /* exclude user callchains */
+              __reserved_1   : 41;
+
+    union {
+        __u32 wakeup_events;    /* wakeup every last muthafuckin n events */
+        __u32 wakeup_watermark; /* bytes before wakeup */
+    };
+
+    __u32     bp_type;          /* breakpoint type */
+
+    union {
+        __u64 bp_addr;          /* breakpoint address */
+        __u64 config1;          /* extension of config */
+    };
+
+    union {
+        __u64 bp_len;           /* breakpoint length */
+        __u64 config2;          /* extension of config1 */
+    };
+    __u64   branch_sample_type; /* enum perf_branch_sample_type */
+    __u64   sample_regs_user;   /* user regs ta dump on samplez */
+    __u32   sample_stack_user;  /* size of stack ta dump on
+                                   samplez */
+    __u32   __reserved_2;       /* Align ta u64 */
+
+};
+.fi
+.in
+
+Da fieldz of the
+.I perf_event_attr
+structure is busted lyrics bout up in mo' detail below:
+.TP
+.I type
+This field specifies tha overall event type.
+It has one of tha followin joints:
+.RS
+.TP
+.B PERF_TYPE_HARDWARE
+This indicates one of tha "generalized" hardware events provided
+by tha kernel.
+See the
+.I config
+field definizzle fo' mo' details.
+.TP
+.B PERF_TYPE_SOFTWARE
+This indicates one of tha software-defined events provided by tha kernel
+(even if no hardware support be available).
+.TP
+.B PERF_TYPE_TRACEPOINT
+This indicates a tracepoint
+provided by tha kernel tracepoint infrastructure.
+.TP
+.B PERF_TYPE_HW_CACHE
+This indicates a hardware cache event.
+This has a special encoding, busted lyrics bout up in the
+.I config
+field definition.
+.TP
+.B PERF_TYPE_RAW
+This indicates a "raw" implementation-specific event up in the
+.IR config " field."
+.TP
+.BR PERF_TYPE_BREAKPOINT " (Since Linux 2.6.33)"
+This indicates a hardware breakpoint as provided by tha CPU.
+Breakpoints can be read/write accesses ta a address as well as
+execution of a instruction address.
+.TP
+.RB "dynamic PMU"
+Since Linux 2.6.39,
+.BR perf_event_open ()
+can support multiple PMUs.
+To enable this, a value exported by tha kernel can be used up in the
+.I type
+field ta indicate which PMU ta use.
+Da value ta use can be found up in tha sysfs filesystem:
+there be a subdirectory per PMU instizzle under
+.IR /sys/bus/event_source/devices .
+In each sub-directory there be a
+.I type
+file whose content be a integer dat can be used up in the
+.I type
+field.
+For instance,
+.I /sys/bus/event_source/devices/cpu/type
+gotz nuff tha value fo' tha core CPU PMU, which is probably 4.
+.RE
+.TP
+.I "size"
+Da size of the
+.I perf_event_attr
+structure fo' forward/backward compatibility.
+Set dis using
+.I sizeof(struct perf_event_attr)
+to allow tha kernel ta see
+the struct size all up in tha time of compilation.
+
+Da related define
+.B PERF_ATTR_SIZE_VER0
+is set ta 64; dis was tha size of tha straight-up original gangsta published struct.
+.B PERF_ATTR_SIZE_VER1
+is 72, correspondin ta tha addizzle of breakpoints up in Linux 2.6.33.
+.B PERF_ATTR_SIZE_VER2
+is 80 correspondin ta tha addizzle of branch samplin up in Linux 3.4.
+.B PERF_ATR_SIZE_VER3
+is 96 correspondin ta tha addition
+of
+.I sample_regs_user
+and
+.I sample_stack_user
+in Linux 3.7.
+.TP
+.I "config"
+This specifies which event you want, up in conjunction with
+the
+.I type
+field.
+The
+.IR config1 " n' " config2
+fieldz is also taken tha fuck into account up in cases where 64 bits is not
+enough ta straight-up specify tha event.
+Da encodin of these fieldz is event dependent.
+
+Da most dope bit (bit 63) of
+.I config
+signifies CPU-specific (raw) counta configuration data;
+if da most thugged-out dope bit is unset, tha next 7 bits is a event
+type n' tha rest of tha bits is tha event identifier.
+
+There is various ways ta set the
+.I config
+field dat is dependent on tha value of tha previously
+busted lyrics about
+.I type
+field.
+What bigs up is various possible settings for
+.I config
+separated up by
+.IR type .
+
+If
+.I type
+is
+.BR PERF_TYPE_HARDWARE ,
+we is measurin one of tha generalized hardware CPU events.
+Not all of these is available on all platforms.
+Set
+.I config
+to one of tha following:
+.RS 12
+.TP
+.B PERF_COUNT_HW_CPU_CYCLES
+Total cycles.
+Be wary of what tha fuck happens durin CPU frequency scaling
+.TP
+.B PERF_COUNT_HW_INSTRUCTIONS
+Retired instructions.
+Be careful, these can be affected by various
+issues, most notably hardware interrupt counts
+.TP
+.B PERF_COUNT_HW_CACHE_REFERENCES
+Cache accesses.
+Usually dis indicates Last Level Cache accesses but dis may
+vary dependin on yo' CPU.
+This may include prefetches n' coherency lyrics; again n' again n' again this
+dependz on tha design of yo' CPU.
+.TP
+.B PERF_COUNT_HW_CACHE_MISSES
+Cache misses.
+Usually dis indicates Last Level Cache misses; dis is intended ta be
+used up in conjunction wit the
+.B PERF_COUNT_HW_CACHE_REFERENCES
+event ta calculate cache miss rates.
+.TP
+.B PERF_COUNT_HW_BRANCH_INSTRUCTIONS
+Retired branch instructions.
+Prior ta Linux 2.6.34, dis used
+the wack event on AMD processors.
+.TP
+.B PERF_COUNT_HW_BRANCH_MISSES
+Mispredicted branch instructions.
+.TP
+.B PERF_COUNT_HW_BUS_CYCLES
+Bus cycles, which can be different from total cycles.
+.TP
+.BR PERF_COUNT_HW_STALLED_CYCLES_FRONTEND " (Since Linux 3.0)"
+Stalled cyclez durin issue.
+.TP
+.BR PERF_COUNT_HW_STALLED_CYCLES_BACKEND  " (Since Linux 3.0)"
+Stalled cyclez durin retirement.
+.TP
+.BR PERF_COUNT_HW_REF_CPU_CYCLES  " (Since Linux 3.3)"
+Total cycles; not affected by CPU frequency scaling.
+.RE
+.IP
+If
+.I type
+is
+.BR PERF_TYPE_SOFTWARE ,
+we is measurin software events provided by tha kernel.
+Set
+.I config
+to one of tha following:
+.RS 12
+.TP
+.B PERF_COUNT_SW_CPU_CLOCK
+This reports tha CPU clock, a high-resolution per-CPU timer.
+.TP
+.B PERF_COUNT_SW_TASK_CLOCK
+This reports a cold-ass lil clock count specific ta tha task dat is hustlin.
+.TP
+.B PERF_COUNT_SW_PAGE_FAULTS
+This reports tha number of page faults.
+.TP
+.B PERF_COUNT_SW_CONTEXT_SWITCHES
+This counts context switches.
+Until Linux 2.6.34, these was all reported as user-space
+events, afta dat they is reported as goin down up in tha kernel.
+.TP
+.B PERF_COUNT_SW_CPU_MIGRATIONS
+This reports tha number of times tha process
+has migrated ta a freshly smoked up CPU.
+.TP
+.B PERF_COUNT_SW_PAGE_FAULTS_MIN
+This counts tha number of minor page faults.
+These did not require disk I/O ta handle.
+.TP
+.B PERF_COUNT_SW_PAGE_FAULTS_MAJ
+This counts tha number of major page faults.
+These required disk I/O ta handle.
+.TP
+.BR PERF_COUNT_SW_ALIGNMENT_FAULTS " (Since Linux 2.6.33)"
+This counts tha number of alignment faults.
+These happen when unaligned memory accesses happen; tha kernel
+can handle these but it reduces performance.
+This happens only on some architectures (never on x86).
+.TP
+.BR PERF_COUNT_SW_EMULATION_FAULTS " (Since Linux 2.6.33)"
+This counts tha number of emulation faults.
+Da kernel sometimes traps on unimplemented instructions
+and emulates dem fo' user space.
+This can negatively impact performance.
+.RE
+
+.RS
+If
+.I type
+is
+.BR PERF_TYPE_TRACEPOINT ,
+then we is measurin kernel tracepoints.
+Da value ta use in
+.I config
+can be obtained from under debugfs
+.I tracing/events/*/*/id
+if ftrace is enabled up in tha kernel.
+.RE
+
+.RS
+If
+.I type
+is
+.BR PERF_TYPE_HW_CACHE ,
+then we is measurin a hardware CPU cache event.
+To calculate tha appropriate
+.I config
+value use tha followin equation:
+.RS 4
+.nf
+
+    (perf_hw_cache_id) | (perf_hw_cache_op_id << 8) |
+    (perf_hw_cache_op_result_id << 16)
+.fi
+.P
+where
+.I perf_hw_cache_id
+is one of:
+.RS 4
+.TP
+.B PERF_COUNT_HW_CACHE_L1D
+for measurin Level 1 Data Cache
+.TP
+.B PERF_COUNT_HW_CACHE_L1I
+for measurin Level 1 Instruction Cache
+.TP
+.B PERF_COUNT_HW_CACHE_LL
+for measurin Last-Level Cache
+.TP
+.B PERF_COUNT_HW_CACHE_DTLB
+for measurin tha Data TLB
+.TP
+.B PERF_COUNT_HW_CACHE_ITLB
+for measurin tha Instruction TLB
+.TP
+.B PERF_COUNT_HW_CACHE_BPU
+for measurin tha branch prediction unit
+.TP
+.BR PERF_COUNT_HW_CACHE_NODE " (Since Linux 3.0)"
+for measurin local memory accesses
+.RE
+.P
+and
+.I perf_hw_cache_op_id
+is one of
+.RS 4
+.TP
+.B PERF_COUNT_HW_CACHE_OP_READ
+for read accesses
+.TP
+.B PERF_COUNT_HW_CACHE_OP_WRITE
+for write accesses
+.TP
+.B PERF_COUNT_HW_CACHE_OP_PREFETCH
+for prefetch accesses
+.RE
+.P
+and
+.I perf_hw_cache_op_result_id
+is one of
+.RS 4
+.TP
+.B PERF_COUNT_HW_CACHE_RESULT_ACCESS
+to measure accesses
+.TP
+.B PERF_COUNT_HW_CACHE_RESULT_MISS
+to measure misses
+.RE
+.RE
+
+If
+.I type
+is
+.BR PERF_TYPE_RAW ,
+then a cold-ass lil custom "raw"
+.I config
+value is needed.
+Most CPUs support events dat is not covered by tha "generalized" events.
+These is implementation defined; peep yo' CPU manual (for example
+the Intel Volume 3B documentation or tha AMD BIOS n' Kernel Developer
+Guide).
+Da libpfm4 library can be used ta translate from tha name up in the
+architectural manuals ta tha raw hex value
+.BR perf_event_open ()
+expects up in dis field.
+
+If
+.I type
+is
+.BR PERF_TYPE_BREAKPOINT ,
+then leave
+.I config
+set ta zero.
+Its parametas is set up in other places.
+.RE
+.TP
+.IR sample_period ", " sample_freq
+A "sampling" counta is one dat generates a interrupt
+every N events, where N is given by
+.IR sample_period .
+A samplin counta has
+.IR sample_period " > 0."
+When a overflow interrupt occurs, axed data is recorded
+in tha mmap buffer.
+The
+.I sample_type
+field controls what tha fuck data is recorded on each interrupt.
+
+.I sample_freq
+can be used if you wish ta use frequency rather than period.
+In dis case you set the
+.I freq
+flag.
+Da kernel will adjust tha samplin period
+to try n' big up tha desired rate.
+Da rate of adjustment be a
+timer tick.
+.TP
+.I "sample_type"
+Da various bits up in dis field specify which joints ta include
+in tha sample.
+They is ghon be recorded up in a ring-buffer,
+which be available ta user space using
+.BR mmap (2).
+Da order up in which tha joints is saved up in the
+sample is documented up in tha MMAP Layout subsection below;
+it aint the
+.I "enum perf_event_sample_format"
+order.
+.RS
+.TP
+.B PERF_SAMPLE_IP
+Recordz instruction pointer.
+.TP
+.B PERF_SAMPLE_TID
+Recordz tha process n' thread IDs.
+.TP
+.B PERF_SAMPLE_TIME
+Recordz a timestamp.
+.TP
+.B PERF_SAMPLE_ADDR
+Recordz a address, if applicable.
+.TP
+.B PERF_SAMPLE_READ
+Record counta joints fo' all events up in a group, not just tha crew leader.
+.TP
+.B PERF_SAMPLE_CALLCHAIN
+Recordz tha callchain (stack backtrace).
+.TP
+.B PERF_SAMPLE_ID
+Recordz a unique ID fo' tha opened eventz crew leader.
+.TP
+.B PERF_SAMPLE_CPU
+Recordz CPU number.
+.TP
+.B PERF_SAMPLE_PERIOD
+Recordz tha current samplin period.
+.TP
+.B PERF_SAMPLE_STREAM_ID
+Recordz a unique ID fo' tha opened event.
+Unlike
+.B PERF_SAMPLE_ID
+the actual ID is returned, not tha crew leader.
+This ID is tha same ol' dirty as tha one returned by PERF_FORMAT_ID.
+.TP
+.B PERF_SAMPLE_RAW
+Recordz additionizzle data, if applicable.
+Usually returned by tracepoint events.
+.TP
+.BR PERF_SAMPLE_BRANCH_STACK " (Since Linux 3.4)"
+This serves up a record of recent branches, as provided
+by CPU branch samplin hardware (like fuckin Intel Last Branch Record).
+Not all hardware supports dis feature.
+
+See the
+.I branch_sample_type
+field fo' how tha fuck ta filta which branches is reported.
+.TP
+.BR PERF_SAMPLE_REGS_USER " (Since Linux 3.7)"
+Recordz tha current user-level CPU regista state
+(the joints up in tha process before tha kernel was called).
+.TP
+.BR PERF_SAMPLE_STACK_USER " (Since Linux 3.7)"
+Recordz tha user level stack, allowin stack unwinding.
+.TP
+.BR PERF_SAMPLE_WEIGHT " (Since Linux 3.10)"
+Recordz a hardware provided weight value dat expresses how
+costly tha sampled event was.
+This allows tha hardware ta highlight high-rollin' events in
+a profile.
+.TP
+.BR PERF_SAMPLE_DATA_SRC " (Since Linux 3.10)"
+Recordz tha data source: where up in tha memory hierarchy
+the data associated wit tha sampled instruction came from.
+This is only available if tha underlyin hardware
+supports dis feature.
+.RE
+.TP
+.IR "read_format"
+This field specifies tha format of tha data returned by
+.BR read (2)
+on a
+.BR perf_event_open ()
+file descriptor.
+.RS
+.TP
+.B PERF_FORMAT_TOTAL_TIME_ENABLED
+Addz tha 64-bit
+.I time_enabled
+field.
+This can be used ta calculate estimated totals if
+the PMU is overcommitted n' multiplexin is happening.
+.TP
+.B PERF_FORMAT_TOTAL_TIME_RUNNING
+Addz tha 64-bit
+.I time_running
+field.
+This can be used ta calculate estimated totals if
+the PMU is overcommitted n'  multiplexin is happening.
+.TP
+.B PERF_FORMAT_ID
+Addz a 64-bit unique value dat correspondz ta tha event group.
+.TP
+.B PERF_FORMAT_GROUP
+Allows all counta joints up in a event crew ta be read wit one read.
+.RE
+.TP
+.IR "disabled"
+The
+.I disabled
+bit specifies whether tha counta starts up disabled or enabled.
+If disabled, tha event can lata be enabled by
+.BR ioctl (2),
+.BR prctl (2),
+or
+.IR enable_on_exec .
+.TP
+.IR "inherit"
+The
+.I inherit
+bit specifies dat dis counta should count eventz of child
+tasks as well as tha task specified.
+This applies only ta freshly smoked up children, not ta any existin lil pimps at
+the time tha counta is pimped (nor ta any freshly smoked up lil pimps of
+existin children).
+
+Inherit do not work fo' some combinations of
+.IR read_format s,
+such as
+.BR PERF_FORMAT_GROUP .
+.TP
+.IR "pinned"
+The
+.I pinned
+bit specifies dat tha counta should always be on tha CPU if at all
+possible.
+It applies only ta hardware countas n' only ta crew leaders.
+If a pinned counta cannot be put onto tha CPU (e.g., cuz there are
+not enough hardware countas or cuz of a cold-ass lil conflict wit some other
+event), then tha counta goes tha fuck into a 'error' state, where reads
+return end-of-file (i.e.,
+.BR read (2)
+returns 0) until tha counta is subsequently enabled or disabled.
+.TP
+.IR "exclusive"
+The
+.I exclusive
+bit specifies dat when dis counterz crew is on tha CPU,
+it should be tha only crew rockin tha CPUz counters.
+In tha future dis may allow monitorin programs to
+support PMU features dat need ta run ridin' solo so dat they do not
+disrupt other hardware counters.
+.TP
+.IR "exclude_user"
+If dis bit is set, tha count excludes events dat happen up in user space.
+.TP
+.IR "exclude_kernel"
+If dis bit is set, tha count excludes events dat happen up in kernel-space.
+.TP
+.IR "exclude_hv"
+If dis bit is set, tha count excludes events dat happen up in the
+hypervisor.
+This is mainly fo' PMUs dat have built-in support fo' handlin this
+(like fuckin POWER).
+Extra support is needed fo' handlin hypervisor measurements on most
+machines.
+.TP
+.IR "exclude_idle"
+If set, don't count when tha CPU is idle.
+.TP
+.IR "mmap"
+The
+.I mmap
+bit enablez recordin of exec mmap events.
+.TP
+.IR "comm"
+The
+.I comm
+bit enablez trackin of process command name as modified by the
+.IR exec (2)
+and
+.IR prctl (PR_SET_NAME)
+system calls.
+Unfortunately fo' tools,
+there is no way ta distinguish one system call versus tha other.
+.TP
+.IR "freq"
+If dis bit is set, then
+.I sample_frequency
+not
+.I sample_period
+is used when settin up tha samplin interval.
+.TP
+.IR "inherit_stat"
+This bit enablez savin of event counts on context switch for
+inherited tasks.
+This is meaningful only if the
+.I inherit
+field is set.
+.TP
+.IR "enable_on_exec"
+If dis bit is set, a cold-ass lil counta be automatically
+enabled afta a cold-ass lil call to
+.BR exec (2).
+.TP
+.IR "task"
+If dis bit is set, then
+fork/exit notifications is included up in tha rang buffer.
+.TP
+.IR "watermark"
+If set, gotz a samplin interrupt happen when we cross the
+.I wakeup_watermark
+boundary.
+Otherwise interrupts happen after
+.I wakeup_events
+samples.
+.TP
+.IR "precise_ip" " (Since Linux 2.6.35)"
+This controls tha amount of skid.
+Skid is how tha fuck nuff instructions
+execute between a event of interest goin down n' tha kernel
+bein able ta stop n' record tha event.
+Smalla skid is
+betta n' allows mo' accurate reportin of which events
+correspond ta which instructions yo, but hardware is often limited
+with how tha fuck lil' small-ass dis can be.
+
+Da jointz of dis is tha following:
+.RS
+.TP
+0 -
+.B SAMPLE_IP
+can have arbitrary skid
+.TP
+1 -
+.B SAMPLE_IP
+must have constant skid
+.TP
+2 -
+.B SAMPLE_IP
+axed ta have 0 skid
+.TP
+3 -
+.B SAMPLE_IP
+must have 0 skid.
+See also
+.BR PERF_RECORD_MISC_EXACT_IP .
+.RE
+.TP
+.IR "mmap_data" " (Since Linux 2.6.36)"
+Da counterpart of the
+.I mmap
+field yo, but enablez includin data mmap events
+in tha ring-buffer.
+.TP
+.IR "sample_id_all" " (Since Linux 2.6.38)"
+If set, then TID, TIME, ID, CPU, n' STREAM_ID can
+additionally be included in
+.RB non- PERF_RECORD_SAMPLE s
+if tha corresponding
+.I sample_type
+is selected.
+.TP
+.IR "exclude_host" " (Since Linux 3.2)"
+Do not measure time dropped up in VM host
+.TP
+.IR "exclude_guest" " (Since Linux 3.2)"
+Do not measure time dropped up in VM guest
+.TP
+.IR "exclude_callchain_kernel" " (Since Linux 3.7)"
+Do not include kernel callchains.
+.TP
+.IR "exclude_callchain_user" " (Since Linux 3.7)"
+Do not include user callchains.
+.TP
+.IR "wakeup_events" ", " "wakeup_watermark"
+This union sets how tha fuck nuff samples
+.RI ( wakeup_events )
+or bytes
+.RI ( wakeup_watermark )
+happen before a overflow signal happens.
+Which one is used is selected by the
+.I watermark
+bitflag.
+
+.I wakeup_events
+only counts
+.B PERF_RECORD_SAMPLE
+record types.
+To  receive a signal fo' every last muthafuckin incoming
+.B PERF_RECORD
+type set
+.I wakeup_watermark
+to 1.
+.TP
+.IR "bp_type" " (Since Linux 2.6.33)"
+This chizzlez tha breakpoint type.
+It be one of:
+.RS
+.TP
+.BR HW_BREAKPOINT_EMPTY
+no breakpoint
+.TP
+.BR HW_BREAKPOINT_R
+count when we read tha memory location
+.TP
+.BR HW_BREAKPOINT_W
+count when we write tha memory location
+.TP
+.BR HW_BREAKPOINT_RW
+count when we read or write tha memory location
+.TP
+.BR HW_BREAKPOINT_X
+count when we execute code all up in tha memory location
+.LP
+Da joints can be combined via a funky-ass bitwise or yo, but the
+combination of
+.B HW_BREAKPOINT_R
+or
+.B HW_BREAKPOINT_W
+with
+.B HW_BREAKPOINT_X
+is not allowed.
+.RE
+.TP
+.IR "bp_addr" " (Since Linux 2.6.33)"
+.I bp_addr
+address of tha breakpoint.
+For execution breakpoints dis is tha memory address of tha instruction
+of interest; fo' read n' write breakpoints it is tha memory address
+of tha memory location of interest.
+.TP
+.IR "config1" " (Since Linux 2.6.39)"
+.I config1
+is used fo' settin events dat need a extra regista or otherwise
+do not fit up in tha regular config field.
+Raw OFFCORE_EVENTS on Nehalem/Westmere/SandyBridge use dis field
+on 3.3 n' lata kernels.
+.TP
+.IR "bp_len" " (Since Linux 2.6.33)"
+.I bp_len
+is tha length of tha breakpoint bein measured if
+.I type
+is
+.BR PERF_TYPE_BREAKPOINT .
+Options are
+.BR HW_BREAKPOINT_LEN_1 ,
+.BR HW_BREAKPOINT_LEN_2 ,
+.BR HW_BREAKPOINT_LEN_4 ,
+.BR HW_BREAKPOINT_LEN_8 .
+For a execution breakpoint, set dis to
+.IR sizeof(long) .
+.TP
+.IR "config2" " (Since Linux 2.6.39)"
+
+.I config2
+is a gangbangin' further extension of the
+.I config1
+field.
+.TP
+.IR "branch_sample_type" " (Since Linux 3.4)"
+If
+.B PERF_SAMPLE_BRANCH_STACK
+is enabled, then dis specifies what tha fuck branches ta include
+in tha branch record.
+If tha user do not set privilege level explicitly, tha kernel
+will use tha eventz privilege level.
+Event n' branch privilege levels do not gotta match.
+Da value is formed by ORin together zero or mo' of tha followin joints,
+although
+.B PERF_SAMPLE_BRANCH_ANY
+covers all branch types.
+.RS
+.TP
+.B PERF_SAMPLE_BRANCH_USER
+Branch target is up in user space
+.TP
+.B PERF_SAMPLE_BRANCH_KERNEL
+Branch target is up in kernel space
+.TP
+.B PERF_SAMPLE_BRANCH_HV
+Branch target is up in hypervisor
+.TP
+.B PERF_SAMPLE_BRANCH_ANY
+Any branch type.
+.TP
+.B PERF_SAMPLE_BRANCH_ANY_CALL
+Any call branch
+.TP
+.B PERF_SAMPLE_BRANCH_ANY_RETURN
+Any return branch
+.TP
+.BR PERF_SAMPLE_BRANCH_IND_CALL
+Indirect calls
+.TP
+.BR PERF_SAMPLE_BRANCH_PLM_ALL
+User, kernel, n' hv
+.RE
+.TP
+.IR "sample_regs_user" " (Since Linux 3.7)"
+This bitmask defines tha set of user CPU registas ta dump on samples.
+Da layout of tha regista mask be architecture specific and
+busted lyrics bout up in tha kernel header
+.IR arch/ARCH/include/uapi/asm/perf_regs.h .
+.TP
+.IR "sample_stack_user" " (Since Linux 3.7)"
+This defines tha size of tha user stack ta dump if
+.B PERF_SAMPLE_STACK_USER
+is specified.
+.SS Readin thangs up in dis biatch
+Once a
+.BR perf_event_open ()
+file descriptor  has been opened, tha joints
+of tha events can be read from tha file descriptor.
+Da joints dat is there be specified by the
+.I read_format
+field up in the
+.I attr
+structure at open time.
+
+If you attempt ta read tha fuck into a funky-ass buffer dat aint big-ass enough ta hold the
+data
+.B ENOSPC
+is returned
+
+Here is tha layout of tha data returned by a read:
+.IP * 2
+If
+.B PERF_FORMAT_GROUP
+was specified ta allow readin all events up in a crew at once:
+
+.in +4n
+.nf
+struct read_format {
+    u64 nr;            /* Da number of events */
+    u64 time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
+    u64 time_running;  /* if PERF_FORMAT_TOTAL_TIME_RUNNING */
+    struct
+        u64 value;     /* Da value of tha event */
+        u64 id;        /* if PERF_FORMAT_ID */
+    } joints[nr];
+};
+.fi
+.in
+.IP *
+If
+.B PERF_FORMAT_GROUP
+was
+.I not
+specified:
+
+.in +4n
+.nf
+struct read_format {
+    u64 value;         /* Da value of tha event */
+    u64 time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
+    u64 time_running;  /* if PERF_FORMAT_TOTAL_TIME_RUNNING */
+    u64 id;            /* if PERF_FORMAT_ID */
+};
+.fi
+.in
+.PP
+Da joints read is as bigs up:
+.TP
+.I nr
+Da number of events up in dis file descriptor.
+Only available if
+.B PERF_FORMAT_GROUP
+was specified.
+.TP
+.IR time_enabled ", " time_running
+Total time tha event was enabled n' hustlin.
+Normally these is tha same.
+If mo' events is started
+than available counta slots on tha PMU, then multiplexing
+happens n' events run only part of tha time.
+In dat case the
+.I time_enabled
+and
+.I time hustlin
+values can be used ta scale a estimated value fo' tha count.
+.TP
+.I value
+An unsigned 64-bit value containin tha counta result.
+.TP
+.I id
+A globally unique value fo' dis particular event, only there if
+.B PERF_FORMAT_ID
+was specified in
+.IR read_format .
+.SS MMAP layout
+When using
+.BR perf_event_open ()
+in sampled mode, asynchronous events
+(like counta overflow or
+.B PROT_EXEC
+mmap tracking)
+are logged tha fuck into a ring-buffer.
+This ring-buffer is pimped n' accessed through
+.BR mmap (2).
+
+Da mmap size should be 1+2^n pages, where tha straight-up original gangsta page be a
+metadata page
+.RI ( "struct perf_event_mmap_page" )
+that gotz nuff various
+bitz of shiznit like fuckin where tha ring-buffer head is.
+
+Before kernel 2.6.39, there be a funky-ass bug dat means you must allocate a mmap
+rin buffer when samplin even if you do not plan ta access dat shit.
+
+Da structure of tha straight-up original gangsta metadata mmap page be as bigs up:
+
+.in +4n
+.nf
+struct perf_event_mmap_page {
+    __u32 version;          /* version number of dis structure */
+    __u32 compat_version;   /* lowest version dis is compat wit */
+    __u32 lock;             /* seqlock fo' synchronization */
+    __u32 index;            /* hardware counta identifier */
+    __s64 offset;           /* add ta hardware counta value */
+    __u64 time_enabled;     /* time event actizzle */
+    __u64 time_running;     /* time event on CPU */
+    union {
+        __u64   capabilities;
+        __u64   cap_usr_time  : 1,
+                cap_usr_rdpmc : 1,
+    };
+    __u16   pmc_width;
+    __u16   time_shift;
+    __u32   time_mult;
+    __u64   time_offset;
+    __u64   __reserved[120];   /* Pad ta 1k */
+    __u64   data_head;         /* head up in tha data section */
+    __u64   data_tail;         /* user-space freestyled tail */
+}
+.fi
+.in
+
+Da followin looks all up in tha fieldz up in the
+.I perf_event_mmap_page
+structure up in mo' detail:
+.TP
+.I version
+Version number of dis structure.
+.TP
+.I compat_version
+Da lowest version dis is compatible with.
+.TP
+.I lock
+A seqlock fo' synchronization.
+.TP
+.I index
+A unique hardware counta identifier.
+.TP
+.I offset
+.\" FIXME clarify
+Add dis ta hardware counta value??
+.TP
+.I time_enabled
+Time tha event was active.
+.TP
+.I time_running
+Time tha event was hustlin.
+.TP
+.I cap_usr_time
+User time capability
+.TP
+.I cap_usr_rdpmc
+If tha hardware supports user-space read of performizzle counters
+without syscall (this is tha "rdpmc" instruction on x86), then
+the followin code can be used ta do a read:
+
+.in +4n
+.nf
+u32 seq, time_mult, time_shift, idx, width;
+u64 count, enabled, hustlin;
+u64 cyc, time_offset;
+s64 pmc = 0;
+
+do {
+    seq = pc\->lock;
+    barrier();
+    enabled = pc\->time_enabled;
+    hustlin = pc\->time_running;
+
+    if (pc\->cap_usr_time && enabled != hustlin) {
+        cyc = rdtsc();
+        time_offset = pc\->time_offset;
+        time_mult   = pc\->time_mult;
+        time_shift  = pc\->time_shift;
+    }
+
+    idx = pc\->index;
+    count = pc\->offset;
+
+    if (pc\->cap_usr_rdpmc && idx) {
+        width = pc\->pmc_width;
+        pmc = rdpmc(idx \- 1);
+    }
+
+    barrier();
+} while (pc\->lock != seq);
+.fi
+.in
+.TP
+.I pmc_width
+If
+.IR cap_usr_rdpmc ,
+this field serves up tha bit-width of tha value
+read rockin tha rdpmc or equivalent instruction.
+This can be used ta sign extend tha result like:
+
+.in +4n
+.nf
+pmc <<= 64 \- pmc_width;
+pmc >>= 64 \- pmc_width; // signed shift right
+count += pmc;
+.fi
+.in
+.TP
+.IR time_shift ", " time_mult ", " time_offset
+
+If
+.IR cap_usr_time ,
+these fieldz can be used ta compute tha time
+delta since time_enabled (in nanoseconds) rockin rdtsc or similar.
+.nf
+
+    u64 quot, rem;
+    u64 delta;
+    quot = (cyc >> time_shift);
+    rem = cyc & ((1 << time_shift) \- 1);
+    delta = time_offset + quot * time_mult +
+            ((rem * time_mult) >> time_shift);
+.fi
+
+Where
+.IR time_offset ,
+.IR time_mult ,
+.IR time_shift ,
+and
+.IR cyc
+are read up in the
+seqcount loop busted lyrics bout above.
+This delta can then be added to
+enabled n' possible hustlin (if idx), pimpin-out tha scaling:
+.nf
+
+    enabled += delta;
+    if (idx)
+        hustlin += delta;
+    quot = count / hustlin;
+    rem  = count % hustlin;
+    count = quot * enabled + (rem * enabled) / hustlin;
+.fi
+.TP
+.I data_head
+This points ta tha head of tha data section.
+Da value continuously increases, it do not wrap.
+Da value need ta be manually wrapped by tha size of tha mmap buffer
+before accessin tha samples.
+
+On SMP-capable platforms, afta readin tha data_head value,
+user space should issue a rmb().
+.TP
+.I data_tail;
+When tha mappin is
+.BR PROT_WRITE ,
+the
+.I data_tail
+value should be freestyled by user space ta reflect tha last read data.
+In dis case tha kernel aint gonna over-write unread data.
+.PP
+Da followin 2^n ring-buffer pages have tha layout busted lyrics bout below.
+
+If
+.I perf_event_attr.sample_id_all
+is set, then all event types will
+have tha sample_type selected fieldz related ta where/when (identity)
+an event took place (TID, TIME, ID, CPU, STREAM_ID) busted lyrics bout in
+.B PERF_RECORD_SAMPLE
+below, it is ghon be stashed just afta the
+.I perf_event_header
+and tha fieldz already present fo' tha existing
+fields, i.e., all up in tha end of tha payload.
+That way a newer perf.data
+file is ghon be supported by olda perf tools, wit these freshly smoked up optional
+fieldz bein ignored.
+
+Da mmap joints start wit a header:
+
+.in +4n
+.nf
+struct perf_event_header {
+    __u32   type;
+    __u16   misc;
+    __u16   size;
+};
+.fi
+.in
+
+Below, our phat asses describe the
+.I perf_event_header
+fieldz up in mo' detail.
+.TP
+.I type
+The
+.I type
+value is one of tha below.
+Da joints up in tha correspondin record (that bigs up tha header)
+depend on the
+.I type
+selected as shown.
+.RS
+.TP 4
+.B PERF_RECORD_MMAP
+Da MMAP events record the
+.B PROT_EXEC
+mappings so dat we can correlate
+user-space IPs ta code.
+They have tha followin structure:
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u32    pid, tid;
+    u64    addr;
+    u64    len;
+    u64    pgoff;
+    char   filename[];
+};
+.fi
+.in
+.TP
+.B PERF_RECORD_LOST
+This record indicates when events is lost.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u64 id;
+    u64 lost;
+};
+.fi
+.in
+.RS
+.TP
+.I id
+is tha unique event ID fo' tha samplez dat was lost.
+.TP
+.I lost
+is tha number of events dat was lost.
+.RE
+.TP
+.B PERF_RECORD_COMM
+This record indicates a cold-ass lil chizzle up in tha process name.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u32 pid, tid;
+    char comm[];
+};
+.fi
+.in
+.TP
+.B PERF_RECORD_EXIT
+This record indicates a process exit event.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u32 pid, ppid;
+    u32 tid, ptid;
+    u64 time;
+};
+.fi
+.in
+.TP
+.BR PERF_RECORD_THROTTLE ", " PERF_RECORD_UNTHROTTLE
+This record indicates a throttle/unthrottle event.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u64 time;
+    u64 id;
+    u64 stream_id;
+};
+.fi
+.in
+.TP
+.B PERF_RECORD_FORK
+This record indicates a gangbangin' fork event.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u32 pid, ppid;
+    u32 tid, ptid;
+    u64 time;
+};
+.fi
+.in
+.TP
+.B PERF_RECORD_READ
+This record indicates a read event.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u32 pid, tid;
+    struct read_format joints;
+};
+.fi
+.in
+.TP
+.B PERF_RECORD_SAMPLE
+This record indicates a sample.
+
+.in +4n
+.nf
+struct {
+    struct perf_event_header header;
+    u64   ip;         /* if PERF_SAMPLE_IP */
+    u32   pid, tid;   /* if PERF_SAMPLE_TID */
+    u64   time;       /* if PERF_SAMPLE_TIME */
+    u64   addr;       /* if PERF_SAMPLE_ADDR */
+    u64   id;         /* if PERF_SAMPLE_ID */
+    u64   stream_id;  /* if PERF_SAMPLE_STREAM_ID */
+    u32   cpu, res;   /* if PERF_SAMPLE_CPU */
+    u64   period;     /* if PERF_SAMPLE_PERIOD */
+    struct read_format v; /* if PERF_SAMPLE_READ */
+    u64   nr;         /* if PERF_SAMPLE_CALLCHAIN */
+    u64   ips[nr];    /* if PERF_SAMPLE_CALLCHAIN */
+    u32   size;       /* if PERF_SAMPLE_RAW */
+    char  data[size]; /* if PERF_SAMPLE_RAW */
+    u64   bnr;        /* if PERF_SAMPLE_BRANCH_STACK */
+    struct perf_branch_entry lbr[bnr];
+                      /* if PERF_SAMPLE_BRANCH_STACK */
+    u64   abi;        /* if PERF_SAMPLE_REGS_USER */
+    u64   regs[weight(mask)];
+                      /* if PERF_SAMPLE_REGS_USER */
+    u64   size;       /* if PERF_SAMPLE_STACK_USER */
+    char  data[size]; /* if PERF_SAMPLE_STACK_USER */
+    u64   dyn_size;   /* if PERF_SAMPLE_STACK_USER */
+    u64   weight;     /* if PERF_SAMPLE_WEIGHT */
+    u64   data_src;   /* if PERF_SAMPLE_DATA_SRC */
+};
+.fi
+.RS
+.TP
+.I ip
+If
+.B PERF_SAMPLE_IP
+is enabled, then a 64-bit instruction
+pointa value is included.
+.TP
+.IR pid ", " tid
+If
+.B PERF_SAMPLE_TID
+is enabled, then a 32-bit process ID
+and 32-bit thread ID is included.
+.TP
+.I time
+If
+.B PERF_SAMPLE_TIME
+is enabled, then a 64-bit timestamp
+is included.
+This is obtained via local_clock() which be a hardware timestamp
+if available n' tha jiffies value if not.
+.TP
+.I addr
+If
+.B PERF_SAMPLE_ADDR
+is enabled, then a 64-bit address is included.
+This is probably tha address of a tracepoint,
+breakpoint, or software event; otherwise tha value is 0.
+.TP
+.I id
+If
+.B PERF_SAMPLE_ID
+is enabled, a 64-bit unique ID is included.
+If tha event be a gangmember of a event group, tha crew leader ID is returned.
+This ID is tha same ol' dirty as tha one returned by
+.BR PERF_FORMAT_ID .
+.TP
+.I stream_id
+If
+.B PERF_SAMPLE_STREAM_ID
+is enabled, a 64-bit unique ID is included.
+Unlike
+.B PERF_SAMPLE_ID
+the actual ID is returned, not tha crew leader.
+This ID is tha same ol' dirty as tha one returned by
+.BR PERF_FORMAT_ID .
+.TP
+.IR cpu ", " res
+If
+.B PERF_SAMPLE_CPU
+is enabled, dis be a 32-bit value indicating
+which CPU was bein used, up in addizzle ta a reserved (unused)
+32-bit value.
+.TP
+.I period
+If
+.B PERF_SAMPLE_PERIOD
+is enabled, a 64-bit value indicating
+the current samplin period is written.
+.TP
+.I v
+If
+.B PERF_SAMPLE_READ
+is enabled, a structure of type read_format
+is included which has joints fo' all events up in tha event group.
+Da joints included depend on the
+.I read_format
+value used at
+.BR perf_event_open ()
+time.
+.TP
+.IR nr ", " ips[nr]
+If
+.B PERF_SAMPLE_CALLCHAIN
+is enabled, then a 64-bit number is included
+which indicates how tha fuck nuff followin 64-bit instruction pointas will
+follow.
+This is tha current callchain.
+.TP
+.IR size ", " data[size]
+If
+.B PERF_SAMPLE_RAW
+is enabled, then a 32-bit value indicatin size
+is included followed by a array of 8-bit jointz of length size.
+Da joints is padded wit 0 ta have 64-bit alignment.
+
+This RAW record data is opaque wit respect ta tha ABI.
+Da ABI don't make any promises wit respect ta tha stability
+of its content, it may vary depending
+on event, hardware, n' kernel version.
+.TP
+.IR bnr ", " lbr[bnr]
+If
+.B PERF_SAMPLE_BRANCH_STACK
+is enabled, then a 64-bit value indicating
+the number of recordz is included, followed by
+.I bnr
+.I perf_branch_entry
+structures which each include tha fields:
+.RS
+.TP
+.I from
+indicatin tha source instruction (may not be a funky-ass branch)
+.TP
+.I to
+the branch target
+.TP
+.I mispred
+the branch target was mispredicted
+.TP
+.I predicted
+the branch target was predicted.
+.RE
+Da entries is from most ta least recent, so tha straight-up original gangsta entry
+has da most thugged-out recent branch.
+
+Support for
+.I mispred
+and
+.I predicted
+is optional; if not supported, both
+values is ghon be 0.
+
+.TP
+.IR abi ", " regs[weight(mask)]
+If
+.B PERF_SAMPLE_REGS_USER
+is enabled, then tha user CPU registas is recorded.
+
+The
+.I abi
+field is one of
+.BR PERF_SAMPLE_REGS_ABI_NONE ", " PERF_SAMPLE_REGS_ABI_32 " or "
+.BR PERF_SAMPLE_REGS_ABI_64 .
+
+The
+.I regs
+field be a array of tha CPU registas dat was specified by
+the
+.I sample_regs_user
+attr field.
+Da number of joints is tha number of bits set up in the
+.I sample_regs_user
+bitmask.
+.TP
+.IR size ", " data[size] ", " dyn_size
+If
+.B PERF_SAMPLE_STACK_USER
+is enabled, then record tha user stack ta enable backtracing.
+.I size
+is tha size axed by tha user in
+.I stack_user_size
+or else tha maximum record size.
+.I data
+is tha stack data.
+.I dyn_size
+is tha amount of data straight-up dumped (can be less than
+.IR size ).
+.TP
+.I weight
+If
+.B PERF_SAMPLE_WEIGHT
+is enabled, then a 64 bit value provided by tha hardware
+is recorded dat indicates how tha fuck costly tha event was.
+This allows high-rollin' events ta stand up mo' clearly
+in profiles.
+.TP
+.I data_src
+If
+.B PERF_SAMPLE_DATA_SRC
+is enabled, then a 64 bit value is recorded dat is made up of
+the followin fields:
+.RS
+.TP
+.I mem_op
+type of opcode, a funky-ass bitwise combination of
+.B PERF_MEM_OP_NA
+(not available),
+.B PERF_MEM_OP_LOAD
+(load instruction),
+.B PERF_MEM_OP_STORE
+(store instruction),
+.B PERF_MEM_OP_PFETCH
+(prefetch), and
+.B PERF_MEM_OP_EXEC
+(executable code).
+.TP
+.I mem_lvl
+memory hierarchy level hit or miss, a funky-ass bitwise combination of
+.B PERF_MEM_LVL_NA
+(not available),
+.B PERF_MEM_LVL_HIT
+(hit),
+.B PERF_MEM_LVL_MISS
+(miss),
+.B PERF_MEM_LVL_L1
+(level 1 cache),
+.B PERF_MEM_LVL_LFB
+(line fill buffer),
+.B PERF_MEM_LVL_L2
+(level 2 cache),
+.B PERF_MEM_LVL_L3
+(level 3 cache),
+.B PERF_MEM_LVL_LOC_RAM
+(local DRAM),
+.B PERF_MEM_LVL_REM_RAM1
+(remote DRAM 1 hop),
+.B PERF_MEM_LVL_REM_RAM2
+(remote DRAM 2 hops),
+.B PERF_MEM_LVL_REM_CCE1
+(remote cache 1 hop),
+.B PERF_MEM_LVL_REM_CCE2
+(remote cache 2 hops),
+.B PERF_MEM_LVL_IO
+(I/O memory), and
+.B PERF_MEM_LVL_UNC
+(uncached memory).
+.TP
+.I mem_snoop
+snoop mode, a funky-ass bitwise combination of
+.B PERF_MEM_SNOOP_NA
+(not available),
+.B PERF_MEM_SNOOP_NONE
+(no snoop),
+.B PERF_MEM_SNOOP_HIT
+(snoop hit),
+.B PERF_MEM_SNOOP_MISS
+(snoop miss), and
+.B PERF_MEM_SNOOP_HITM
+(snoop hit modified).
+.TP
+.I mem_lock
+lock instruction, a funky-ass bitwise combination of
+.B PERF_MEM_LOCK_NA
+(not available) and
+.B PERF_MEM_LOCK_LOCKED
+(locked transaction).
+.TP
+.I mem_dtlb
+tlb access hit or miss, a funky-ass bitwise combination of
+.B PERF_MEM_TLB_NA
+(not available),
+.B PERF_MEM_TLB_HIT
+(hit),
+.B PERF_MEM_TLB_MISS
+(miss),
+.B PERF_MEM_TLB_L1
+(level 1 TLB),
+.B PERF_MEM_TLB_L2
+(level 2 TLB),
+.B PERF_MEM_TLB_WK
+(hardware strutter), and
+.B PERF_MEM_TLB_OS
+(OS fault handlez).
+.RE
+.RE
+.RE
+.TP
+.I misc
+The
+.I misc
+field gotz nuff additionizzle shiznit bout tha sample.
+
+Da CPU mode can be determined from dis value by maskin with
+.B PERF_RECORD_MISC_CPUMODE_MASK
+and lookin fo' one of tha followin (note these is not
+bit masks, only one can be set at a time):
+.RS
+.TP
+.B PERF_RECORD_MISC_CPUMODE_UNKNOWN
+Unknown CPU mode.
+.TP
+.B PERF_RECORD_MISC_KERNEL
+Sample happened up in tha kernel.
+.TP
+.B PERF_RECORD_MISC_USER
+Sample happened up in user code.
+.TP
+.B PERF_RECORD_MISC_HYPERVISOR
+Sample happened up in tha hypervisor.
+.TP
+.B PERF_RECORD_MISC_GUEST_KERNEL
+Sample happened up in tha hommie kernel.
+.TP
+.B PERF_RECORD_MISC_GUEST_USER
+Sample happened up in hommie user code.
+.RE
+
+.RS
+In addition, one of tha followin bits can be set:
+.TP
+.B PERF_RECORD_MISC_MMAP_DATA
+This is set when tha mappin aint executable;
+otherwise tha mappin is executable.
+.TP
+.B PERF_RECORD_MISC_EXACT_IP
+This indicates dat tha content of
+.B PERF_SAMPLE_IP
+points
+to tha actual instruction dat triggered tha event.
+See also
+.IR perf_event_attr.precise_ip .
+.TP
+.B PERF_RECORD_MISC_EXT_RESERVED
+This indicates there is extended data available (currently not used).
+.RE
+.TP
+.I size
+This indicates tha size of tha record.
+.RE
+.SS Signal overflow
+Events can be set ta serve up a signal when a threshold is crossed.
+Da signal handlez is set up rockin the
+.BR poll (2),
+.BR select (2),
+.BR epoll (2)
+and
+.BR fcntl (2),
+system calls.
+
+To generate signals, samplin must be enabled
+.RI ( sample_period
+must gotz a non-zero value).
+
+There is two ways ta generate signals.
+
+Da first is ta set a
+.I wakeup_events
+or
+.I wakeup_watermark
+value dat will generate a signal if a cold-ass lil certain number of samples
+or bytes done been freestyled ta tha mmap rang buffer.
+In dis case a signal of type
+.B POLL_IN
+is sent.
+
+Da other way is by use of the
+.B PERF_EVENT_IOC_REFRESH
+ioctl.
+This ioctl addz ta a cold-ass lil counta dat decrements each time tha event overflows.
+When non-zero, a
+.B POLL_IN
+signal is busted on overflow yo, but
+once tha value reaches 0, a signal is busted of type
+.B POLL_HUP
+and
+the underlyin event is disabled.
+
+Note: on newer kernels (definitely noticed wit 3.2)
+.\" FIXME(Vince) : Find up when dis was introduced
+a signal is provided fo' every last muthafuckin overflow, even if
+.I wakeup_events
+is not set.
+.SS rdpmc instruction
+Startin wit Linux 3.4 on x86, you can use the
+.I rdpmc
+instruction ta git low-latency readz without havin ta enta tha kernel.
+Note dat using
+.I rdpmc
+is not necessarily fasta than other methodz fo' readin event joints.
+
+Support fo' dis can be detected wit the
+.I cap_usr_rdpmc
+field up in tha mmap page; documentation on how
+to calculate event joints can be found up in dat section.
+.SS perf_event ioctl calls
+.PP
+Various ioctls act on
+.BR perf_event_open ()
+file descriptors
+.TP
+.B PERF_EVENT_IOC_ENABLE
+Enablez tha individual event or event crew specified by the
+file descriptor argument.
+
+If the
+.B PERF_IOC_FLAG_GROUP
+bit is set up in tha ioctl argument, then all events up in a crew are
+enabled, even if tha event specified aint tha crew leader
+(but peep BUGS).
+.TP
+.B PERF_EVENT_IOC_DISABLE
+Disablez tha individual counta or event crew specified by the
+file descriptor argument.
+
+Enablin or disablin tha leader of a crew enablez or disablez the
+entire group; dat is, while tha crew leader is disabled, none of the
+countas up in tha crew will count.
+Enablin or disablin a gangmember of a crew other than tha leader
+affects only dat counter; disablin a non-leader
+stops dat counta from countin but don't affect any other counter.
+
+If the
+.B PERF_IOC_FLAG_GROUP
+bit is set up in tha ioctl argument, then all events up in a crew are
+disabled, even if tha event specified aint tha crew leader
+(but peep BUGS).
+.TP
+.B PERF_EVENT_IOC_REFRESH
+Non-inherited overflow countas can use this
+to enable a cold-ass lil counta fo' a fuckin shitload of overflows specified by tha argument,
+afta which it is disabled.
+Subsequent callz of dis ioctl add tha argument value ta tha current
+count.
+A signal with
+.B POLL_IN
+set will happen on each overflow until the
+count reaches 0; when dat happens a signal with
+POLL_HUP
+set is busted n' tha event is disabled.
+Usin a argument of 0 is considered undefined behavior.
+.TP
+.B PERF_EVENT_IOC_RESET
+Reset tha event count specified by the
+file descriptor argument ta zero.
+This resets only tha counts; there is no way ta reset the
+multiplexing
+.I time_enabled
+or
+.I time_running
+values.
+
+If the
+.B PERF_IOC_FLAG_GROUP
+bit is set up in tha ioctl argument, then all events up in a crew are
+reset, even if tha event specified aint tha crew leader
+(but peep BUGS).
+.TP
+.B PERF_EVENT_IOC_PERIOD
+IOC_PERIOD is tha command ta update tha period; it
+does not update tha current period but instead defers until next.
+
+Da argument be a pointa ta a 64-bit value containin the
+desired freshly smoked up period.
+.TP
+.B PERF_EVENT_IOC_SET_OUTPUT
+This  drops some lyrics ta tha kernel ta report event notifications ta tha specified
+file descriptor rather than tha default one.
+Da file descriptors must all be on tha same CPU.
+
+Da argument specifies tha desired file descriptor, or \-1 if
+output should be ignored.
+.TP
+.BR PERF_EVENT_IOC_SET_FILTER " (Since Linux 2.6.33)"
+This addz a ftrace filta ta dis event.
+
+Da argument be a pointa ta tha desired ftrace filter.
+.SS Usin prctl
+A process can enable or disable all tha event crews dat are
+attached ta it rockin the
+.BR prctl (2)
+.B PR_TASK_PERF_EVENTS_ENABLE
+and
+.B PR_TASK_PERF_EVENTS_DISABLE
+operations.
+This applies ta all countas on tha current process, whether pimped by
+this process or by another, n' do not affect any countas dat this
+process has pimped on other processes.
+It enablez or disablez only
+the crew leaders, not any other thugz up in tha groups.
+.SS perf_event related configuration files
+Filez in
+.I /proc/sys/kernel/
+.RS 4
+.TP
+.I /proc/sys/kernel/perf_event_paranoid
+
+The
+.I perf_event_paranoid
+file can be set ta restrict access ta tha performizzle counters.
+
+2 - only allow user-space measurements
+
+1 - (default) allow both kernel n' user measurements
+
+0 - allow access ta CPU-specific data but not raw tracepoint samples
+
+\-1 - no restrictions
+
+Da existence of the
+.I perf_event_paranoid
+file is tha straight-up legit method fo' determinin if a kernel supports
+.BR perf_event_open ().
+.TP
+.I /proc/sys/kernel/perf_event_max_sample_rate
+
+This sets tha maximum sample rate.
+Settin dis too high can allow
+users ta sample at a rate dat impacts overall machine performance
+and potentially lock up tha machine.
+Da default value is
+100000 (samplez per second).
+.TP
+.I /proc/sys/kernel/perf_event_mlock_kb
+
+Maximum number of pages a unprivileged user can mlock (2) .
+Da default is 516 (kB).
+
+.RE
+Filez in
+.I /sys/bus/event_source/devices/
+.RS 4
+Since Linux 2.6.34 tha kernel supports havin multiple PMUs
+available fo' monitoring.
+Hype on how tha fuck ta program these PMUs can be found under
+.IR /sys/bus/event_source/devices/ .
+Each subdirectory correspondz ta a gangbangin' finger-lickin' different PMU.
+.TP
+.IR /sys/bus/event_source/devices/*/type " (Since Linux 2.6.38)"
+This gotz nuff a integer dat can be used up in the
+.I type
+field of perf_event_attr ta indicate you wish ta use dis PMU.
+.TP
+.IR /sys/bus/event_source/devices/*/rdpmc " (Since Linux 3.4)"
+If dis file is 1, then direct user-space access ta the
+performizzle counta registas be allowed via tha rdpmc instruction.
+This can be disabled by echoin 0 ta tha file.
+.TP
+.IR /sys/bus/event_source/devices/*/format/ " (Since Linux 3.4)"
+This sub-directory gotz nuff shiznit on tha architecture-specific
+sub-fieldz available fo' programmin tha various
+.I config
+fieldz up in tha perf_event_attr struct.
+
+Da content of each file is tha name of tha config field, followed
+by a cold-ass lil colon, followed by a seriez of integer bit ranges separated by
+commas.
+For example, tha file
+.I event
+may contain tha value
+.I config1:1,6-10,44
+which indicates dat event be a attribute dat occupies bits 1,6-10, n' 44
+of perf_event_attr::config1.
+.TP
+.IR /sys/bus/event_source/devices/*/events/ " (Since Linux 3.4)"
+This sub-directory gotz nuff filez wit pre-defined events.
+Da contents is strings describin tha event settings
+expressed up in termz of tha fieldz found up in tha previously mentioned
+.I ./format/
+directory.
+These is not necessarily complete listz of all events supported by
+a PMU yo, but probably a subset of events deemed useful or interesting.
+
+Da content of each file be a list of attribute names
+separated by commas.
+Each entry has a optionizzle value (either hex or decimal).
+If no value is specified than it be assumed ta be a single-bit
+field wit a value of 1.
+An example entry may be lookin like this:
+.I event=0x2,inv,ldlat=3
+.TP
+.I /sys/bus/event_source/devices/*/uevent
+This file is tha standard kernel thang intercourse
+for injectin hotplug events.
+.TP
+.IR /sys/bus/event_source/devices/*/cpumask " (Since Linux 3.7)"
+Da cpumask file gotz nuff a cold-ass lil comma-separated list of integers that
+indicate a representatizzle cpu number fo' each socket (package)
+on tha motherboard.
+This is needed when settin up uncore or northbridge events, as
+those PMUs present socket-wide events.
+.RE
+.SH RETURN VALUE
+.BR perf_event_open ()
+returns tha freshly smoked up file descriptor, or \-1 if a error occurred
+(in which case,
+.I errno
+is set appropriately).
+.SH ERRORS
+.TP
+.B EINVAL
+Returned if tha specified event aint available.
+.TP
+.B ENOSPC
+Prior ta Linux 3.3, if there was not enough room fo' tha event,
+.B ENOSPC
+was returned.
+Linus did not like this, n' dis was chizzled to
+.BR EINVAL .
+.B ENOSPC
+is still returned if you try ta read thangs up in dis biatch into
+too lil' small-ass of a funky-ass buffer.
+.SH VERSION
+.BR perf_event_open ()
+was introduced up in Linux 2.6.31 but was called
+.BR perf_counter_open () .
+Dat shiznit was renamed up in Linux 2.6.32.
+.SH CONFORMING TO
+This
+.BR perf_event_open ()
+system call Linux- specific
+and should not be used up in programs intended ta be portable.
+.SH NOTES
+Glibc do not provide a wrapper fo' dis system call; call it using
+.BR syscall (2).
+See tha example below.
+
+Da straight-up legit way of knowin if
+.BR perf_event_open ()
+support is enabled is checking
+for tha existence of tha file
+.IR /proc/sys/kernel/perf_event_paranoid .
+.SH BUGS
+The
+.B F_SETOWN_EX
+option to
+.BR fcntl (2)
+is needed ta properly git overflow signals up in threads.
+This was introduced up in Linux 2.6.32.
+
+Prior ta Linux 2.6.33 (at least fo' x86) tha kernel did not check
+if events could be scheduled together until read time.
+Da same happens on all known kernels if tha NMI watchdog is enabled.
+This means ta peep if a given set of events works you have to
+.BR perf_event_open (),
+start, then read before you know fo' shizzle you
+can git valid measurements.
+
+Prior ta Linux 2.6.34 event constraints was not enforced by tha kernel.
+In dat case, some events would silently return "0" if tha kernel
+scheduled dem up in a improper counta slot.
+
+Prior ta Linux 2.6.34 there was a funky-ass bug when multiplexin where the
+wrong thangs up in dis biatch could be returned.
+
+Kernels from Linux 2.6.35 ta Linux 2.6.39 can quickly crash tha kernel if
+"inherit" is enabled n' nuff threadz is started.
+
+Prior ta Linux 2.6.35,
+.B PERF_FORMAT_GROUP
+did not work wit attached processes.
+
+In olda Linux 2.6 versions,
+refreshin a event crew leader refreshed all siblings,
+and refreshin wit a parameta of 0 enabled infinite refresh.
+This behavior is unsupported n' should not be relied on.
+
+There be a funky-ass bug up in tha kernel code between
+Linux 2.6.36 n' Linux 3.0 dat ignores the
+"watermark" field n' acts as if a wakeup_event
+was chosen if tha union has a
+non-zero value up in dat shit.
+
+From Linux 2.6.31 ta Linux 3.4, the
+.B PERF_IOC_FLAG_GROUP
+ioctl argument was fucked up n' would repeatedly operate
+on tha event specified rather than iteratin across
+all siblin events up in a group.
+
+Always double-check yo' thangs up in dis biatch!
+Various generalized events have had wack joints.
+For example, retired branches measured
+the wack thang on AMD machines until Linux 2.6.35.
+.SH EXAMPLE
+Da followin be a gangbangin' finger-lickin' dirty-ass short example dat measures tha total
+instruction count of a cold-ass lil call to
+.BR printf (3).
+.nf
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <linux/perf_event.h>
+#include <asm/unistd.h>
+
+long
+perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
+                int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+
+    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
+                   group_fd, flags);
+    return ret;
+}
+
+int
+main(int argc, char **argv)
+{
+    struct perf_event_attr pe;
+    long long count;
+    int fd;
+
+    memset(&pe, 0, sizeof(struct perf_event_attr));
+    pe.type = PERF_TYPE_HARDWARE;
+    pe.size = sizeof(struct perf_event_attr);
+    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+
+    fd = perf_event_open(&pe, 0, \-1, \-1, 0);
+    if (fd == \-1) {
+       fprintf(stderr, "Error openin leader %llx\\n", pe.config);
+       exit(EXIT_FAILURE);
+    }
+
+    ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+
+    printf("Measurin instruction count fo' dis printf\\n");
+
+    ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+    read(fd, &count, sizeof(long long));
+
+    printf("Used %lld instructions\\n", count);
+
+    close(fd);
+}
+.fi
+.SH SEE ALSO
+.BR fcntl (2),
+.BR mmap (2),
+.BR open (2),
+.BR prctl (2),
+.BR read (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

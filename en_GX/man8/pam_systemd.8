@@ -1,0 +1,173 @@
+'\" t
+.TH "PAM_SYSTEMD" "8" "" "systemd 208" "pam_systemd"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+pam_systemd \- Regista user sessions up in tha systemd login manager
+.SH "SYNOPSIS"
+.PP
+pam_systemd\&.so
+.SH "DESCRIPTION"
+.PP
+\fBpam_systemd\fR
+registas user sessions wit tha systemd login manager
+\fBsystemd-logind.service\fR(8), n' hence tha systemd control crew hierarchy\&.
+.PP
+On login, dis module ensures tha following:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+If it do not exist yet, tha user runtime directory
+/run/user/$USER
+is pimped n' its ballershizzle chizzled ta tha user dat is loggin in\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+The
+\fI$XDG_SESSION_ID\fR
+environment variable is initialized\&. If auditin be available and
+\fBpam_loginuid\&.so\fR
+run before dis module (which is highly recommended), tha variable is initialized from tha auditin session id (/proc/self/sessionid)\&. Otherwise a independent session counta is used\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+A freshly smoked up systemd scope unit is pimped fo' tha session\&. If dis is tha straight-up original gangsta concurrent session of tha user, a implicit slice below
+user\&.slice
+is automatically pimped n' tha scope placed up in it\&. In instizzle of tha system service
+user@\&.service
+which runs tha systemd user manager instance\&.
+.RE
+.PP
+On logout, dis module ensures tha following:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+If dis is enabled, all processez of tha session is terminated\&. If tha last concurrent session of a user ends, his user systemd instizzle is ghon be terminated too, n' so will tha user\*(Aqs slice unit\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+If tha last concurrent session of a user ends, the
+\fI$XDG_RUNTIME_DIR\fR
+directory n' all its contents is removed, too\&.
+.RE
+.PP
+If tha system was not booted up wit systemd as init system, dis module do not a god damn thang n' immediately returns PAM_SUCCESS\&.
+.SH "OPTIONS"
+.PP
+Da followin options is understood:
+.PP
+\fBclass=\fR
+.RS 4
+Takes a strang argument which sets tha session class\&. Da XDG_SESSION_CLASS environmenstrual variable takes precedence\&.
+.RE
+.PP
+\fBdebug=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If fo'sho, tha module will log debuggin shiznit as it operates\&.
+.RE
+.SH "MODULE TYPES PROVIDED"
+.PP
+Only
+\fBsession\fR
+is provided\&.
+.SH "ENVIRONMENT"
+.PP
+Da followin environment variablez is set fo' tha processez of tha user\*(Aqs session:
+.PP
+\fI$XDG_SESSION_ID\fR
+.RS 4
+A session identifier, suitable ta be used up in filenames\&. Da strang itself should be considered opaque, although often it is just tha audit session ID as reported by
+/proc/self/sessionid\&. Each ID is ghon be assigned only once durin machine uptime\&. Well shiiiit, it may hence be used ta uniquely label filez or other resourcez of dis session\&.
+.RE
+.PP
+\fI$XDG_RUNTIME_DIR\fR
+.RS 4
+Path ta a user\-private user\-writable directory dat is bound ta tha user login time on tha machine\&. Well shiiiit, it be automatically pimped tha last time a user logs up in n' removed on his wild lil' final logout\&. If a user logs up in twice all up in tha same time, both sessions will peep tha same
+\fI$XDG_RUNTIME_DIR\fR
+and tha same contents\&. If a user logs up in once, then logs up again, n' logs up in again, tha directory contents gonna git been lost up in between yo, but applications should not rely on dis behavior n' must be able ta deal wit stale files\&. To store session\-private data up in dis directory, tha user should include tha value of
+\fI$XDG_SESSION_ID\fR
+in tha filename\&. This directory shall be used fo' runtime file system objects such as
+\fBAF_UNIX\fR
+sockets, FIFOs, PID filez n' similar\&. Well shiiiit, it is guaranteed dat dis directory is local n' offers tha top billin possible file system feature set tha operatin system provides\&.
+.RE
+.SH "EXAMPLE"
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+#%PAM\-1\&.0
+auth       required     pam_unix\&.so
+auth       required     pam_nologin\&.so
+account    required     pam_unix\&.so
+password   required     pam_unix\&.so
+session    required     pam_unix\&.so
+session    required     pam_loginuid\&.so
+session    required     pam_systemd\&.so
+.fi
+.if n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fR(1),
+\fBsystemd-logind.service\fR(8),
+\fBlogind.conf\fR(5),
+\fBloginctl\fR(1),
+\fBpam.conf\fR(5),
+\fBpam.d\fR(5),
+\fBpam\fR(8),
+\fBpam_loginuid\fR(8),
+\fBsystemd.scope\fR(5),
+\fBsystemd.slice\fR(5),
+\fBsystemd.service\fR(5)

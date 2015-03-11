@@ -1,0 +1,233 @@
+.TH PROXYMAP 8 
+.ad
+.fi
+.SH NAME
+proxymap
+\-
+Postfix lookup table proxy server
+.SH "SYNOPSIS"
+.na
+.nf
+\fBproxymap\fR [generic Postfix daemon options]
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBproxymap\fR(8) server serves up read-only or read-write
+table lookup steez ta Postfix processes. These skillz are
+implemented wit distinct steez names: \fBproxymap\fR and
+\fBproxywrite\fR, respectively. Da purpose of these skillz is:
+.IP \(bu
+To overcome chroot restrictions. For example, a cold-ass lil chrooted SMTP
+server needz access ta tha system passwd file up in order to
+reject mail fo' non-existent local addresses yo, but it is not
+practical ta maintain a cold-ass lil copy of tha passwd file up in tha chroot
+jail.  Da solution:
+.sp
+.nf
+local_recipient_maps =
+    proxy:unix:passwd.byname $alias_maps
+.fi
+.IP \(bu
+To consolidate tha number of open lookup tablez by sharing
+one open table among multiple processes. For example, making
+mysql connections from every last muthafuckin Postfix daemon process thangs up in dis biatch
+in "too nuff connections" errors. Da solution:
+.sp
+.nf
+virtual_alias_maps =
+    proxy:mysql:/etc/postfix/virtual_alias.cf
+.fi
+.sp
+Da total number of connections is limited by tha number of
+proxymap server processes.
+.IP \(bu
+To provide single-updata functionalitizzle fo' lookup tables
+that do not reliably support multiple writas (i.e. all
+file-based tables).
+.PP
+Da \fBproxymap\fR(8) server implements tha followin requests:
+.IP "\fBopen\fR \fImaptype:mapname flags\fR"
+Open tha table wit type \fImaptype\fR n' name \fImapname\fR,
+as controlled by \fIflags\fR. Da reply includes tha \fImaptype\fR
+dependent flags (to distinguish a gangbangin' fixed strang table from a regular
+expression table).
+.IP "\fBlookup\fR \fImaptype:mapname flags key\fR"
+Look up tha data stored under tha axed key.
+Da reply is tha request completion status code and
+the lookup result value.
+Da \fImaptype:mapname\fR n' \fIflags\fR is tha same
+as wit tha \fBopen\fR request.
+.IP "\fBupdate\fR \fImaptype:mapname flags key value\fR"
+Update tha data stored under tha axed key.
+Da reply is tha request completion status code.
+Da \fImaptype:mapname\fR n' \fIflags\fR is tha same
+as wit tha \fBopen\fR request.
+.sp
+To implement single-updata maps, specify a process limit
+of 1 up in tha master.cf file entry fo' tha \fBproxywrite\fR
+service.
+.sp
+This request is supported up in Postfix 2.5 n' later.
+.IP "\fBdelete\fR \fImaptype:mapname flags key\fR"
+Delete tha data stored under tha axed key.
+Da reply is tha request completion status code.
+Da \fImaptype:mapname\fR n' \fIflags\fR is tha same
+as wit tha \fBopen\fR request.
+.sp
+This request is supported up in Postfix 2.5 n' later.
+.IP "\fBsequence\fR \fImaptype:mapname flags function\fR"
+Iterate over tha specified database. Da \fIfunction\fR
+is one of DICT_SEQ_FUN_FIRST or DICT_SEQ_FUN_NEXT.
+Da reply is tha request completion status code and
+a lookup key n' result value, if found.
+.sp
+This request is supported up in Postfix 2.9 n' later.
+.PP
+Da request completion status is one of OK, RETRY, NOKEY
+(lookup failed cuz tha key was not found), BAD (malformed
+request) or DENY (the table aint approved fo' proxy read
+or update access).
+
+There is no \fBclose\fR command, nor is tablez implicitly closed
+when a cold-ass lil client disconnects, n' you can put dat on yo' toast. Da purpose is ta share tablez among
+multiple client processes.
+.SH "SERVER PROCESS MANAGEMENT"
+.na
+.nf
+.ad
+.fi
+\fBproxymap\fR(8) servers run under control by tha Postfix
+\fBmaster\fR(8)
+server n' shit.  Each server can handle multiple simultaneous connections.
+When all servers is busy while a cold-ass lil client connects, tha \fBmaster\fR(8)
+creates a freshly smoked up \fBproxymap\fR(8) server process, provided dat the
+process limit aint exceeded.
+Each server terminates afta servin at least \fB$max_use\fR clients
+or afta \fB$max_idle\fR secondz of idle time.
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da \fBproxymap\fR(8) server opens only tablez dat are
+approved via tha \fBproxy_read_maps\fR or \fBproxy_write_maps\fR
+configuration parameters, do not rap to
+users, n' can run at fixed low privilege, chrooted or not.
+But fuck dat shiznit yo, tha word on tha street is dat hustlin tha proxymap server chrooted severely limits
+usability, cuz it can open only chrooted tables.
+
+Da \fBproxymap\fR(8) server aint a trusted daemon process, n' must
+not be used ta look up sensitizzle shiznit like fuckin UNIX user or
+group IDs, mailbox file/directory names or external commands.
+
+In Postfix version 2.2 n' later, tha proxymap client recognizes
+requests ta access a table fo' security-sensitizzle purposes,
+and opens tha table directly. This allows tha same ol' dirty main.cf
+settin ta be used by sensitizzle n' non-sensitizzle processes.
+
+Postfix-writable data filez should be stored under a thugged-out dedicated
+directory dat is writable only by tha Postfix mail system,
+like fuckin tha Postfix-owned \fBdata_directory\fR.
+
+In particular, Postfix-writable filez should never exist
+in root-owned directories. Put ya muthafuckin choppers up if ya feel dis! That would open up a particular
+type of securitizzle hole where ballershizzle of a gangbangin' file or directory
+does not match tha provider of its content.
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+.SH BUGS
+.ad
+.fi
+Da \fBproxymap\fR(8) server serves up steez ta multiple clients,
+and must therefore not be used fo' tablez dat have high-latency
+lookups.
+
+Da \fBproxymap\fR(8) read-write steez do not explicitly
+close lookup tablez (even if it did, dis could not be relied on,
+because tha process may be terminated between table thugged-out shit).
+Da read-write steez should therefore not be used wit tablez that
+leave persistent storage up in a inconsistent state between
+updates (for example, CDB). Tablez dat support "sync on
+update" should be safe (for example, Berkeley DB) as should
+tablez dat is implemented by a real DBMS.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+On busy mail systems a long-ass time may pass before
+\fBproxymap\fR(8) relevant
+changes ta \fBmain.cf\fR is picked up. Use tha command
+"\fBpostfix reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdata_directory (see 'postconf -d' output)\fR"
+Da directory wit Postfix-writable data filez (for example:
+caches, pseudo-random numbers).
+.IP "\fBdaemon_timeout (18000s)\fR"
+How tha fuck much time a Postfix daemon process may take ta handle a
+request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBipc_timeout (3600s)\fR"
+Da time limit fo' bustin  or receivin shiznit over a internal
+communication channel.
+.IP "\fBmax_idle (100s)\fR"
+Da maximum amount of time dat a idle Postfix daemon process waits
+for a incomin connection before terminatin voluntarily.
+.IP "\fBmax_use (100)\fR"
+Da maximal number of incomin connections dat a Postfix daemon
+process will steez before terminatin voluntarily.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBproxy_read_maps (see 'postconf -d' output)\fR"
+Da lookup tablez dat tha \fBproxymap\fR(8) server be allowed to
+access fo' tha read-only service.
+.PP
+Available up in Postfix 2.5 n' later:
+.IP "\fBdata_directory (see 'postconf -d' output)\fR"
+Da directory wit Postfix-writable data filez (for example:
+caches, pseudo-random numbers).
+.IP "\fBproxy_write_maps (see 'postconf -d' output)\fR"
+Da lookup tablez dat tha \fBproxymap\fR(8) server be allowed to
+access fo' tha read-write service.
+.SH "SEE ALSO"
+.na
+.nf
+postconf(5), configuration parameters
+master(5), generic daemon options
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+.ad
+.fi
+Da proxymap steez was introduced wit Postfix 2.0.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

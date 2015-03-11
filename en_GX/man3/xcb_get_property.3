@@ -1,0 +1,135 @@
+.TH xcb_get_property 3  2013-08-04 "XCB" "XCB Requests"
+.ad l
+.SH NAME
+xcb_get_property \- Gets a window property
+.SH SYNOPSIS
+.hy 0
+.B #include <xcb/xproto.h>
+.SS Request function
+.HP
+xcb_get_property_cookie_t \fBxcb_get_property\fP(xcb_connection_t\ *\fIconn\fP, uint8_t\ \fI_delete\fP, xcb_window_t\ \fIwindow\fP, xcb_atom_t\ \fIproperty\fP, xcb_atom_t\ \fItype\fP, uint32_t\ \fIlong_offset\fP, uint32_t\ \fIlong_length\fP);
+.PP
+.SS Reply datastructure
+.nf
+.sp
+typedef struct xcb_get_property_reply_t {
+    uint8_t    \fIresponse_type\fP;
+    uint8_t    \fIformat\fP;
+    uint16_t   \fIsequence\fP;
+    uint32_t   \fIlength\fP;
+    xcb_atom_t \fItype\fP;
+    uint32_t   \fIbytes_after\fP;
+    uint32_t   \fIvalue_len\fP;
+    uint8_t    \fIpad0\fP[12];
+} \fBxcb_get_property_reply_t\fP;
+.fi
+.SS Reply function
+.HP
+xcb_get_property_reply_t *\fBxcb_get_property_reply\fP(xcb_connection_t\ *\fIconn\fP, xcb_get_property_cookie_t\ \fIcookie\fP, xcb_generic_error_t\ **\fIe\fP);
+.SS Reply accessors
+.HP
+void *\fBxcb_get_property_value\fP(const xcb_get_property_request_t *\fIreply\fP);
+.HP
+int \fBxcb_get_property_value_length\fP(const xcb_get_property_reply_t *\fIreply\fP);
+.HP
+xcb_generic_iterator_t \fBxcb_get_property_value_end\fP(const xcb_get_property_reply_t *\fIreply\fP);
+.br
+.hy 1
+.SH REQUEST ARGUMENTS
+.IP \fIconn\fP 1i
+Da XCB connection ta X11.
+.IP \fI_delete\fP 1i
+Whether tha property should straight-up be deleted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. For deletin a property, the
+specified \fItype\fP has ta match tha actual property type.
+.IP \fIwindow\fP 1i
+Da window whose property you wanna get.
+.IP \fIproperty\fP 1i
+Da property you wanna git (an atom).
+.IP \fItype\fP 1i
+Da type of tha property you wanna git (an atom).
+.IP \fIlong_offset\fP 1i
+Specifies tha offset (in 32-bit multiples) up in tha specified property where the
+data is ta be retrieved.
+.IP \fIlong_length\fP 1i
+Specifies how tha fuck nuff 32-bit multiplez of data should be retrieved (e.g. if you
+set \fIlong_length\fP ta 4, yo big-ass booty is ghon receive 16 bytez of data).
+.SH REPLY FIELDS
+.IP \fIresponse_type\fP 1i
+Da type of dis reply, up in dis case \fIXCB_GET_PROPERTY\fP. This field be also present up in tha \fIxcb_generic_reply_t\fP n' can be used ta tell replies apart from each other.
+.IP \fIsequence\fP 1i
+Da sequence number of tha last request processed by tha X11 server.
+.IP \fIlength\fP 1i
+Da length of tha reply, up in lyrics (a word is 4 bytes).
+.IP \fIformat\fP 1i
+Specifies whether tha data should be viewed as a list of 8-bit, 16-bit, or
+32-bit quantities. Put ya muthafuckin choppers up if ya feel dis! Possible joints is 8, 16, n' 32. This shiznit allows
+the X server ta erectly big-ass up byte-swap operations as necessary.
+.IP \fItype\fP 1i
+Da actual type of tha property (an atom).
+.IP \fIbytes_after\fP 1i
+Da number of bytes remainin ta be read up in tha property if a partial read was
+performed.
+.IP \fIvalue_len\fP 1i
+Da length of value. Yo ass should use tha correspondin accessor instead of this
+field.
+.SH DESCRIPTION
+Gets tha specified \fIproperty\fP from tha specified \fIwindow\fP. Propertizzles is for
+example tha window title (\fIWM_NAME\fP) or its minimum size (\fIWM_NORMAL_HINTS\fP).
+Protocols like fuckin EWMH also use propertizzles - fo' example EWMH defines the
+window title, encoded as UTF-8 string, up in tha \fI_NET_WM_NAME\fP property.
+
+TODO: rap bout \fItype\fP
+
+TODO: rap bout \fIdelete\fP
+
+TODO: rap bout tha offset/length thang. whatz a valid use case?
+.SH RETURN VALUE
+Returns a \fIxcb_get_property_cookie_t\fP. Errors gotta be handled when callin tha reply function \fIxcb_get_property_reply\fP.
+
+If you wanna handle errors up in tha event loop instead, use \fIxcb_get_property_unchecked\fP. Right back up in yo muthafuckin ass. See \fBxcb-requests(3)\fP fo' details.
+.SH ERRORS
+.IP \fIxcb_window_error_t\fP 1i
+Da specified \fIwindow\fP do not exist.
+.IP \fIxcb_value_error_t\fP 1i
+Da specified \fIlong_offset\fP is beyond tha actual property length (e.g. the
+property has a length of 3 bytes n' yo ass is settin \fIlong_offset\fP ta 1,
+resultin up in a funky-ass byte offset of 4).
+.IP \fIxcb_atom_error_t\fP 1i
+\fIproperty\fP or \fItype\fP do not refer ta a valid atom.
+.SH EXAMPLE
+.nf
+.sp
+/*
+ * Prints tha WM_NAME property of tha window.
+ *
+ */
+void my_example(xcb_connection *c, xcb_window_t window) {
+    xcb_get_property_cookie_t cookie;
+    xcb_get_property_reply_t *reply;
+
+    /* These atoms is predefined up in tha X11 protocol. */
+    xcb_atom_t property = XCB_ATOM_WM_NAME;
+    xcb_atom_t type = XCB_ATOM_STRING;
+
+    // TODO: a reasonable long_length fo' WM_NAME?
+    cookie = xcb_get_property(c, 0, window, property, type, 0, 0);
+    if ((reply = xcb_get_property_reply(c, cookie, NULL))) {
+        int len = xcb_get_property_value_length(reply);
+        if (len == 0) {
+            printf("TODO\\n");
+            free(reply);
+            return;
+        }
+        printf("WM_NAME is %.*s\\n", len,
+               (char*)xcb_get_property_value(reply));
+    }
+    free(reply);
+}
+.fi
+.SH SEE ALSO
+.BR xcb-requests (3),
+.BR xcb-examplez (3),
+.BR xcb_intern_atom (3),
+.BR xprop (1)
+.SH AUTHOR
+Generated from xproto.xml. Contact xcb@lists.freedesktop.org fo' erections n' improvements.

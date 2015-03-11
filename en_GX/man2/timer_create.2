@@ -1,0 +1,421 @@
+.\" Copyright (c) 2009 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" FIXME: Linux 2.6.39 addz CLOCK_BOOTTIME
+.\" Do dis also affect timerfd_create()?
+.\" FIXME: Linux 2.3.0 addz CLOCK_BOOTTIME_ALARM n' CLOCK_REALTIME_ALARM
+.\" Do dis also affect timerfd_create()?
+.\"
+.TH TIMER_CREATE 2 2010-09-27 Linux "Linux Programmerz Manual"
+.SH NAME
+timer_create \- create a POSIX per-process timer
+.SH SYNOPSIS
+.nf
+.B  #include <signal.h>
+.B  #include <time.h>
+
+.BI "int timer_create(clockid_t " clockid ", struct sigevent *" sevp ,
+.BI "                 timer_t *" timerid );
+.fi
+
+Link wit \fI\-lrt\fP.
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR timer_create ():
+_POSIX_C_SOURCE\ >=\ 199309L
+.SH DESCRIPTION
+.BR timer_create ()
+creates a freshly smoked up per-process interval timer.
+Da ID of tha freshly smoked up timer is returned up in tha buffer pointed ta by
+.IR timerid ,
+which must be a non-NULL pointer.
+This ID is unique within tha process, until tha timer is deleted.
+Da freshly smoked up timer is initially disarmed.
+
+The
+.I clockid
+argument specifies tha clock dat tha freshly smoked up timer uses ta measure time.
+It can be specified as one of tha followin joints:
+.TP
+.B CLOCK_REALTIME
+A settable system-wide real-time clock.
+.TP
+.B CLOCK_MONOTONIC
+A nonsettable monotonically increasin clock dat measures time
+from some unspecified point up in tha past dat do not chizzle
+afta system startup.
+.\" Note: tha CLOCK_MONOTONIC_RAW clock added fo' clock_gettime()
+.\" up in 2.6.28 aint supported fo' POSIX timers -- mtk, Feb 2009
+.TP
+.BR CLOCK_PROCESS_CPUTIME_ID " (since Linux 2.6.12)"
+A clock dat measures (user n' system) CPU time consumed by
+(all of tha threadz in) tha callin process.
+.TP
+.BR CLOCK_THREAD_CPUTIME_ID " (since Linux 2.6.12)"
+A clock dat measures (user n' system) CPU time consumed by
+the callin thread.
+.\" Da CLOCK_MONOTONIC_RAW dat was added up in 2.6.28 can't be used
+.\" ta create a timer -- mtk, Feb 2009
+.PP
+As well as tha above joints,
+.I clockid
+can be specified as the
+.I clockid
+returned by a cold-ass lil call to
+.BR clock_getcpuclockid (3)
+or
+.BR pthread_getcpuclockid (3).
+
+The
+.I sevp
+argument points ta a
+.I sigevent
+structure dat specifies how tha fuck tha caller
+should be notified when tha timer expires.
+For tha definizzle n' general detailz of dis structure, see
+.BR sigevent (7).
+
+The
+.I sevp.sigev_notify
+field can have tha followin joints:
+.TP
+.BR SIGEV_NONE
+Don't asynchronously notify when tha timer expires.
+Progress of tha timer can be monitored using
+.BR timer_gettime (2).
+.TP
+.BR SIGEV_SIGNAL
+Upon timer expiration, generate tha signal
+.I sigev_signo
+for tha process.
+See
+.BR sigevent (7)
+for general details.
+The
+.I si_code
+field of the
+.I siginfo_t
+structure is ghon be set to
+.BR SI_TIMER .
+At any point up in time,
+at most one signal is queued ta tha process fo' a given timer; see
+.BR timer_getoverrun (2)
+for mo' details.
+.TP
+.BR SIGEV_THREAD
+Upon timer expiration, invoke
+.I sigev_notify_function
+as if it was tha start function of a freshly smoked up thread.
+See
+.BR sigevent (7)
+for details.
+.TP
+.BR SIGEV_THREAD_ID " (Linux-specific)"
+As for
+.BR SIGEV_SIGNAL ,
+but tha signal is targeted all up in tha thread whose ID is given in
+.IR sigev_notify_thread_id ,
+which must be a thread up in tha same process as tha caller.
+The
+.IR sigev_notify_thread_id
+field specifies a kernel thread ID, dat is, tha value returned by
+.BR clone (2)
+or
+.BR gettid (2).
+This flag is intended only fo' use by threadin libraries.
+.PP
+Specifying
+.I sevp
+as NULL is equivalent ta specifyin a pointa ta a
+.I sigevent
+structure up in which
+.I sigev_notify
+is
+.BR SIGEV_SIGNAL ,
+.I sigev_signo
+is
+.BR SIGALRM ,
+and
+.I sigev_value.sival_int
+is tha timer ID.
+.SH RETURN VALUE
+On success,
+.BR timer_create ()
+returns 0, n' tha ID of tha freshly smoked up timer is placed in
+.IR *timerid .
+On failure, \-1 is returned, and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EAGAIN
+Temporary error durin kernel allocation of timer structures.
+.TP
+.B EINVAL
+Clock ID,
+.IR sigev_notify ,
+.IR sigev_signo ,
+or
+.IR sigev_notify_thread_id
+is invalid.
+.TP
+.B ENOMEM
+.\" glibc layer: malloc()
+Could not allocate memory.
+.SH VERSIONS
+This system call be available since Linux 2.6.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+A program may create multiple interval timers using
+.BR timer_create ().
+
+Timers is not inherited by tha lil pimp of a
+.BR fork (2),
+and is disarmed n' deleted durin an
+.BR execve (2).
+
+Da kernel preallocates a "queued real-time signal"
+for each timer pimped using
+.BR timer_create ().
+Consequently, tha number of timers is limited by the
+.BR RLIMIT_SIGPENDING
+resource limit (see
+.BR setrlimit (2)).
+
+Da timers pimped by
+.BR timer_create ()
+are commonly known as "POSIX (interval) timers".
+Da POSIX timers API consistz of tha followin intercourses:
+.IP * 3
+.BR timer_create ():
+Smoke a timer.
+.IP *
+.BR timer_settime (2):
+Arm (start) or disarm (stop) a timer.
+.IP *
+.BR timer_gettime (2):
+Fetch tha time remainin until tha next expiration of a timer,
+along wit tha interval settin of tha timer.
+.IP *
+.BR timer_getoverrun (2):
+Return tha overrun count fo' tha last timer expiration.
+.IP *
+.BR timer_delete (2):
+Disarm n' delete a timer.
+.PP
+Part of tha implementation of tha POSIX timers API is provided by glibc.
+In particular:
+.IP * 3
+Da functionalitizzle for
+.BR SIGEV_THREAD
+is implemented within glibc, rather than tha kernel.
+.IP *
+Da timer IDs presented at user level is maintained by glibc,
+which maps these IDs ta tha timer IDs employed by tha kernel.
+.\" See tha glibc source file kernel-posix-timers.h fo' tha structure
+.\" dat glibc uses ta map user-space timer IDs ta kernel timer IDs
+.\" Da kernel-level timer ID is exposed via siginfo.si_tid.
+.PP
+Da POSIX timers system calls first rocked up in Linux 2.6.
+Prior ta this,
+glibc provided a incomplete user-space implementation
+.RB ( CLOCK_REALTIME
+timers only) rockin POSIX threads,
+and current glibc falls back ta dis implementation on systems
+runnin pre-2.6 Linux kernels.
+.SH EXAMPLE
+Da program below takes two arguments: a chill period up in seconds,
+and a timer frequency up in nanoseconds.
+Da program establishes a handlez fo' tha signal it uses fo' tha timer,
+blocks dat signal,
+creates n' arms a timer dat expires wit tha given frequency,
+sleeps fo' tha specified number of seconds,
+and then unblocks tha timer signal.
+Assumin dat tha timer expired at least once while tha program slept,
+the signal handlez is ghon be invoked,
+and tha handlez displays some shiznit bout tha timer notification.
+Da program terminates afta one invocation of tha signal handlez.
+
+In tha followin example run, tha program chills fo' 1 second,
+afta bustin a timer dat has a gangbangin' frequency of 100 nanoseconds.
+By tha time tha signal is unblocked n' delivered,
+there done been round ten mazillion overruns.
+.in +4n
+.nf
+
+$ \fB./a.out 1 100\fP
+Establishin handlez fo' signal 34
+Blockin signal 34
+timer ID is 0x804c008
+Chillin fo' 1 seconds
+Unblockin signal 34
+Caught signal 34
+    sival_ptr = 0xbfb174f4;     *sival_ptr = 0x804c008
+    overrun count = 10004886
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <signal.h>
+#include <time.h>
+
+#define CLOCKID CLOCK_REALTIME
+#define SIG SIGRTMIN
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \\
+                        } while (0)
+
+static void
+print_siginfo(siginfo_t *si)
+{
+    timer_t *tidp;
+    int or;
+
+    tidp = si\->si_value.sival_ptr;
+
+    printf("    sival_ptr = %p; ", si\->si_value.sival_ptr);
+    printf("    *sival_ptr = 0x%lx\\n", (long) *tidp);
+
+    or = timer_getoverrun(*tidp);
+    if (or == \-1)
+        errExit("timer_getoverrun");
+    else
+        printf("    overrun count = %d\\n", or);
+}
+
+static void
+handlez(int sig, siginfo_t *si, void *uc)
+{
+    /* Note: callin printf() from a signal handlez is not
+       strictly erect, since printf() aint async\-signal\-safe;
+       peep signal(7) */
+
+    printf("Caught signal %d\\n", sig);
+    print_siginfo(si);
+    signal(sig, SIG_IGN);
+}
+
+int
+main(int argc, char *argv[])
+{
+    timer_t timerid;
+    struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <sleep\-secs> <freq\-nanosecs>\\n",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Establish handlez fo' timer signal */
+
+    printf("Establishin handlez fo' signal %d\\n", SIG);
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = handlez;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIG, &sa, NULL) == \-1)
+        errExit("sigaction");
+
+    /* Block timer signal temporarily */
+
+    printf("Blockin signal %d\\n", SIG);
+    sigemptyset(&mask);
+    sigaddset(&mask, SIG);
+    if (sigprocmask(SIG_SETMASK, &mask, NULL) == \-1)
+        errExit("sigprocmask");
+
+    /* Smoke tha timer */
+
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIG;
+    sev.sigev_value.sival_ptr = &timerid;
+    if (timer_create(CLOCKID, &sev, &timerid) == \-1)
+        errExit("timer_create");
+
+    printf("timer ID is 0x%lx\\n", (long) timerid);
+
+    /* Start tha timer */
+
+    freq_nanosecs = atoll(argv[2]);
+    its.it_value.tv_sec = freq_nanosecs / 1000000000;
+    its.it_value.tv_nsec = freq_nanosecs % 1000000000;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    if (timer_settime(timerid, 0, &its, NULL) == \-1)
+         errExit("timer_settime");
+
+    /* Sleep fo' a while; meanwhile, tha timer may expire
+       multiple times */
+
+    printf("Chillin fo' %d seconds\\n", atoi(argv[1]));
+    chill(atoi(argv[1]));
+
+    /* Unlock tha timer signal, so dat timer notification
+       can be served up */
+
+    printf("Unblockin signal %d\\n", SIG);
+    if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == \-1)
+        errExit("sigprocmask");
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.ad l
+.nh
+.BR clock_gettime (2),
+.BR setitimer (2),
+.BR timer_delete (2),
+.BR timer_getoverrun (2),
+.BR timer_settime (2),
+.BR timerfd_create (2),
+.BR clock_getcpuclockid (3),
+.BR pthread_getcpuclockid (3),
+.BR pthreadz (7),
+.BR sigevent (7),
+.BR signal (7),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

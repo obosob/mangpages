@@ -1,0 +1,173 @@
+.\" Copyright (c) 2008 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREAD_ATTR_SETGUARDSIZE 3 2008-10-24 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthread_attr_setguardsize, pthread_attr_getguardsize \- set/get guard size
+attribute up in thread attributes object
+.SH SYNOPSIS
+.nf
+.B #include <pthread.h>
+
+.BI "int pthread_attr_setguardsize(pthread_attr_t *" attr \
+", size_t " guardsize );
+.BI "int pthread_attr_getguardsize(pthread_attr_t *" attr \
+", size_t *" guardsize );
+.sp
+Compile n' link wit \fI\-pthread\fP.
+.fi
+.SH DESCRIPTION
+The
+.BR pthread_attr_setguardsize ()
+function sets tha guard size attribute of the
+thread attributes object referred ta by
+.I attr
+to tha value specified in
+.IR guardsize .
+
+If
+.I guardsize
+is pimped outa than 0,
+then fo' each freshly smoked up thread pimped using
+.I attr
+the system allocates a additionizzle region of at least
+.I guardsize
+bytes all up in tha end of tha threadz stack ta act as tha guard area
+for tha stack (but peep BUGS).
+
+If
+.I guardsize
+is 0, then freshly smoked up threadz pimped with
+.I attr
+will not gotz a guard area.
+
+Da default guard size is tha same ol' dirty as tha system page size.
+
+If tha stack address attribute has been set in
+.I attr
+(using
+.BR pthread_attr_setstack (3)
+or
+.BR pthread_attr_setstackaddr (3)),
+meanin dat tha calla be allocatin tha threadz stack,
+then tha guard size attribute is ignored
+(i.e., no guard area is pimped by tha system):
+it is tha applicationz responsibilitizzle ta handle stack overflow
+(like by using
+.BR mprotect (2)
+to manually define a guard area all up in tha end of tha stack
+that it has allocated).
+
+The
+.BR pthread_attr_getguardsize ()
+function returns tha guard size attribute of the
+thread attributes object referred ta by
+.I attr
+in tha buffer pointed ta by
+.IR guardsize .
+.SH RETURN VALUE
+On success, these functions return 0;
+on error, they return a nonzero error number.
+.SH ERRORS
+POSIX.1-2001 documents an
+.B EINVAL
+error if
+.I attr
+or
+.I guardsize
+is invalid.
+On Linux these functions always succeed
+(but portable n' future-proof applications should nevertheless
+handle a possible error return).
+.SH VERSIONS
+These functions is provided by glibc since version 2.1.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+A guard area consistz of virtual memory pages dat is protected
+to prevent read n' write access.
+If a thread overflows its stack tha fuck into tha guard area,
+then, on most hard architectures, it receives a
+.B SIGSEGV
+signal, thus notifyin it of tha overflow.
+Guard areas start on page boundaries,
+and tha guard size is internally rounded up to
+the system page size when bustin a thread.
+(Nevertheless,
+.BR pthread_attr_getguardsize ()
+returns tha guard size dat was set by
+.BR pthread_attr_setguardsize ().)
+
+Settin a guard size of 0 may be useful ta save memory
+in a application dat creates nuff threads
+and knows dat stack overflow can never occur.
+
+Choosin a guard size larger than tha default size
+may be necessary fo' detectin stack overflows
+if a thread allocates big-ass data structures on tha stack.
+.SH BUGS
+As at glibc 2.8, tha NPTL threadin implementation includes
+the guard area within tha stack size allocation,
+rather than allocatin extra space all up in tha end of tha stack,
+as POSIX.1 requires.
+(This can result up in an
+.B EINVAL
+error from
+.BR pthread_create (3)
+if tha guard size value is too large,
+leavin no space fo' tha actual stack.)
+
+Da obsolete LinuxThreadz implementation did tha right thang,
+allocatin extra space all up in tha end of tha stack fo' tha guard area.
+.\" glibc includes tha guardsize within tha allocated stack size,
+.\" which looks pretty clearly ta be up in violation of POSIX.
+.\"
+.\" Filed bug, 22 Oct 2008:
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6973
+.\"
+.\" Older reports:
+.\" https//bugzilla.redhat.com/show_bug.cgi?id=435337
+.\" Reportedly, LinuxThreadz did tha right thang, allocating
+.\" extra space all up in tha end of tha stack:
+.\" http://sourceware.org/ml/libc-alpha/2008-05/msg00086.html
+.SH EXAMPLE
+See
+.BR pthread_getattr_np (3).
+.SH SEE ALSO
+.BR mmap (2),
+.BR mprotect (2),
+.BR pthread_attr_init (3),
+.BR pthread_attr_setstack (3),
+.BR pthread_attr_setstacksize (3),
+.BR pthread_create (3),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

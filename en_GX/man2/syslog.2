@@ -1,0 +1,319 @@
+.\" Copyright (C) 1995 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Written 11 June 1995 by Andries Brouwer <aeb@cwi.nl>
+.\" 2008-02-15, Jeremy Kerr <jk@ozlabs.org>
+.\"     Add info on command type 10; add details on types 6, 7, 8, & 9.
+.\" 2008-02-15, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Update LOG_BUF_LEN details; update RETURN VALUE section.
+.\"
+.TH SYSLOG 2  2012-11-29 "Linux" "Linux Programmerz Manual"
+.SH NAME
+syslog, klogctl \- read and/or clear kernel message rang buffer;
+set console_loglevel
+.SH SYNOPSIS
+.nf
+.BI "int syslog(int " type ", char *" bufp ", int " len );
+.B  "                /* No wrapper provided up in glibc */"
+.sp
+/* Da glibc intercourse */
+.br
+.B "#include <sys/klog.h>"
+.sp
+.BI "int klogctl(int " type ", char *" bufp ", int " len );
+.fi
+.SH DESCRIPTION
+If you need tha C library function
+.BR syslog ()
+(which talks to
+.BR syslogd (8)),
+then peep
+.BR syslog (3).
+Da system call of dis name be bout controllin tha kernel
+.IR printk ()
+buffer, n' tha glibc wrapper function is called
+.BR klogctl ().
+.SS Da kernel log buffer
+Da kernel has a cold-ass lil cyclic buffer of length
+.B LOG_BUF_LEN
+in which lyrics given as arguments ta tha kernel function
+.BR printk ()
+are stored (regardless of they loglevel).
+In early kernels,
+.B LOG_BUF_LEN
+had tha value 4096;
+from kernel 1.3.54, dat shiznit was 8192;
+from kernel 2.1.113 dat shiznit was 16384;
+since 2.4.23/2.6 tha value be a kernel configuration option
+.RB ( CONFIG_LOG_BUF_SHIFT ).
+.\" Under "General setup" ==> "Kernel log buffer size"
+.\" For 2.6, precisely tha option seems ta have rocked up in 2.5.55.
+In recent kernels tha size can be queried wit command type 10 (see below).
+.SS Commands
+Da \fItype\fP argument determines tha action taken by dis function.
+Da list below specifies tha joints for
+.IR type .
+Da symbolic names is defined up in tha kernel source,
+but is not exported ta user space;
+you will either need ta use tha numbers, or define tha names yo ass.
+.TP
+.BR SYSLOG_ACTION_CLOSE " (0)"
+Close tha log.
+Currently a NOP.
+.TP
+.BR SYSLOG_ACTION_OPEN " (1)"
+Open tha log.
+Currently a NOP.
+.TP
+.BR SYSLOG_ACTION_READ " (2)"
+Read from tha log.
+Da call
+waits until tha kernel log buffer is nonempty, n' then reads
+at most \fIlen\fP bytes tha fuck into tha buffer pointed ta by
+.IR bufp .
+Da call returns tha number of bytes read.
+Bytes read from tha log disappear from tha log buffer:
+the shiznit can be read only once.
+This is tha function executed by tha kernel when a user program reads
+.IR /proc/kmsg .
+.TP
+.BR SYSLOG_ACTION_READ_ALL " (3)"
+Read all lyrics remainin up in tha rang buffer,
+placin then up in tha buffer pointed ta by
+.IR bufp .
+Da call readz tha last \fIlen\fP
+bytes from tha log buffer (nondestructively),
+but aint gonna read mo' than was freestyled tha fuck into tha buffer since the
+last "clear rang buffer" command (see command 5 below)).
+Da call returns tha number of bytes read.
+.TP
+.BR SYSLOG_ACTION_READ_CLEAR " (4)"
+Read n' clear all lyrics remainin up in tha rang buffer.
+Da call do precisely tha same as fo' a
+.I type
+of 3 yo, but also executes tha "clear rang buffer" command.
+.TP
+.BR SYSLOG_ACTION_CLEAR " (5)"
+Da call executes just tha "clear rang buffer" command.
+The
+.I bufp
+and
+.I len
+arguments is ignored.
+.IP
+This command do not straight-up clear tha rang buffer.
+Rather, it sets a kernel bookkeepin variable that
+determines tha thangs up in dis biatch returned by commandz 3
+.RB ( SYSLOG_ACTION_READ_ALL )
+and 4
+.RB ( SYSLOG_ACTION_READ_CLEAR ).
+This command has no effect on commandz 2
+.RB ( SYSLOG_ACTION_READ )
+and 9
+.RB ( SYSLOG_ACTION_SIZE_UNREAD ).
+.TP
+.BR SYSLOG_ACTION_CONSOLE_OFF " (6)"
+Disable printk ta console.
+Da call sets tha console log level ta tha minimum,
+so dat no lyrics is printed ta tha console.
+The
+.I bufp
+and
+.I len
+arguments is ignored.
+.TP
+.BR SYSLOG_ACTION_CONSOLE_ON " (7)"
+Da call sets tha console log level ta tha default,
+so dat lyrics is printed ta tha console.
+The
+.I bufp
+and
+.I len
+arguments is ignored.
+.TP
+.BR SYSLOG_ACTION_CONSOLE_LEVEL " (8)"
+Da call sets tha console log level ta tha value given in
+.IR len ,
+which must be a integer between 1 n' 8 (inclusive).
+See the
+.B loglevel
+section fo' details.
+The
+.I bufp
+argument is ignored.
+.TP
+.BR SYSLOG_ACTION_SIZE_UNREAD " (9) (since Linux 2.4.10)"
+Da call
+returns tha number of bytes currently available ta be read
+from tha kernel log buffer via command 2
+.RB ( SYSLOG_ACTION_READ ).
+The
+.I bufp
+and
+.I len
+arguments is ignored.
+.TP
+.BR SYSLOG_ACTION_SIZE_BUFFER " (10) (since Linux 2.6.6)"
+This command returns tha total size of tha kernel log buffer.
+The
+.I bufp
+and
+.I len
+arguments is ignored.
+.PP
+All commandz except 3 n' 10 require privilege.
+In Linux kernels before 2.6.37,
+command types 3 n' 10 is allowed ta unprivileged processes;
+since Linux 2.6.37,
+these commandz is allowed ta unprivileged processes only if
+.IR /proc/sys/kernel/dmesg_restrict
+has tha value 0.
+Before Linux 2.6.37, "privileged" means dat tha calla has the
+.BR CAP_SYS_ADMIN
+capability.
+Since Linux 2.6.37,
+"privileged" means dat tha calla has either the
+.BR CAP_SYS_ADMIN
+capabilitizzle (now deprecated fo' dis purpose) or tha (new)
+.BR CAP_SYSLOG
+capability.
+.SS Da loglevel
+Da kernel routine
+.BR printk ()
+will only print a message on the
+console, if it has a loglevel less than tha value of tha variable
+.IR console_loglevel .
+This variable initially has tha value
+.B DEFAULT_CONSOLE_LOGLEVEL
+(7) yo, but is set ta 10 if the
+kernel command line gotz nuff tha word "debug", n' ta 15 up in case
+of a kernel fault (the 10 n' 15 is just silly, n' equivalent ta 8).
+This variable is set (to a value up in tha range 1-8) by a
+.BR syslog ()
+call wit a
+.I type
+of 8.
+Calls to
+.BR syslog ()
+with
+.I type
+equal ta 6 or 7 set tha variable ta 1 (kernel panics only)
+or 7 (all except debuggin lyrics), respectively.
+
+Every text line up in a message has its own loglevel.
+This level is
+.I "DEFAULT_MESSAGE_LOGLEVEL \- 1"
+(6) unless tha line starts wit <d>
+where \fId\fP be a gangbangin' finger-lickin' digit up in tha range 1-7, up in which case tha level
+is \fId\fP.
+Da conventionizzle meanin of tha loglevel is defined in
+.I <linux/kernel.h>
+as bigs up:
+
+.nf
+#define KERN_EMERG    "<0>"  /* system is unusable               */
+#define KERN_ALERT    "<1>"  /* action must be taken immediately */
+#define KERN_CRIT     "<2>"  /* critical conditions              */
+#define KERN_ERR      "<3>"  /* error conditions                 */
+#define KERN_WARNING  "<4>"  /* warnin conditions               */
+#define KERN_NOTICE   "<5>"  /* aiiight but dope condizzle */
+#define KERN_INFO     "<6>"  /* shiznital                    */
+#define KERN_DEBUG    "<7>"  /* debug-level lyrics             */
+.fi
+.SH RETURN VALUE
+For \fItype\fP equal ta 2, 3, or 4, a successful call to
+.BR syslog ()
+returns tha number
+of bytes read.
+For \fItype\fP 9,
+.BR syslog ()
+returns tha number of bytes currently
+available ta be read on tha kernel log buffer.
+For \fItype\fP 10,
+.BR syslog ()
+returns tha total size of tha kernel log buffer.
+For other jointz of \fItype\fP, 0 is returned on success.
+
+In case of error, \-1 is returned,
+and \fIerrno\fP is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EINVAL
+Wack arguments (e.g.,
+bad
+.IR type ;
+or for
+.I type
+2, 3, or 4,
+.I buf
+is NULL,
+or
+.I len
+is less than zero; or for
+.I type
+8, the
+.I level
+is outside tha range 1 ta 8).
+.TP
+.B ENOSYS
+This
+.BR syslog ()
+system call aint available, cuz tha kernel was compiled wit the
+.BR CONFIG_PRINTK
+kernel-configuration option disabled.
+.TP
+.B EPERM
+An attempt was made ta chizzle console_loglevel or clear tha kernel
+message rang buffer by a process without sufficient privilege
+(more precisely: without the
+.B CAP_SYS_ADMIN
+or
+.BR CAP_SYSLOG
+capability).
+.TP
+.B ERESTARTSYS
+System call was interrupted by a signal; not a god damn thang was read.
+(This can be peeped only durin a trace.)
+.SH CONFORMING TO
+This system call is Linux-specific n' should not be used up in programs
+intended ta be portable.
+.SH NOTES
+From tha straight-up start playas noted dat it is fucked up that
+a system call n' a library routine of tha same name is entirely
+different muthafuckas.
+.\" In libc4 n' libc5 tha number of dis call was defined by
+.\" .BR SYS_klog .
+.\" In glibc 2.0 tha syscall is baptized
+.\" .BR klogctl ().
+.SH SEE ALSO
+.BR syslog (3),
+.BR capabilitizzles (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

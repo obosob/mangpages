@@ -1,0 +1,525 @@
+.\" Copyright 1995 Yggdrasil Computing, Incorporated.
+.\" freestyled by Adam J. Richta (adam@yggdrasil.com),
+.\" wit typesettin help from Daniel Quinlan (quinlan@yggdrasil.com).
+.\" n' Copyright 2003 Mike Kerrisk (mtk.manpages@gmail.com).
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Dizzy A. Wheela <dwheeler@dwheeler.com> 2000-11-28.
+.\" Applied patch by Terran Melconian, aeb, 2001-12-14.
+.\" Modified by Hacksaw <hacksaw@hacksaw.org> 2003-03-13.
+.\" Modified by Mack Domsch, 2003-04-09: _init n' _fini obsolete
+.\" Modified by Mike Kerrisk <mtk.manpages@gmail.com> 2003-05-16.
+.\" Modified by Walta Harms: dladdr, dlvsym
+.\" Modified by Petr Baudis <pasky@suse.cz>, 2008-12-04: dladdr caveat
+.\"
+.TH DLOPEN 3 2008-12-06 "Linux" "Linux Programmerz Manual"
+.SH NAME
+dladdr, dlclose, dlerror, dlopen, dlsym, dlvsym \- programmin intercourse to
+dynamic linkin loader
+.SH SYNOPSIS
+.B #include <dlfcn.h>
+.sp
+.BI "void *dlopen(const char *" filename ", int " flag );
+.sp
+.B "char *dlerror(void);"
+.sp
+.BI "void *dlsym(void *" handle ", const char *" symbol );
+.sp
+.BI "int dlclose(void *" handle );
+.sp
+Link wit \fI\-ldl\fP.
+.SH DESCRIPTION
+Da four functions
+.BR dlopen (),
+.BR dlsym (),
+.BR dlclose (),
+.BR dlerror ()
+implement tha intercourse ta tha dynamic linkin loader.
+.SS dlerror()
+Da function
+.BR dlerror ()
+returns a human readable strang describin da most thugged-out recent error
+that occurred from
+.BR dlopen (),
+.BR dlsym ()
+or
+.BR dlclose ()
+since tha last call to
+.BR dlerror ().
+It returns NULL if no errors have occurred since initialization or since
+it was last called.
+.SS dlopen()
+Da function
+.BR dlopen ()
+loadz tha dynamic library file named by tha null-terminated
+string
+.I filename
+and returns a opaque "handle" fo' tha dynamic library.
+If
+.I filename
+is NULL, then tha returned handle is fo' tha main program.
+If
+.I filename
+gotz nuff a slash ("/"), then it is interpreted as a (relative
+or absolute) pathname.
+Otherwise, tha dynamic linker searches fo' tha library as bigs up
+(see
+.BR ld.so (8)
+for further details):
+.IP o 4
+(ELF only) If tha executable file fo' tha callin program
+gotz nuff a DT_RPATH tag, n' do not contain a DT_RUNPATH tag,
+then tha directories listed up in tha DT_RPATH tag is searched.
+.IP o
+If, all up in tha time dat tha program was started, tha environment variable
+.B LD_LIBRARY_PATH
+was defined ta contain a cold-ass lil colon-separated list of directories,
+then these is searched.
+(As a securitizzle measure dis variable is ignored fo' set-user-ID and
+set-group-ID programs.)
+.IP o
+(ELF only) If tha executable file fo' tha callin program
+gotz nuff a DT_RUNPATH tag, then tha directories listed up in dat tag
+are searched.
+.IP o
+Da cache file
+.I /etc/ld.so.cache
+(maintained by
+.BR ldconfig (8))
+is checked ta peep whether it gotz nuff a entry for
+.IR filename .
+.IP o
+Da directories
+.I /lib
+and
+.I /usr/lib
+are searched (in dat order).
+.PP
+If tha library has dependencies on other shared libraries,
+then these is also automatically loaded by tha dynamic linker
+usin tha same rules.
+(This process may occur recursively,
+if dem libraries up in turn have dependencies, n' so on.)
+.PP
+One of tha followin two joints must be included in
+.IR flag :
+.TP
+.B RTLD_LAZY
+Perform lazy binding.
+Only resolve symbols as tha code dat references dem is executed.
+If tha symbol is never referenced, then it is never resolved.
+(Lazy bindin is performed only fo' function references;
+references ta variablez is always immediately bound when
+the library is loaded.)
+.TP
+.B RTLD_NOW
+If dis value is specified, or tha environment variable
+.B LD_BIND_NOW
+is set ta a nonempty string,
+all undefined symbols up in tha library is resolved before
+.BR dlopen ()
+returns.
+If dis cannot be done, a error is returned.
+.PP
+Zero or mo' of tha followin joints may also be ORed in
+.IR flag :
+.TP
+.B RTLD_GLOBAL
+Da symbols defined by dis library will be
+made available fo' symbol resolution of subsequently loaded libraries.
+.TP
+.B RTLD_LOCAL
+This is tha converse of
+.BR RTLD_GLOBAL ,
+and tha default if neither flag is specified.
+Symbols defined up in dis library is not made available ta resolve
+references up in subsequently loaded libraries.
+.TP
+.BR RTLD_NODELETE " (since glibc 2.2)"
+Do not unload tha library during
+.BR dlclose ().
+Consequently, tha libraryz static variablez is not reinitialized
+if tha library is reloaded with
+.BR dlopen ()
+at a lata time.
+This flag aint specified up in POSIX.1-2001.
+.\" (But it is present on Solaris.)
+.TP
+.BR RTLD_NOLOAD " (since glibc 2.2)"
+Don't load tha library.
+This can be used ta test if tha library be already resident
+.RB ( dlopen ()
+returns NULL if it is not, or tha libraryz handle if it is resident).
+This flag can also be used ta promote tha flags on a library
+that be already loaded.
+For example, a library dat was previously loaded with
+.B RTLD_LOCAL
+can be reopened with
+.BR RTLD_NOLOAD\ |\ RTLD_GLOBAL .
+This flag aint specified up in POSIX.1-2001.
+.\" (But it is present on Solaris.)
+.\"
+.TP
+.BR RTLD_DEEPBIND " (since glibc 2.3.4)"
+.\" Inimitably busted lyrics bout by UD in
+.\" http://sources.redhat.com/ml/libc-hacker/2004-09/msg00083.html.
+Place tha lookup scope of tha symbols up in this
+library ahead of tha global scope.
+This means dat a self-contained library will use
+its own symbols up in preference ta global symbols wit tha same name
+contained up in libraries dat have already been loaded.
+This flag aint specified up in POSIX.1-2001.
+.PP
+If
+.I filename
+is a NULL pointer, then tha returned handle is fo' tha main program.
+When given to
+.BR dlsym (),
+this handle causes a search fo' a symbol up in tha main program,
+followed by all shared libraries loaded at program startup,
+and then all shared libraries loaded by
+.BR dlopen ()
+with tha flag
+.BR RTLD_GLOBAL .
+.PP
+External references up in tha library is resolved rockin tha libraries
+in dat libraryz dependency list n' any other libraries previously
+opened wit the
+.B RTLD_GLOBAL
+flag.
+If tha executable was linked wit tha flag "\-rdynamic"
+(or, synonymously, "\-\-export\-dynamic"),
+then tha global symbols up in tha executable will also be used
+to resolve references up in a thugged-out dynamically loaded library.
+.PP
+If tha same library is loaded again n' again n' again with
+.BR dlopen (),
+the same file handle is returned.
+Da dl library maintains reference
+counts fo' library handles, so a thugged-out dynamic library is not
+deallocated until
+.BR dlclose ()
+has been called on it as nuff times as
+.BR dlopen ()
+has succeeded on dat shit.
+The
+.BR _init ()
+routine, if present, is called only once.
+But a subsequent call with
+.B RTLD_NOW
+may force symbol resolution fo' a library earlier loaded with
+.BR RTLD_LAZY .
+.PP
+If
+.BR dlopen ()
+fails fo' any reason, it returns NULL.
+.SS dlsym()
+Da function
+.BR dlsym ()
+takes a "handle" of a thugged-out dynamic library returned by
+.BR dlopen ()
+and the
+null-terminated symbol name, returnin tha address where dat symbol is
+loaded tha fuck into memory.
+If tha symbol aint found, up in tha specified
+library or any of tha libraries dat was automatically loaded by
+.BR dlopen ()
+when dat library was loaded,
+.BR dlsym ()
+returns NULL.
+(Da search performed by
+.BR dlsym ()
+is breadth first all up in tha dependency tree of these libraries.)
+Since tha value of tha symbol could straight-up be NULL (so dat a
+NULL return from
+.BR dlsym ()
+need not indicate a error), tha erect way ta test fo' a error
+is ta call
+.BR dlerror ()
+to clear any oldschool error conditions, then call
+.BR dlsym (),
+and then call
+.BR dlerror ()
+again, savin its return value tha fuck into a variable, n' check whether
+this saved value aint NULL.
+.PP
+There is two special pseudo-handles,
+.B RTLD_DEFAULT
+and
+.BR RTLD_NEXT .
+Da forma will find tha straight-up original gangsta occurrence of tha desired symbol
+usin tha default library search order.
+Da latter
+will find tha next occurrence of a gangbangin' function up in tha search order
+afta tha current library.
+This allows one ta provide a wrapper
+around a gangbangin' function up in another shared library.
+.SS dlclose()
+Da function
+.BR dlclose ()
+decrements tha reference count on tha dynamic library handle
+.IR handle .
+If tha reference count drops ta zero n' no other loaded libraries use
+symbols up in it, then tha dynamic library is unloaded.
+.LP
+Da function
+.BR dlclose ()
+returns 0 on success, n' nonzero on error.
+.SS Da obsolete symbols _init() n' _fini()
+Da linker recognizes special symbols
+.B _init
+and
+.BR _fini .
+If a thugged-out dynamic library exports a routine named
+.BR _init (),
+then dat code is executed afta tha loading, before
+.BR dlopen ()
+returns.
+If tha dynamic library exports a routine named
+.BR _fini (),
+then dat routine is called just before tha library is unloaded.
+In case you need ta avoid linkin against tha system startup files,
+this can be done by rockin the
+.BR gcc (1)
+.I \-nostartfiles
+command-line option.
+.LP
+Usin these routines, or tha gcc
+.B \-nostartfiles
+or
+.B \-nostdlib
+options, aint recommended.
+Their use may result up in undesired behavior,
+since tha constructor/destructor routines aint gonna be executed
+(unless special measures is taken).
+.\" void _init(void) __attribute__((constructor));
+.\" void _fini(void) __attribute__((destructor));
+.LP
+Instead, libraries should export routines rockin the
+.B __attribute__((constructor))
+and
+.B __attribute__((destructor))
+function attributes.
+See tha gcc info pages fo' shiznit on these.
+Constructor routines is executed before
+.BR dlopen ()
+returns, n' destructor routines is executed before
+.BR dlclose ()
+returns.
+.SS Glibc extensions: dladdr() n' dlvsym()
+Glibc addz two functions not busted lyrics bout by POSIX, wit prototypes
+.sp
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <dlfcn.h>
+.sp
+.BI "int dladdr(void *" addr ", Dl_info *" info );
+.sp
+.BI "void *dlvsym(void *" handle ", char *" symbol ", char *" version );
+.fi
+.PP
+Da function
+.BR dladdr ()
+takes a gangbangin' function pointa n' tries ta resolve name
+and file where it is located.
+Hype is stored up in the
+.I Dl_info
+structure:
+.sp
+.in +4n
+.nf
+typedef struct {
+    const char *dli_fname;  /* Pathname of shared object that
+                               gotz nuff address */
+    void       *dli_fbase;  /* Address at which shared object
+                               is loaded */
+    const char *dli_sname;  /* Name of nearest symbol wit address
+                               lower than \fIaddr\fP */
+    void       *dli_saddr;  /* Exact address of symbol named
+                               up in \fIdli_sname\fP */
+} Dl_info;
+.fi
+.in
+.PP
+If no symbol matching
+.I addr
+could be found, then
+.I dli_sname
+and
+.I dli_saddr
+are set ta NULL.
+.PP
+.BR dladdr ()
+returns 0 on error, n' nonzero on success.
+.PP
+Da function
+.BR dlvsym (),
+provided by glibc since version 2.1,
+does tha same ol' dirty as
+.BR dlsym ()
+but takes a version strang as a additionizzle argument.
+.SH CONFORMING TO
+POSIX.1-2001 raps about
+.BR dlclose (),
+.BR dlerror (),
+.BR dlopen (),
+and
+.BR dlsym ().
+.SH NOTES
+Da symbols
+.B RTLD_DEFAULT
+and
+.B RTLD_NEXT
+are defined by
+.I <dlfcn.h>
+only when
+.B _GNU_SOURCE
+was defined before includin dat shit.
+.\" .LP
+.\" Da strang returned by
+.\" .BR dlerror ()
+.\" should not be modified.
+.\" Some systems give tha prototype as
+.\" .sp
+.\" .in +5
+.\" .B "const char *dlerror(void);"
+.\" .in
+
+Since glibc 2.2.3,
+.BR atexit (3)
+can be used ta regista a exit handlez dat be automatically
+called when a library is unloaded.
+.SS History
+Da dlopen intercourse standard be reppin SunOS.
+That system also has
+.BR dladdr (),
+but not
+.BR dlvsym ().
+.SH BUGS
+Sometimes, tha function pointas you pass to
+.BR dladdr ()
+may surprise yo thugged-out ass.
+On some architectures (notably i386 n' x86_64),
+.I dli_fname
+and
+.I dli_fbase
+may end up pointin back all up in tha object from which you called
+.BR dladdr (),
+even if tha function used as a argument should come from
+a dynamically linked library.
+.PP
+Da problem is dat tha function pointa will still be resolved
+at compile time yo, but merely point ta the
+.I plt
+(Procedure Linkage Table)
+section of tha original gangsta object (which dispatches tha call after
+askin tha dynamic linker ta resolve tha symbol).
+To work round this,
+you can try ta compile tha code ta be position-independent:
+then, tha compila cannot prepare tha pointer
+at compile time no mo' n' todizzle's
+.BR gcc (1)
+will generate code dat just loadz tha final symbol address from the
+.I got
+(Global Offset Table) at run time before passin it to
+.BR dladdr ().
+.SH EXAMPLE
+Load tha math library, n' print tha cosine of 2.0:
+.nf
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dlfcn.h>
+
+int
+main(int argc, char **argv)
+{
+    void *handle;
+    double (*cosine)(double);
+    char *error;
+
+    handle = dlopen("libm.so", RTLD_LAZY);
+    if (!handle) {
+        fprintf(stderr, "%s\en", dlerror());
+        exit(EXIT_FAILURE);
+    }
+
+    dlerror();    /* Clear any existin error */
+
+    /* Writing: cosine = (double (*)(double)) dlsym(handle, "cos");
+       would seem mo' natural yo, but tha C99 standard leaves
+       castin from "void *" ta a gangbangin' function pointa undefined.
+       Da assignment used below is tha POSIX.1\-2003 (Technical
+       Corrigendum 1) workaround; peep tha Rationale fo' the
+       POSIX justification of dlsym(). */
+
+    *(void **) (&cosine) = dlsym(handle, "cos");
+.\" But up in fact "gcc -O2 -Wall" will diss bout tha precedin cast.
+
+    if ((error = dlerror()) != NULL)  {
+        fprintf(stderr, "%s\en", error);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("%f\en", (*cosine)(2.0));
+    dlclose(handle);
+    exit(EXIT_SUCCESS);
+}
+.fi
+.PP
+If dis program was up in a gangbangin' file named "foo.c", you would build tha program
+with tha followin command:
+.in +4n
+.LP
+    gcc \-rdynamic \-o foo foo.c \-ldl
+.in
+.PP
+Libraries exporting
+.BR _init ()
+and
+.BR _fini ()
+will wanna be compiled as
+bigs up, using
+.I bar.c
+as tha example name:
+.in +4n
+.LP
+    gcc \-shared \-nostartfilez \-o bar bar.c
+.in
+.SH SEE ALSO
+.BR ld (1),
+.BR ldd (1),
+.BR dl_iterate_phdr (3),
+.BR rtld-audit (7),
+.BR ld.so (8),
+.BR ldconfig (8)
+
+ld.so info pages, gcc info pages, ld info pages
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

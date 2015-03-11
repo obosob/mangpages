@@ -1,0 +1,263 @@
+
+.\" drawin on material by Quentin Pryzby <pryzbyj@justinpryzby.com>
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Permission is hereby granted, free of charge, ta any thug obtaining
+.\" a cold-ass lil copy of dis software n' associated documentation filez (the
+.\" "Software"), ta deal up in tha Software without restriction, including
+.\" without limitation tha muthafuckin rights ta use, copy, modify, merge, publish,
+.\" distribute, sublicense, and/or push copiez of tha Software, n' to
+.\" permit peeps ta whom tha Software is furnished ta do so, subject to
+.\" tha followin conditions:
+.\"
+.\" Da above copyright notice n' dis permission notice shall be
+.\" included up in all copies or substantial portionz of tha Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+.\" EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+.\" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+.\" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+.\" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\" %%%LICENSE_END
+.\"
+.\" References:
+.\"   glibc manual n' source
+.TH BACKTRACE 3 2008-06-14 GNU "Linux Programmerz Manual"
+.SH NAME
+backtrace, backtrace_symbols, backtrace_symbols_fd \- support
+for application self-debugging
+.SH SYNOPSIS
+.B #include <execinfo.h>
+
+.B int backtrace(void
+.BI ** buffer ,
+.B int
+.IB size );
+
+.B char **backtrace_symbols(void *const
+.BI * buffer ,
+.B int
+.IB size );
+
+.B void backtrace_symbols_fd(void *const
+.BI * buffer ,
+.B int
+.IB size ,
+.B int
+.IB fd );
+.SH DESCRIPTION
+.BR backtrace ()
+returns a funky-ass backtrace fo' tha callin program,
+in tha array pointed ta by
+.IR buffer .
+A backtrace is tha seriez of currently actizzle function calls for
+the program.
+Each item up in tha array pointed ta by
+.I buffer
+iz of type
+.IR "void\ *" ,
+and is tha return address from
+the correspondin stack frame.
+The
+.I size
+argument specifies tha maximum number of addresses
+that can be stored in
+.IR buffer .
+If tha backtrace is larger than
+.IR size ,
+then tha addresses correspondin ta the
+.I size
+most recent function calls is returned;
+to obtain tha complete backtrace, make shizzle that
+.I buffer
+and
+.I size
+are big-ass enough.
+
+Given tha set of addresses returned by
+.BR backtrace ()
+in
+.IR buffer ,
+.BR backtrace_symbols ()
+translates tha addresses tha fuck into a array of strings dat describe
+the addresses symbolically.
+The
+.I size
+argument specifies tha number of addresses in
+.IR buffer .
+Da symbolic representation of each address consistz of tha function name
+(if dis can be determined), a hexadecimal offset tha fuck into tha function,
+and tha actual return address (in hexadecimal).
+Da address of tha array of strang pointas is returned
+as tha function result of
+.BR backtrace_symbols ().
+This array is
+.BR malloc (3)ed
+by
+.BR backtrace_symbols (),
+and must be freed by tha caller.
+(Da strings pointed ta by tha array of pointers
+need not n' should not be freed.)
+
+.BR backtrace_symbols_fd ()
+takes tha same
+.I buffer
+and
+.I size
+arguments as
+.BR backtrace_symbols (),
+but instead of returnin a array of strings ta tha caller,
+it writes tha strings, one per line, ta tha file descriptor
+.IR fd .
+.BR backtrace_symbols_fd ()
+does not call
+.BR malloc (3),
+and so can be employed up in thangs where tha latta function might fail.
+.SH RETURN VALUE
+.BR backtrace ()
+returns tha number of addresses returned in
+.IR buffer ,
+which aint pimped outa than
+.IR size .
+If tha return value is less than
+.IR size ,
+then tha full backtrace was stored; if it is equal to
+.IR size ,
+then it may done been truncated, up in which case tha addressez of the
+crazy oldschool stack frames is not returned.
+
+On success,
+.BR backtrace_symbols ()
+returns a pointa ta tha array
+.BR malloc (3)ed
+by tha call;
+on error, NULL is returned.
+.SH VERSIONS
+.BR backtrace (),
+.BR backtrace_symbols (),
+and
+.BR backtrace_symbols_fd ()
+are provided up in glibc since version 2.1.
+.SH CONFORMING TO
+These functions is GNU extensions.
+.SH NOTES
+These functions cook up some fuckin assumptions bout how tha fuck a gangbangin' functionz return
+address is stored on tha stack.
+Note tha following:
+.IP * 3
+Omission of tha frame pointas (as
+implied by any of
+.BR gcc (1)'s
+nonzero optimization levels) may cause these assumptions ta be
+violated.
+.IP *
+Inlined functions aint gots stack frames.
+.IP *
+Tail-call optimization causes one stack frame ta replace another.
+.PP
+Da symbol names may be unavailable without tha use of special linker
+options.
+For systems rockin tha GNU linker, it is necessary ta use the
+.I \-rdynamic
+linker option.
+Note dat namez of "static" functions is not exposed,
+and won't be available up in tha backtrace.
+.SH EXAMPLE
+Da program below demonstrates tha use of
+.BR backtrace ()
+and
+.BR backtrace_symbols ().
+Da followin shell session shows what tha fuck we might peep when hustlin the
+program:
+.nf
+.in +4n
+
+.RB "$" " cc \-rdynamic prog.c \-o prog"
+.RB "$" " ./prog 3"
+backtrace() returned 8 addresses
+\&./prog(myfunc3+0x5c) [0x80487f0]
+\&./prog [0x8048871]
+\&./prog(myfunc+0x21) [0x8048894]
+\&./prog(myfunc+0x1a) [0x804888d]
+\&./prog(myfunc+0x1a) [0x804888d]
+\&./prog(main+0x65) [0x80488fb]
+\&/lib/libc.so.6(__libc_start_main+0xdc) [0xb7e38f9c]
+\&./prog [0x8048711]
+.in
+.fi
+.SS Program source
+\&
+.nf
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+void
+myfunc3(void)
+{
+    int j, nptrs;
+#define SIZE 100
+    void *buffer[100];
+    char **strings;
+
+    nptrs = backtrace(buffer, SIZE);
+    printf("backtrace() returned %d addresses\\n", nptrs);
+
+    /* Da call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+       would produce similar output ta tha following: */
+
+    strings = backtrace_symbols(buffer, nptrs);
+    if (strings == NULL) {
+        perror("backtrace_symbols");
+        exit(EXIT_FAILURE);
+    }
+
+    fo' (j = 0; j < nptrs; j++)
+        printf("%s\\n", strings[j]);
+
+    free(strings);
+}
+
+static void   /* "static" means don\(aqt export tha symbol... */
+myfunc2(void)
+{
+    myfunc3();
+}
+
+void
+myfunc(int ncalls)
+{
+    if (ncalls > 1)
+        myfunc(ncalls \- 1);
+    else
+        myfunc2();
+}
+
+int
+main(int argc, char *argv[])
+{
+    if (argc != 2) {
+        fprintf(stderr, "%s num\-calls\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    myfunc(atoi(argv[1]));
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR gcc (1),
+.BR ld (1),
+.BR dlopen (3),
+.BR malloc (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

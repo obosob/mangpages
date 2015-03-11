@@ -1,0 +1,780 @@
+.\" Copyright (c) Internationistic Businizz Machines Corp., 2006
+.\"
+.\" %%%LICENSE_START(GPLv2+_SW_3_PARA)
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" This program is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. Right back up in yo muthafuckin ass. See
+.\" tha GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" HISTORY:
+.\" 2005-09-28, pimped by Arnd Bergmann <arndb@de.ibm.com>,
+.\"   Mark Nutta <mnutter@us.ibm.com> and
+.\"   Ulrich Weigand <Ulrich.Weigand@de.ibm.com>
+.\" 2006-06-16, revised by Eduardo M. Fleury <efleury@br.ibm.com>
+.\" 2007-07-10, like a shitload of polishin by mtk
+.\" 2007-09-28, thugged-out shiznit fo' newer kernels by Jeremy Kerr <jk@ozlabs.org>
+.\"
+.TH SPUFS 7 2007-12-20 Linux "Linux Programmerz Manual"
+.SH NAME
+spufs \- SPU file system
+.SH DESCRIPTION
+Da SPU file system is used on PowerPC machines dat implement the
+Cell Broadband Engine Architecture up in order ta access Synergistic
+Processor Units (SPUs).
+
+Da file system serves up a name space similar ta POSIX shared
+memory or message queues.
+Users dat have write permissions
+on tha file system can use
+.BR spu_create (2)
+to establish SPU contexts under the
+.B spufs
+root directory.
+
+Every SPU context is represented by a gangbangin' finger-lickin' directory containing
+a predefined set of files.
+These filez can be
+used fo' manipulatin tha state of tha logical SPU.
+Users can chizzle permissions on tha filez yo, but can't
+add or remove files.
+.SS Mount options
+.TP
+.B uid=<uid>
+Set tha user ownin tha mount point; tha default is 0 (root).
+.TP
+.B gid=<gid>
+Set tha crew ownin tha mount point; tha default is 0 (root).
+.TP
+.B mode=<mode>
+Set tha mode of tha top-level directory in
+.BR spufs ,
+as a octal mode string.
+Da default is 0775.
+.SS Files
+Da filez in
+.B spufs
+mostly follow tha standard behavior fo' regular system calls like
+.BR read (2)
+or
+.BR write (2),
+but often support only a subset of tha operations
+supported on regular file systems.
+This list details tha supported
+operations n' tha deviations from tha standard behavior busted lyrics about
+in tha respectizzle playa pages.
+
+All filez dat support the
+.BR read (2)
+operation also support
+.BR readv (2)
+and all filez dat support the
+.BR write (2)
+operation also support
+.BR writev (2).
+All filez support the
+.BR access (2)
+and
+.BR stat (2)
+family of operations yo, but fo' tha latta call,
+the only fieldz of tha returned
+.I stat
+structure dat contain reliable shiznit are
+.IR st_mode ,
+.IR st_nlink ,
+.IR st_uid ,
+and
+.IR st_gid .
+
+All filez support the
+.BR chmod (2)/ fchmod (2)
+and
+.BR chown (2)/ fchown (2)
+operations yo, but aint gonna be able ta grant permissions dat contradict
+the possible operations (e.g., read access on the
+.I wbox
+file).
+
+Da current set of filez is:
+.TP
+.I /capabilities
+Gotz Nuff a cold-ass lil comma-delimited strang representin tha capabilitizzlez of this
+SPU context.
+Possible capabilitizzles are:
+.RS
+.TP
+.B sched
+This context may be scheduled.
+.TP
+.B step
+This context can be run up in single-step mode, fo' debugging.
+.PP
+New capabilitizzles flags may be added up in tha future.
+.RE
+.TP
+.I /mem
+the contentz of tha local storage memory of tha SPU.
+This can be accessed like a regular shared memory
+file n' gotz nuff both code n' data up in tha address
+space of tha SPU.
+Da possible operations on a open
+.I mem
+file are:
+.RS
+.TP
+.BR read "(2), " pread "(2), " write "(2), " pwrite "(2), " lseek (2)
+These operate as usual, wit tha exception that
+.BR lseek (2),
+.BR write (2),
+and
+.BR pwrite (2)
+are not supported beyond tha end of tha file.
+Da file size
+is tha size of tha local storage of tha SPU,
+which is normally 256 kilobytes.
+.TP
+.BR mmap (2)
+Mapping
+.I mem
+into tha process address space serves up access ta tha SPU local
+storage within tha process address space.
+Only
+.B MAP_SHARED
+mappings is allowed.
+.RE
+.TP
+.I /regs
+Gotz Nuff tha saved general-purpose registaz of tha SPU context.
+This file gotz nuff tha 128-bit jointz of each register,
+from regista 0 ta regista 127, up in order.
+This allows tha general-purpose registas ta be
+inspected fo' debugging.
+
+Readin ta or freestylin from dis file requires dat tha context is
+scheduled out, so use of dis file aint recommended up in normal
+program operation.
+
+The
+.I regs
+file aint present on contexts dat done been pimped wit the
+.B SPU_CREATE_NOSCHED
+flag.
+.TP
+.I /mbox
+Da first SPU-to-CPU communication mailbox.
+This file is read-only n' can be read up in unitz of 4 bytes.
+Da file can be used only up in nonblockin mode \- even
+.BR poll (2)
+cannot be used ta block on dis file.
+Da only possible operation on a open
+.I mbox
+file is:
+.RS
+.TP
+.BR read (2)
+If
+.I count
+is smalla than four,
+.BR read (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+If there is no data available up in tha mailbox (i.e., tha SPU has not
+sent a mailbox message), tha return value is set ta \-1 and
+.I errno
+is set to
+.BR EAGAIN .
+When data
+has been read successfully, four bytes is placed in
+the data buffer n' tha value four is returned.
+.RE
+.TP
+.I /ibox
+Da second SPU-to-CPU communication mailbox.
+This file is similar ta tha straight-up original gangsta mailbox file yo, but can be read
+in blockin I/O mode, thus calling
+.BR read (2)
+on a open
+.I ibox
+file will block until tha SPU has freestyled data ta its interrupt mailbox
+channel (unless tha file has been opened with
+.BR O_NONBLOCK ,
+see below).
+Also,
+.BR poll (2)
+and similar system calls can be used ta monitor fo' tha presence
+of mailbox data.
+
+Da possible operations on a open
+.I ibox
+file are:
+.RS
+.TP
+.BR read (2)
+If
+.I count
+is smalla than four,
+.BR read (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+If there is no data available up in tha mailbox n' tha file
+descriptor has been opened with
+.BR O_NONBLOCK ,
+the return value is set ta \-1 and
+.I errno
+is set to
+.BR EAGAIN .
+
+If there is no data available up in tha mailbox n' tha file
+descriptor has been opened without
+.BR O_NONBLOCK ,
+the call will
+block until tha SPU writes ta its interrupt mailbox channel.
+When data has been read successfully, four bytes is placed in
+the data buffer n' tha value four is returned.
+.TP
+.BR poll (2)
+Poll on the
+.I ibox
+file returns
+.I "(POLLIN | POLLRDNORM)"
+whenever data be available fo' reading.
+.RE
+.TP
+.I /wbox
+Da CPU-to-SPU communication mailbox.
+It be write-only n' can be freestyled up in unitz of four bytes.
+If tha mailbox is full,
+.BR write (2)
+will block, and
+.BR poll (2)
+can be used ta block until tha mailbox be available fo' freestylin again.
+Da possible operations on a open
+.I wbox
+file are:
+.RS
+.TP
+.BR write (2)
+If
+.I count
+is smalla than four,
+.BR write (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+If there is no space available up in tha mailbox n' tha file
+descriptor has been opened with
+.BR O_NONBLOCK ,
+the return
+value is set ta \-1 and
+.I errno
+is set to
+.BR EAGAIN .
+
+If there is no space available up in tha mailbox n' tha file
+descriptor has been opened without
+.BR O_NONBLOCK ,
+the call will block until tha SPU readz from its
+PPE (PowerPC Processin Element)
+mailbox channel.
+When data has been freestyled successfully,
+the system call returns four as its function result.
+.TP
+.BR poll (2)
+A poll on the
+.I wbox
+file returns
+.I "(POLLOUT | POLLWRNORM)"
+whenever space be available fo' writing.
+.RE
+.TP
+.IR /mbox_stat ", " /ibox_stat ", " /wbox_stat
+These is read-only filez dat contain tha length of tha current
+queue of each mailbox, i.e., how tha fuck nuff lyrics can be read from
+.IR mbox " or " ibox
+or how tha fuck nuff lyrics can be freestyled to
+.I wbox
+without blocking.
+Da filez can be read only up in four-byte units n' return
+a big-endian binary integer number.
+Da only possible operation on a open
+.I *box_stat
+file is:
+.RS
+.TP
+.BR read (2)
+If
+.I count
+is smalla than four,
+.BR read (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+Otherwise, a gangbangin' four-byte value is placed up in tha data buffer.
+This value is tha number of elements dat can be read from (for
+.IR mbox_stat
+and
+.IR ibox_stat )
+or freestyled ta (for
+.IR wbox_stat )
+the respectizzle mailbox without blockin or returnin an
+.BR EAGAIN
+error.
+.RE
+.TP
+.IR /npc ", " /decr ", " /decr_status ", " /spu_tag_mask ", " \
+/event_mask ", " /event_status ", " /srr0 ", " /lslr
+Internal registaz of tha SPU.
+These filez contain a ASCII string
+representin tha hex value of tha specified register.
+Readz n' writes on these
+filez (except for
+.IR npc ,
+see below) require dat tha SPU context be scheduled out,
+so frequent access to
+these filez aint recommended fo' aiiight program operation.
+.IP
+Da contentz of these filez are:
+.RS
+.TP 16
+.I npc
+Next Program Counta \- valid only when tha SPU is up in a stopped state.
+.TP
+.I decr
+SPU Decrementer
+.TP
+.I decr_status
+Decrementa Status
+.TP
+.I spu_tag_mask
+MFC tag mask fo' SPU DMA
+.TP
+.I event_mask
+Event mask fo' SPU interrupts
+.TP
+.I event_status
+Number of SPU events pendin (read-only)
+.TP
+.I srr0
+Interrupt Return address register
+.TP
+.I lslr
+Local Store Limit Register
+.RE
+.IP
+Da possible operations on these filez are:
+.RS
+.TP
+.BR read (2)
+Readz tha current regista value.
+If tha regista value is larger than tha buffer passed ta the
+.BR read (2)
+system call, subsequent readz will continue readin from tha same
+buffer, until tha end of tha buffer is reached.
+
+When a cold-ass lil complete strang has been read, all subsequent read operations
+will return zero bytes n' a freshly smoked up file descriptor need ta be opened
+to read a freshly smoked up value.
+.TP
+.BR write (2)
+A
+.BR write (2)
+operation on tha file sets tha regista ta the
+value given up in tha string.
+Da strang is parsed from tha beginning
+until tha straight-up original gangsta nonnumeric characta or tha end of tha buffer.
+Subsequent writes ta tha same file descriptor overwrite the
+previous setting.
+
+Except fo' the
+.I npc
+file, these filez is not present on contexts dat done been pimped with
+the
+.B SPU_CREATE_NOSCHED
+flag.
+.RE
+.TP
+.IR /fpcr
+This file serves up access ta tha Floatin Point Status and
+Control Regista (fcpr) as a funky-ass binary, four-byte file.
+Da operations on the
+.I fpcr
+file are:
+.RS
+.TP
+.BR read (2)
+If
+.I count
+is smalla than four,
+.BR read (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+Otherwise, a gangbangin' four-byte value is placed up in tha data buffer;
+this is tha current value of the
+.I fpcr
+register.
+.TP
+.BR write (2)
+If
+.I count
+is smalla than four,
+.BR write (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+Otherwise, a gangbangin' four-byte value is copied from tha data buffer,
+uppimpin tha value of the
+.I fpcr
+register.
+.RE
+.TP
+.IR /signal1 ", " /signal2
+Da filez provide access ta tha two signal notification channels
+of a SPU.
+These is read-write filez dat operate on four-byte lyrics.
+Freestylin ta one of these filez triggers a interrupt on tha SPU.
+Da value freestyled ta tha signal filez can
+be read from tha SPU all up in a cold-ass lil channel read or from
+host user space all up in tha file.
+Afta tha value has been read by tha SPU, it is reset ta zero.
+Da possible operations on a open
+.I signal1
+or
+.I signal2
+file are:
+.RS
+.TP
+.BR read (2)
+If
+.I count
+is smalla than four,
+.BR read (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+Otherwise, a gangbangin' four-byte value is placed up in tha data buffer;
+this is tha current value of tha specified signal notification
+register.
+.TP
+.BR write (2)
+If
+.I count
+is smalla than four,
+.BR write (2)
+returns \-1 n' sets
+.I errno
+to
+.BR EINVAL .
+Otherwise, a gangbangin' four-byte value is copied from tha data buffer,
+uppimpin tha value of tha specified signal notification
+register.
+Da signal notification regista will either be replaced with
+the input data or is ghon be updated ta tha bitwise OR operation
+of tha oldschool value n' tha input data, dependin on tha contents
+of the
+.IR signal1_type
+or
+.IR signal2_type
+filez respectively.
+.RE
+.TP
+.IR /signal1_type ", " /signal2_type
+These two filez chizzle tha behavior of the
+.IR signal1
+and
+.IR signal2
+notification files.
+They contain a numeric ASCII strang which is read
+as either "1" or "0".
+In mode 0 (overwrite), tha hardware replaces tha contents
+of tha signal channel wit tha data dat is freestyled ta dat shit.
+In mode 1 (logical OR), tha hardware accumulates tha bits
+that is subsequently freestyled ta dat shit.
+Da possible operations on a open
+.I signal1_type
+or
+.I signal2_type
+file are:
+.RS
+.TP
+.BR read (2)
+When tha count supplied ta the
+.BR read (2)
+call is shorta than tha required length fo' tha digit (plus a newline
+character), subsequent readz from tha same file descriptor will
+complete tha string.
+When a cold-ass lil complete strang has been read, all subsequent read operations
+will return zero bytes n' a freshly smoked up file descriptor need ta be opened
+to read tha value again.
+.TP
+.BR write (2)
+A
+.BR write (2)
+operation on tha file sets tha regista ta the
+value given up in tha string.
+Da strang is parsed from tha beginning
+until tha straight-up original gangsta nonnumeric characta or tha end of tha buffer.
+Subsequent writes ta tha same file descriptor overwrite the
+previous setting.
+.RE
+.TP
+.IR /mbox_info ", " /ibox_info ", " /wbox_info ", " /dma_into ", " /proxydma_info
+Read-only filez dat contain tha saved state of tha SPU mailboxes and
+DMA queues.
+This allows tha SPU status ta be inspected, mainly fo' debugging.
+The
+.I mbox_info
+and
+.I ibox_info
+filez each contain tha four-byte mailbox message dat has been written
+by tha SPU.
+If no message has been freestyled ta these mailboxes, then
+contentz of these filez is undefined.
+The
+.IR mbox_stat ,
+.I ibox_stat
+and
+.I wbox_stat
+filez contain tha available message count.
+
+The
+.I wbox_info
+file gotz nuff a array of four-byte mailbox lyrics, which have been
+sent ta tha SPU.
+With current CBEA machines, tha array is four shit in
+length, so up ta 4 * 4 = 16 bytes can be read from dis file.
+If any mailbox queue entry is empty,
+then tha bytes read all up in tha correspondin location is undefined.
+
+The
+.I dma_info
+file gotz nuff tha contentz of tha SPU MFC DMA queue, represented as the
+followin structure:
+
+.in +4n
+.nf
+struct spu_dma_info {
+    uint64_t         dma_info_type;
+    uint64_t         dma_info_mask;
+    uint64_t         dma_info_status;
+    uint64_t         dma_info_stall_and_notify;
+    uint64_t         dma_info_atomic_command_status;
+    struct mfc_cq_sr dma_info_command_data[16];
+};
+.fi
+.in
+
+Da last gangmember of dis data structure is tha actual DMA queue,
+containin 16 entries.
+The
+.I mfc_cq_sr
+structure is defined as:
+
+.in +4n
+.nf
+struct mfc_cq_sr {
+    uint64_t mfc_cq_data0_RW;
+    uint64_t mfc_cq_data1_RW;
+    uint64_t mfc_cq_data2_RW;
+    uint64_t mfc_cq_data3_RW;
+};
+.fi
+.in
+
+The
+.I proxydma_info
+file gotz nuff similar shiznit yo, but raps bout tha proxy DMA queue
+(i.e., DMAs initiated by entitizzles outside tha SPU) instead.
+Da file is up in tha followin format:
+
+.in +4n
+.nf
+struct spu_proxydma_info {
+    uint64_t         proxydma_info_type;
+    uint64_t         proxydma_info_mask;
+    uint64_t         proxydma_info_status;
+    struct mfc_cq_sr proxydma_info_command_data[8];
+};
+.fi
+.in
+
+Accessin these filez requires dat tha SPU context is scheduled up -
+frequent use can be inefficient.
+These filez should not be used fo' aiiight program operation.
+
+These filez is not present on contexts dat done been pimped wit the
+.B SPU_CREATE_NOSCHED
+flag.
+.TP
+.IR /cntl
+This file serves up access ta tha SPU Run Control n' SPU status
+registers, as a ASCII string.
+Da followin operations is supported:
+.RS
+.TP
+.BR read (2)
+Readz from the
+.I cntl
+file will return a ASCII strang wit tha hex
+value of tha SPU Status register.
+.TP
+.BR write (2)
+Writes ta the
+.I cntl
+file will set tha contextz SPU Run Control register.
+.RE
+.TP
+.I /mfc
+Provides access ta tha Memory Flow Controlla of tha SPU.
+Readin from tha file returns tha contentz of the
+SPUz MFC Tag Status register, and
+writin ta tha file initiates a DMA from tha MFC.
+Da followin operations is supported:
+.RS
+.TP
+.BR write (2)
+Writes ta dis file need ta be up in tha format of a MFC DMA command,
+defined as bigs up:
+
+.in +4n
+.nf
+struct mfc_dma_command {
+    int32_t  pad;    /* reserved */
+    uint32_t lsa;    /* local storage address */
+    uint64_t ea;     /* effectizzle address */
+    uint16_t size;   /* transfer size */
+    uint16_t tag;    /* command tag */
+    uint16_t class;  /* class ID */
+    uint16_t cmd;    /* command opcode */
+};
+.fi
+.in
+
+Writes is required ta be exactly
+.I sizeof(struct mfc_dma_command)
+bytes up in size.
+Da command is ghon be busted ta tha SPUz MFC proxy queue, n' the
+tag stored up in tha kernel (see below).
+.TP
+.BR read (2)
+Readz tha contentz of tha tag status register.
+If tha file is opened up in blockin mode (i.e., without
+.BR O_NONBLOCK ),
+then tha read will block until a
+DMA tag (as performed by a previous write) is complete.
+In nonblockin mode,
+the MFC tag status regista is ghon be returned without waiting.
+.TP
+.BR poll (2)
+Calling
+.BR poll (2)
+on the
+.I mfc
+file will block until a freshly smoked up DMA can be
+started (by checkin for
+.BR POLLOUT )
+or until a previously started DMA
+(by checkin for
+.BR POLLIN )
+has been completed.
+
+.I /mss
+Provides access ta tha MFC MultiSource Synchronization (MSS) facility.
+By
+.BR mmap (2)-ing
+this file, processes can access tha MSS area of tha SPU.
+
+Da followin operations is supported:
+.TP
+.BR mmap (2)
+Mapping
+.B mss
+into tha process address space gives access ta tha SPU MSS area
+within tha process address space.
+Only
+.B MAP_SHARED
+mappings is allowed.
+.RE
+.TP
+.I /psmap
+Provides access ta tha whole problem-state mappin of tha SPU.
+Applications can use dis area ta intercourse ta tha SPU, rather than
+writin ta individual regista filez in
+.BR spufs .
+
+Da followin operations is supported:
+.RS
+.TP
+.BR mmap (2)
+Mapping
+.B psmap
+gives a process a gangbangin' finger-lickin' direct map of tha SPU problem state area.
+Only
+.B MAP_SHARED
+mappings is supported.
+.RE
+.TP
+.I /phys-id
+Read-only file containin tha physical SPU number dat tha SPU context
+is hustlin on.
+When tha context aint hustlin, dis file gotz nuff the
+strin "\-1".
+
+Da physical SPU number is given by a ASCII hex string.
+.TP
+.I /object-id
+Allows applications ta store (or retrieve) a single 64-bit ID tha fuck into the
+context.
+This ID is lata used by profilin tools ta uniquely identify
+the context.
+.RS
+.TP
+.BR write (2)
+By freestylin a ASCII hex value tha fuck into dis file, applications can set the
+object ID of tha SPU context.
+Any previous value of tha object ID is overwritten.
+.TP
+.BR read (2)
+Readin dis file gives a ASCII hex strang representin tha object ID
+for dis SPU context.
+.RE
+.SH EXAMPLE
+.TP
+.IR /etc/fstab "  entry"
+none  	/spu  	spufs  	gid=spu  	0	0
+.\" .SH AUTHORS
+.\" Arnd Bergmann <arndb@de.ibm.com>, Mark Nutta <mnutter@us.ibm.com>,
+.\" Ulrich Weigand <Ulrich.Weigand@de.ibm.com>, Jeremy Kerr <jk@ozlabs.org>
+.SH SEE ALSO
+.BR close (2),
+.BR spu_create (2),
+.BR spu_run (2),
+.BR capabilitizzles (7)
+
+.I Da Cell Broadband Engine Architecture (CBEA) justification
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

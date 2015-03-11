@@ -1,0 +1,233 @@
+
+.\" n' Copyright 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-07-05 Initial creation, Mike Kerrisk based on
+.\"     Andrew Mortonz comments up in fs/sync.c
+.\" 2010-10-09, mtk, Document sync_file_range2()
+.\"
+.TH SYNC_FILE_RANGE 2 2013-04-01 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sync_file_range \- sync a gangbangin' file segment wit disk
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <fcntl.h>
+
+.BI "int sync_file_range(int " fd ", off64_t " offset ", off64_t " nbytes ,
+.BI "                    unsigned int " flags );
+.fi
+.SH DESCRIPTION
+.BR sync_file_range ()
+permits fine control when synchronizin tha open file referred ta by the
+file descriptor
+.I fd
+with disk.
+
+.I offset
+is tha startin byte of tha file range ta be synchronized.
+.I nbytes
+specifies tha length of tha range ta be synchronized, up in bytes; if
+.I nbytes
+is zero, then all bytes from
+.I offset
+all up in ta tha end of file is synchronized.
+Synchronization is up in unitz of tha system page size:
+.I offset
+is rounded down ta a page boundary;
+.I (offset+nbytes-1)
+is rounded up ta a page boundary.
+
+The
+.I flags
+bit-mask argument can include any of tha followin joints:
+.TP
+.B SYNC_FILE_RANGE_WAIT_BEFORE
+Wait upon write-out of all pages up in tha specified range
+that have already been submitted ta tha thang driver fo' write-out
+before struttin any write.
+.TP
+.B SYNC_FILE_RANGE_WRITE
+Initiate write-out of all dirty pages up in tha specified
+range which is not presently submitted write-out.
+Note dat even dis may block if you attempt to
+write mo' than request queue size.
+.TP
+.B SYNC_FILE_RANGE_WAIT_AFTER
+Wait upon write-out of all pages up in tha range
+afta struttin any write.
+.PP
+Specifying
+.I flags
+as 0 is permitted, as a no-op.
+.SS Warning
+This system call is mad fucked up n' should not be used up in portable
+programs.
+None of these operations writes up tha filez metadata.
+Therefore, unless tha application is strictly struttin overwrites of
+already-instantiated disk blocks, there be no guarantees dat tha data will
+be available afta a cold-ass lil crash.
+There is no user intercourse ta know if a write is purely a overwrite.
+On file systems rockin copy-on-write semantics (e.g.,
+.IR btrfs )
+an overwrite of existin allocated blocks is impossible.
+When freestylin tha fuck into preallocated space,
+many file systems also require calls tha fuck into tha block
+allocator, which dis system call do not sync up ta disk.
+This system call do not flush disk write caches n' thus do not provide
+any data integritizzle on systems wit volatile disk write caches.
+.SS Some details
+.B SYNC_FILE_RANGE_WAIT_BEFORE
+and
+.B SYNC_FILE_RANGE_WAIT_AFTER
+will detect any
+I/O errors or
+.B ENOSPC
+conditions n' will return these ta tha caller.
+
+Useful combinationz of the
+.I flags
+bits are:
+.TP
+.B SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE
+Ensures dat all pages
+in tha specified range which was dirty when
+.BR sync_file_range ()
+was called is placed
+under write-out.
+This be a start-write-for-data-integritizzle operation.
+.TP
+.B SYNC_FILE_RANGE_WRITE
+Start write-out of all dirty pages up in tha specified range which
+are not presently under write-out.
+This be a asynchronous flush-to-disk
+operation.
+This aint suitable fo' data integritizzle operations.
+.TP
+.BR SYNC_FILE_RANGE_WAIT_BEFORE " (or " SYNC_FILE_RANGE_WAIT_AFTER )
+Wait for
+completion of write-out of all pages up in tha specified range.
+This can be used afta a earlier
+.B SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE
+operation ta wait fo' completion of dat operation, n' obtain its result.
+.TP
+.B SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE | \
+SYNC_FILE_RANGE_WAIT_AFTER
+This be a write-for-data-integritizzle operation
+that will ensure dat all pages up in tha specified range which was dirty when
+.BR sync_file_range ()
+was called is committed ta disk.
+.SH RETURN VALUE
+On success,
+.BR sync_file_range ()
+returns 0; on failure \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBADF
+.I fd
+is not a valid file descriptor.
+.TP
+.B EINVAL
+.I flags
+specifies a invalid bit; or
+.I offset
+or
+.I nbytes
+is invalid.
+.TP
+.B EIO
+I/O error.
+.TP
+.B ENOMEM
+Out of memory.
+.TP
+.B ENOSPC
+Out of disk space.
+.TP
+.B ESPIPE
+.I fd
+refers ta suttin' other than a regular file, a funky-ass block device,
+a directory, or a symbolic link.
+.\" FIXME . (bug?) Actually, how tha fuck can 'fd' refer ta a symbolic link (S_ISLNK)?
+.\" (In user space at least) it aint possible ta obtain a gangbangin' file descriptor
+.\" fo' a symbolic link.
+.SH VERSIONS
+.BR sync_file_range ()
+appeared on Linux up in kernel 2.6.17.
+.SH CONFORMING TO
+This system call is Linux-specific, n' should be avoided
+in portable programs.
+.SH NOTES
+Some architectures (e.g., PowerPC, ARM)
+need 64-bit arguments ta be aligned up in a suitable pair of registers.
+.\" See kernel commit edd5cd4a9424f22b0fa08bef5e299d41befd5622
+On such architectures, tha call signature of
+.BR sync_file_range ()
+shown up in tha SYNOPSIS would force
+a regista ta be wasted as paddin between the
+.I fd
+and
+.I offset
+arguments.
+(See
+.BR syscall (2)
+for details.)
+Therefore, these architectures define a gangbangin' finger-lickin' different
+system call dat ordaz tha arguments suitably:
+.PP
+.in +4n
+.nf
+.BI "int sync_file_range2(int " fd ", unsigned int " flags ,
+.BI "                     off64_t " offset ", off64_t " nbytes );
+.fi
+.in
+.PP
+Da behavior of dis system call is otherwise exactly tha same as
+.BR sync_file_range ().
+
+A system call wit dis signature first rocked up on tha ARM architecture
+in Linux 2.6.20, wit tha name
+.BR arm_sync_file_range ().
+Dat shiznit was renamed up in Linux 2.6.22,
+when tha analogous system call was added fo' PowerPC.
+On architectures where glibc support is provided,
+glibc transparently wraps
+.BR sync_file_range2 ()
+under tha name
+.BR sync_file_range ().
+.SH SEE ALSO
+.BR fdatasync (2),
+.BR fsync (2),
+.BR msync (2),
+.BR sync (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

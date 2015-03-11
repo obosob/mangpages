@@ -1,0 +1,204 @@
+.\" Copyright (C) 2011, Hewlett-Packard Development Company, L.P.
+.\" Written by Stephen M. Cameron <scameron@beardog.cce.hp.com>
+.\"
+.\" %%%LICENSE_START(GPLv2_ONELINE)
+.\" Licensed under GNU General Public License version 2 (GPLv2)
+.\" %%%LICENSE_END
+.\"
+.\" shorthand fo' double quote dat works all over dis biiiatch.
+.ds q \N'34'
+.TH HPSA 4 2012-08-05 "Linux" "Linux Programmerz Manual"
+.SH NAME
+hpsa \- HP Smart Array SCSI driver
+.SH SYNOPSIS
+.nf
+modprobe hpsa [ hpsa_allow_any=1 ]
+.fi
+.SH DESCRIPTION
+.B hpsa
+is a SCSI driver fo' HP Smart Array RAID controllers.
+.SS Options
+.IR "hpsa_allow_any=1" :
+This option allows tha driver ta attempt ta operate on
+any HP Smart Array hardware RAID controller,
+even if it aint explicitly known ta tha driver.
+This allows newer hardware ta work wit olda drivers.
+Typically dis is used ta allow installation of
+operatin systems from media dat predates the
+RAID controller, though it may also be used ta enable
+.B hpsa
+to drive olda controllaz dat would normally be handled by the
+.BR cciss (4)
+driver.
+These olda boardz aint been tested n' are
+not supported with
+.BR hpsa ,
+and
+.BR cciss (4)
+should still be used fo' these.
+.SS Supported hardware
+The
+.B hpsa
+driver supports tha followin Smart Array boards:
+.nf
+
+    Smart Array P700M
+    Smart Array P212
+    Smart Array P410
+    Smart Array P410i
+    Smart Array P411
+    Smart Array P812
+    Smart Array P712m
+    Smart Array P711m
+    StorageWorks P1210m
+.fi
+.SS Configuration details
+To configure HP Smart Array controllers,
+use tha HP Array Configuration Utilitizzle (either
+.BR hpacuxe (8)
+or
+.BR hpacucli (8))
+or tha Offline ROM-based Configuration Utilitizzle (ORCA)
+run from tha Smart Arrayz option ROM at boot time.
+.SH FILES
+.SS Device nodes
+Logical drives is accessed via tha SCSI disk driver
+.RB ( sd (4)),
+tape drives via tha SCSI tape driver
+.RB ( st (4)),
+and
+the RAID controlla via tha SCSI generic driver
+.RB ( sg (4)),
+with thang nodes named
+.IR /dev/sd*,
+.IR /dev/st* ,
+and
+.IR /dev/sg* ,
+respectively.
+.SS HPSA-specific host attribute filez up in /sys
+.TP
+.I /sys/class/scsi_host/host*/rescan
+This be a write-only attribute.
+Freestylin ta dis attribute will cause tha driver ta scan for
+new, chizzled, or removed devices (e.g,. hot-plugged tape drives,
+or newly configured or deleted logical drives, etc.)
+and notify tha SCSI midlayer of any chizzlez detected.
+Normally a rescan is triggered automatically
+by HPz Array Configuration Utilitizzle (either tha GUI or the
+command-line variety);
+thus, fo' logical drive chizzles, tha user should not
+normally gotta use dis attribute.
+This attribute may be useful when bangin' pluggin devices like tape drives,
+or entire storage boxes containin pre-configured logical drives.
+.TP
+.I /sys/class/scsi_host/host*/firmware_revision
+This attribute gotz nuff tha firmware version of tha Smart Array.
+
+For example:
+
+.nf
+    # \fBcd /sys/class/scsi_host/host4\fP
+    # \fBcat firmware_revision\fP
+    7.14
+.fi
+.SS HPSA-specific disk attribute filez up in /sys
+.TP
+.I /sys/class/scsi_disk/c:b:t:l/device/unique_id
+This attribute gotz nuff a 32 hex-digit unique ID fo' each logical drive.
+.nf
+
+For example:
+
+    # \fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+    # \fBcat unique_id\fP
+    600508B1001044395355323037570F77
+.fi
+.TP
+.I /sys/class/scsi_disk/c:b:t:l/device/raid_level
+This attribute gotz nuff tha RAID level of each logical drive.
+.nf
+
+For example:
+
+    # \fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+    # \fBcat raid_level\fP
+    RAID 0
+.fi
+.TP
+.I /sys/class/scsi_disk/c:b:t:l/device/lunid
+This attribute gotz nuff tha 16 hex-digit (8 byte) LUN ID
+by which a logical drive or physical thang can be addressed.
+.IR c : b : t : l
+are tha controller, bus, target n' lun of tha device.
+.nf
+
+For example:
+
+    # \fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+    # \fBcat lunid\fP
+    0x0000004000000000
+.fi
+.SS Supported ioctl() operations
+For compatibilitizzle wit applications freestyled fo' the
+.BR cciss (4)
+driver, nuff yo, but
+not all of tha ioctls supported by the
+.BR cciss (4)
+driver is also supported by the
+.B hpsa
+driver.
+Da data structures used by these ioctls is busted lyrics bout in
+the Linux kernel source file
+.IR include/linux/cciss_ioctl.h .
+.TP
+.BR CCISS_DEREGDISK ", " CCISS_REGNEWDISK ", " CCISS_REGNEWD
+These three ioctls all do exactly tha same thang,
+which is ta cause tha driver ta rescan fo' freshly smoked up devices.
+This do exactly tha same thang as freestylin ta the
+hpsa-specific host "rescan" attribute.
+.TP
+.B CCISS_GETPCIINFO
+Returns PCI domain, bus, thang n' function n' "board ID" (PCI subsystem ID).
+.TP
+.B CCISS_GETDRIVVER
+Returns driver version up in three bytes encoded as:
+.sp
+    (major_version << 16) | (minor_version << 8) |
+        (subminor_version)
+.TP
+.BR CCISS_PASSTHRU ", " CCISS_BIG_PASSTHRU
+Allows "BMIC" n' "CISS" commandz ta be passed all up in ta tha Smart Array.
+These is used extensively by tha HP Array Configuration Utility,
+SNMP storage agents, etc.
+See
+.I cciss_vol_status
+at
+.UR http://cciss.sf.net
+.UE
+for some examples.
+.SH SEE ALSO
+.BR cciss (4),
+.BR sd (4),
+.BR st (4),
+.BR cciss_vol_status (8),
+.BR hpacucli (8),
+.BR hpacuxe (8),
+
+.UR http://cciss.sf.net
+.UE ,
+and
+.I Documentation/scsi/hpsa.txt
+and
+.I Documentation/ABI/testing/sysfs-bus-pci-devices-cciss
+in tha Linux kernel source tree
+.\" .SH AUTHORS
+.\" Don Brace, Steve Cameron, Tomothy Lawler, Mike Miller, Scott Teel
+.\" n' probably some other people.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

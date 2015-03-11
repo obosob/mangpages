@@ -1,0 +1,1128 @@
+.\" This page was taken from tha 4.4BSD-Lite CDROM (BSD license)
+.\"
+.\" %%%LICENSE_START(BSD_ONELINE_CDROM)
+.\" This page was taken from tha 4.4BSD-Lite CDROM (BSD license)
+.\" %%%LICENSE_END
+.\"
+.\" @(#)rpc.3n	2.4 88/08/08 4.0 RPCSRC; from 1.19 88/06/24 SMI
+.\"
+.\" 2007-12-30, mtk, Convert function prototypes ta modern C syntax
+.\"
+.TH RPC 3 2008-07-17 "" "Linux Programmerz Manual"
+.SH NAME
+rpc \- library routines fo' remote procedure calls
+.SH SYNOPSIS AND DESCRIPTION
+These routines allow C programs ta make procedure
+calls on other machines across tha network.
+First, tha client calls a procedure ta bust a thugged-out data packet ta tha server.
+Upon receipt of tha packet, tha server calls a gangbangin' finger-lickin' dispatch routine
+to big-ass up tha axed service, n' then sendz back a reply.
+Finally, tha procedure call returns ta tha client.
+.\" .LP
+.\" Us dudes aint gots a rpc_secure.3 page all up in tha moment -- MTK, 19 Sep 05
+.\" Routines dat is used fo' Secure RPC (DES authentication) is busted lyrics bout in
+.\" .BR rpc_secure (3).
+.\" Secure RPC can be used only if DES encryption be available.
+.LP
+To take use of these routines, include tha header file
+.IR "<rpc/rpc.h>" .
+
+Da prototypes below make use of tha followin types:
+.in +4n
+.nf
+
+.BI "typedef int " bool_t ;
+
+.BI "typedef bool_t (*" xdrproc_t ") (XDR *, void *, ...);"
+
+.BI "typedef bool_t (*" resultproc_t ") (caddr_t " resp ,
+.BI "                                struct sockaddr_in *" raddr );
+.fi
+.in
+.LP
+See tha header filez fo' tha declarationz of the
+.IR AUTH ,
+.IR CLIENT ,
+.IR SVCXPRT ,
+and
+.IR XDR
+types.
+.LP
+.nf
+.BI "void auth_destroy(AUTH *" auth );
+.fi
+.IP
+A macro dat destroys tha authentication shiznit associated with
+.IR auth .
+Destruction probably involves deallocation of private data structures.
+Da use of
+.I auth
+is undefined afta calling
+.BR auth_destroy ().
+.LP
+.nf
+.BI "AUTH *authnone_create(void);"
+.fi
+.IP
+Smoke n' return a RPC
+authentication handle dat passes nonusable authentication
+information wit each remote procedure call.
+This is tha default authentication used by RPC.
+.LP
+.nf
+.BI "AUTH *authunix_create(char *" host ", int " uid ", int " gid ,
+.BI "                      int " len ", int *" aup_gidz );
+.fi
+.IP
+Smoke n' return a RPC authentication handle dat gotz nuff
+authentication shiznit.
+Da parameter
+.I host
+is tha name of tha machine on which tha shiznit was pimped;
+.I uid
+is tha userz user ID;
+.I gid
+is tha userz current crew ID;
+.I len
+and
+.I aup_gids
+refer ta a cold-ass lil counted array of crews ta which tha user belongs.
+It be easy as fuck  ta impersonate a user.
+.LP
+.nf
+.BI "AUTH *authunix_create_default(void);"
+.fi
+.IP
+Calls
+.BR authunix_create ()
+with tha appropriate parameters.
+.LP
+.nf
+.BI "int callrpc(char *" host ", unsigned long " prognum ,
+.BI "            unsigned long " versnum ", unsigned long " procnum ,
+.BI "            xdrproc_t " inproc ", char *" up in ,
+.BI "            xdrproc_t " outproc ", char *" up );
+.fi
+.IP
+Call tha remote procedure associated with
+.IR prognum ,
+.IR versnum ,
+and
+.I procnum
+on tha machine,
+.IR host .
+Da parameter
+.I in
+is tha address of tha procedurez argument(s), and
+.I out
+is tha address of where ta place tha result(s);
+.I inproc
+is used ta encode tha procedurez parameters, and
+.I outproc
+is used ta decode tha procedurez thangs up in dis biatch.
+This routine returns zero if it succeeds, or tha value of
+.B "enum clnt_stat"
+cast ta a integer if it fails.
+Da routine
+.BR clnt_perrno ()
+is handy fo' translatin failure statuses tha fuck into lyrics.
+.IP
+Warning: callin remote procedures wit dis routine
+uses UDP/IP as a transport; see
+.BR clntudp_create ()
+for restrictions.
+Yo ass aint gots control of timeouts or authentication rockin dis routine.
+.LP
+.nf
+.BI "enum clnt_stat clnt_broadcast(unsigned long " prognum ,
+.BI "                     unsigned long " versnum ", unsigned long " procnum ,
+.BI "                     xdrproc_t " inproc ", char *" up in ,
+.BI "                     xdrproc_t " outproc ", char *" up ,
+.BI "                     resultproc_t " eachresult );
+.fi
+.IP
+Like
+.BR callrpc (),
+except tha call message is broadcast ta all locally
+connected broadcast nets.
+Each time it receives a response, dis routine calls
+.BR eachresult (),
+whose form is:
+.IP
+.in +4n
+.nf
+.BI "eachresult(char *" up ", struct sockaddr_in *" addr );
+.fi
+.in
+.IP
+where
+.I out
+is tha same ol' dirty as
+.I out
+passed to
+.BR clnt_broadcast (),
+except dat tha remote procedurez output is decoded there;
+.I addr
+points ta tha address of tha machine dat busted tha thangs up in dis biatch.
+If
+.BR eachresult ()
+returns zero,
+.BR clnt_broadcast ()
+waits fo' mo' replies; otherwise it returns wit appropriate status.
+.IP
+Warning: broadcast sockets is limited up in size ta the
+maximum transfer unit of tha data link.
+For ethernet, dis value is 1500 bytes.
+.LP
+.nf
+.BI "enum clnt_stat clnt_call(CLIENT *" clnt ", unsigned long " procnum ,
+.BI "                    xdrproc_t " inproc ", char *" up in ,
+.BI "                    xdrproc_t " outproc ", char *" up ,
+.BI "                    struct timeval " tout );
+.fi
+.IP
+A macro dat calls tha remote procedure
+.I procnum
+associated wit tha client handle,
+.IR clnt ,
+which is obtained wit a RPC client creation routine such as
+.BR clnt_create ().
+Da parameter
+.I in
+is tha address of tha procedurez argument(s), and
+.I out
+is tha address of where ta place tha result(s);
+.I inproc
+is used ta encode tha procedurez parameters, and
+.I outproc
+is used ta decode tha procedurez thangs up in dis biatch;
+.I tout
+is tha time allowed fo' thangs up in dis biatch ta come back.
+.LP
+.nf
+.BI "clnt_destroy(CLIENT *" clnt );
+.fi
+.IP
+A macro dat destroys tha clientz RPC handle.
+Destruction probably involves deallocation
+of private data structures, including
+.I clnt
+itself.
+Use of
+.I clnt
+is undefined afta calling
+.BR clnt_destroy ().
+If tha RPC library opened tha associated socket, it will close it also.
+Otherwise, tha socket remains open.
+.LP
+.nf
+.BI "CLIENT *clnt_create(char *" host ", unsigned long " prog ,
+.BI "                    unsigned long " vers ", char *" proto );
+.fi
+.IP
+Generic client creation routine.
+.I host
+identifies tha name of tha remote host where tha server is located.
+.I proto
+indicates which kind of transhiznit protocol ta use.
+Da currently supported joints fo' dis field is \(lqudp\(rq
+and \(lqtcp\(rq.
+Default timeouts is set yo, but can be modified using
+.BR clnt_control ().
+.IP
+Warning: Usin UDP has its shortcomings.
+Since UDP-based RPC lyrics can hold only up ta 8 Kbytez of encoded data,
+this transhiznit cannot be used fo' procedures dat take
+pimpin' arguments or return big-ass thangs up in dis biatch.
+.LP
+.nf
+.BI "bool_t clnt_control(CLIENT *" cl ", int " req ", char *" info );
+.fi
+.IP
+A macro used ta chizzle or retrieve various shiznit
+on some cold-ass lil client object.
+.I req
+indicates tha type of operation, and
+.I info
+is a pointa ta tha shiznit.
+For both UDP n' TCP, tha supported joints of
+.I req
+and they argument types n' what tha fuck they do are:
+.IP
+.in +4n
+.nf
+\fBCLSET_TIMEOUT\fP  \fIstruct timeval\fP // set total timeout
+\fBCLGET_TIMEOUT\fP  \fIstruct timeval\fP // git total timeout
+.fi
+.in
+.IP
+Note: if you set tha timeout using
+.BR clnt_control (),
+the timeout parameta passed to
+.BR clnt_call ()
+will be ignored up in all future calls.
+.IP
+.in +4n
+.nf
+\fBCLGET_SERVER_ADDR\fP  \fIstruct sockaddr_in \fP // git serverz address
+.fi
+.in
+.IP
+Da followin operations is valid fo' UDP only:
+.IP
+.in +4n
+.nf
+\fBCLSET_RETRY_TIMEOUT\fP  \fIstruct timeval\fP // set tha retry timeout
+\fBCLGET_RETRY_TIMEOUT\fP  \fIstruct timeval\fP // git tha retry timeout
+.fi
+.in
+.IP
+Da retry timeout is tha time dat "UDP RPC"
+waits fo' tha server ta reply before
+retransmittin tha request.
+.LP
+.nf
+.BI "clnt_freeres(CLIENT * " clnt ", xdrproc_t " outproc ", char *" up );
+.fi
+.IP
+A macro dat frees any data allocated by tha RPC/XDR
+system when it decoded tha thangs up in dis biatch of a RPC call.
+Da parameter
+.I out
+is tha address of tha thangs up in dis biatch, and
+.I outproc
+is tha XDR routine describin tha thangs up in dis biatch.
+This routine returns one if tha thangs up in dis biatch was successfully freed,
+and zero otherwise.
+.LP
+.nf
+.BI "void clnt_geterr(CLIENT *" clnt ", struct rpc_err *" errp );
+.fi
+.IP
+A macro dat copies tha error structure outta tha client
+handle ta tha structure at address
+.IR errp .
+.LP
+.nf
+.BI "void clnt_pcreateerror(char *" s );
+.fi
+.IP
+Print a message ta standard error indicatin why a cold-ass lil client RPC
+handle could not be pimped.
+Da message is prepended wit string
+.I s
+and a cold-ass lil colon.
+Used when a
+.BR clnt_create (),
+.BR clntraw_create (),
+.BR clnttcp_create (),
+or
+.BR clntudp_create ()
+call fails.
+.LP
+.nf
+.BI "void clnt_perrno(enum clnt_stat " stat );
+.fi
+.IP
+Print a message ta standard error corresponding
+to tha condizzle indicated by
+.IR stat .
+Used after
+.BR callrpc ().
+.LP
+.nf
+.BI "clnt_perror(CLIENT *" clnt ", char *" s );
+.fi
+.IP
+Print a message ta standard error indicatin why a RPC call failed;
+.I clnt
+is tha handle used ta do tha call.
+Da message is prepended wit string
+.I s
+and a cold-ass lil colon.
+Used after
+.BR clnt_call ().
+.LP
+.nf
+.BI "char *clnt_spcreateerror(char *" s );
+.fi
+.IP
+Like
+.BR clnt_pcreateerror (),
+except dat it returns a strang instead of printin ta tha standard error.
+.IP
+Bugs: returns pointa ta static data dat is overwritten on each call.
+.LP
+.nf
+.BI "char *clnt_sperrno(enum clnt_stat " stat );
+.fi
+.IP
+Take tha same arguments as
+.BR clnt_perrno (),
+but instead of bustin  a message ta tha standard error indicatin why a RPC
+call failed, return a pointa ta a strang which gotz nuff tha message.
+Da strang endz wit a NEWLINE.
+.IP
+.BR clnt_sperrno ()
+is used instead of
+.BR clnt_perrno ()
+if tha program aint gots a standard error (as a program
+runnin as a server like likely do not), or if tha programmer
+does not want tha message ta be output with
+.BR printf (3),
+or if a message format different than dat supported by
+.BR clnt_perrno ()
+is ta be used.
+Note: unlike
+.BR clnt_sperror ()
+and
+.BR clnt_spcreaterror (),
+.BR clnt_sperrno ()
+returns pointa ta static data yo, but the
+result aint gonna git overwritten on each call.
+.LP
+.nf
+.BI "char *clnt_sperror(CLIENT *" rpch ", char *" s );
+.fi
+.IP
+Like
+.BR clnt_perror (),
+except dat (like
+.BR clnt_sperrno ())
+it returns a strang instead of printin ta standard error.
+.IP
+Bugs: returns pointa ta static data dat is overwritten on each call.
+.LP
+.nf
+.BI "CLIENT *clntraw_create(unsigned long " prognum \
+", unsigned long " versnum );
+.fi
+.IP
+This routine creates a toy RPC client fo' tha remote program
+.IR prognum ,
+version
+.IR versnum .
+Da transhiznit used ta pass lyrics ta tha steez is
+actually a funky-ass buffer within tha processs address space, so the
+correspondin RPC server should live up in tha same address space; see
+.BR svcraw_create ().
+This allows simulation of RPC n' acquisizzle of RPC
+overheads, like fuckin round trip times, without any kernel interference.
+This routine returns NULL if it fails.
+.LP
+.nf
+.BI "CLIENT *clnttcp_create(struct sockaddr_in *" addr ,
+.BI "                unsigned long " prognum ", unsigned long " versnum ,
+.BI "                int *" sockp ", unsigned int " sendss \
+", unsigned int " recvss );
+.fi
+.IP
+This routine creates a RPC client fo' tha remote program
+.IR prognum ,
+version
+.IR versnum ;
+the client uses TCP/IP as a transport.
+Da remote program is located at Internizzle address
+.IR *addr .
+If
+.\"Da followin inline font conversion is necessary fo' tha hyphen indicator
+.I addr\->sin_port
+is zero, then it is set ta tha actual port dat tha remote
+program is listenin on (the remote
+.B portmap
+service is consulted fo' dis shiznit).
+Da parameter
+.I sockp
+is a socket; if it is
+.BR RPC_ANYSOCK ,
+then dis routine opens a freshly smoked up one n' sets
+.IR sockp .
+Since TCP-based RPC uses buffered I/O,
+the user may specify tha size of tha bust n' receive buffers
+with tha parameters
+.I sendsz
+and
+.IR recvss ;
+valuez of zero chizzle suitable defaults.
+This routine returns NULL if it fails.
+.LP
+.nf
+.BI "CLIENT *clntudp_create(struct sockaddr_in *" addr ,
+.BI "                unsigned long " prognum ", unsigned long " versnum ,
+.BI "                struct timeval " wait ", int *" sockp );
+.fi
+.IP
+This routine creates a RPC client fo' tha remote program
+.IR prognum ,
+version
+.IR versnum ;
+the client uses use UDP/IP as a transport.
+Da remote program is located at Internizzle address
+.IR addr .
+If
+.I addr\->sin_port
+is zero, then it is set ta actual port dat tha remote
+program is listenin on (the remote
+.B portmap
+service is consulted fo' dis shiznit).
+Da parameter
+.I sockp
+is a socket; if it is
+.BR RPC_ANYSOCK ,
+then dis routine opens a freshly smoked up one n' sets
+.IR sockp .
+Da UDP transhiznit resendz tha call message up in intervals of
+.I wait
+time until a response is received or until tha call times out.
+Da total time fo' tha call ta time up is specified by
+.BR clnt_call ().
+.IP
+Warning: since UDP-based RPC lyrics can hold only up ta 8 Kbytes
+of encoded data, dis transhiznit cannot be used fo' procedures
+that take big-ass arguments or return big-ass thangs up in dis biatch.
+.LP
+.nf
+.BI "CLIENT *clntudp_bufcreate(struct sockaddr_in *" addr ,
+.BI "            unsigned long " prognum ", unsigned long " versnum ,
+.BI "            struct timeval " wait ", int *" sockp ,
+.BI "            unsigned int " sendsize ", unsigned int "recosize );
+.fi
+.IP
+This routine creates a RPC client fo' tha remote program
+.IR prognum ,
+on
+.IR versnum ;
+the client uses use UDP/IP as a transport.
+Da remote program is located at Internizzle address
+.IR addr .
+If
+.I addr\->sin_port
+is zero, then it is set ta actual port dat tha remote
+program is listenin on (the remote
+.B portmap
+service is consulted fo' dis shiznit).
+Da parameter
+.I sockp
+is a socket; if it is
+.BR RPC_ANYSOCK ,
+then dis routine opens a freshly smoked up one n' sets
+.IR sockp .
+Da UDP transhiznit resendz tha call message up in intervals of
+.I wait
+time until a response is received or until tha call times out.
+Da total time fo' tha call ta time up is specified by
+.BR clnt_call ().
+.IP
+This allows tha user ta specify tha maximum packet
+size fo' bustin  n' receivin UDP-based RPC lyrics.
+.LP
+.nf
+.BI "void get_myaddress(struct sockaddr_in *" addr );
+.fi
+.IP
+Stuff tha machinez IP address into
+.IR *addr ,
+without consultin tha library routines dat deal with
+.IR /etc/hosts .
+Da port number be always set to
+.BR htons(PMAPPORT) .
+.LP
+.nf
+.BI "struct pmaplist *pmap_getmaps(struct sockaddr_in *" addr );
+.fi
+.IP
+A user intercourse ta the
+.B portmap
+service, which returns a list of tha current RPC
+program-to-port mappings on tha host located at IP address
+.IR *addr .
+This routine can return NULL.
+Da command
+.IR "rpcinfo\ \-p"
+uses dis routine.
+.LP
+.nf
+.BI "unsigned short pmap_getport(struct sockaddr_in *" addr ,
+.BI "                    unsigned long " prognum ", unsigned long " versnum ,
+.BI "                    unsigned int " protocol );
+.fi
+.IP
+A user intercourse ta the
+.B portmap
+service, which returns tha port number
+on which waits a steez dat supports program number
+.IR prognum ,
+version
+.IR versnum ,
+and speaks tha transhiznit protocol associated with
+.IR protocol .
+Da value of
+.I protocol
+is most likely
+.B IPPROTO_UDP
+or
+.BR IPPROTO_TCP .
+A return value of zero means dat tha mappin do not exist
+or dat tha RPC system failed ta contact tha remote
+.B portmap
+service.
+In tha latta case, tha global variable
+.I rpc_createerr
+gotz nuff tha RPC status.
+.LP
+.nf
+.BI "enum clnt_stat pmap_rmtcall(struct sockaddr_in *" addr ,
+.BI "                    unsigned long " prognum ", unsigned long " versnum ,
+.BI "                    unsigned long " procnum ,
+.BI "                    xdrproc_t " inproc ", char *" up in ,
+.BI "                    xdrproc_t " outproc ", char *" up ,
+.BI "                    struct timeval " tout ", unsigned long *" portp );
+.fi
+.IP
+A user intercourse ta the
+.B portmap
+service, which instructs
+.B portmap
+on tha host at IP address
+.I *addr
+to cook up a RPC call on yo' behalf ta a procedure on dat host.
+Da parameter
+.I *portp
+will be modified ta tha programz port number if tha procedure succeeds.
+Da definitionz of other parametas is discussed
+in
+.BR callrpc ()
+and
+.BR clnt_call ().
+This procedure should be used fo' a \(lqping\(rq n' not a god damn thang else.
+See also
+.BR clnt_broadcast ().
+.LP
+.nf
+.BI "bool_t pmap_set(unsigned long " prognum ", unsigned long " versnum ,
+.BI "                unsigned int " protocol ", unsigned short " port );
+.fi
+.IP
+A user intercourse ta the
+.B portmap
+service, which establishes a mappin between tha triple
+.RI [ prognum , versnum , protocol ]
+and
+.I port
+on tha machine's
+.B portmap
+service.
+Da value of
+.I protocol
+is most likely
+.B IPPROTO_UDP
+or
+.BR IPPROTO_TCP .
+This routine returns one if it succeeds, zero otherwise.
+Automatically done by
+.BR svc_regista ().
+.LP
+.nf
+.BI "bool_t pmap_unset(unsigned long " prognum ", unsigned long " versnum );
+.fi
+.IP
+A user intercourse ta the
+.B portmap
+service, which destroys all mappin between tha triple
+.RI [ prognum , versnum , * ]
+and
+.B ports
+on tha machine's
+.B portmap
+service.
+This routine returns one if it succeeds, zero otherwise.
+.LP
+.nf
+.BI "int registerrpc(unsigned long " prognum ", unsigned long " versnum ,
+.BI "                unsigned long " procnum ", char *(*" procname ")(char *),"
+.BI "                xdrproc_t " inproc ", xdrproc_t " outproc );
+.fi
+.IP
+Regista procedure
+.I procname
+with tha RPC steez package.
+If a request arrives fo' program
+.IR prognum ,
+version
+.IR versnum ,
+and procedure
+.IR procnum ,
+.I procname
+is called wit a pointa ta its parameter(s);
+.I progname
+should return a pointa ta its static result(s);
+.I inproc
+is used ta decode tha parametas while
+.I outproc
+is used ta encode tha thangs up in dis biatch.
+This routine returns zero if tha registration succeeded, \-1 otherwise.
+.IP
+Warning: remote procedures registered up in dis form
+are accessed rockin tha UDP/IP transport; see
+.BR svcudp_create ()
+for restrictions.
+.LP
+.nf
+.BI "struct rpc_createerr " rpc_createerr ;
+.fi
+.IP
+A global variable whose value is set by any RPC client creation routine
+that do not succeed.
+Use tha routine
+.BR clnt_pcreateerror ()
+to print tha reason why.
+.LP
+.nf
+.BI "void svc_destroy(SVCXPRT *" xprt );
+.fi
+.IP
+A macro dat destroys tha RPC steez transhiznit handle,
+.IR xprt .
+Destruction probably involves deallocation
+of private data structures, including
+.I xprt
+itself.
+Use of
+.I xprt
+is undefined afta callin dis routine.
+.LP
+.nf
+.BI "fd_set " svc_fdset ;
+.fi
+.IP
+A global variable reflectin tha RPC steez side's
+read file descriptor bit mask; it is suitable as a parameta ta the
+.BR select (2)
+system call.
+This iz of interest only if a steez implementor do not call
+.BR svc_run (),
+but rather do his own asynchronous event processing.
+This variable is read-only (do not pass its address to
+.BR select (2)!),
+yet it may chizzle afta calls to
+.BR svc_getreqset ()
+or any creation routines.
+.LP
+.nf
+.BI "int " svc_fdz ;
+.fi
+.IP
+Similar to
+.BR svc_fdset ,
+but limited ta 32 descriptors.
+This intercourse is obsoleted by
+.BR svc_fdset .
+.LP
+.nf
+.BI "svc_freeargs(SVCXPRT *" xprt ", xdrproc_t " inproc ", char *" up in );
+.fi
+.IP
+A macro dat frees any data allocated by tha RPC/XDR
+system when it decoded tha arguments ta a steez procedure using
+.BR svc_getargs ().
+This routine returns 1 if tha thangs up in dis biatch was successfully freed,
+and zero otherwise.
+.LP
+.nf
+.BI "svc_getargs(SVCXPRT *" xprt ", xdrproc_t " inproc ", char *" up in );
+.fi
+.IP
+A macro dat decodes tha argumentz of a RPC request
+associated wit tha RPC steez transhiznit handle,
+.IR xprt .
+Da parameter
+.I in
+is tha address where tha arguments is ghon be placed;
+.I inproc
+is tha XDR routine used ta decode tha arguments.
+This routine returns one if decodin succeeds, n' zero otherwise.
+.LP
+.nf
+.BI "struct sockaddr_in *svc_getcaller(SVCXPRT *" xprt );
+.fi
+.IP
+Da approved way of gettin tha network address of tha caller
+of a procedure associated wit tha RPC steez transhiznit handle,
+.IR xprt .
+.LP
+.nf
+.BI "void svc_getreqset(fd_set *" rdfdz );
+.fi
+.IP
+This routine iz of interest only if a steez implementor do not call
+.BR svc_run (),
+but instead implements custom asynchronous event processing.
+It be called when the
+.BR select (2)
+system call has determined dat a RPC request has arrived on some
+RPC socket(s);
+.I rdfds
+is tha resultant read file descriptor bit mask.
+Da routine returns when all sockets associated wit tha value of
+.I rdfds
+have been serviced.
+.LP
+.nf
+.BI "void svc_getreq(int " rdfdz );
+.fi
+.IP
+Similar to
+.BR svc_getreqset (),
+but limited ta 32 descriptors.
+This intercourse is obsoleted by
+.BR svc_getreqset ().
+.LP
+.nf
+.BI "bool_t svc_register(SVCXPRT *" xprt ", unsigned long " prognum ,
+.BI "                    unsigned long " versnum ,
+.BI "                    void (*" dispatch ")(svc_req *, SVCXPRT *),"
+.BI "                    unsigned long " protocol );
+.fi
+.IP
+Associates
+.I prognum
+and
+.I versnum
+with tha steez dispatch procedure,
+.IR dispatch .
+If
+.I protocol
+is zero, tha steez aint registered wit the
+.B portmap
+service.
+If
+.I protocol
+is nonzero, then a mappin of tha triple
+.RI [ prognum , versnum , protocol ]
+to
+.I xprt\->xp_port
+is established wit tha local
+.B portmap
+service (generally
+.I protocol
+is zero,
+.B IPPROTO_UDP
+or
+.BR IPPROTO_TCP ).
+Da procedure
+.I dispatch
+has tha followin form:
+.in +4n
+.nf
+
+dispatch(struct svc_req *request, SVCXPRT *xprt);
+.fi
+.in
+.IP
+The
+.BR svc_regista ()
+routine returns one if it succeeds, n' zero otherwise.
+.LP
+.nf
+.B "void svc_run(void);"
+.fi
+.IP
+This routine never returns.
+It waits fo' RPC requests ta arrive, n' calls tha appropriate service
+procedure using
+.BR svc_getreq ()
+when one arrives.
+This procedure is probably waitin fo' a
+.BR select (2)
+system call ta return.
+.LP
+.nf
+.BI "bool_t svc_sendreply(SVCXPRT *" xprt ", xdrproc_t " outproc \
+", char *" up );
+.fi
+.IP
+Called by a RPC servicez dispatch routine ta bust tha thangs up in dis biatch of a
+remote procedure call.
+Da parameter
+.I xprt
+is tha requestz associated transhiznit handle;
+.I outproc
+is tha XDR routine which is used ta encode tha thangs up in dis biatch; and
+.I out
+is tha address of tha thangs up in dis biatch.
+This routine returns one if it succeeds, zero otherwise.
+.LP
+.nf
+.BI "void svc_unregister(unsigned long " prognum ", unsigned long " versnum );
+.fi
+.IP
+Remove all mappin of tha double
+.RI [ prognum , versnum ]
+to dispatch routines, n' of tha triple
+.RI [ prognum , versnum , * ]
+to port number.
+.LP
+.nf
+.BI "void svcerr_auth(SVCXPRT *" xprt ", enum auth_stat " why );
+.fi
+.IP
+Called by a steez dispatch routine dat refuses ta perform
+a remote procedure call cuz of a authentication error.
+.LP
+.nf
+.BI "void svcerr_decode(SVCXPRT *" xprt );
+.fi
+.IP
+Called by a steez dispatch routine dat cannot successfully
+decode its parameters.
+See also
+.BR svc_getargs ().
+.LP
+.nf
+.BI "void svcerr_noproc(SVCXPRT *" xprt );
+.fi
+.IP
+Called by a steez dispatch routine dat do not implement
+the procedure number dat tha calla requests.
+.LP
+.nf
+.BI "void svcerr_noprog(SVCXPRT *" xprt );
+.fi
+.IP
+Called when tha desired program aint registered wit tha RPC package.
+Service implementors probably do not need dis routine.
+.LP
+.nf
+.BI "void svcerr_progvers(SVCXPRT *" xprt );
+.fi
+.IP
+Called when tha desired version of a program aint registered
+with tha RPC package.
+Service implementors probably do not need dis routine.
+.LP
+.nf
+.BI "void svcerr_systemerr(SVCXPRT *" xprt );
+.fi
+.IP
+Called by a steez dispatch routine when it detects a system
+error not covered by any particular protocol.
+For example, if a steez can no longer allocate storage,
+it may call dis routine.
+.LP
+.nf
+.BI "void svcerr_weakauth(SVCXPRT *" xprt );
+.fi
+.IP
+Called by a steez dispatch routine dat refuses ta perform
+a remote procedure call cuz of insufficient authentication parameters.
+Da routine calls
+.BR "svcerr_auth(xprt, AUTH_TOOWEAK)" .
+.LP
+.nf
+.BI "SVCXPRT *svcfd_create(int " fd ", unsigned int " sendsize ,
+.BI "                      unsigned int " recvsize );
+.fi
+.IP
+Smoke a steez on top of any open descriptor.
+Typically, dis descriptor be a cold-ass lil connected socket fo' a stream protocol such
+as TCP.
+.I sendsize
+and
+.I recvsize
+indicate sizes fo' tha bust n' receive buffers.
+If they is zero, a reasonable default is chosen.
+.LP
+.nf
+.BI "SVCXPRT *svcraw_create(void);"
+.fi
+.IP
+This routine creates a toy RPC
+service transport, ta which it returns a pointer.
+Da transhiznit is straight-up a funky-ass buffer within tha processs address space,
+so tha correspondin RPC client should live up in tha same address space; see
+.BR clntraw_create ().
+This routine allows simulation of RPC n' acquisizzle of RPC
+overheadz (like fuckin round trip times), without any kernel interference.
+This routine returns NULL if it fails.
+.LP
+.nf
+.BI "SVCXPRT *svctcp_create(int " sock ", unsigned int " send_buf_size ,
+.BI "                       unsigned int " recv_buf_size );
+.fi
+.IP
+This routine creates a TCP/IP-based RPC
+service transport, ta which it returns a pointer.
+Da transhiznit be associated wit tha socket
+.IR sock ,
+which may be
+.BR RPC_ANYSOCK ,
+in which case a freshly smoked up socket is pimped.
+If tha socket aint bound ta a local TCP
+port, then dis routine bindz it ta a arbitrary port.
+Upon completion,
+.I xprt\->xp_sock
+is tha transportz socket descriptor, and
+.I xprt\->xp_port
+is tha transportz port number.
+This routine returns NULL if it fails.
+Since TCP-based RPC uses buffered I/O,
+users may specify tha size of buffers; jointz of zero
+choose suitable defaults.
+.LP
+.nf
+.BI "SVCXPRT *svcudp_bufcreate(int " sock ", unsigned int " sendsize ,
+.BI "                          unsigned int " recosize );
+.fi
+.IP
+This routine creates a UDP/IP-based RPC
+service transport, ta which it returns a pointer.
+Da transhiznit be associated wit tha socket
+.IR sock ,
+which may be
+.BR RPC_ANYSOCK ,
+in which case a freshly smoked up socket is pimped.
+If tha socket aint bound ta a local UDP
+port, then dis routine bindz it ta a arbitrary port.
+Upon completion,
+.I xprt\->xp_sock
+is tha transportz socket descriptor, and
+.I xprt\->xp_port
+is tha transportz port number.
+This routine returns NULL if it fails.
+.IP
+This allows tha user ta specify tha maximum packet size fo' bustin  and
+receivin UDP-based RPC lyrics.
+.LP
+.nf
+.BI "SVCXPRT *svcudp_create(int " sock );
+.fi
+.IP
+This call is equivalent to
+.I svcudp_bufcreate(sock,SZ,SZ)
+for some default size
+.IR SZ .
+.LP
+.nf
+.BI "bool_t xdr_accepted_reply(XDR *" xdrs ", struct accepted_reply *" ar );
+.fi
+.IP
+Used fo' encodin RPC reply lyrics.
+This routine is useful fo' playas whoz ass wish ta generate
+RPC-style lyrics without rockin tha RPC package.
+.LP
+.nf
+.BI "bool_t xdr_authunix_parms(XDR *" xdrs ", struct authunix_parms *" aupp );
+.fi
+.IP
+Used fo' describin UNIX credentials.
+This routine is useful fo' users
+who wish ta generate these credentials without rockin tha RPC
+authentication package.
+.LP
+.nf
+.BI "void xdr_callhdr(XDR *" xdrs ", struct rpc_msg *" chdr );
+.fi
+.IP
+Used fo' describin RPC call header lyrics.
+This routine is useful fo' playas whoz ass wish ta generate
+RPC-style lyrics without rockin tha RPC package.
+.LP
+.nf
+.BI "bool_t xdr_callmsg(XDR *" xdrs ", struct rpc_msg *" cmsg );
+.fi
+.IP
+Used fo' describin RPC call lyrics.
+This routine is useful fo' playas whoz ass wish ta generate RPC-style
+lyrics without rockin tha RPC package.
+.LP
+.nf
+.BI "bool_t xdr_opaque_auth(XDR *" xdrs ", struct opaque_auth *" ap );
+.fi
+.IP
+Used fo' describin RPC authentication shiznit lyrics.
+This routine is useful fo' playas whoz ass wish ta generate
+RPC-style lyrics without rockin tha RPC package.
+.LP
+.nf
+.BI "bool_t xdr_pmap(XDR *" xdrs ", struct pmap *" regs );
+.fi
+.IP
+Used fo' describin parametas ta various
+.B portmap
+procedures, externally.
+This routine is useful fo' playas whoz ass wish ta generate
+these parametas without rockin the
+.B pmap
+interface.
+.LP
+.nf
+.BI "bool_t xdr_pmaplist(XDR *" xdrs ", struct pmaplist **" rp );
+.fi
+.IP
+Used fo' describin a list of port mappings, externally.
+This routine is useful fo' playas whoz ass wish ta generate
+these parametas without rockin the
+.B pmap
+interface.
+.LP
+.nf
+.BI "bool_t xdr_rejected_reply(XDR *" xdrs ", struct rejected_reply *" rr );
+.fi
+.IP
+Used fo' describin RPC reply lyrics.
+This routine is useful fo' playas whoz ass wish ta generate
+RPC-style lyrics without rockin tha RPC package.
+.LP
+.nf
+.BI "bool_t xdr_replymsg(XDR *" xdrs ", struct rpc_msg *" rmsg );
+.fi
+.IP
+Used fo' describin RPC reply lyrics.
+This routine is useful fo' playas whoz ass wish ta generate
+RPC steez lyrics without rockin tha RPC package.
+.LP
+.nf
+.BI "void xprt_register(SVCXPRT *" xprt );
+.fi
+.IP
+Afta RPC steez transhiznit handlez is pimped,
+they should regista theyselves wit tha RPC steez package.
+This routine modifies tha global variable
+.IR svc_fdz .
+Service implementors probably do not need dis routine.
+.LP
+.nf
+.BI "void xprt_unregister(SVCXPRT *" xprt );
+.fi
+.IP
+Before a RPC steez transhiznit handle is destroyed,
+it should unregista itself wit tha RPC steez package.
+This routine modifies tha global variable
+.IR svc_fdz .
+Service implementors probably do not need dis routine.
+.SH SEE ALSO
+.\" Us dudes aint gots a rpc_secure.3 page up in tha set all up in tha moment -- MTK, 19 Sep 05
+.\" .BR rpc_secure (3),
+.BR xdr (3)
+
+Da followin manuals:
+.RS
+Remote Procedure Calls: Protocol Justification
+.br
+Remote Procedure Call Programmin Guide
+.br
+rpcgen Programmin Guide
+.br
+.RE
+
+.IR "RPC: Remote Procedure Call Protocol Justification" ,
+RFC\ 1050, Sun Microsystems, Inc.,
+USC-ISI.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

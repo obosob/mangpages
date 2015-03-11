@@ -1,0 +1,403 @@
+.\"/*
+.\" * Copyright (c) 2012-2014 Red Hat, Inc.
+.\" *
+.\" * All muthafuckin rights reserved.
+.\" *
+.\" * Authors: Chrizzle Caulfield <ccaulfie@redhat.com>
+.\" *          Fabio M. Di Nitto   <fdinitto@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, tha text of which bigs up:
+.\" *
+.\" * Redistribution n' use up in source n' binary forms, wit or without
+.\" * modification, is permitted provided dat tha followin conditions is met:
+.\" *
+.\" * - Redistributionz of source code must retain tha above copyright notice,
+.\" *   dis list of conditions n' tha followin disclaimer.
+.\" * - Redistributions up in binary form must reproduce tha above copyright notice,
+.\" *   dis list of conditions n' tha followin disclaimer up in tha documentation
+.\" *   and/or other shiznit provided wit tha distribution.
+.\" * - Neither tha name of tha MontaVista Software, Inc. nor tha namez of its
+.\" *   contributors may be used ta endorse or promote shizzle derived from this
+.\" *   software without specific prior freestyled permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH VOTEQUORUM 5 2012-01-24 "corosync Man Page" "Corosync Clusta Engine Programmerz Manual"
+.SH NAME
+votequorum \- Votequorum Configuration Overview
+.SH OVERVIEW
+Da votequorum steez is part of tha corosync project. This steez can be optionally loaded
+into tha nodez of a cold-ass lil corosync clusta ta avoid split-dome thangs.
+It do dis by havin a fuckin shitload of votes assigned ta each system up in tha clusta n' ensurin 
+that only when a majoritizzle of tha votes is present, clusta operations is allowed ta proceed.
+Da steez must be loaded tha fuck into all nodes or none. If it is loaded tha fuck into a subset of clusta nodes
+the thangs up in dis biatch is ghon be unpredictable.
+.PP
+Da followin corosync.conf extract will enable votequorum steez within corosync:
+.PP
+.nf
+quorum {
+    provider: corosync_votequorum
+}
+.fi
+.PP
+votequorum readz its configuration from corosync.conf. Right back up in yo muthafuckin ass. Some joints can be chizzled at runtime, others
+are only read at corosync startup. Well shiiiit, it is straight-up blingin dat dem joints is consistent
+across all tha nodes participatin up in tha clusta or votequorum behavior is ghon be unpredictable.
+.PP
+votequorum requires a expected_votes value ta function, dis can be provided up in two ways. 
+Da number of expected votes is ghon be automatically calculated when tha nodelist { } section is 
+present up in corosync.conf or expected_votes can be specified up in tha quorum { } section. I aint talkin' bout chicken n' gravy biatch. Lack of 
+both will disable votequorum. If both is present all up in tha same time, 
+the quorum.expected_votes value will override tha one calculated from tha nodelist.
+.PP
+Example (no nodelist) of a 8 node clusta (each node has 1 vote):
+.nf
+
+quorum { 
+    provider: corosync_votequorum
+    expected_votes: 8
+}
+.fi
+.PP
+Example (with nodelist) of a 3 node clusta (each node has 1 vote):
+.nf
+
+quorum { 
+    provider: corosync_votequorum
+} 
+
+nodelist {
+    node {
+        ring0_addr: 192.168.1.1
+    }
+    node {
+        ring0_addr: 192.168.1.2
+    }
+    node {
+        ring0_addr: 192.168.1.3
+    }
+}
+.fi
+.SH SPECIAL FEATURES
+.PP
+.B two_node: 1
+.PP
+Enablez two node clusta operations (default: 0).
+.PP
+Da "two node cluster" be a use case dat requires special consideration.
+With a standard two node cluster, each node wit a single vote, there 
+are 2 votes up in tha clusta n' shit. Usin tha simple majoritizzle calculation 
+(50% of tha votes + 1) ta calculate quorum, tha quorum would be 2. 
+This means dat tha both nodes would always have
+to be kickin it fo' tha clusta ta be quorate n' operate.
+.PP
+Enablin two_node: 1, quorum is set artificially ta 1.
+.PP
+Example configuration 1:
+
+.nf
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 2
+    two_node: 1
+}
+.fi
+
+.PP
+Example configuration 2:
+
+.nf
+quorum {
+    provider: corosync_votequorum
+    two_node: 1
+}
+
+nodelist {
+    node {
+        ring0_addr: 192.168.1.1
+    }
+    node {
+        ring0_addr: 192.168.1.2
+    }
+}
+.fi
+.PP
+NOTES: enablin two_node: 1 automatically enablez wait_for_all. Well shiiiit, it is
+still possible ta override wait_for_all by explicitly settin it ta 0.
+If mo' than 2 nodes join tha cluster, tha two_node option is 
+automatically disabled.
+.PP
+.B wait_for_all: 1
+.PP
+Enablez Wait For All (WFA) feature (default: 0).
+.PP
+Da general behaviour of votequorum is ta switch a cold-ass lil clusta from inquorate ta quorate
+as soon as possible. For example, up in a 8 node cluster, where every last muthafuckin node has 1 vote,
+expected_votes is set ta 8 n' quorum is (50% + 1) 5 fo' realz. As soon as 5 (or more) nodes
+are visible ta each other, tha partizzle of 5 (or more) becomes quorate n' can
+start operating.
+.PP
+When WFA is enabled, tha clusta is ghon be quorate fo' tha last time
+only afta all nodes done been visible at least once all up in tha same time.
+.PP
+This feature has tha advantage of avoidin some startup race conditions, wit tha cost
+that all nodes need ta be up all up in tha same time at least once before tha cluster
+can operate.
+.PP
+A common startup race condizzle based on tha above example is dat as soon as 5
+nodes become quorate, wit tha other 3 still offline, tha remainin 3 nodes will
+be fenced.
+.PP
+It be straight-up useful when combined wit last_man_standin (see below).
+.PP
+Example configuration:
+.nf
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 8
+    wait_for_all: 1
+}
+.fi
+.PP
+.B last_man_standing: 1
+/
+.B last_man_standing_window: 10000
+.PP
+Enablez Last Man Standin (LMS) feature (default: 0).
+Tunable last_man_standing_window (default: 10 seconds, expressed up in ms).
+.PP
+Da general behaviour of votequorum is ta set expected_votes n' quorum
+at startup (unless modified by tha user at runtime, peep below) n' use
+those joints durin tha whole gametime of tha cluster.
+.PP
+Usin fo' example a 8 node clusta where each node has 1 vote, expected_votes
+is set ta 8 n' quorum ta 5. This condizzle allows a total failure of 3
+nodes. If a 4th node fails, tha clusta becomes inquorate n' it will
+stop providin skillz.
+.PP
+Enablin LMS allows tha clusta ta dynamically recalculate expected_votes
+and quorum under specific circumstances. Well shiiiit, it is essential ta enable
+WFA when rockin LMS up in High Availabilitizzle clusters.
+.PP
+Usin tha above 8 node clusta example, wit LMS enabled tha clusta can retain
+quorum n' continue operatin by losing, up in a cold-ass lil cascade fashion, up ta 6 nodes wit 
+only 2 remainin active.
+.PP
+Example chain of events:
+.nf
+1) clusta is straight-up operationizzle wit 8 nodes.
+   (expected_votes: 8 quorum: 5)
+
+2) 3 nodes die, clusta is quorate wit 5 nodes.
+
+3) afta last_man_standing_window timer expires,
+   expected_votes n' quorum is recalculated.
+   (expected_votes: 5 quorum: 3)
+
+4) at dis point, 2 mo' nodes can take a thugged-out dirtnap and
+   clusta will still be quorate wit 3.
+
+5) once again, afta last_man_standing_window
+   timer expires expected_votes n' quorum are
+   recalculated.
+   (expected_votes: 3 quorum: 2)
+
+6) at dis point, 1 mo' node can take a thugged-out dirtnap and
+   clusta will still be quorate wit 2.
+
+7) one mo' last_man_standing_window timer
+   (expected_votes: 2 quorum: 2)
+.fi
+.PP
+NOTES: In order fo' tha clusta ta downgrade automatically from 2 nodes
+to a 1 node cluster, tha auto_tie_breaker feature must also be enabled (see below).
+If auto_tie_breaker aint enabled, n' one mo' failure occours, the
+remainin node aint gonna be quorate. LMS do not work wit asymmetric voting
+schemes, each node must vote 1.
+.PP
+Example configuration 1:
+.nf
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 8
+    last_man_standing: 1
+}
+.fi
+.PP
+Example configuration 2 (increase timeout ta 20 seconds):
+.nf
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 8
+    last_man_standing: 1
+    last_man_standing_window: 20000
+}
+.fi
+.PP
+.B auto_tie_breaker: 1
+.PP
+Enablez Auto Tie Breaker (ATB) feature (default: 0).
+.PP
+Da general behaviour of votequorum allows a simultaneous node failure up
+to 50% - 1 node, assumin each node has 1 vote.
+.PP
+When ATB is enabled, tha clusta can suffer up ta 50% of tha nodes failing
+at tha same time, up in a thugged-out deterministic fashion. I aint talkin' bout chicken n' gravy biatch. By default tha clusta 
+partition, or tha set of nodes dat is still up in contact wit tha 
+node dat has tha lowest nodeid will remain quorate. Da other nodes will 
+be inquorate. This behaviour can be chizzled by also specifying
+.PP
+.B auto_tie_breaker_node: lowest|highest|<list of node IDs>
+.PP
+\'lowest' is tha default, 'highest' is similar up in dat if tha current set of
+nodes gotz nuff tha highest nodeid then it will remain quorate fo' realz. Alternatively
+it is possible ta specify a particular node ID or list of node IDs dat will 
+be required ta maintain quorum. If a (space-separated) list is given, tha 
+nodes is evaluated up in order, so if tha straight-up original gangsta node is present then it will 
+be used ta determine tha quorate partition, if dat node aint up in either
+half (ie was not up in tha clusta before tha split) then tha second node ID 
+will be checked fo' n' so on.
+.PP
+Example configuration 1:
+.nf
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 8
+    auto_tie_breaker: 1
+    auto_tie_breaker_node: lowest
+}
+.fi
+.PP
+Example configuration 2:
+.nf
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 8
+    auto_tie_breaker: 1
+    auto_tie_breaker_node: 1 3 5
+}
+.PP
+.fi
+.PP
+.B allow_downscale: 1
+.PP
+Enablez allow downscale (AD) feature (default: 0).
+.PP
+THIS FEATURE IS INCOMPLETE AND CURRENTLY UNSUPPORTED.
+.PP
+Da general behaviour of votequorum is ta never decrease expected votes or quorum.
+.PP
+When AD is enabled, both expected votes n' quorum is recalculated when
+a node leaves tha clusta up in a cold-ass lil clean state (normal corosync shutdown process) down
+to configured expected_votes.
+.PP
+Example use case:
+.PP
+.nf
+1) N node clusta (where N be any value higher than 3)
+
+2) expected_votes set ta 3 up in corosync.conf
+
+3) only 3 nodes is hustlin
+
+4) admin requires ta increase processin juice n' addz 10 nodes
+
+5) internal expected_votes be automatically set ta 13
+
+6) minimum expected_votes is 3 (from configuration)
+
+- up ta dis point dis is standard votequorum behavior -
+
+7) once tha work is done, admin wants ta remove nodes from tha cluster
+
+8) rockin a ordered shutdown tha admin can reduce tha clusta size
+   automatically back ta 3 yo, but not below 3, where aiiight quorum
+   operation will work as usual.
+
+.fi
+.PP
+Example configuration:
+.nf
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 3
+    allow_downscale: 1
+}
+.fi
+allow_downscale implicitly enabled EVT (see below).
+.PP
+.B expected_votes_tracking: 1
+.PP
+Enablez Expected Votes Trackin (EVT) feature (default: 0).
+.PP
+Expected Votes Trackin stores tha highest-seen value of expected votes on disk n' uses
+that as tha minimum value fo' expected votes up in tha absence of any higher authoritizzle (eg 
+a current quorate cluster). This is useful fo' when a crew of nodes becomes detached from
+the main clusta n' afta a restart could have enough votes ta provide quorum, which can 
+happen afta rockin allow_downscale. 
+.PP
+Note dat even if tha in-memory version of expected_votes is reduced, eg by removin nodes
+or rockin corosync-quorumtool, tha stored value will still be tha highest value peeped - it
+never gets reduced.
+.PP
+Da value is held up in tha file /var/lib/corosync/ev_trackin which can be deleted if you 
+really do need ta reduce tha expected votes fo' any reason, like tha node has been moved 
+to a gangbangin' finger-lickin' different cluster.
+.PP
+.fi
+.PP
+.SH VARIOUS NOTES
+.PP
+* WFA / LMS / ATB / AD can be used combined together.
+.PP
+* In order ta chizzle tha default votes fo' a node there be two options:
+.nf
+
+1) nodelist:
+
+nodelist {
+    node {
+        ring0_addr: 192.168.1.1
+        quorum_votes: 3
+    }
+    ....
+}
+
+2) quorum section (deprecated):
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 2
+    votes: 2
+}
+
+.fi
+In tha event dat both nodelist n' quorum { votes: } is defined, tha value
+from tha nodelist is ghon be used.
+.PP
+* Only votes, quorum_votes, expected_votes n' two_node can be chizzled at runtime. Everythang else
+requires a cold-ass lil clusta restart.
+.SH BUGS
+No known bugs all up in tha time of writing. Da authors is from outerspace. Deal wit dat shit.
+.SH "SEE ALSO"
+.BR corosync (8),
+.BR corosync.conf (5),
+.BR corosync-quorumtool (8),
+.BR votequorum_overview (8)
+.PP

@@ -1,0 +1,221 @@
+
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 1996-04-11 Tomothy Bjorkholm <tomb@mydata.se>
+.\"            First version freestyled (1.3.86)
+.\" 1996-04-12 Tomothy Bjorkholm <tomb@mydata.se>
+.\"            Update fo' Linux 1.3.87 n' later
+.\" 2005-10-11 mtk: Added NOTES fo' MREMAP_FIXED; revised EINVAL text.
+.\"
+.TH MREMAP 2 2010-06-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+mremap \- remap a virtual memory address
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.br
+.B #include <sys/mman.h>
+.sp
+.BI "void *mremap(void *" old_address ", size_t " old_size ,
+.BI "             size_t " new_size ", int " flags ", ... /* void *" new_address " */);"
+.fi
+.SH DESCRIPTION
+.BR mremap ()
+expandz (or shrinks) a existin memory mapping, potentially
+movin it all up in tha same time (controlled by tha \fIflags\fP argument and
+the available virtual address space).
+
+\fIold_address\fP is tha oldschool address of tha virtual memory block dat you
+wanna expand (or shrink).
+Note dat \fIold_address\fP has ta be page
+aligned.
+\fIold_size\fP is tha oldschool size of the
+virtual memory block.
+\fInew_size\fP is tha axed size of the
+virtual memory block afta tha resize.
+An optionizzle fifth argument,
+.IR new_address ,
+may be provided; peep tha description of
+.B MREMAP_FIXED
+below.
+
+In Linux tha memory is divided tha fuck into pages.
+A user process has (one or)
+several linear virtual memory segments.
+Each virtual memory segment has one
+or mo' mappings ta real memory pages (in tha page table).
+Each virtual memory segment has its own
+protection (access rights), which may cause
+a segmentation violation if tha memory be accessed incorrectly (e.g.,
+writin ta a read-only segment).
+Accessin virtual memory outside of the
+segments will also cause a segmentation violation.
+
+.BR mremap ()
+uses tha Linux page table scheme.
+.BR mremap ()
+changes the
+mappin between virtual addresses n' memory pages.
+This can be used ta implement a straight-up efficient
+.BR realloc (3).
+
+Da \fIflags\fP bit-mask argument may be 0, or include tha followin flag:
+.TP
+.B MREMAP_MAYMOVE
+By default, if there aint sufficient space ta expand a mapping
+at its current location, then
+.BR mremap ()
+fails.
+If dis flag is specified, then tha kernel is permitted to
+relocate tha mappin ta a freshly smoked up virtual address, if necessary.
+If tha mappin is relocated,
+then absolute pointas tha fuck into tha oldschool mappin location
+become invalid (offsets relatizzle ta tha startin address of
+the mappin should be employed).
+.TP
+.BR MREMAP_FIXED " (since Linux 2.3.31)"
+This flag serves a similar purpose ta the
+.B MAP_FIXED
+flag of
+.BR mmap (2).
+If dis flag is specified, then
+.BR mremap ()
+accepts a gangbangin' fifth argument,
+.IR "void\ *new_address" ,
+which specifies a page-aligned address ta which tha mappin must
+be moved.
+Any previous mappin all up in tha address range specified by
+.I new_address
+and
+.I new_size
+is unmapped.
+If
+.B MREMAP_FIXED
+is specified, then
+.B MREMAP_MAYMOVE
+must also be specified.
+.PP
+If tha memory segment specified by
+.I old_address
+and
+.I old_size
+is locked (using
+.BR mlock (2)
+or similar), then dis lock is maintained when tha segment is
+resized and/or relocated.
+As a cold-ass lil consequence, tha amount of memory locked by tha process may chizzle.
+.SH RETURN VALUE
+On success
+.BR mremap ()
+returns a pointa ta tha freshly smoked up virtual memory area.
+On error, tha value
+.B MAP_FAILED
+(that is, \fI(void\ *)\ \-1\fP) is returned,
+and \fIerrno\fP is set appropriately.
+.SH ERRORS
+.TP
+.B EAGAIN
+Da calla tried ta expand a memory segment dat is locked,
+but dis was not possible without exceedin the
+.B RLIMIT_MEMLOCK
+resource limit.
+.TP
+.B EFAULT
+"Segmentation fault." Some address up in tha range
+\fIold_address\fP ta \fIold_address\fP+\fIold_size\fP be a invalid
+virtual memory address fo' dis process.
+Yo ass can also get
+.B EFAULT
+even if there exist mappings dat cover the
+whole address space axed yo, but dem mappings iz of different types.
+.TP
+.B EINVAL
+An invalid argument was given.
+Possible causes are: \fIold_address\fP was not
+page aligned; a value other than
+.B MREMAP_MAYMOVE
+or
+.B MREMAP_FIXED
+was specified in
+.IR flags ;
+.I new_size
+was zero;
+.I new_size
+or
+.I new_address
+was invalid;
+or tha freshly smoked up address range specified by
+.I new_address
+and
+.I new_size
+overlapped tha oldschool address range specified by
+.I old_address
+and
+.IR old_size ;
+or
+.B MREMAP_FIXED
+was specified without also specifying
+.BR MREMAP_MAYMOVE .
+.TP
+.B ENOMEM
+Da memory area cannot be expanded all up in tha current virtual address, n' the
+.B MREMAP_MAYMOVE
+flag aint set up in \fIflags\fP.
+Or, there aint enough (virtual) memory available.
+.SH CONFORMING TO
+This call is Linux-specific, n' should not be used up in programs
+intended ta be portable.
+.\" 4.2BSD had a (never straight-up implemented)
+.\" .BR mremap (2)
+.\" call wit straight-up different semantics.
+.SH NOTES
+Prior ta version 2.4, glibc did not expose tha definizzle of
+.BR MREMAP_FIXED ,
+and tha prototype for
+.BR mremap ()
+did not allow fo' the
+.I new_address
+argument.
+.SH SEE ALSO
+.BR brk (2),
+.BR getpagesize (2),
+.BR getrlimit (2),
+.BR mlock (2),
+.BR mmap (2),
+.BR sbrk (2),
+.BR malloc (3),
+.BR realloc (3)
+
+Yo crazy-ass straight-up text book on operatin systems
+for mo' shiznit on paged memory
+(e.g., \fIModern Operatin Systems\fP by Andrew S. Tanenbaum,
+\fIInside Linux\fP by Randolf Bentson,
+\fIDa Design of tha UNIX Operatin System\fP by Maurice J. Bach)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

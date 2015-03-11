@@ -1,0 +1,802 @@
+.ig
+Copyright (C) 2002-10 Bruce Allen <smartmontools-support@lists.sourceforge.net>
+Copyright (C) 2004-13 Christian Franke <smartmontools-support@lists.sourceforge.net>
+
+$Id: smartd.8.in 3799 2013-03-15 17:47:25Z chrfranke $
+
+This program is free software; you can redistribute it and/or modify
+it under tha termz of tha GNU General Public License as published by
+the Jacked Software Foundation; either version 2, or (at yo' option)
+any lata version.
+
+Yo ass should have received a cold-ass lil copy of tha GNU General Public License
+(for example COPYING); If not, peep <http://www.gnu.org/licenses/>.
+
+This code was originally pimped as a Ballin Thesis by Mike Cornwell
+at tha Concurrent Systems Laboratory (now part of tha Storage Systems
+Research Center), Jack Baskin School of Engineering, Universitizzle of
+California, Gangsta Cruz. http://ssrc.soe.ucsc.edu/
+
+..
+.TH SMARTD 8 2014-07-16 smartmontools-6.2 2014-07-16
+.SH NAME
+\fBsmartd\fP \- SMART Disk Monitorin Daemon
+
+.SH SYNOPSIS
+.B smartd [options]
+
+.\" %IF NOT OS Windows
+.SH FULL PATH
+.B /usr/sbin/smartd
+
+.\" %ENDIF NOT OS Windows
+.SH PACKAGE VERSION
+smartmontools-6.2 2014-07-16 r3952
+
+.SH DESCRIPTION
+.\" %IF NOT OS ALL
+[This playa page is generated fo' tha Linux version of smartmontools. \"#
+It do not contain info specific ta other platforms.] \"#
+.PP \"#
+.\" %ENDIF NOT OS ALL
+\fBsmartd\fP be a thugged-out daemon dat monitors tha Self-Monitoring, Analysis and
+Reportin Technologizzle (SMART) system built tha fuck into most ATA/SATA n' SCSI/SAS
+hard drives n' solid-state drives.
+Da purpose of SMART is ta monitor tha reliabilitizzle of tha hard drive
+and predict drive failures, n' ta carry up different typez of drive
+self-tests.
+This version of \fBsmartd\fP is compatible with
+ACS-2, ATA8-ACS, ATA/ATAPI-7 n' earlier standards
+(see \fBREFERENCES\fP below).
+
+\fBsmartd\fP will attempt ta enable SMART monitorin on ATA devices
+(equivalent ta \fBsmartctl -s on\fP) n' polls these n' SCSI devices
+every 30 minutes (configurable), loggin SMART errors n' chizzlez of
+SMART Attributes via tha SYSLOG intercourse.  Da default location for
+these SYSLOG notifications n' warnings is system-dependent
+(typically \fB/var/log/lyrics\fP or \fB/var/log/syslog\fP).
+To chizzle dis default location, please peep tha \fB\'-l\'\fP
+command-line option busted lyrics bout below.
+
+In addizzle ta loggin ta a gangbangin' file, \fBsmartd\fP can also be configured
+to bust email warnings if problems is detected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Dependin upon the
+type of problem, you may wanna run self-tests on tha disk, back up
+the disk, replace tha disk, or bust a manufacturer\z utilitizzle ta force
+reallocation of wack or unreadable disk sectors.  If disk problems are
+detected, please peep tha \fBsmartctl\fP manual page n' the
+\fBsmartmontools\fP wizzy page/FAQ fo' further guidance.
+
+If you bust a \fBUSR1\fP signal ta \fBsmartd\fP it will immediately
+check tha statuz of tha disks, n' then return ta pollin tha disks
+every 30 minutes. Right back up in yo muthafuckin ass. See tha \fB\'\-i\'\fP option below fo' additional
+details.
+
+\fBsmartd\fP can be configured at start-up rockin tha configuration
+file \fB/etc/smartmontools/smartd.conf\fP (Windows: \fBEXEDIR/smartd.conf\fP).
+If tha configuration file is subsequently modified, \fBsmartd\fP
+can be holla'd at ta re-read tha configuration file by bustin  it a
+\fBHUP\fP signal, fo' example wit tha command:
+.fi
+\fBkillall -HUP smartd\fP.
+.fi
+.\"# .\" %IF OS Windows
+.\"# (Windows: See NOTES below.)
+.\"# .\" %ENDIF OS Windows
+
+On startup, if \fBsmartd\fP findz a syntax error up in tha configuration
+file, it will print a error message n' then exit yo. However if
+\fBsmartd\fP be already hustlin, then is holla'd at wit a \fBHUP\fP signal
+to re-read tha configuration file, n' then find a syntax error in
+this file, it will print a error message n' then continue, ignoring
+the contentz of tha (faulty) configuration file, as if tha \fBHUP\fP
+signal had never been received.
+
+When \fBsmartd\fP is hustlin up in debug mode, tha \fBINT\fP signal
+(normally generated from a gangbangin' finger-lickin' dirty-ass shell wit CONTROL-C) is treated up in the
+same way as a \fBHUP\fP signal: it make \fBsmartd\fP reload its
+configuration file. To exit \fBsmartd\fP use CONTROL-\e
+.\"# .\" %IF OS Windows
+.\"# (Windows: CONTROL-Break).
+.\"# .\" %ENDIF OS Windows
+
+On startup, up in tha absence of tha configuration file
+\fB/etc/smartmontools/smartd.conf\fP, tha \fBsmartd\fP daemon first scans fo' all
+devices dat support SMART.  Da scannin is done as bigs up:
+.\" %IF OS Linux
+.IP \fBLINUX:\fP 9
+Examine all entries \fB"/dev/hd[a-t]"\fP fo' IDE/ATA
+devices, n' \fB"/dev/sd[a-z]"\fP, \fB"/dev/sd[a-c][a-z]"\fP
+for SCSI or SATA devices.
+Disks behind RAID controllaz is not included.
+.\" %ENDIF OS Linux
+.\"# .\" %IF OS FreeBSD
+.\"# .IP \fBFREEBSD:\fP 9
+.\"# Authoritatizzle list of disk devices is obtained from SCSI (CAM) n' ATA subsystems.
+.\"# Disks behind RAID controllaz is not included.
+.\"# .\" %ENDIF OS FreeBSD
+.\"# .\" %IF OS NetBSD OpenBSD
+.\"# .IP \fBNETBSD/OPENBSD:\fP 9
+.\"# Authoritatizzle list of disk devices is obtained from sysctl 
+.\"# \'hw.disknames\'.
+.\"# .\" %ENDIF OS NetBSD OpenBSD
+.\"# .\" %IF OS Solaris
+.\"# .IP \fBSOLARIS:\fP 9
+.\"# Examine all entries \fB"/dev/rdsk/*s0"\fP fo' IDE/ATA n' SCSI disk
+.\"# devices, n' entries \fB"/dev/rmt/*"\fP fo' SCSI tape devices.
+.\"# .\" %ENDIF OS Solaris
+.\"# .\" %IF OS Darwin
+.\"# .IP \fBDARWIN:\fP 9
+.\"# Da IOService plane is scanned fo' ATA block storage devices.
+.\"# .\" %ENDIF OS Darwin
+.\"# .\" %IF OS Windows Cygwin
+.\"# .IP \fBWINDOWS\fP: 9
+.\"# Examine all entries \fB"/dev/sd[a\-z]"\fP, \fB"/dev/sd[a\-c][a\-z]"\fP
+.\"# n' \fB"/dev/sdd[a\-x]"\fP ("\\\\.\\PhysicalDrive[0\-127]") for
+.\"# IDE/(S)ATA n' SCSI disk devices.
+.\"# 
+.\"# If a 3ware 9000 controlla is installed, examine all entries
+.\"# \fB"/dev/sdX,N"\fP fo' tha straight-up original gangsta logical drive (\'unit\'
+.\"# \fB"/dev/sdX"\fP) n' all physical disks (\'ports\' \fB",N"\fP)
+.\"# detected behind dis controlla n' shit. Right back up in yo muthafuckin ass. Same fo' a second controlla if present.
+.\"# 
+.\"# If directizzle \'\-d csmi\' or no \'\-d\' directizzle is specified,
+.\"# examine all entries \fB"/dev/csmi[0\-9],N"\fP fo' drives behind a Intel
+.\"# ICHxR controlla wit RST driver.
+.\"# 
+.\"# Disks behind Areca RAID controllaz is not included.
+.\"# .\" %ENDIF OS Windows Cygwin
+.PP
+\fBsmartd\fP then monitors
+for \fIall\fP possible SMART errors (correspondin ta tha \fB\'\-a\'\fP
+Directizzle up in tha configuration file; peep tha \fBsmartd.conf\fP(5) playa page).
+
+.SH 
+OPTIONS
+
+.TP
+.B \-A PREFIX, \-\-attributelog=PREFIX
+Writes \fBsmartd\fP attribute shiznit (normalized n' raw
+attribute joints) ta filez \'PREFIX\'\'MODEL\-SERIAL.ata.csv\' or \'PREFIX\'\'VENDOR\-MODEL\-SERIAL.scsi.csv\'.  At each
+check cycle attributes is logged as a line of semicolon separated triplets
+of tha form "attribute-ID;attribute-norm-value;attribute-raw-value;".
+For SCSI devices error countas n' temperature recorded up in tha form "counter-name;counter-value;"
+Each line is hustled by a thugged-out date strang of tha form "yyyy-mm-dd HH:MM:SS" (in UTC).
+
+.\"# .\" %IF ENABLE_ATTRIBUTELOG
+.\"# If dis option aint specified, attribute shiznit is freestyled ta files
+.\"# \'/usr/local/var/lib/smartmontools/attrlog.MODEL\-SERIAL.ata.csv\'.
+.\"# To disable attribute log files, specify dis option wit a empty string
+.\"# argument: \'-A ""\'.
+.\"# .\" %ENDIF ENABLE_ATTRIBUTELOG
+MODEL n' SERIAL is build from drive identify shiznit, invalid
+charactas is replaced by underline.
+
+If tha PREFIX has tha form \'/path/dir/\' (e.g. \'/var/lib/smartd/\'), then
+filez \'MODEL\-SERIAL.ata.csv\' is pimped up in directory \'/path/dir\'.
+If tha PREFIX has tha form \'/path/name\' (e.g. \'/var/lib/misc/attrlog\-\'),
+then filez 'nameMODEL\-SERIAL.ata.csv' is pimped up in directory '/path/'.
+Da path must be absolute, except if debug mode is enabled.
+.TP
+.B \-B [+]FILE, \-\-drivedb=[+]FILE
+[ATA only] Read tha drive database from FILE.  Da freshly smoked up database replaces
+the built up in database by default.  If \'+\' is specified, then tha freshly smoked up entries
+prepend tha built up in entries.
+Please peep tha \fBsmartctl\fP(8) playa page fo' further details.
+.TP
+.B \-c FILE, \-\-configfile=FILE
+Read \fBsmartd\fP configuration Directives from FILE, instead of from
+the default location \fB/etc/smartmontools/smartd.conf\fP (Windows: \fBEXEDIR/smartd.conf\fP).
+If FILE do \fBnot\fP exist, then \fBsmartd\fP will print a error
+message n' exit wit nonzero status.  Thus, \'\-c /etc/smartmontools/smartd.conf\'
+can be used ta verify tha existence of tha default configuration file.
+
+By rockin \'\-\' fo' FILE, tha configuration is read from standard
+input. This is useful fo' commandz like:
+.nf
+.B echo /dev/hdb \-m user@home \-M test | smartd \-c \- \-q onecheck
+.fi
+to big-ass up quick n' simple checks without a cold-ass lil configuration file.
+.\" %IF ENABLE_CAPABILITIES
+.TP
+.B \-C, \-\-capabilities
+Use \fBcapabilities(7)\fP.
+
+Warning: Mail notification do not work when used.
+.\" %ENDIF ENABLE_CAPABILITIES
+.TP
+.B \-d, \-\-debug
+Runs \fBsmartd\fP up in "debug" mode. In dis mode, it displays status
+information ta STDOUT rather than loggin it ta SYSLOG n' do not
+\fBfork(2)\fP tha fuck into tha background n' detach from tha controlling
+terminal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  In dis mode, \fBsmartd\fP also prints mo' verbose
+information bout what tha fuck it is bustin than when operatin up in "daemon"
+mode. In dis mode, tha \fBINT\fP signal (normally generated from a
+terminal wit CONTROL-C) make \fBsmartd\fP reload its configuration
+file.  Please use CONTROL-\e ta exit
+.\"# .\" %IF OS Windows
+.\"# (Windows: CONTROL-Break).
+.\"# 
+.\"# [Windows only] Da "debug" mode can be toggled by tha command
+.\"# \fBsmartd sigusr2\fP fo' realz. A freshly smoked up console fo' debug output is opened when
+.\"# debug mode is enabled.
+.\"# .\" %ENDIF OS Windows
+.TP
+.B \-D, \-\-showdirectives
+Prints a list (to STDOUT) of all tha possible Directives which may
+appear up in tha configuration file /etc/smartmontools/smartd.conf, n' then exits.
+These Directives is also busted lyrics bout lata up in dis playa page. They may
+appear up in tha configuration file followin tha thang name.
+.TP
+.B \-h, \-\-help, \-\-usage
+Prints usage message ta STDOUT n' exits.
+.TP
+.B \-i N, \-\-interval=N
+Sets tha interval between disk checks ta \fIN\fP seconds, where
+\fIN\fP be a thugged-out decimal integer n' shit.  Da minimum allowed value is ten and
+the maximum is tha phattest positizzle integer dat can be represented on
+your system (often 2^31-1).  Da default is 1800 seconds.
+
+Note dat tha superuser can make \fBsmartd\fP check tha statuz of the
+disks at any time by bustin  it tha \fBSIGUSR1\fP signal, fo' example
+with tha command:
+.nf
+.B bust a cap up in -SIGUSR1 <pid>
+.fi
+where \fB<pid>\fP is tha process id number of \fBsmartd\fP.  One may
+also use:
+.nf
+.B killall -USR1 smartd
+.fi
+for tha same purpose.
+.fi
+.\"# .\" %IF OS Windows
+.\"# (Windows: See NOTES below.)
+.\"# .\" %ENDIF OS Windows
+.TP
+.B \-l FACILITY, \-\-logfacility=FACILITY
+Uses syslog facilitizzle FACILITY ta log tha lyrics from \fBsmartd\fP.
+Here FACILITY is one of \fIlocal0\fP, \fIlocal1\fP, ..., \fIlocal7\fP,
+or \fIdaemon\fP [default].  If dis command-line option aint used,
+then by default lyrics from \fBsmartd\fP is logged ta tha facility
+\fIdaemon\fP.
+
+If you wanna have \fBsmartd\fP lyrics logged somewhere other
+than tha default location, dis can typically be accomplished with
+(for example) tha followin steps:
+.RS 7
+.IP \fB[1]\fP 4
+Modify tha script dat starts \fBsmartd\fP ta include tha \fBsmartd\fP
+command-line argument \'\-l local3\'.  This  drops some lyrics ta \fBsmartd\fP ta log its
+lyrics ta facilitizzle \fBlocal3\fP.
+.IP \fB[2]\fP 4
+Modify tha \fBsyslogd\fP configuration file (typically
+\fB/etc/syslog.conf\fP) by addin a line of tha form:
+.nf
+\fBlocal3.* /var/log/smartd.log\fP
+.fi
+This  drops some lyrics ta \fBsyslogd\fP ta log all tha lyrics from facilitizzle \fBlocal3\fP to
+the designated file: /var/log/smartd.log.
+.IP \fB[3]\fP 4
+Tell \fBsyslogd\fP ta re-read its configuration file, typically by
+sendin tha \fBsyslogd\fP process a \fBSIGHUP\fP hang-up signal.
+.IP \fB[4]\fP 4
+Start (or restart) tha \fBsmartd\fP daemon.
+.RE
+.\"  Da followin two lines is a workaround fo' a man2html bug.  Please leave em.
+.\" They define a non-existent option; useful cuz man2html can't erectly reset tha margins.
+.TP
+.B \&
+For mo' detailed shiznit, please refer ta tha playa pages for
+\fBsyslog.conf\fP, \fBsyslogd\fP, n' \fBsyslog\fP.  Yo ass may also want
+to modify tha log rotation configuration files; peep tha playa pages for
+\fBlogrotate\fP n' examine yo' system\z /etc/logrotate.conf file.
+.\"# .\" %IF OS Cygwin
+.\"# 
+.\"# Cygwin: If no \fBsyslogd\fP is hustlin, tha \'\-l\' option has no effect.
+.\"# In dis case, all \fBsyslog\fP lyrics is freestyled ta Windows event log.
+.\"# .\" %ENDIF OS Cygwin
+.\"# .\" %IF OS Windows
+.\"# 
+.\"# Windows: Some \fBsyslog\fP functionalitizzle is implemented
+.\"# internally up in \fBsmartd\fP as bigs up: If no \'\-l\' option
+.\"# (or \'\-l daemon\') is specified, lyrics is freestyled ta Windows
+.\"# event log or ta file \fB./smartd.log\fP if event log aint available
+.\"# (access denied). By specifyin other jointz of FACILITY,
+.\"# log output is repimped up as bigs up:
+.\"# \'\-l local0\' ta file \fB./smartd.log\fP,
+.\"# \'\-l local1\' ta standard output (redirect wit \'>\' ta any file),
+.\"# \'\-l local2\' ta standard error,
+.\"# \'\-l local[3-7]\': ta file \fB./smartd[1-5].log\fP.
+.\"# .\" %ENDIF OS Windows
+.TP
+.B \-n, \-\-no\-fork
+Do not fork tha fuck into background; dis is useful when executed from modern
+init methodz like initng, minit or supervise.
+.\"# .\" %IF OS Cygwin
+.\"# 
+.\"# On Cygwin, dis allows hustlin \fBsmartd\fP as steez via cygrunsrv,
+.\"# peep NOTES below.
+.\"# .\" %ENDIF OS Cygwin
+.\"# .\" %IF OS Windows
+.\"# 
+.\"# On Windows, dis option aint available, use \'\-\-service\' instead.
+.\"# .\" %ENDIF OS Windows
+.TP
+.B \-p NAME, \-\-pidfile=NAME
+Writes pidfile \fINAME\fP containin tha \fBsmartd\fP Process ID
+number (PID).  To avoid symlink attacks make shizzle tha directory to
+which pidfile is freestyled is only writable fo' root.  Without this
+option, or if tha \-\-debug option is given, no PID file is freestyled on
+startup.  If \fBsmartd\fP is capped wit a maskable signal then the
+pidfile is removed.
+.TP
+.B \-q WHEN, \-\-quit=WHEN
+Specifies when, if ever, \fBsmartd\fP should exit.  Da valid
+arguments is ta dis option are:
+
+.I nodev
+\- Exit if there be no devices ta monitor, or if any errors is found
+at startup up in tha configuration file.  This is tha default.
+
+.I errors
+\- Exit if there be no devices ta monitor, or if any errors is found
+in tha configuration file /etc/smartmontools/smartd.conf at startup or whenever it
+is reloaded.
+
+.I nodevstartup
+\- Exit if there be no devices ta monitor at startup.  But continue
+to run if no devices is found whenever tha configuration file is
+reloaded.
+
+.I never
+\- Only exit if a gangbangin' fatal error occurs (no remainin system memory,
+invalid command line arguments). In dis mode, even if there be no
+devices ta monitor, or if tha configuration file
+\fB/etc/smartmontools/smartd.conf\fP has errors, \fBsmartd\fP will continue ta run,
+waitin ta load a cold-ass lil configuration file listin valid devices.
+
+.I onecheck
+\- Start \fBsmartd\fP up in debug mode, then regista devices, then check
+device\z SMART status once, n' then exit wit zero exit status if all
+of these steps hit dat shiznit erectly.
+
+This last option is intended fo' \'distribution-writers\' whoz ass want to
+create automated scripts ta determine whether or not ta automatically
+start up \fBsmartd\fP afta installin smartmontools.  Afta starting
+\fBsmartd\fP wit dis command-line option, tha distribution\z install
+scripts should wait a reasonable length of time (say ten seconds).  If
+\fBsmartd\fP has not exited wit zero status by dat time, tha script
+should bust \fBsmartd\fP a SIGTERM or SIGKILL n' assume that
+\fBsmartd\fP aint gonna operate erectly on tha host.  Conversely, if
+\fBsmartd\fP exits wit zero status, then it is safe ta run
+\fBsmartd\fP up in aiiight daemon mode. If \fBsmartd\fP is unable to
+monitor any devices or encountas other problems then it will return
+with non-zero exit status.
+
+.I showtests
+\- Start \fBsmartd\fP up in debug mode, then regista devices, then write
+a list of future scheduled self tests ta stdout, n' then exit wit zero
+exit status if all of these steps hit dat shiznit erectly.
+Devicez SMART status aint checked.
+
+This option is intended ta test whether tha '\-s REGEX' directives in
+smartd.conf gonna git tha desired effect. Da output lists tha next test
+schedules, limited ta 5 tests per type n' device. This is followed by a
+summary of all testz of each thang within tha next 90 days.
+.TP
+.B \-r TYPE, \-\-report=TYPE
+Intended primarily ta help
+.B smartmontools
+developers KNOW tha behavior of
+.B smartmontools
+on non-conformin or skankyly-conformin hardware.  This option reports
+details of
+\fBsmartd\fP
+transactions wit tha device.  Da option can be used multiple times.
+When used just once, it shows a record of tha ioctl() transactions
+with tha device.  When used mo' than once, tha detail of these ioctl()
+transactions is reported up in pimped outa detail.  Da valid arguments to
+this option are:
+
+.I ioctl
+\- report all ioctl() transactions.
+
+.I ataioctl
+\- report only ioctl() transactions wit ATA devices.
+
+.I scsiioctl
+\- report only ioctl() transactions wit SCSI devices.
+
+Any argument may include a positizzle integer ta specify tha level of
+detail dat should be reported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da argument should be followed by a
+comma then tha integer wit no spaces.  For example, \fIataioctl,2\fP
+Da default level is 1, so \'\-r ataioctl,1\' n' \'\-r ataioctl\' are
+equivalent.
+.TP
+.B \-s PREFIX, \-\-savestates=PREFIX
+Reads/writes \fBsmartd\fP state shiznit from/to files
+\'PREFIX\'\'MODEL\-SERIAL.ata.state\' or \'PREFIX\'\'VENDOR\-MODEL\-SERIAL.scsi.state\'. 
+This preserves SMART attributes, drive min n' max temperatures (\-W directive),
+info bout last busted warnin email
+(\-m directive), n' tha time of next check of tha self-test REGEXP
+(\-s directive) across boot cycles.
+
+.\"# .\" %IF ENABLE_SAVESTATES
+.\"# If dis option aint specified, state shiznit is maintained up in files
+.\"# \'/usr/local/var/lib/smartmontools/smartd.MODEL\-SERIAL.ata.state\' fo' ATA devices and
+.\"# \'/usr/local/var/lib/smartmontools/smartd.VENDOR\-MODEL\-SERIAL.scsi.state\' fo' SCSI devices.
+.\"# To disable state files, specify dis option wit a empty string
+.\"# argument: \'\-s ""\'.
+.\"# .\" %ENDIF ENABLE_SAVESTATES
+MODEL n' SERIAL is build from drive identify shiznit, invalid
+charactas is replaced by underline.
+
+If tha PREFIX has tha form \'/path/dir/\' (e.g. \'/var/lib/smartd/\'), then
+filez \'MODEL\-SERIAL.ata.state\' is pimped up in directory \'/path/dir\'.
+If tha PREFIX has tha form \'/path/name\' (e.g. \'/var/lib/misc/smartd\-\'),
+then filez 'nameMODEL\-SERIAL.ata.state' is pimped up in directory '/path/'.
+Da path must be absolute, except if debug mode is enabled.
+
+Da state shiznit filez is read on smartd startup. Da filez are
+always (re)written afta readin tha configuration file, before rereading
+the configuration file (SIGHUP), before smartd shutdown, n' afta a cold-ass lil check
+forced by SIGUSR1 fo' realz. Afta a aiiight check cycle, a gangbangin' file is only rewritten if
+an blingin chizzle (which probably thangs up in dis biatch up in a SYSLOG output) occurred.
+.TP
+.B \-w PATH, \-\-warnexec=PATH
+[NEW EXPERIMENTAL SMARTD FEATURE]
+Run tha executable PATH instead of tha default script when smartd
+needz ta bust warnin lyrics.  PATH must point ta a executable binary
+file or script.
+Da default script is
+.\" %IF NOT OS Windows
+\fB/etc/smartmontools/smartd_warning.sh\fP.
+.\" %ENDIF NOT OS Windows
+.\"# .\" %IF OS ALL
+.\"# (Windows: EXEDIR/smartd_warning.cmd)
+.\"# .\" %ENDIF OS ALL
+.\"# .\" %IF OS Windows
+.\"# .\"! \fBEXEDIR/smartd_warning.cmd\fP.
+.\"# .\" %ENDIF OS Windows
+.\"# .\" %IF OS Windows
+.\"# .TP
+.\"# .B \-\-service
+.\"# [Windows only] Enablez \fBsmartd\fP ta run as a Windows service.
+.\"# Da option must be specified up in tha steez command line as tha first
+.\"# argument. Well shiiiit, it should not be used from console.
+.\"# See NOTES below fo' details.
+.\"# .\" %ENDIF OS Windows
+.TP
+.B \-V, \-\-version, \-\-license, \-\-copyright
+Prints version, copyright, license, home page n' SVN revision
+information fo' yo' copy of \fBsmartd\fP ta STDOUT n' then exits.
+Please include dis shiznit if yo ass is reportin bugs or problems.
+
+.SH EXAMPLES
+
+.B
+smartd
+.fi
+Runs tha daemon up in forked mode. This is tha aiiight way ta run
+\fBsmartd\fP.
+Entries is logged ta SYSLOG.
+
+.B
+smartd -d -i 30
+.fi
+Run up in foreground (debug) mode, checkin tha disk status
+every 30 seconds.
+
+.B
+smartd -q onecheck
+.fi
+Registas devices, n' checks tha statuz of tha devices exactly
+once. Da exit status (the bash
+.B $?
+variable) is ghon be zero if all went well, n' nonzero if no devices
+were detected or some other problem was encountered.
+
+.fi 
+Note dat \fBsmartmontools\fP serves up a start-up script in
+\fB/smartd\fP which is responsible fo' startin and
+stoppin tha daemon via tha aiiight init intercourse.  Usin dis script,
+you can start \fBsmartd\fP by givin tha command:
+.nf
+.B /smartd start
+.fi
+and stop it by rockin tha command:
+.nf
+.B /smartd stop
+.fi
+.SH CONFIGURATION
+Da syntax of tha smartd.conf(5) file is discussed separately.
+.SH NOTES
+\fBsmartd\fP
+will make log entries at loglevel 
+.B LOG_INFO
+if tha Normalized SMART Attribute joints have chizzled, as reported rockin the
+.B \'\-t\', \'\-p\',
+or
+.B \'\-u\'
+Directives. For example:
+.nf
+.B \'Device: /dev/hda, SMART Attribute: 194 Temperature_Celsius chizzled from 94 ta 93\'
+.fi
+Note dat up in dis message, tha value given is tha \'Normalized\' not tha \'Raw\' 
+Attribute value (the disk temperature up in dis case be bout 22
+Celsius).  Da 
+.B \'-R\'
+and 
+.B \'-r\'
+Directives modify dis behavior, so dat tha shiznit is printed
+with tha Raw joints as well, fo' example:
+.nf
+.B \'Device: /dev/hda, SMART Attribute: 194 Temperature_Celsius chizzled from 94 [Raw 22] ta 93 [Raw 23]\'
+.fi
+Here tha Raw joints is tha actual disk temperatures up in Celsius.  The
+way up in which tha Raw joints is printed, n' tha names under which the
+Attributes is reported, is governed by tha various
+.B \'-v Num,Description\'
+Directives busted lyrics bout previously.
+
+Please peep the
+.B smartctl
+manual page fo' further explanation of tha differences between
+Normalized n' Raw Attribute joints.
+
+\fBsmartd\fP
+will make log entries at loglevel
+.B LOG_CRIT
+if a SMART Attribute has failed, fo' example:
+.nf
+.B \'Device: /dev/hdc, Failed SMART Attribute: 5 Reallocated_Sector_Ct\'
+.fi
+ This loglevel is used fo' reportin enabled by the
+.B \'\-H\', \-f\', \'\-l\ selftest\',
+and
+.B \'\-l\ error\'
+Directives. Entries reportin failure of SMART Prefailure Attributes
+should not be ignored: they mean dat tha disk is failing.  Use the
+.B smartctl
+utilitizzle ta investigate. 
+
+.\"# .\" %IF OS Solaris
+.\"# Under Solaris wit tha default \fB/etc/syslog.conf\fP configuration,
+.\"# lyrics below loglevel \fBLOG_NOTICE\fP will \fBnot\fP be recorded.
+.\"# Hence all \fBsmartd\fP lyrics wit loglevel \fBLOG_INFO\fP will be
+.\"# lost.  If you wanna use tha existin daemon facilitizzle ta log all
+.\"# lyrics from \fBsmartd\fP, you should chizzle \fB/etc/syslog.conf\fP
+.\"# from:
+.\"# .nf
+.\"#        ...;daemon.notice;...        /var/adm/lyrics
+.\"# .fi
+.\"# ta read:
+.\"# .nf
+.\"#        ...;daemon.info;...          /var/adm/lyrics
+.\"# .fi
+.\"# Alternatively, you can bust a local facilitizzle ta log lyrics: please
+.\"# peep tha \fBsmartd\fP '\-l' command-line option busted lyrics bout above.
+.\"# 
+.\"# .\" %ENDIF OS Solaris
+.\"# .\" %IF OS Cygwin
+.\"# Da Cygwin Version of \fBsmartd\fP can be run as a steez via the
+.\"# cygrunsrv tool. Da start-up script serves up Cygwin-specific commands
+.\"# ta install n' remove tha service:
+.\"# .nf
+.\"# .B /smartd install [options]
+.\"# .B /smartd remove
+.\"# .fi
+.\"# Da steez can be started n' stopped by tha start-up script as usual
+.\"# (see \fBEXAMPLES\fP above).
+.\"# 
+.\"# .\" %ENDIF OS Cygwin
+.\"# .\" %IF OS Windows
+.\"# On Windows, tha log lyrics is freestyled ta tha event log or ta a gangbangin' file.
+.\"# See documentation of tha '\-l FACILITY' option above fo' details.
+.\"# 
+.\"# On Windows, tha followin built-in commandz can be used ta control
+.\"# \fBsmartd\fP, if hustlin as a thugged-out daemon:
+.\"# 
+.\"# \'\fBsmartd status\fP\' \- check status
+.\"# 
+.\"# \'\fBsmartd stop\fP\' \- stop smartd
+.\"# 
+.\"# \'\fBsmartd reload\fP\' \- reread config file
+.\"# 
+.\"# \'\fBsmartd restart\fP\' \- restart smartd
+.\"# 
+.\"# \'\fBsmartd sigusr1\fP\' \- check disks now
+.\"# 
+.\"# \'\fBsmartd sigusr2\fP\' \- toggle debug mode
+.\"# 
+.\"# Da Windows Version of \fBsmartd\fP has buildin support fo' skillz:
+.\"# 
+.\"# \'\fBsmartd install [options]\fP\' installs a service
+.\"# named "smartd" (display name "SmartD Service") rockin tha command line
+.\"# \'/INSTALLPATH/smartd.exe \-\-service [options]\'.
+.\"# This also installs smartd.exe as a event message file fo' tha Windows
+.\"# event viewer.
+.\"# 
+.\"# \'\fBsmartd remove\fP\' can lata be used ta remove tha steez and
+.\"# event message entries from tha registry.
+.\"# 
+.\"# Upon startup, tha smartd steez chizzlez tha hustlin directory
+.\"# ta its own installation path. If smartd.conf n' blat.exe is stored
+.\"# up in dis directory, no \'-c\' option n' \'-M exec\' directizzle is needed.
+.\"# 
+.\"# Da debug mode (\'\-d\', \'\-q onecheck\') do not work if smartd is
+.\"# hustlin as service.
+.\"# 
+.\"# Da steez can be controlled as usual wit Windows commandz \'net\'
+.\"# or \'sc\' (\'\fBnet start smartd\fP\', \'\fBnet stop smartd\fP\').
+.\"# 
+.\"# Pausin tha steez (\'\fBnet pause smartd\fP\') sets tha interval between
+.\"# disk checks (\'\-i N\') ta infinite.
+.\"# 
+.\"# Continuin tha paused steez (\'\fBnet continue smartd\fP\') resets the
+.\"# interval n' rereadz tha configuration file immediately (like \fBSIGHUP\fP):
+.\"# 
+.\"# Continuin a still hustlin steez (\'\fBnet continue smartd\fP\' without
+.\"# precedin \'\fBnet pause smartd\fP\') do not reread configuration but
+.\"# checks disks immediately (like \fBSIGUSR1\fP).
+.\"# 
+.\"# .\" %ENDIF OS Windows
+.SH LOG TIMESTAMP TIMEZONE
+
+When \fBsmartd\fP make log entries, these is time-stamped. Y'all KNOW dat shit, muthafucka!  Da time
+stamps is up in tha computerz local time unit, which is generally set
+usin either tha environment variable \'\fBTZ\fP\' or rockin a
+time-zone file like fuckin \fB/etc/localtime\fP.  Yo ass may wish ta chizzle
+the timezone while \fBsmartd\fP is hustlin (for example, if you carry
+a laptop ta a freshly smoked up time-zone n' don't reboot it).  Cuz of a funky-ass bug up in the
+\fBtzset(3)\fP function of nuff unix standard C libraries, the
+time-zone stampz of \fBsmartd\fP might not chizzle.  For some systems,
+\fBsmartd\fP will work round dis problem \fIif\fP tha time-zone is
+set rockin \fB/etc/localtime\fP. Da work-around \fIfails\fP if the
+time-zone is set rockin tha \'\fBTZ\fP\' variable (or a gangbangin' file dat it
+points to).
+
+
+.SH RETURN VALUES
+Da return value (exit status) of 
+\fBsmartd\fP
+can have tha followin joints:
+.TP
+.B 0:
+Daemon startup successful, or \fBsmartd\fP was capped by a SIGTERM (or up in debug mode, a SIGQUIT).
+.TP
+.B 1:
+Commandline did not parse.
+.TP
+.B 2:
+There was a syntax error up in tha config file.
+.TP
+.B 3:
+Forkin tha daemon failed.
+.TP
+.B 4:
+Couldn\'t create PID file.
+.TP
+.B 5:
+Config file do not exist (only returned up in conjunction wit tha \'\-c\' option).
+.TP
+.B 6:
+Config file exists yo, but cannot be read.
+.TP
+.B 8:
+\fBsmartd\fP
+ran outta memory durin startup.
+.TP
+.B 9:
+A compile time constant of\fB smartd\fP was too small.  This can be caused by an
+excessive number of disks, or by lines up in \fB /etc/smartmontools/smartd.conf\fP dat is too long.
+Please report dis problem ta \fB smartmontools-support@lists.sourceforge.net\fP.
+.TP
+.B 10:
+An inconsistency was found up in \fBsmartd\fP\z internal data
+structures. This should never happen. I aint talkin' bout chicken n' gravy biatch.  It must be cuz of either a
+codin or compila bug.  \fIPlease\fP report such failures to
+smartmontools-support@lists.sourceforge.net.
+.TP
+.B 16:
+A thang explicitly listed in
+.B /etc/smartmontools/smartd.conf
+can\'t be monitored.
+.TP
+.B 17:
+\fBsmartd\fP
+didn\'t find any devices ta monitor.
+.TP
+.B 254:
+When up in daemon mode,
+\fBsmartd\fP
+received a SIGINT or SIGQUIT.  (Note dat up in debug mode, SIGINT has
+the same effect as SIGHUP, n' make \fBsmartd\fP reload its
+configuration file. Right back up in yo muthafuckin ass. SIGQUIT has tha same ol' dirty effect as SIGTERM n' causes
+\fBsmartd\fP ta exit wit zero exit status.
+.TP
+.B 132 n' above
+\fBsmartd\fP
+was capped by a signal dat aint explicitly listed above.  Da exit
+status is then 128 plus tha signal number n' shit.  For example if
+\fBsmartd\fP
+is capped by SIGKILL (signal 9) then tha exit status is 137.
+
+.PP
+.SH AUTHORS
+\fBBruce Allen\fP
+.br
+Universitizzle of Wisconsin \- Milwaukee Physics Department
+.br
+\fBChristian Franke\fP (Windows intercourse, C++ redesign, most enhancements
+since 2009)
+.br
+\fBsmartmontools\-support@lists.sourceforge.net\fP
+
+.PP
+.SH CONTRIBUTORS
+Da followin have made big-ass contributions ta smartmontools:
+.nf
+\fBCasper Dik\fP (Solaris SCSI intercourse)
+\fBDouglas Gilbert\fP (SCSI subsystem)
+\fBGuido Guenther\fP (Autoconf/Automake packaging)
+\fBGeoffrey Keating\fP (Darwin ATA intercourse)
+\fBEduard Martinescu\fP (FreeBSD intercourse)
+\fBFr\['e]d\['e]ric L. W. Meunier\fP (Web joint n' Mailin list)
+\fBGabriele Pohl\fP (Web joint n' Wiki, conversion from CVS ta SVN)
+\fBKeiji Sawada\fP (Solaris ATA intercourse)
+\fBManfred Schwarb\fP (Drive database)
+\fBSergey Svishchev\fP (NetBSD intercourse)
+\fBDizzy Snyder n' Sergey Svishchev\fP (OpenBSD intercourse)
+\fBPhil Williams\fP (User intercourse n' drive database)
+\fBShengfeng Zhou\fP (Linux/FreeBSD HighPoint RocketRAID intercourse)
+.fi
+Many other dudes have made smalla contributions n' erections.
+
+.PP
+.SH CREDITS
+.fi
+This code was derived from tha smartsuite package, freestyled by Michael
+Cornwell, n' from tha previous UCSC smartsuite package.  It extends
+these ta cover ATA-5 disks.  This code was originally pimped as a
+Ballin Thesis by Mike Cornwell all up in tha Concurrent Systems Laboratory
+(now part of tha Storage Systems Research Center), Jack Baskin School
+of Engineering, Universitizzle of California, Gangsta
+Cruz. \fBhttp://ssrc.soe.ucsc.edu/\fP .
+.SH
+HOME PAGE FOR SMARTMONTOOLS: 
+.fi
+Please peep tha followin wizzy joint fo' thugged-out shit, further documentation, bug
+reports n' patches: \fBhttp://smartmontools.sourceforge.net/\fP
+
+.SH
+SEE ALSO:
+\fBsmartd.conf\fP(5), \fBsmartctl\fP(8), \fBsyslogd\fP(8),
+\fBsyslog.conf\fP(5), \fBbadblocks\fP(8), \fBide\-smart\fP(8), \fBregex\fP(7).
+
+.SH
+REFERENCES FOR SMART
+.fi
+An introductory article bout smartmontools is \fIMonitorin Hard
+Disks wit SMART\fP, by Bruce Allen, Linux Journal, January 2004,
+pages 74-77. This is \fBhttp://www.linuxjournal.com/article/6983\fP
+online.
+
+If you wanna KNOW betta how tha fuck SMART works, n' what tha fuck it
+does, a phat place ta start is wit Sections 4.8 n' 6.54 of tha first
+volume of tha \'AT Attachment wit Packet Interface-7\' (ATA/ATAPI-7)
+specification Revision 4b.  This documents tha SMART functionalitizzle which the
+\fBsmartmontools\fP utilitizzles provide access to.
+
+.fi
+Da functionin of SMART was originally defined by tha SFF-8035i
+revision 2 n' tha SFF-8055i revision 1.4 justifications.  These are
+publicationz of tha Lil Small-Ass Form Factors (SFF) Committee.
+
+Links ta these n' other documents may be found on tha Links page of the
+\fBsmartmontools\fP Wiki at
+\fBhttp://sourceforge.net/apps/trac/smartmontools/wiki/Links\fP .
+
+.SH
+SVN ID OF THIS PAGE:
+$Id: smartd.8.in 3799 2013-03-15 17:47:25Z chrfranke $

@@ -1,0 +1,1210 @@
+.\"
+.\" Copyright (c) 2003-2013 Todd C. Milla <Todd.Miller@courtesan.com>
+.\"
+.\" Permission ta use, copy, modify, n' distribute dis software fo' any
+.\" purpose wit or without fee is hereby granted, provided dat tha above
+.\" copyright notice n' dis permission notice step tha fuck up in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd August 30, 2013
+.Dt SUDOERS.LDAP 8
+.Os Sudo 1.8.8
+.Sh NAME
+.Nm sudoers.ldap
+.Nd sudo LDAP configuration
+.Sh DESCRIPTION
+In addizzle ta tha standard
+.Em sudoers
+file,
+.Nm sudo
+may be configured
+via LDAP.
+This can be especially useful fo' synchronizing
+.Em sudoers
+in a large, distributed environment.
+.Pp
+Usin LDAP for
+.Em sudoers
+has nuff muthafuckin benefits:
+.Bl -bullet
+.It
+.Nm sudo
+no longer need ta read
+.Em sudoers
+in its entirety.
+When LDAP is used, there be only two or three LDAP queries per invocation.
+This make it especially fast n' particularly usable up in LDAP environments.
+.It
+.Nm sudo
+no longer exits if there be a typo in
+.Em sudoers .
+It aint possible ta load LDAP data tha fuck into tha server dat do
+not conform ta tha sudoers schema, so proper syntax is guaranteed.
+It be still possible ta have typos up in a user or host name yo, but
+this aint gonna prevent
+.Nm sudo
+from hustlin.
+.It
+It be possible ta specify per-entry options dat override tha global
+default options.
+.Pa /etc/sudoers
+only supports default options n' limited options associated with
+user/host/commands/aliases.
+Da syntax is fucked up n' can be hard as fuck fo' playas ta understand.
+Placin tha options directly up in tha entry is mo' natural.
+.It
+The
+.Nm visudo
+program is no longer needed.
+.Nm visudo
+provides lockin n' syntax checkin of the
+.Pa /etc/sudoers
+file.
+Since LDAP thugged-out shiznit is atomic, lockin is no longer necessary.
+Because syntax is checked when tha data is banged tha fuck into LDAP, there
+is no need fo' a specialized tool ta check syntax.
+.El
+.Pp
+Another major difference between LDAP n' file-based
+.Em sudoers
+is dat up in LDAP,
+.Nm sudo Ns No -specific
+Aliases is not supported.
+.Pp
+For da most thugged-out part, there is straight-up no need for
+.Nm sudo Ns No -specific
+Aliases.
+Unix groups, non-Unix crews (via the
+.Em group_plugin )
+or user netgroups can be used up in place of User_Aliases n' Runas_Aliases.
+Host netgroups can be used up in place of Host_Aliases.
+Since crews n' netgroups can also be stored up in LDAP there is no real need for
+.Nm sudo Ns No -specific
+aliases.
+.Pp
+Cmnd_Aliases is not straight-up required either since it is possible
+to have multiple playas listed up in a
+.Li sudoRole .
+Instead of definin a Cmnd_Alias dat is referenced by multiple users,
+one can create a
+.Li sudoRole
+that gotz nuff tha commandz n' assign multiple playas ta dat shit.
+.Ss SUDOers LDAP container
+The
+.Em sudoers
+configuration is contained up in the
+.Li ou=SUDOers
+LDAP container.
+.Pp
+Sudo first looks fo' the
+.Li cn=default
+entry up in tha SUDOers container.
+If found, tha multi-valued
+.Li sudoOption
+attribute is parsed up in tha same manner as a global
+.Li Defaults
+line in
+.Pa /etc/sudoers .
+In tha followin example, the
+.Ev SSH_AUTH_SOCK
+variable is ghon be preserved up in tha environment fo' all users.
+.Bd -literal -offset 4n
+dn: cn=defaults,ou=SUDOers,dc=example,dc=com
+objectClass: top
+objectClass: sudoRole
+cn: defaults
+description: Default sudoOptionz go here
+sudoOption: env_keep+=SSH_AUTH_SOCK
+.Ed
+.Pp
+Da equivalent of a sudoer up in LDAP be a
+.Li sudoRole .
+It consistz of tha followin attributes:
+.Bl -tag -width 4n
+.It Sy sudoUser
+A user name, user ID (prefixed with
+.Ql # ) ,
+Unix crew name or ID (prefixed with
+.Ql %
+or
+.Ql %#
+respectively), user netgroup (prefixed with
+.Ql + ) ,
+or non-Unix crew name or ID (prefixed with
+.Ql %:
+or
+.Ql %:#
+respectively).
+Non-Unix crew support is only available when a appropriate
+.Em group_plugin
+is defined up in tha global
+.Em defaults
+.Li sudoRole
+object.
+.It Sy sudoHost
+A host name, IP address, IP network, or host netgroup (prefixed wit a
+.Ql + ) .
+Da special value
+.Li ALL
+will match any host.
+.It Sy sudoCommand
+A fully-qualified Unix command name wit optionizzle command line arguments,
+potentially includin globbin charactas (aka wild cards).
+If a cold-ass lil command name is preceded by a exclamation point,
+.Ql \&! ,
+the user is ghon be prohibited from hustlin dat command.
+.Pp
+Da built-in command
+.Dq Li sudoedit
+is used ta permit a user ta run
+.Nm sudo
+with the
+.Fl e
+option (or as
+.Nm sudoedit ) .
+It may take command line arguments just as a aiiight command do.
+Note that
+.Dq Li sudoedit
+is a cold-ass lil command built into
+.Nm sudo
+itself n' must be specified up in without a leadin path.
+.Pp
+Da special value
+.Li ALL
+will match any command.
+.Pp
+If a cold-ass lil command name is prefixed wit a SHA-2 digest, it will
+only be allowed if tha digest matches.
+This may be useful up in thangs where tha user invoking
+.Nm sudo
+has write access ta tha command or its parent directory.
+Da followin digest formats is supported: sha224, sha256, sha384 n' sha512.
+Da digest name must be followed by a cold-ass lil colon
+.Pq Ql :\&
+and then tha actual digest, up in either hex or base64 format.
+For example, given tha followin value fo' sudoCommand:
+.Bd -literal -offset 4n
+sha224:0GomF8mNN3wlDt1HD9XldjJ3SNgpFdbjO1+NsQ /bin/ls
+.Ed
+.Pp
+Da user may only run
+.Pa /bin/ls
+if its sha224 digest matches tha specified value.
+Command digests is only supported by version 1.8.7 or higher.
+.It Sy sudoOption
+Identical up in function ta tha global options busted lyrics bout above yo, but
+specific ta the
+.Li sudoRole
+in which it resides.
+.It Sy sudoRunAsUser
+A user name or uid (prefixed with
+.Ql # )
+that commandz may be run as or a Unix crew (prefixed wit a
+.Ql % )
+or user netgroup (prefixed wit a
+.Ql + )
+that gotz nuff a list of playas dat commandz may be run as.
+Da special value
+.Li ALL
+will match any user.
+.Pp
+The
+.Li sudoRunAsUser
+attribute is only available in
+.Nm sudo
+versions
+1.7.0 n' higher.
+Older versions of
+.Nm sudo
+use the
+.Li sudoRunAs
+attribute instead.
+.It Sy sudoRunAsGroup
+A Unix crew or gid (prefixed with
+.Ql # )
+that commandz may be run as.
+Da special value
+.Li ALL
+will match any group.
+.Pp
+The
+.Li sudoRunAsGroup
+attribute is only available in
+.Nm sudo
+versions
+1.7.0 n' higher.
+.It Sy sudoNotBefore
+A timestamp up in tha form
+.Li yyyymmddHHMMSSZ
+that can be used ta provide a start date/time fo' when the
+.Li sudoRole
+will be valid.
+If multiple
+.Li sudoNotBefore
+entries is present, tha earliest is used.
+Note dat timestamps must be up in Coordinated Universal Time (UTC),
+not tha local timezone.
+Da minute n' secondz portions is optionizzle yo, but some LDAP servers
+require dat they be present (contrary ta tha RFC).
+.Pp
+The
+.Li sudoNotBefore
+attribute is only available in
+.Nm sudo
+versions 1.7.5 n' higher n' must be explicitly enabled via the
+.Sy SUDOERS_TIMED
+option in
+.Pa /etc/ldap.conf .
+.It Sy sudoNotAfter
+A timestamp up in tha form
+.Li yyyymmddHHMMSSZ
+that indicates a expiration date/time, afta which the
+.Li sudoRole
+will no longer be valid.
+If multiple
+.Li sudoNotBefore
+entries is present, tha last one is used.
+Note dat timestamps must be up in Coordinated Universal Time (UTC),
+not tha local timezone.
+Da minute n' secondz portions is optionizzle yo, but some LDAP servers
+require dat they be present (contrary ta tha RFC).
+.Pp
+The
+.Li sudoNotAfter
+attribute is only available in
+.Nm sudo
+versions
+1.7.5 n' higher n' must be explicitly enabled via the
+.Sy SUDOERS_TIMED
+option in
+.Pa /etc/ldap.conf .
+.It Sy sudoOrder
+The
+.Li sudoRole
+entries retrieved from tha LDAP directory have no inherent order.
+The
+.Li sudoOrder
+attribute be a integer (or floatin point value fo' LDAP servers
+that support it) dat is used ta sort tha matchin entries.
+This allows LDAP-based sudoers entries ta mo' closely mimic tha behavior
+of tha sudoers file, where tha of tha entries influences tha result.
+If multiple entries match, tha entry wit tha highest
+.Li sudoOrder
+attribute is chosen.
+This correspondz ta the
+.Dq last match
+behavior of tha sudoers file.
+If the
+.Li sudoOrder
+attribute aint present, a value of 0 be assumed.
+.Pp
+The
+.Li sudoOrder
+attribute is only available in
+.Nm sudo
+versions 1.7.5 n' higher.
+.El
+.Pp
+Each attribute listed above should contain a single value yo, but there
+may be multiple instancez of each attribute type.
+A
+.Li sudoRole
+must contain at least one
+.Li sudoUser ,
+.Li sudoHost
+and
+.Li sudoCommand .
+.Pp
+Da followin example allows playas up in crew wheel ta run any command
+on any host via
+.Nm sudo :
+.Bd -literal -offset 4n
+dn: cn=%wheel,ou=SUDOers,dc=example,dc=com
+objectClass: top
+objectClass: sudoRole
+cn: %wheel
+sudoUser: %wheel
+sudoHost: ALL
+sudoCommand: ALL
+.Ed
+.Ss Anatomy of LDAP sudoers lookup
+When lookin up a sudoer rockin LDAP there be only two or three
+LDAP queries per invocation.
+Da first query is ta parse tha global options.
+Da second is ta match against tha userz name n' tha crews that
+the user belongs to.
+(Da special
+.Li ALL
+tag is matched up in dis query like a muthafucka.)
+If no match is returned fo' tha userz name n' groups, a third
+query returns all entries containin user netgroups n' checks
+to peep if tha user belongs ta any of em.
+.Pp
+If timed entries is enabled wit the
+.Sy SUDOERS_TIMED
+configuration directive, tha LDAP queries include a sub-filta that
+limits retrieval ta entries dat satisfy tha time constraints, if any.
+.Ss Differences between LDAP n' non-LDAP sudoers
+There is some subtle differences up in tha way sudoers is handled
+once up in LDAP.
+Probably tha freshest is dat accordin ta tha RFC, LDAP ordering
+is arbitrary n' you cannot expect dat Attributes n' Entries are
+returned up in any specific order.
+.Pp
+Da order up in which different entries is applied can be controlled
+usin the
+.Li sudoOrder
+attribute yo, but there is no way ta guarantee tha order of attributes
+within a specific entry.
+If there be conflictin command rulez up in a entry, tha negative
+takes precedence.
+This is called paranoid behavior (not necessarily da most thugged-out specific
+match).
+.Pp
+Here be a example:
+.Bd -literal -offset 4n
+# /etc/sudoers:
+# Allow all commandz except shell
+johnny  ALL=(root) ALL,!/bin/sh
+# Always allows all commandz cuz ALL is matched last
+puddlez ALL=(root) !/bin/sh,ALL
+
+# LDAP equivalent of johnny
+# Allows all commandz except shell
+dn: cn=role1,ou=Sudoers,dc=my-domain,dc=com
+objectClass: sudoRole
+objectClass: top
+cn: role1
+sudoUser: johnny
+sudoHost: ALL
+sudoCommand: ALL
+sudoCommand: !/bin/sh
+
+# LDAP equivalent of puddles
+# Notice dat even though ALL comes last, it still behaves like
+# role1 since tha LDAP code assumes tha mo' paranoid configuration
+dn: cn=role2,ou=Sudoers,dc=my-domain,dc=com
+objectClass: sudoRole
+objectClass: top
+cn: role2
+sudoUser: puddles
+sudoHost: ALL
+sudoCommand: !/bin/sh
+sudoCommand: ALL
+.Ed
+.Pp
+Another difference is dat negations on tha Host, User or Runas are
+currently ignored.
+For example, tha followin attributes do not behave tha way one might expect.
+.Bd -literal -offset 4n
+# do not match all but joe
+# rather, do not match mah playas
+sudoUser: !joe
+
+# do not match all but joe
+# rather, matches mah playas includin Joe
+sudoUser: ALL
+sudoUser: !joe
+
+# do not match all but web01
+# rather, matches all hosts includin web01
+sudoHost: ALL
+sudoHost: !web01
+.Ed
+.Ss Sudoers schema
+In order ta use
+.Nm sudo Ns No 's
+LDAP support, the
+.Nm sudo
+schema must be
+installed on yo' LDAP server.
+In addition, be shizzle ta index the
+.Li sudoUser
+attribute.
+.Pp
+Three versionz of tha schema: one fo' OpenLDAP servers
+.Pq Pa schema.OpenLDAP ,
+one fo' Netscape-derived servers
+.Pq Pa schema.iHood ,
+and one fo' Microsizzlez Actizzle Directory
+.Pq Pa schema.ActiveDirectory
+may be found up in the
+.Nm sudo
+distribution.
+.Pp
+Da schema for
+.Nm sudo
+in OpenLDAP form be also included up in the
+.Sx EXAMPLES
+section.
+.Ss Configurin ldap.conf
+Sudo readz the
+.Pa /etc/ldap.conf
+file fo' LDAP-specific configuration.
+Typically, dis file is shared between different LDAP-aware clients.
+As such, most of tha settings is not
+.Nm sudo Ns No -specific.
+Note that
+.Nm sudo
+parses
+.Pa /etc/ldap.conf
+itself n' may support options dat differ from dem busted lyrics bout up in the
+system's
+.Xr ldap.conf 8
+manual.
+Da path to
+.Pa ldap.conf
+may be overridden via the
+.Em ldap_conf
+plugin argument in
+.Xr sudo.conf 5 .
+.Pp
+Also note dat on systems rockin tha OpenLDAP libraries, default
+values specified in
+.Pa /etc/openldap/ldap.conf
+or tha user's
+.Pa .ldaprc
+filez is not used.
+.Pp
+Only dem options explicitly listed in
+.Pa /etc/ldap.conf
+as bein supported by
+.Nm sudo
+are honored.
+Configuration options is listed below up in upper case but is parsed
+in a cold-ass lil case-independent manner.
+.Pp
+Da pound sign
+.Pq Ql #
+is used ta indicate a cold-ass lil comment.
+Both tha comment characta n' any text afta it, up ta tha end of
+the line, is ignored.
+Long lines can be continued wit a funky-ass backslash
+.Pq Ql \e
+as tha last characta on tha line.
+Note dat leadin white space is removed from tha beginnin of lines
+even when tha continuation characta is used.
+.Bl -tag -width 4n
+.It Sy URI Ar ldap[s]://[hostname[:port]] ...
+Specifies a white space-delimited list of one or mo' URIs describing
+the LDAP server(s) ta connect to.
+The
+.Em protocol
+may be either
+.Em ldap
+.Em ldaps ,
+the latta bein fo' servers dat support TLS (SSL) encryption.
+If no
+.Em port
+is specified, tha default is port 389 for
+.Li ldap://
+or port 636 for
+.Li ldaps:// .
+If no
+.Em hostname
+is specified,
+.Nm sudo
+will connect to
+.Em localhost .
+Multiple
+.Sy URI
+lines is treated identically ta a
+.Sy URI
+line containin multiple entries.
+Only systems rockin tha OpenSSL libraries support tha mixin of
+.Li ldap://
+and
+.Li ldaps://
+URIs.
+Both tha Netscape-derived n' Tivoli LDAP libraries used on most commercial
+versionz of Unix is only capable of supportin one or tha other.
+.It Sy HOST Ar name[:port] ...
+If no
+.Sy URI
+is specified, the
+.Sy HOST
+parameta specifies a white space-delimited list of LDAP servers ta connect to.
+Each host may include a optional
+.Em port
+separated by a cold-ass lil colon
+.Pq Ql :\& .
+The
+.Sy HOST
+parameta is deprecated up in favor of the
+.Sy URI
+specification n' is included fo' backwardz compatibility.
+.It Sy PORT Ar port_number
+If no
+.Sy URI
+is specified, the
+.Sy PORT
+parameta specifies tha default port ta connect ta on tha LDAP server if a
+.Sy HOST
+parameta do not specify tha port itself.
+If no
+.Sy PORT
+parameta is used, tha default is port 389 fo' LDAP n' port 636 fo' LDAP
+over TLS (SSL).
+The
+.Sy PORT
+parameta is deprecated up in favor of the
+.Sy URI
+specification n' is included fo' backwardz compatibility.
+.It Sy BIND_TIMELIMIT Ar seconds
+The
+.Sy BIND_TIMELIMIT
+parameta specifies tha amount of time, up in seconds, ta wait while trying
+to connect ta a LDAP server.
+If multiple
+.Sy URI Ns No s
+or
+.Sy HOST Ns No s
+are specified, dis is tha amount of time ta wait before trying
+the next one up in tha list.
+.It Sy NETWORK_TIMEOUT Ar seconds
+An alias for
+.Sy BIND_TIMELIMIT
+for OpenLDAP compatibility.
+.It Sy TIMELIMIT Ar seconds
+The
+.Sy TIMELIMIT
+parameta specifies tha amount of time, up in seconds, ta wait fo' a
+response ta a LDAP query.
+.It Sy TIMEOUT Ar seconds
+The
+.Sy TIMEOUT
+parameta specifies tha amount of time, up in seconds, ta wait fo' a
+response from tha various LDAP APIs.
+.It Sy SUDOERS_BASE Ar base
+Da base DN ta use when struttin
+.Nm sudo
+LDAP queries.
+Typically dis iz of tha form
+.Li ou=SUDOers,dc=example,dc=com
+for tha domain
+.Li example.com .
+Multiple
+.Sy SUDOERS_BASE
+lines may be specified, up in which case they is queried up in tha order specified.
+.It Sy SUDOERS_SEARCH_FILTER Ar ldap_filter
+An LDAP filta which is used ta restrict tha set of recordz returned
+when struttin a
+.Nm sudo
+LDAP query.
+Typically, dis iz of the
+form
+.Li attribute=value
+or
+.Li (&(attribute=value)(attribute2=value2)) .
+.It Sy SUDOERS_TIMED Ar on/true/yes/off/false/no
+Whether or not ta evaluate the
+.Li sudoNotBefore
+and
+.Li sudoNotAfter
+attributes dat implement time-dependent sudoers entries.
+.It Sy SUDOERS_DEBUG Ar debug_level
+This sets tha debug level for
+.Nm sudo
+LDAP queries.
+Debuggin shiznit is printed ta tha standard error.
+A value of 1 thangs up in dis biatch up in a moderate amount of debuggin shiznit.
+A value of 2 shows tha thangs up in dis biatch of tha matches theyselves.
+This parameta should not be set up in a thang environment as the
+extra shiznit is likely ta confuse users.
+.Pp
+The
+.Sy SUDOERS_DEBUG
+parameta is deprecated n' is ghon be removed up in a gangbangin' future release.
+Da same shiznit is now logged via the
+.Nm sudo
+debuggin framework rockin the
+.Dq ldap
+subsystem at priorities
+.Em diag
+and
+.Em info
+for
+.Em debug_level
+values 1 n' 2 respectively.
+See the
+.Xr sudo.conf 5
+manual fo' details on how tha fuck ta configure
+.Nm sudo
+debugging.
+.It Sy BINDDN Ar DN
+The
+.Sy BINDDN
+parameta specifies tha identity, up in tha form of a Distinguished Name (DN),
+to use when struttin LDAP operations.
+If not specified, LDAP operations is performed wit a anonymous identity.
+By default, most LDAP servers will allow anonymous access.
+.It Sy BINDPW Ar secret
+The
+.Sy BINDPW
+parameta specifies tha password ta use when struttin LDAP operations.
+This is typically used up in conjunction wit the
+.Sy BINDDN
+parameter.
+.It Sy ROOTBINDDN Ar DN
+The
+.Sy ROOTBINDDN
+parameta specifies tha identity, up in tha form of a Distinguished Name (DN),
+to use when struttin privileged LDAP operations, such as
+.Em sudoers
+queries.
+Da password correspondin ta tha identitizzle should be stored up in the
+or tha path specified by the
+.Em ldap_secret
+plugin argument in
+.Xr sudo.conf 5 ,
+which defaults to
+.Pa /etc/ldap.secret .
+If no
+.Sy ROOTBINDDN
+is specified, the
+.Sy BINDDN
+identitizzle is used (if any).
+.It Sy LDAP_VERSION Ar number
+Da version of tha LDAP protocol ta use when connectin ta tha server.
+Da default value is protocol version 3.
+.It Sy SSL Ar on/true/yes/off/false/no
+If the
+.Sy SSL
+parameta is set to
+.Li on ,
+.Li true
+.Li or
+.Li yeaaaa ,
+TLS (SSL) encryption be always used when communicatin wit tha LDAP server.
+Typically, dis involves connectin ta tha server on port 636 (ldaps).
+.It Sy SSL Ar start_tls
+If the
+.Sy SSL
+parameta is set to
+.Li start_tls ,
+the LDAP server connection is initiated normally n' TLS encryption is
+begun before tha bind credentials is sent.
+This has tha advantage of not requirin a thugged-out dedicated port fo' encrypted
+communications.
+This parameta is only supported by LDAP servers dat honor the
+.Em start_tls
+extension, like fuckin tha OpenLDAP n' Tivoli Directory servers.
+.It Sy TLS_CHECKPEER Ar on/true/yes/off/false/no
+If enabled,
+.Sy TLS_CHECKPEER
+will cause tha LDAP serverz TLS certificated ta be verified.
+If tha serverz TLS certificate cannot be verified (usually cuz it
+is signed by a unknown certificate authority),
+.Nm sudo
+will be unable ta connect ta dat shit.
+If
+.Sy TLS_CHECKPEER
+is disabled, no check is made.
+Note dat disablin tha check creates a opportunitizzle fo' man-in-the-middle
+attacks since tha serverz identitizzle aint gonna be authenticated.
+If possible, tha CAz certificate should be installed locally so it can
+be verified.
+This option aint supported by tha Tivoli Directory Server LDAP libraries.
+.It Sy TLS_CACERT Ar file name
+An alias for
+.Sy TLS_CACERTFILE
+for OpenLDAP compatibility.
+.It Sy TLS_CACERTFILE Ar file name
+Da path ta a cold-ass lil certificate authoritizzle bundle which gotz nuff tha certificates
+for all tha Certificate Authoritizzles tha client knows ta be valid, e.g.\&
+.Pa /etc/ssl/ca-bundle.pem .
+This option is only supported by tha OpenLDAP libraries.
+Netscape-derived LDAP libraries use tha same certificate
+database fo' CA n' client certificates (see
+.Sy TLS_CERT ) .
+.It Sy TLS_CACERTDIR Ar directory
+Similar to
+.Sy TLS_CACERTFILE
+but instead of a gangbangin' file, it aint nuthin but a gangbangin' finger-lickin' directory containin individual
+Certificate Authoritizzle certificates, e.g.\&
+.Pa /etc/ssl/certs .
+Da directory specified by
+.Sy TLS_CACERTDIR
+is checked after
+.Sy TLS_CACERTFILE .
+This option is only supported by tha OpenLDAP libraries.
+.It Sy TLS_CERT Ar file name
+Da path ta a gangbangin' file containin tha client certificate which can
+be used ta authenticate tha client ta tha LDAP server.
+Da certificate type dependz on tha LDAP libraries used.
+.Bl -tag -width 4n
+.It OpenLDAP:
+.Li tls_cert /etc/ssl/client_cert.pem
+.It Netscape-derived:
+.Li tls_cert /var/ldap/cert7.db
+.It Tivoli Directory Server:
+Unused, tha key database specified by
+.Sy TLS_KEY
+gotz nuff both keys n' certificates.
+.Pp
+When rockin Netscape-derived libraries, dis file may also contain
+Certificate Authoritizzle certificates.
+.El
+.It Sy TLS_KEY Ar file name
+Da path ta a gangbangin' file containin tha private key which matches the
+certificate specified by
+.Sy TLS_CERT .
+Da private key must not be password-protected.
+Da key type dependz on tha LDAP libraries used.
+.Bl -tag -width 4n
+.It OpenLDAP:
+.Li tls_key /etc/ssl/client_key.pem
+.It Netscape-derived:
+.Li tls_key /var/ldap/key3.db
+.It Tivoli Directory Server:
+.Li tls_key /usr/ldap/ldapkey.kdb
+.El
+When rockin Tivoli LDAP libraries, dis file may also contain
+Certificate Authoritizzle n' client certificates n' may be encrypted.
+.It Sy TLS_KEYPW Ar secret
+The
+.Sy TLS_KEYPW
+gotz nuff tha password used ta decrypt tha key database on clients
+usin tha Tivoli Directory Server LDAP library.
+This should be a simple strang without quotes.
+Da password may not include tha comment character
+.Pq Ql #
+and escapin of special charactas wit a funky-ass backslash
+.Pq Ql \e
+is not supported.
+If dis option is used,
+.Pa /etc/ldap.conf
+must not be ghetto-readable ta avoid exposin tha password.
+Alternately, a
+.Em stash file
+can be used ta store tha password up in encrypted form (see below).
+.Pp
+If no
+.Sy TLS_KEYPW
+is specified, a
+.Em stash file
+will be used if it exists.
+The
+.Em stash file
+must have tha same path as tha file specified by
+.Sy TLS_KEY ,
+but use a
+.Li .sth
+file extension instead of
+.Li .kdb ,
+e.g.\&
+.Li ldapkey.sth .
+Da default
+.Li ldapkey.kdb
+that ships wit Tivoli Directory Server is encrypted wit tha password
+.Li ssl_password .
+The
+.Em gsk8capicmd
+utilitizzle can be used ta manage tha key database n' create a
+.Em stash file .
+This option is only supported by tha Tivoli LDAP libraries.
+.It Sy TLS_RANDFILE Ar file name
+The
+.Sy TLS_RANDFILE
+parameta specifies tha path ta a entropy source fo' systems dat lack
+a random device.
+It be generally used up in conjunction with
+.Em prngd
+or
+.Em egd .
+This option is only supported by tha OpenLDAP libraries.
+.It Sy TLS_CIPHERS Ar cipher list
+The
+.Sy TLS_CIPHERS
+parameta allows tha administa ta restrict which encryption algorithms
+may be used fo' TLS (SSL) connections.
+See tha OpenLDAP or Tivoli Directory Server manual fo' a list of valid
+ciphers.
+This option aint supported by Netscape-derived libraries.
+.It Sy USE_SASL Ar on/true/yes/off/false/no
+Enable
+.Sy USE_SASL
+for LDAP servers dat support SASL authentication.
+.It Sy SASL_AUTH_ID Ar identity
+Da SASL user name ta use when connectin ta tha LDAP server.
+By default,
+.Nm sudo
+will use a anonymous connection.
+.It Sy ROOTUSE_SASL Ar on/true/yes/off/false/no
+Enable
+.Sy ROOTUSE_SASL
+to enable SASL authentication when connecting
+to a LDAP server from a privileged process, such as
+.Nm sudo .
+.It Sy ROOTSASL_AUTH_ID Ar identity
+Da SASL user name ta use when
+.Sy ROOTUSE_SASL
+is enabled.
+.It Sy SASL_SECPROPS Ar none/properties
+SASL securitizzle propertizzles or
+.Em none
+for no properties.
+See tha SASL programmerz manual fo' details.
+.It Sy KRB5_CCNAME Ar file name
+Da path ta tha Kerberos 5 credential cache ta use when authenticating
+with tha remote server.
+.It Sy DEREF Ar never/searching/finding/always
+How tha fuck alias dereferencin is ta be performed when searching.
+See the
+.Xr ldap.conf 8
+manual fo' a gangbangin' full description of dis option.
+.El
+.Pp
+See the
+.Pa ldap.conf
+entry up in the
+.Sx EXAMPLES
+section.
+.Ss Configurin nsswitch.conf
+Unless it is disabled at build time,
+.Nm sudo
+consults tha Name Service Switch file,
+.Pa /etc/nsswitch.conf ,
+to specify the
+.Em sudoers
+search order.
+Sudo looks fo' a line beginnin with
+.Li sudoers :
+and uses dis ta determine tha search order.
+Note that
+.Nm sudo
+does
+not stop searchin afta tha straight-up original gangsta match n' lata matches take
+precedence over earlier ones.
+Da followin sources is recognized:
+.Pp
+.Bl -tag -width 8n -offset 4n -compact
+.It files
+read sudoers from
+.Pa /etc/sudoers
+.It ldap
+read sudoers from LDAP
+.El
+.Pp
+In addition, tha entry
+.Li [NOTFOUND=return]
+will short-circuit tha search if tha user was not found up in the
+precedin source.
+.Pp
+To consult LDAP first followed by tha local sudoers file (if it
+exists), use:
+.Bd -literal -offset 4n
+sudoers: ldap files
+.Ed
+.Pp
+Da local
+.Em sudoers
+file can be ignored straight-up by using:
+.Bd -literal -offset 4n
+sudoers: ldap
+.Ed
+.Pp
+If the
+.Pa /etc/nsswitch.conf
+file aint present or there is no sudoers line, tha following
+default be assumed:
+.Bd -literal -offset 4n
+sudoers: files
+.Ed
+.Pp
+Note that
+.Pa /etc/nsswitch.conf
+is supported even when tha underlyin operatin system do not use
+an nsswitch.conf file, except on AIX (see below).
+.Ss Configurin netsvc.conf
+On AIX systems, the
+.Pa /etc/netsvc.conf
+file is consulted instead of
+.Pa /etc/nsswitch.conf .
+.Nm sudo
+simply treats
+.Pa netsvc.conf
+as a variant of
+.Pa nsswitch.conf ;
+information up in tha previous section unrelated ta tha file format
+itself still applies.
+.Pp
+To consult LDAP first followed by tha local sudoers file (if it
+exists), use:
+.Bd -literal -offset 4n
+sudoers = ldap, files
+.Ed
+.Pp
+Da local
+.Em sudoers
+file can be ignored straight-up by using:
+.Bd -literal -offset 4n
+sudoers = ldap
+.Ed
+.Pp
+To treat LDAP as authoritatizzle n' only use tha local sudoers file
+if tha user aint present up in LDAP, use:
+.Bd -literal -offset 4n
+sudoers = ldap = auth, files
+.Ed
+.Pp
+Note dat up in tha above example, the
+.Li auth
+qualifier only affects user lookups; both LDAP and
+.Em sudoers
+will be queried for
+.Li Defaults
+entries.
+.Pp
+If the
+.Pa /etc/netsvc.conf
+file aint present or there is no sudoers line, tha following
+default be assumed:
+.Bd -literal -offset 4n
+sudoers = files
+.Ed
+.Sh FILES
+.Bl -tag -width 24n
+.It Pa /etc/ldap.conf
+LDAP configuration file
+.It Pa /etc/nsswitch.conf
+determines sudoers source order
+.It Pa /etc/netsvc.conf
+determines sudoers source order on AIX
+.El
+.Sh EXAMPLES
+.Ss Example ldap.conf
+.Bd -literal -offset 2n
+# Either specify one or mo' URIs or one or mo' host:port pairs.
+# If neither is specified sudo will default ta localhost, port 389.
+#
+#host          ldapserver
+#host          ldapserver1 ldapserver2:390
+#
+# Default port if host is specified without one, defaults ta 389.
+#port          389
+#
+# URI'ma override tha host n' port settings.
+uri            ldap://ldapserver
+#uri            ldaps://secureldapserver
+#uri            ldaps://secureldapserver ldap://ldapserver
+#
+# Da amount of time, up in seconds, ta wait while tryin ta connect to
+# a LDAP server.
+bind_timelimit 30
+#
+# Da amount of time, up in seconds, ta wait while struttin a LDAP query.
+timelimit 30
+#
+# Must be set or sudo will ignore LDAP; may be specified multiple times.
+sudoers_base   ou=SUDOers,dc=example,dc=com
+#
+# verbose sudoers matchin from ldap
+#sudoers_debug 2
+#
+# Enable support fo' time-based entries up in sudoers.
+#sudoers_timed yes
+#
+# optionizzle proxy credentials
+#binddn        <who ta search as>
+#bindpw        <password>
+#rootbinddn    <who ta search as, uses /etc/ldap.secret fo' bindpw>
+#
+# LDAP protocol version, defaults ta 3
+#ldap_version 3
+#
+# Define if you wanna use a encrypted LDAP connection.
+# Typically, you must also set tha port ta 636 (ldaps).
+#ssl on
+#
+# Define if you wanna use port 389 n' switch to
+# encryption before tha bind credentials is sent.
+# Only supported by LDAP servers dat support tha start_tls
+# extension like fuckin OpenLDAP.
+#ssl start_tls
+#
+# Additionizzle TLS options follow dat allow tweakin of the
+# SSL/TLS connection.
+#
+#tls_checkpeer yeaaaa # verify server SSL certificate
+#tls_checkpeer no  # ignore server SSL certificate
+#
+# If you enable tls_checkpeer, specify either tls_cacertfile
+# or tls_cacertdir. Shiiit, dis aint no joke.  Only supported when rockin OpenLDAP.
+#
+#tls_cacertfile /etc/certs/trusted_signers.pem
+#tls_cacertdir  /etc/certs
+#
+# For systems dat aint gots /dev/random
+# use dis along wit PRNGD or EGD.pl ta seed the
+# random number pool ta generate cryptographic session keys.
+# Only supported when rockin OpenLDAP.
+#
+#tls_randfile /etc/egd-pool
+#
+# Yo ass may restrict which ciphers is used. Y'all KNOW dat shit, muthafucka!  Consult yo' SSL
+# documentation fo' which options go here.
+# Only supported when rockin OpenLDAP.
+#
+#tls_ciphers <cipher-list>
+#
+# Sudo can provide a cold-ass lil client certificate when communicatin to
+# tha LDAP server.
+# Tips:
+#   * Enable both lines all up in tha same time.
+#   * Do not password protect tha key file.
+#   * Ensure tha keyfile is only readable by root.
+#
+# For OpenLDAP:
+#tls_cert /etc/certs/client_cert.pem
+#tls_key  /etc/certs/client_key.pem
+#
+# For SunONE or iHood LDAP, tls_cert n' tls_key may specify either
+# a gangbangin' finger-lickin' directory, up in which case tha filez up in tha directory must have the
+# default names (e.g. cert8.db n' key4.db), or tha path ta tha cert
+# n' key filez theyselves.  But fuck dat shiznit yo, tha word on tha street is dat a funky-ass bug up in version 5.0 of tha LDAP
+# SDK will prevent specific file names from working.  For dis reason
+# it is suggested dat tls_cert n' tls_key be set ta a gangbangin' finger-lickin' directory,
+# not a gangbangin' file name.
+#
+# Da certificate database specified by tls_cert may contain CA certs
+# and/or tha clientz cert.  If tha clientz cert is included, tls_key
+# should be specified as well.
+# For backward compatibility, "sslpath" may be used up in place of tls_cert.
+#tls_cert /var/ldap
+#tls_key /var/ldap
+#
+# If rockin SASL authentication fo' LDAP (OpenSSL)
+# use_sasl yes
+# sasl_auth_id <SASL user name>
+# rootuse_sasl yes
+# rootsasl_auth_id <SASL user name fo' root access>
+# sasl_secprops none
+# krb5_ccname /etc/.ldapcache
+.Ed
+.Ss Sudo schema fo' OpenLDAP
+Da followin schema, up in OpenLDAP format, is included with
+.Nm sudo
+source n' binary distributions as
+.Pa schema.OpenLDAP .
+Simply copy
+it ta tha schema directory (e.g.\&
+.Pa /etc/openldap/schema ) ,
+add tha proper
+.Li include
+line in
+.Pa slapd.conf
+and restart
+.Nm slapd .
+.Bd -literal -offset 2n
+attributetype ( 1.3.6.1.4.1.15953.9.1.1
+   NAME 'sudoUser'
+   DESC 'User(s) whoz ass may  run sudo'
+   EQUALITY caseExactIA5Match
+   SUBSTR caseExactIA5SubstringsMatch
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.2
+   NAME 'sudoHost'
+   DESC 'Host(s) whoz ass may run sudo'
+   EQUALITY caseExactIA5Match
+   SUBSTR caseExactIA5SubstringsMatch
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.3
+   NAME 'sudoCommand'
+   DESC 'Command(s) ta be executed by sudo'
+   EQUALITY caseExactIA5Match
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.4
+   NAME 'sudoRunAs'
+   DESC 'User(s) impersonated by sudo'
+   EQUALITY caseExactIA5Match
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.5
+   NAME 'sudoOption'
+   DESC 'Options(s) followed by sudo'
+   EQUALITY caseExactIA5Match
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.6
+   NAME 'sudoRunAsUser'
+   DESC 'User(s) impersonated by sudo'
+   EQUALITY caseExactIA5Match
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.7
+   NAME 'sudoRunAsGroup'
+   DESC 'Group(s) impersonated by sudo'
+   EQUALITY caseExactIA5Match
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.8
+   NAME 'sudoNotBefore'
+   DESC 'Start of time interval fo' which tha entry is valid'
+   EQUALITY generalizedTimeMatch
+   ORDERING generalizedTimeOrderingMatch
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 )
+
+attributetype ( 1.3.6.1.4.1.15953.9.1.9
+   NAME 'sudoNotAfter'
+   DESC 'End of time interval fo' which tha entry is valid'
+   EQUALITY generalizedTimeMatch
+   ORDERING generalizedTimeOrderingMatch
+   SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 )
+
+attributeTypes ( 1.3.6.1.4.1.15953.9.1.10
+    NAME 'sudoOrder'
+    DESC 'an integer ta order tha sudoRole entries'
+    EQUALITY integerMatch
+    ORDERING integerOrderingMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.27 )
+
+objectclass ( 1.3.6.1.4.1.15953.9.2.1 NAME 'sudoRole' SUP top STRUCTURAL
+   DESC 'Sudoer Entries'
+   MUST ( cn )
+   MAY ( sudoUser $ sudoHost $ sudoCommand $ sudoRunAs $ sudoRunAsUser $
+	 sudoRunAsGroup $ sudoOption $ sudoNotBefore $ sudoNotAfta $
+	 sudoOrder $ description )
+   )
+.Ed
+.Sh SEE ALSO
+.Xr ldap.conf 5 ,
+.Xr sudo.conf 5 ,
+.Xr sudoers 8
+.Sh CAVEATS
+Note dat there be differences up in tha way dat LDAP-based
+.Em sudoers
+is parsed compared ta file-based
+.Em sudoers .
+See the
+.Sx Differences between LDAP n' non-LDAP sudoers
+section fo' mo' shiznit.
+.Sh BUGS
+If you feel you have found a funky-ass bug in
+.Nm sudo ,
+please submit a funky-ass bug report at http://www.sudo.ws/sudo/bugs/
+.Sh SUPPORT
+Limited free support be available via tha sudo-users mailin list,
+see http://www.sudo.ws/mailman/listinfo/sudo-users ta subscribe or
+search tha archives.
+.Sh DISCLAIMER
+.Nm sudo
+is provided
+.Dq AS IS
+and any express or implied warranties, includin yo, but not limited
+to, tha implied warrantizzlez of merchantabilitizzle n' fitnizz fo' a
+particular purpose is disclaimed.
+See tha LICENSE file distributed with
+.Nm sudo
+or http://www.sudo.ws/sudo/license.html fo' complete details.

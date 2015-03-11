@@ -1,0 +1,313 @@
+.TH TRANSPORT 5 
+.ad
+.fi
+.SH NAME
+transport
+\-
+Postfix transhiznit table format
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap /etc/postfix/transport\fR
+
+\fBpostmap -q "\fIstring\fB" /etc/postfix/transport\fR
+
+\fBpostmap -q - /etc/postfix/transhiznit <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da optionizzle \fBtransport\fR(5) table specifies a mappin from email
+addresses ta message delivery transports n' next-hop destinations.
+Message delivery transports like fuckin \fBlocal\fR or \fBsmtp\fR
+are defined up in tha \fBmaster.cf\fR file, n' next-hop
+destinations is typically hosts or domain names. The
+table is searched by tha \fBtrivial-rewrite\fR(8) daemon.
+
+This mappin overrides tha default \fItransport\fR:\fInexthop\fR
+selection dat is built tha fuck into Postfix:
+.IP "\fBlocal_transhiznit (default: local:$myhostname)\fR"
+This is tha default fo' final delivery ta domains listed
+with \fBmydestination\fR, n' fo' [\fIipaddress\fR]
+destinations dat match \fB$inet_interfaces\fR or
+\fB$proxy_interfaces\fR. Da default \fInexthop\fR destination
+is tha MTA hostname.
+.IP "\fBvirtual_transhiznit (default: virtual:)\fR"
+This is tha default fo' final delivery ta domains listed
+with \fBvirtual_mailbox_domains\fR. Da default \fInexthop\fR
+destination is tha recipient domain.
+.IP "\fBrelay_transhiznit (default: relay:)\fR"
+This is tha default fo' remote delivery ta domains listed
+with \fBrelay_domains\fR. In order of decreasin precedence,
+the \fInexthop\fR destination is taken from \fBrelay_transport\fR,
+\fBsender_dependent_relayhost_maps\fR, \fBrelayhost\fR, or from the
+recipient domain.
+.IP "\fBdefault_transhiznit (default: smtp:)\fR"
+This is tha default fo' remote delivery ta other destinations.
+In order of decreasin precedence, tha \fInexthop\fR
+destination is taken from \fBsender_dependent_default_transport_maps,
+\fBdefault_transport\fR, \fBsender_dependent_relayhost_maps\fR,
+\fBrelayhost\fR, or from tha recipient domain.
+.PP
+Normally, tha \fBtransport\fR(5) table is specified as a text file
+that serves as input ta tha \fBpostmap\fR(1) command.
+Da result, a indexed file up in \fBdbm\fR or \fBdb\fR format, is used
+for fast searchin by tha mail system. Execute tha command
+"\fBpostmap /etc/postfix/transport\fR" ta rebuild a indexed
+file afta changin tha correspondin transhiznit table.
+
+When tha table is provided via other means like fuckin NIS, LDAP
+or SQL, tha same lookups is done as fo' ordinary indexed files.
+
+Alternatively, tha table can be provided as a regular-expression
+map where patterns is given as regular expressions, or lookups
+can be pimped up ta TCP-based server n' shit. In dem case, tha lookups
+are done up in a slightly different way as busted lyrics bout below under
+"REGULAR EXPRESSION TABLES" or "TCP-BASED TABLES".
+.SH "CASE FOLDING"
+.na
+.nf
+.ad
+.fi
+Da search strang is folded ta lowercase before database
+lookup fo' realz. Az of Postfix 2.3, tha search strang aint case
+folded wit database types like fuckin regexp: or pcre: whose
+lookup fieldz can match both upper n' lower case.
+.SH "TABLE FORMAT"
+.na
+.nf
+.ad
+.fi
+Da input format fo' tha \fBpostmap\fR(1) command be as bigs up:
+.IP "\fIpattern result\fR"
+When \fIpattern\fR matches tha recipient address or domain, use the
+correspondin \fIresult\fR.
+.IP "blank lines n' comments"
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP "multi-line text"
+A logical line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.PP
+Da \fIpattern\fR specifies a email address, a thugged-out domain name, or
+a domain name hierarchy, as busted lyrics bout up in section "TABLE LOOKUP".
+
+Da \fIresult\fR iz of tha form \fItransport:nexthop\fR and
+specifies how tha fuck or where ta serve up mail. This is busted lyrics bout in
+section "RESULT FORMAT".
+.SH "TABLE SEARCH ORDER"
+.na
+.nf
+.ad
+.fi
+With lookups from indexed filez like fuckin DB or DBM, or from networked
+tablez like fuckin NIS, LDAP or SQL, patterns is tried up in tha order as
+listed below:
+.IP "\fIuser+extension@domain transport\fR:\fInexthop\fR"
+Deliver mail fo' \fIuser+extension@domain\fR through
+\fItransport\fR to
+\fInexthop\fR.
+.IP "\fIuser@domain transport\fR:\fInexthop\fR"
+Deliver mail fo' \fIuser@domain\fR all up in \fItransport\fR to
+\fInexthop\fR.
+.IP "\fIdomain transport\fR:\fInexthop\fR"
+Deliver mail fo' \fIdomain\fR all up in \fItransport\fR to
+\fInexthop\fR.
+.IP "\fI.domain transport\fR:\fInexthop\fR"
+Deliver mail fo' any subdomain of \fIdomain\fR through
+\fItransport\fR ta \fInexthop\fR. This applies only when the
+strin \fBtransport_maps\fR aint listed up in the
+\fBparent_domain_matches_subdomains\fR configuration setting.
+Otherwise, a thugged-out domain name matches itself n' its subdomains.
+.IP "\fB*\fI transport\fR:\fInexthop\fR"
+Da special pattern \fB*\fR represents any address (i.e. it
+functions as tha wild-card pattern, n' is unique ta Postfix
+transhiznit tables).
+.PP
+Note 1: tha null recipient address is looked up as
+\fB$empty_address_recipient\fR@\fB$myhostname\fR (default:
+mailer-daemon@hostname).
+
+Note 2: \fIuser@domain\fR or \fIuser+extension@domain\fR
+lookup be available up in Postfix 2.0 n' later.
+.SH "RESULT FORMAT"
+.na
+.nf
+.ad
+.fi
+Da lookup result iz of tha form \fItransport\fB:\fInexthop\fR.
+Da \fItransport\fR field specifies a mail delivery transport
+like fuckin \fBsmtp\fR or \fBlocal\fR. Da \fInexthop\fR field
+specifies where n' how tha fuck ta serve up mail.
+
+Da transhiznit field specifies tha name of a mail delivery transport
+(the first name of a mail delivery steez entry up in tha Postfix
+\fBmaster.cf\fR file).
+
+Da interpretation of tha nexthop field is transport
+dependent. In tha case of SMTP, specify a steez on a non-default
+port as \fIhost\fR:\fIservice\fR, n' disable MX (mail exchanger)
+DNS lookups wit [\fIhost\fR] or [\fIhost\fR]:\fIport\fR. Da [] form
+is required when you specify a IP address instead of a hostname.
+
+A null \fItransport\fR n' null \fInexthop\fR result means "do
+not chizzle": use tha delivery transhiznit n' nexthop shiznit
+that would be used when tha entire transhiznit table did not exist.
+
+A non-null \fItransport\fR field wit a null \fInexthop\fR field
+resets tha nexthop shiznit ta tha recipient domain.
+
+A null \fItransport\fR field wit non-null \fInexthop\fR field
+does not modify tha transhiznit shiznit.
+.SH "EXAMPLES"
+.na
+.nf
+.ad
+.fi
+In order ta serve up internal mail directly, while rockin a
+mail relay fo' all other mail, specify a null entry for
+internal destinations (do not chizzle tha delivery transhiznit or
+the nexthop shiznit) n' specify a wildcard fo' all other
+destinations.
+
+.nf
+     \fB\&my.domain    :\fR
+     \fB\&.my.domain   :\fR
+     \fB*            smtp:outbound-relay.my.domain\fR
+.fi
+
+In order ta bust mail fo' \fBexample.com\fR n' its subdomains
+via tha \fBuucp\fR transhiznit ta tha UUCP host named \fBexample\fR:
+
+.nf
+     \fBexample.com      uucp:example\fR
+     \fB\&.example.com     uucp:example\fR
+.fi
+
+When no nexthop host name is specified, tha destination domain
+name is used instead. Y'all KNOW dat shit, muthafucka! For example, tha followin directs mail for
+\fIuser\fR@\fBexample.com\fR via tha \fBslow\fR transhiznit ta a mail
+exchanger fo' \fBexample.com\fR.  Da \fBslow\fR transhiznit could be
+configured ta run at most one delivery process at a time:
+
+.nf
+     \fBexample.com      slow:\fR
+.fi
+
+When no transhiznit is specified, Postfix uses tha transhiznit that
+matches tha address domain class (see DESCRIPTION
+above).  Da followin sendz all mail fo' \fBexample.com\fR n' its
+subdomains ta host \fBgateway.example.com\fR:
+
+.nf
+     \fBexample.com      :[gateway.example.com]\fR
+     \fB\&.example.com     :[gateway.example.com]\fR
+.fi
+
+In tha above example, tha [] suppress MX lookups.
+This prevents mail routin loops when yo' machine is primary MX
+host fo' \fBexample.com\fR.
+
+In tha case of delivery via SMTP, one may specify
+\fIhostname\fR:\fIservice\fR instead of just a host:
+
+.nf
+     \fBexample.com      smtp:bar.example:2025\fR
+.fi
+
+This directs mail fo' \fIuser\fR@\fBexample.com\fR ta host \fBbar.example\fR
+port \fB2025\fR. Instead of a numerical port a symbolic name may be
+used. Y'all KNOW dat shit, muthafucka! Specify [] round tha hostname if MX lookups must be disabled.
+
+Da error maila can be used ta bounce mail:
+
+.nf
+     \fB\&.example.com     error:mail fo' *.example.com aint deliverable\fR
+.fi
+
+This causes all mail fo' \fIuser\fR@\fIanything\fB.example.com\fR
+to be bounced.
+.SH "REGULAR EXPRESSION TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when tha table
+is given up in tha form of regular expressions. For a thugged-out description of
+regular expression lookup table syntax, peep \fBregexp_table\fR(5)
+or \fBpcre_table\fR(5).
+
+Each pattern be a regular expression dat be applied ta tha entire
+address bein looked up. Thus, \fIsome.domain.hierarchy\fR is not
+looked up via its parent domains,
+nor is \fIuser+foo@domain\fR looked up as \fIuser@domain\fR.
+
+Patterns is applied up in tha order as specified up in tha table, until a
+pattern is found dat matches tha search string.
+
+Da \fBtrivial-rewrite\fR(8) server disallows regular
+expression substitution of $1 etc. up in regular expression
+lookup tables, cuz dat could open a securitizzle hole
+(Postfix version 2.3 n' later).
+.SH "TCP-BASED TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when lookups
+are pimped up ta a TCP-based server n' shit. For a thugged-out description of tha TCP
+client/server lookup protocol, peep \fBtcp_table\fR(5).
+This feature aint available up ta n' includin Postfix version 2.4.
+
+Each lookup operation uses tha entire recipient address once.  Thus,
+\fIsome.domain.hierarchy\fR aint looked up via its parent domains,
+nor is \fIuser+foo@domain\fR looked up as \fIuser@domain\fR.
+
+Results is tha same as wit indexed file lookups.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da followin \fBmain.cf\fR parametas is especially relevant.
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP \fBempty_address_recipient\fR
+Da address dat is looked up instead of tha null sender address.
+.IP \fBparent_domain_matches_subdomains\fR
+List of Postfix features dat use \fIdomain.tld\fR patterns
+to match \fIsub.domain.tld\fR (as opposed to
+requirin \fI.domain.tld\fR patterns).
+.IP \fBtransport_maps\fR
+List of transhiznit lookup tables.
+.SH "SEE ALSO"
+.na
+.nf
+trivial-rewrite(8), rewrite n' resolve addresses
+master(5), master.cf file format
+postconf(5), configuration parameters
+postmap(1), Postfix lookup table manager
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+ADDRESS_REWRITING_README, address rewritin guide
+DATABASE_README, Postfix lookup table overview
+FILTER_README, external content filter
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

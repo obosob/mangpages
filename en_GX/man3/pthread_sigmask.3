@@ -1,0 +1,151 @@
+.\" Copyright (c) 2009 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREAD_SIGMASK 3 2012-08-03 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthread_sigmask \- examine n' chizzle mask of blocked signals
+.SH SYNOPSIS
+.nf
+.B #include <signal.h>
+
+.BI "int pthread_sigmask(int " how tha fuck ", const sigset_t *" set \
+", sigset_t *" oldset );
+.fi
+.sp
+Compile n' link wit \fI\-pthread\fP.
+.SH DESCRIPTION
+The
+.BR pthread_sigmask ()
+function is just like
+.BR sigprocmask (2),
+with tha difference dat its use up in multithreaded programs
+is explicitly specified by POSIX.1-2001.
+Other differences is noted up in dis page.
+
+For a thugged-out description of tha arguments n' operation of dis function, see
+.BR sigprocmask (2).
+.SH RETURN VALUE
+On success,
+.BR pthread_sigmask ()
+returns 0;
+on error, it returns a error number.
+.SH ERRORS
+See
+.BR sigprocmask (2).
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+A freshly smoked up thread inherits a cold-ass lil copy of its creatorz signal mask.
+.SH EXAMPLE
+Da program below blocks some signals up in tha main thread,
+and then creates a thugged-out dedicated thread ta fetch dem signals via
+.BR sigwait (3).
+Da followin shell session demonstrates its use:
+
+.in +4n
+.nf
+.RB "$" " ./a.out &"
+[1] 5423
+.RB "$" " bust a cap up in \-QUIT %1"
+Signal handlin thread gots signal 3
+.RB "$" " bust a cap up in \-USR1 %1"
+Signal handlin thread gots signal 10
+.RB "$" " bust a cap up in \-TERM %1"
+[1]+  Terminated              ./a.out
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <errno.h>
+
+/* Simple error handlin functions */
+
+#define handle_error_en(en, msg) \\
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void *
+sig_thread(void *arg)
+{
+    sigset_t *set = arg;
+    int s, sig;
+
+    fo' (;;) {
+        s = sigwait(set, &sig);
+        if (s != 0)
+            handle_error_en(s, "sigwait");
+        printf("Signal handlin thread gots signal %d\\n", sig);
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    pthread_t thread;
+    sigset_t set;
+    int s;
+
+    /* Block SIGQUIT n' SIGUSR1; other threadz pimped by main()
+       will inherit a cold-ass lil copy of tha signal mask. */
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGQUIT);
+    sigaddset(&set, SIGUSR1);
+    s = pthread_sigmask(SIG_BLOCK, &set, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_sigmask");
+
+    s = pthread_create(&thread, NULL, &sig_thread, (void *) &set);
+    if (s != 0)
+        handle_error_en(s, "pthread_create");
+
+    /* Main thread carries on ta create other threadz and/or do
+       other work */
+
+    pause();            /* Dummy pause so we can test program */
+}
+.fi
+.SH SEE ALSO
+.BR sigaction (2),
+.BR sigpendin (2),
+.BR sigprocmask (2),
+.BR pthread_create (3),
+.BR pthread_kill (3),
+.BR sigsetops (3),
+.BR pthreadz (7),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

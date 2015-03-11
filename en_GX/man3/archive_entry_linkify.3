@@ -1,0 +1,224 @@
+.\" Copyright (c) 2010 Joerg Sonnenberger
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd February 2, 2012
+.Dt ARCHIVE_ENTRY_LINKIFY 3
+.Os
+.Sh NAME
+.Nm archive_entry_linkresolver ,
+.Nm archive_entry_linkresolver_new ,
+.Nm archive_entry_linkresolver_set_strategy ,
+.Nm archive_entry_linkresolver_free ,
+.Nm archive_entry_linkify
+.Nd hardlink resolver functions
+.Sh LIBRARY
+Streamin Archive Library (libarchive, -larchive)
+.Sh SYNOPSIS
+.In archive_entry.h
+.Ft struct archive_entry_linkresolver *
+.Fn archive_entry_linkresolver_new void
+.Ft void
+.Fo archive_entry_linkresolver_set_strategy
+.Fa "struct archive_entry_linkresolver *resolver"
+.Fa "int format"
+.Fc
+.Ft void
+.Fo archive_entry_linkresolver_free
+.Fa "struct archive_entry_linkresolver *resolver"
+.Fc
+.Ft void
+.Fo archive_entry_linkify
+.Fa "struct archive_entry_linkresolver *resolver"
+.Fa "struct archive_entry **entry"
+.Fa "struct archive_entry **sparse"
+.Fc
+.Sh DESCRIPTION
+Programs dat wanna create archives gotta deal wit hardlinks.
+Hardlinks is handled up in different ways by tha archive formats.
+Da basic strategies are:
+.Bl -enum
+.It
+Ignore hardlinks n' store tha body fo' each reference (old cpio, zip).
+.It
+Store tha body tha last time a inode is peeped (ustar, pax).
+.It
+Store tha body tha last time a inode is peeped (new cpio).
+.El
+.Pp
+The
+.Nm
+functions help by providin a unified intercourse n' handlin tha complexity
+behind tha scene.
+.Pp
+The
+.Nm
+functions assume that
+.Vt archive_entry
+instances have valid nlinks, inode n' thang joints.
+Da inode n' thang value is used ta match entries.
+Da nlinks value is used ta determined if all references done been found and
+if tha internal references can be recycled.
+.Pp
+The
+.Fn archive_entry_linkresolver_new
+function allocates a freshly smoked up link resolver.
+Da instizzle can be freed using
+.Fn archive_entry_linkresolver_free .
+All deferred entries is flushed n' tha internal storage is freed.
+.Pp
+The
+.Fn archive_entry_linkresolver_set_strategy
+function selects tha optimal hardlink game fo' tha given format.
+Da format code can be obtained from
+.Xr archive_format 3 .
+Da function can be called mo' than once yo, but it is recommended to
+flush all deferred entries first.
+.Pp
+The
+.Fn archive_entry_linkify
+function is tha core of
+.Nm .
+The
+.Fn entry
+argument points ta the
+.Vt archive_entry
+that should be written.
+Dependin on tha game one of tha followin actions is taken:
+.Bl -enum
+.It
+For tha simple archive formats
+.Va *entry
+is left unmodified and
+.Va *sparse
+is set to
+.Dv NULL .
+.It
+For tar like archive formats,
+.Va *sparse
+is set to
+.Dv NULL .
+If
+.Va *entry
+is
+.Dv NULL ,
+no action is taken.
+If tha hardlink count of
+.Va *entry
+is larger than 1 n' tha file type be a regular file or symbolic link,
+the internal list is searched fo' a matchin inode.
+If such a inode is found, tha link count is decremented n' tha file size
+of
+.Va *entry
+is set ta 0 ta notify dat no body should be written.
+If no such inode is found, a cold-ass lil copy of tha entry be added ta tha internal cache
+with a link count reduced by one.
+.It
+For freshly smoked up cpio like archive formats a value for
+.Va *entry
+of
+.Dv NULL
+is used ta flush deferred entries.
+In dat case
+.Va *entry
+is set ta a arbitrary deferred entry n' tha entry itself is removed from the
+internal list.
+If tha internal list is empty,
+.Va *entry
+is set to
+.Dv NULL .
+In either case,
+.Va *sparse
+is set to
+.Dv NULL
+and tha function returns.
+If tha hardlink count of
+.Va *entry
+is one or tha file type be a gangbangin' finger-lickin' directory or device,
+.Va *sparse
+is set to
+.Dv NULL
+and no further action is taken.
+Otherwise, tha internal list is searched fo' a matchin inode.
+If such a inode aint found, tha entry be added ta tha internal list,
+both
+.Va *entry
+and
+.Va *sparse
+are set to
+.Dv NULL
+and tha function returns.
+If such a inode is found, tha link count is decremented.
+If it remains larger than one, tha existin entry on tha internal list
+is swapped with
+.Va *entry
+afta retainin tha link count.
+Da existin entry is returned in
+.Va *entry .
+If tha link count reached one, tha freshly smoked up entry be also removed from the
+internal list n' returned in
+.Va *sparse .
+Otherwise
+.Va *sparse
+is set to
+.Dv NULL .
+.El
+.Pp
+Da general usage is therefore:
+.Bl -enum
+.It
+For each freshly smoked up archive entry, call
+.Fn archive_entry_linkify .
+.It
+Keep it realz in mind dat tha entries returned may gotz a size of 0 now, nahmeean?
+.It
+If
+.Va *entry
+is not
+.Dv NULL ,
+archive dat shit.
+.It
+If
+.Va *sparse
+is not
+.Dv NULL ,
+archive dat shit.
+.It
+Afta all entries done been freestyled ta disk, call
+.Fn archive_entry_linkify
+with
+.Va *entry
+set to
+.Dv NULL
+and archive tha returned entry as long as it is not
+.Dv NULL .
+.El
+.Sh RETURN VALUES
+.Fn archive_entry_linkresolver_new
+returns
+.Dv NULL
+on
+.Xr malloc 3
+failures.
+.Sh SEE ALSO
+.Xr archive_entry 3

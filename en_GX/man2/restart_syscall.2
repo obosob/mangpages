@@ -1,0 +1,138 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" http://thread.gmane.org/gmane.linux.kernel/76552/focus=76803
+.\" From: Linus Torvaldz <torvaldz <at> transmeta.com>
+.\" Subject: Re: [PATCH] compatibilitizzle syscall layer (lets try again)
+.\" Shitgroups: gmane.linux.kernel
+.\" Date: 2002-12-05 02:51:12 GMT
+.\"
+.\" See also Section 11.3.3 of Understandin tha Linux Kernel, 3rd edition
+.\"
+.TH RESTART_SYSCALL 2 2013-07-30 "Linux" "Linux Programmerz Manual"
+.SH NAME
+restart_syscall \- restart a system call afta interruption by a stop signal
+.SH SYNOPSIS
+.B int restart_syscall(void);
+
+.IR Note :
+There is no glibc wrapper fo' dis system call; peep NOTES.
+.SH DESCRIPTION
+The
+.BR restart_syscall ()
+system call is used ta restart certain system calls
+afta a process dat was stopped by a signal (e.g.,
+.BR SIGSTOP
+or
+.BR SIGTSTP )
+is lata resumed afta receivin a
+.BR SIGCONT
+signal.
+This system call is designed only fo' internal use by tha kernel.
+
+.BR restart_syscall ()
+is used fo' restartin only dem system calls that,
+when restarted, should adjust they time-related parameters\(emnamely
+.BR poll (2)
+(since Linux 2.6.24),
+.BR nanosleep (2)
+(since Linux 2.6),
+.BR clock_nanosleep (2)
+(since Linux 2.6),
+and
+.BR futex (2),
+when employed wit the
+.BR FUTEX_WAIT
+(since Linux 2.6.22)
+and
+.BR FUTEX_WAIT_BITSET
+(since Linux 2.6.31)
+operations.
+.\" These system calls correspond ta tha special internal errno value
+.\" ERESTART_RESTARTBLOCK. Each of tha system calls has a "restart"
+.\" helper function dat is invoked by restart_syscall().
+.BR restart_syscall ()
+restarts tha interrupted system call wit a
+time argument dat is suitably adjusted ta account fo' the
+time dat has already elapsed (includin tha time where tha process
+was stopped by a signal).
+Without the
+.BR restart_syscall ()
+mechanism, restartin these system calls would not erectly deduce the
+already elapsed time when tha process continued execution.
+.SH RETURN VALUE
+Da return value of
+.BR restart_syscall ()
+is tha return value of whatever system call is bein restarted.
+.SH ERRORS
+.I errno
+is set as per tha errors fo' whatever system call is bein restarted by
+.BR restart_syscall ().
+.SH VERSIONS
+The
+.BR restart_syscall ()
+system call is present since Linux 2.6.
+.SH CONFORMING TO
+This system call is Linux specific.
+.SH NOTES
+There is no glibc wrapper fo' dis system call,
+because it is intended fo' use only by tha kernel and
+should never be called by applications.
+
+From user space, tha operation of
+.BR restart_syscall (2)
+is largely invisible:
+to tha process dat made tha system call dat is restarted,
+it appears as though dat system call executed and
+returned up in tha usual fashion.
+.\"
+.\" FIXME
+.\" There is one oddnizz up in tha implementation though, wit respect to
+.\" nanosleep() (and probably also clock_nanosleep()). Da scenario
+.\" be as bigs up:
+.\"    1. Right back up in yo muthafuckin ass. Start a nanosleep() fo' (say) 30 seconds,
+.\"    2. Right back up in yo muthafuckin ass. Quit tha process wit (say) SIGTSTP (^Z).
+.\"    3. Resume tha process wit SIGCONT,
+.\"    4. Upon return, tha 'rem' argument of nanosleep() will contain the
+.\"       remainin unslept time **at tha time when SIGTSTP was delivered**.
+.\" Da behavior at point 4 is odd yo, but don't violate tha standards, which
+.\" specify tha treatment of 'rem' only when tha system call returns with
+.\" tha error EINTR (i.e., tha call was interrupted by a signal handlez).
+.\"
+.SH SEE ALSO
+.BR sigreturn (2),
+.BR sigaction (2),
+.BR signal (7)
+.\" FIXME select(2) should probably git tha restart_syscall() treatment:
+.\"     If a select() call is suspended by stop-sig+SIGCONT, tha time
+.\"     dropped suspended is *not* deducted when tha select() is restarted.
+.\" FIXME: check whether recvmmsg() handlez stop-sig+SIGCONT properly.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,217 @@
+.TH TLSPROXY 8 
+.ad
+.fi
+.SH NAME
+tlsproxy
+\-
+Postfix TLS proxy
+.SH "SYNOPSIS"
+.na
+.nf
+\fBtlsproxy\fR [generic Postfix daemon options]
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBtlsproxy\fR(8) server implements a server-side TLS
+proxy. Well shiiiit, it is used by \fBpostscreen\fR(8) ta rap SMTP-over-TLS
+with remote SMTP clients dat is not whitelisted (including
+clients whose whitelist status has expired),
+but it should also work fo' non-SMTP protocols.
+
+Although one \fBtlsproxy\fR(8) process can serve multiple
+sessions all up in tha same time, it aint nuthin but a phat scam ta allow the
+number of processes ta increase wit load, so dat the
+service remains responsive.
+.SH "PROTOCOL EXAMPLE"
+.na
+.nf
+.ad
+.fi
+Da example below concerns \fBpostscreen\fR(8) yo. However,
+the \fBtlsproxy\fR(8) server be agnostic of tha application
+protocol, n' tha example is easily adapted ta other
+applications.
+
+Afta receivin a valid remote SMTP client STARTTLS command,
+the \fBpostscreen\fR(8) server sendz tha remote SMTP client
+endpoint string, tha axed role (server), n' the
+axed timeout ta \fBtlsproxy\fR(8).  \fBpostscreen\fR(8)
+then receives a "TLS available" indication from \fBtlsproxy\fR(8).
+If tha TLS steez be available, \fBpostscreen\fR(8) sends
+the remote SMTP client file descriptor ta \fBtlsproxy\fR(8),
+and sendz tha plaintext 220 greetin ta tha remote SMTP
+client.  This triggers TLS negotiations between tha remote
+SMTP client n' \fBtlsproxy\fR(8).  Upon completion of the
+TLS-level handshake, \fBtlsproxy\fR(8) translates between
+plaintext from/to \fBpostscreen\fR(8) n' ciphertext to/from
+the remote SMTP client.
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da \fBtlsproxy\fR(8) server is moderately security-sensitive.
+It talks ta untrusted clients on tha network. Da process
+can be run chrooted at fixed low privilege.
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Changes ta \fBmain.cf\fR is not picked up automatically,
+as \fBtlsproxy\fR(8) processes may run fo' a long-ass time
+dependin on mail server load. Y'all KNOW dat shit, muthafucka!  Use tha command "\fBpostfix
+reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.SH "STARTTLS SUPPORT CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBtlsproxy_tls_CAfile ($smtpd_tls_CAfile)\fR"
+A file containin (PEM format) CA certificatez of root CAs
+trusted ta sign either remote SMTP client certificates or intermediate
+CA certificates.
+.IP "\fBtlsproxy_tls_CApath ($smtpd_tls_CApath)\fR"
+A directory containin (PEM format) CA certificatez of root CAs
+trusted ta sign either remote SMTP client certificates or intermediate
+CA certificates.
+.IP "\fBtlsproxy_tls_always_issue_session_idz ($smtpd_tls_always_issue_session_ids)\fR"
+Force tha Postfix \fBtlsproxy\fR(8) server ta issue a TLS session id,
+even when TLS session cachin is turned off.
+.IP "\fBtlsproxy_tls_ask_ccert ($smtpd_tls_ask_ccert)\fR"
+Ask a remote SMTP client fo' a cold-ass lil client certificate.
+.IP "\fBtlsproxy_tls_ccert_verifydepth ($smtpd_tls_ccert_verifydepth)\fR"
+Da verification depth fo' remote SMTP client certificates.
+.IP "\fBtlsproxy_tls_cert_file ($smtpd_tls_cert_file)\fR"
+File wit tha Postfix \fBtlsproxy\fR(8) server RSA certificate up in PEM
+format.
+.IP "\fBtlsproxy_tls_ciphers ($smtpd_tls_ciphers)\fR"
+Da minimum TLS cipher grade dat tha Postfix \fBtlsproxy\fR(8) server
+will use wit opportunistic TLS encryption.
+.IP "\fBtlsproxy_tls_dcert_file ($smtpd_tls_dcert_file)\fR"
+File wit tha Postfix \fBtlsproxy\fR(8) server DSA certificate up in PEM
+format.
+.IP "\fBtlsproxy_tls_dh1024_param_file ($smtpd_tls_dh1024_param_file)\fR"
+File wit DH parametas dat tha Postfix \fBtlsproxy\fR(8) server
+should use wit EDH ciphers.
+.IP "\fBtlsproxy_tls_dh512_param_file ($smtpd_tls_dh512_param_file)\fR"
+File wit DH parametas dat tha Postfix \fBtlsproxy\fR(8) server
+should use wit EDH ciphers.
+.IP "\fBtlsproxy_tls_dkey_file ($smtpd_tls_dkey_file)\fR"
+File wit tha Postfix \fBtlsproxy\fR(8) server DSA private key up in PEM
+format.
+.IP "\fBtlsproxy_tls_eccert_file ($smtpd_tls_eccert_file)\fR"
+File wit tha Postfix \fBtlsproxy\fR(8) server ECDSA certificate in
+PEM format.
+.IP "\fBtlsproxy_tls_eckey_file ($smtpd_tls_eckey_file)\fR"
+File wit tha Postfix \fBtlsproxy\fR(8) server ECDSA private key in
+PEM format.
+.IP "\fBtlsproxy_tls_eecdh_grade ($smtpd_tls_eecdh_grade)\fR"
+Da Postfix \fBtlsproxy\fR(8) server securitizzle grade fo' ephemeral
+elliptic-curve Diffie-Hellman (EECDH) key exchange.
+.IP "\fBtlsproxy_tls_exclude_ciphers ($smtpd_tls_exclude_ciphers)\fR"
+List of ciphers or cipher types ta exclude from tha \fBtlsproxy\fR(8)
+server cipher list at all TLS securitizzle levels.
+.IP "\fBtlsproxy_tls_fingerprint_digest ($smtpd_tls_fingerprint_digest)\fR"
+Da message digest algorithm ta construct remote SMTP
+client-certificate
+fingerprints.
+.IP "\fBtlsproxy_tls_key_file ($smtpd_tls_key_file)\fR"
+File wit tha Postfix \fBtlsproxy\fR(8) server RSA private key up in PEM
+format.
+.IP "\fBtlsproxy_tls_loglevel ($smtpd_tls_loglevel)\fR"
+Enable additionizzle Postfix \fBtlsproxy\fR(8) server loggin of TLS
+activity.
+.IP "\fBtlsproxy_tls_mandatory_ciphers ($smtpd_tls_mandatory_ciphers)\fR"
+Da minimum TLS cipher grade dat tha Postfix \fBtlsproxy\fR(8) server
+will use wit mandatory TLS encryption.
+.IP "\fBtlsproxy_tls_mandatory_exclude_ciphers ($smtpd_tls_mandatory_exclude_ciphers)\fR"
+Additionizzle list of ciphers or cipher types ta exclude from the
+\fBtlsproxy\fR(8) server cipher list at mandatory TLS securitizzle levels.
+.IP "\fBtlsproxy_tls_mandatory_protocols ($smtpd_tls_mandatory_protocols)\fR"
+Da SSL/TLS protocols accepted by tha Postfix \fBtlsproxy\fR(8) server
+with mandatory TLS encryption.
+.IP "\fBtlsproxy_tls_protocols ($smtpd_tls_protocols)\fR"
+List of TLS protocols dat tha Postfix \fBtlsproxy\fR(8) server will
+exclude or include wit opportunistic TLS encryption.
+.IP "\fBtlsproxy_tls_req_ccert ($smtpd_tls_req_ccert)\fR"
+With mandatory TLS encryption, require a trusted remote SMTP
+client certificate up in order ta allow TLS connections ta proceed.
+.IP "\fBtlsproxy_tls_security_level ($smtpd_tls_security_level)\fR"
+Da SMTP TLS securitizzle level fo' tha Postfix \fBtlsproxy\fR(8) server;
+when a non-empty value is specified, dis overrides tha obsolete
+parametas smtpd_use_tls n' smtpd_enforce_tls.
+.IP "\fBtlsproxy_tls_session_cache_timeout ($smtpd_tls_session_cache_timeout)\fR"
+Da expiration time of Postfix \fBtlsproxy\fR(8) server TLS session
+cache shiznit.
+.SH "OBSOLETE STARTTLS SUPPORT CONTROLS"
+.na
+.nf
+.ad
+.fi
+These parametas is supported fo' compatibilitizzle with
+\fBsmtpd\fR(8) legacy parameters.
+.IP "\fBtlsproxy_use_tls ($smtpd_use_tls)\fR"
+Opportunistic TLS: announce STARTTLS support ta remote SMTP clients,
+but do not require dat clients use TLS encryption.
+.IP "\fBtlsproxy_enforce_tls ($smtpd_enforce_tls)\fR"
+Mandatory TLS: announce STARTTLS support ta remote SMTP clients, and
+require dat clients use TLS encryption.
+.SH "RESOURCE CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBtlsproxy_watchdog_timeout (10s)\fR"
+How tha fuck much time a \fBtlsproxy\fR(8) process may take ta process local
+or remote I/O before it is terminated by a funky-ass built-in watchdog timer.
+.SH "MISCELLANEOUS CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.SH "SEE ALSO"
+.na
+.nf
+postscreen(8), Postfix zombie blocker
+smtpd(8), Postfix SMTP server
+postconf(5), configuration parameters
+syslogd(5), system logging
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+.ad
+.fi
+This steez was introduced wit Postfix version 2.8.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

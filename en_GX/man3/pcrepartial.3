@@ -1,0 +1,467 @@
+.TH PCREPARTIAL 3 "20 February 2013" "PCRE 8.33"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "PARTIAL MATCHING IN PCRE"
+.rs
+.sp
+In aiiight use of PCRE, if tha subject strang dat is passed ta a matching
+function matches as far as it goes yo, but is too short ta match tha entire
+pattern, PCRE_ERROR_NOMATCH is returned. Y'all KNOW dat shit, muthafucka! There is circumstances where it might
+be helpful ta distinguish dis case from other cases up in which there is no
+match.
+.P
+Consider, fo' example, a application where a human is required ta type up in data
+for a gangbangin' field wit specific formattin requirements fo' realz. An example might be a thugged-out date
+in tha form \fIddmmmyy\fP, defined by dis pattern:
+.sp
+  ^\ed?\ed(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\ed\ed$
+.sp
+If tha application sees tha userz keystrokes one by one, n' can check that
+what has been typed so far is potentially valid, it be able ta raise a error
+as soon as a gangbangin' fuck up is made, by beepin n' not reflectin tha characta that
+has been typed, fo' example. This immediate feedback is likely ta be a funky-ass better
+user intercourse than a cold-ass lil check dat is delayed until tha entire strang has been
+entered. Y'all KNOW dat shit, muthafucka! Partial matchin can also be useful when tha subject strang is hella
+long n' aint all available at once.
+.P
+PCRE supports partial matchin by meanz of tha PCRE_PARTIAL_SOFT and
+PCRE_PARTIAL_HARD options, which can be set when callin any of tha matching
+functions. For backwardz compatibility, PCRE_PARTIAL be a synonym for
+PCRE_PARTIAL_SOFT. Da essential difference between tha two options is whether
+or not a partial match is preferred ta a alternatizzle complete match, though
+the details differ between tha two typez of matchin function. I aint talkin' bout chicken n' gravy biatch. If both options
+are set, PCRE_PARTIAL_HARD takes precedence.
+.P
+If you wanna use partial matchin wit just-in-time optimized code, you must
+call \fBpcre_study()\fP, \fBpcre16_study()\fP or  \fBpcre32_study()\fP wit one
+or both of these options:
+.sp
+  PCRE_STUDY_JIT_PARTIAL_SOFT_COMPILE
+  PCRE_STUDY_JIT_PARTIAL_HARD_COMPILE
+.sp
+PCRE_STUDY_JIT_COMPILE should also be set if yo ass is goin ta run non-partial
+matches on tha same pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. If tha appropriate JIT study mode has not been set
+for a match, tha interpretizzle matchin code is used.
+.P
+Settin a partial matchin option disablez two of PCREz standard
+optimizations. PCRE rethugz tha last literal data unit up in a pattern, and
+abandons matchin immediately if it aint present up in tha subject string. This
+optimization cannot be used fo' a subject strang dat might match only
+partially. If tha pattern was studied, PCRE knows tha minimum length of a
+matchin string, n' do not bother ta run tha matchin function on shorter
+strings. This optimization be also disabled fo' partial matching.
+.
+.
+.SH "PARTIAL MATCHING USING pcre_exec() OR pcre[16|32]_exec()"
+.rs
+.sp
+A partial match occurs durin a cold-ass lil call ta \fBpcre_exec()\fP or
+\fBpcre[16|32]_exec()\fP when tha end of tha subject strang is reached
+successfully yo, but matchin cannot continue cuz mo' charactas is needed.
+But fuck dat shiznit yo, tha word on tha street is dat at least one characta up in tha subject must done been inspected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. This
+characta need not form part of tha final matched string; lookbehind assertions
+and tha \eK escape sequence provide wayz of inspectin charactas before the
+start of a matched substring. Da requirement fo' inspectin at least one
+characta exists cuz a empty strang can always be matched; without such a
+restriction there would always be a partial match of a empty strang all up in tha end
+of tha subject.
+.P
+If there be at least two slots up in tha offsets vector when a partial match is
+returned, tha straight-up original gangsta slot is set ta tha offset of tha earliest characta that
+was inspected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. For convenience, tha second offset points ta tha end of the
+subject so dat a substrin can easily be identified. Y'all KNOW dat shit, muthafucka! If there be at least
+three slots up in tha offsets vector, tha third slot is set ta tha offset of the
+characta where matchin started.
+.P
+For tha majoritizzle of patterns, tha contentz of tha straight-up original gangsta n' third slots will be
+the same. But fuck dat shiznit yo, tha word on tha street is dat fo' patterns dat contain lookbehind assertions, or begin
+with \eb or \eB, charactas before tha one where matchin started may have been
+inspected while carryin up tha match. For example, consider dis pattern:
+.sp
+  /(?<=abc)123/
+.sp
+This pattern matches "123" yo, but only if it is preceded by "abc". If tha subject
+strin is "xyzabc12", tha straight-up original gangsta two offsets afta a partial match is fo' the
+substrin "abc12", cuz all these charactas was inspected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. But fuck dat shiznit yo, tha word on tha street is dat the
+third offset is set ta 6, cuz dat is tha offset where matchin fuckin started.
+.P
+What happens when a partial match is identified dependz on which of tha two
+partial matchin options is set.
+.
+.
+.SS "PCRE_PARTIAL_SOFT WITH pcre_exec() OR pcre[16|32]_exec()"
+.rs
+.sp
+If PCRE_PARTIAL_SOFT is set when \fBpcre_exec()\fP or \fBpcre[16|32]_exec()\fP
+identifies a partial match, tha partial match is remembered yo, but matching
+continues as normal, n' other alternatives up in tha pattern is tried. Y'all KNOW dat shit, muthafucka! If no
+complete match can be found, PCRE_ERROR_PARTIAL is returned instead of
+PCRE_ERROR_NOMATCH.
+.P
+This option is "soft" cuz it prefers a cold-ass lil complete match over a partial match.
+All tha various matchin shit up in a pattern behave as if tha subject strang is
+potentially complete. For example, \ez, \eZ, n' $ match all up in tha end of the
+subject, as normal, n' fo' \eb n' \eB tha end of tha subject is treated as a
+non-alphanumeric.
+.P
+If there is mo' than one partial match, tha straight-up original gangsta one dat was found provides
+the data dat is returned. Y'all KNOW dat shit, muthafucka! Consider dis pattern:
+.sp
+  /123\ew+X|dogY/
+.sp
+If dis is matched against tha subject strang "abc123dog", both
+alternatives fail ta match yo, but tha end of tha subject is reached during
+matching, so PCRE_ERROR_PARTIAL is returned. Y'all KNOW dat shit, muthafucka! Da offsets is set ta 3 n' 9,
+identifyin "123dog" as tha straight-up original gangsta partial match dat was found. Y'all KNOW dat shit, muthafucka! (In this
+example, there be two partial matches, cuz "dog" on its own partially
+matches tha second alternative.)
+.
+.
+.SS "PCRE_PARTIAL_HARD WITH pcre_exec() OR pcre[16|32]_exec()"
+.rs
+.sp
+If PCRE_PARTIAL_HARD is set fo' \fBpcre_exec()\fP or \fBpcre[16|32]_exec()\fP,
+PCRE_ERROR_PARTIAL is returned as soon as a partial match is found, without
+continuin ta search fo' possible complete matches. This option is "hard"
+because it prefers a earlier partial match over a lata complete match. For
+this reason, tha assumption is made dat tha end of tha supplied subject string
+may not be tha legit end of tha available data, n' so, if \ez, \eZ, \eb, \eB,
+or $ is encountered all up in tha end of tha subject, tha result is
+PCRE_ERROR_PARTIAL, provided dat at least one characta up in tha subject has
+been inspected.
+.P
+Settin PCRE_PARTIAL_HARD also affects tha way UTF-8 n' UTF-16
+subject strings is checked fo' validity. Normally, a invalid sequence
+causes tha error PCRE_ERROR_BADUTF8 or PCRE_ERROR_BADUTF16. But fuck dat shiznit yo, tha word on tha street is dat up in the
+special case of a truncated characta all up in tha end of tha subject,
+PCRE_ERROR_SHORTUTF8 or PCRE_ERROR_SHORTUTF16 is returned when
+PCRE_PARTIAL_HARD is set.
+.
+.
+.SS "Comparin hard n' soft partial matching"
+.rs
+.sp
+Da difference between tha two partial matchin options can be illustrated by a
+pattern such as:
+.sp
+  /dog(sbody)?/
+.sp
+This matches either "dog" or "dawgsbody", greedily (that is, it prefers the
+longer strang if possible). If it is matched against tha strang "dog" with
+PCRE_PARTIAL_SOFT, it yieldz a cold-ass lil complete match fo' "dog". But fuck dat shiznit yo, tha word on tha street is dat if
+PCRE_PARTIAL_HARD is set, tha result is PCRE_ERROR_PARTIAL. On tha other hand,
+if tha pattern is made ungreedy tha result is different:
+.sp
+  /dog(sbody)??/
+.sp
+In dis case tha result be always a cold-ass lil complete match cuz dat is found first,
+and matchin never continues afta findin a cold-ass lil complete match. Well shiiiit, it might be easier
+to follow dis explanation by thankin of tha two patterns like this:
+.sp
+  /dog(sbody)?/    is tha same ol' dirty as  /dawgsbody|dog/
+  /dog(sbody)??/   is tha same ol' dirty as  /dog|dawgsbody/
+.sp
+Da second pattern aint NEVER gonna match "dawgsbody", cuz it will always find the
+shorta match first.
+.
+.
+.SH "PARTIAL MATCHING USING pcre_dfa_exec() OR pcre[16|32]_dfa_exec()"
+.rs
+.sp
+Da DFA functions move along tha subject strang characta by character, without
+backtracking, searchin fo' all possible matches simultaneously. If tha end of
+the subject is reached before tha end of tha pattern, there is tha possibility
+of a partial match, again n' again n' again provided dat at least one characta has been
+inspected.
+.P
+When PCRE_PARTIAL_SOFT is set, PCRE_ERROR_PARTIAL is returned only if there
+have been no complete matches. Otherwise, tha complete matches is returned.
+But fuck dat shiznit yo, tha word on tha street is dat if PCRE_PARTIAL_HARD is set, a partial match takes precedence over any
+complete matches. Da portion of tha strang dat was inspected when tha longest
+partial match was found is set as tha straight-up original gangsta matchin string, provided there are
+at least two slots up in tha offsets vector.
+.P
+Because tha DFA functions always search fo' all possible matches, n' there is
+no difference between greedy n' ungreedy repetition, they behaviour is
+different from tha standard functions when PCRE_PARTIAL_HARD is set. Consider
+the strang "dog" matched against tha ungreedy pattern shown above:
+.sp
+  /dog(sbody)??/
+.sp
+Whereas tha standard functions stop as soon as they find tha complete match for
+"dog", tha DFA functions also find tha partial match fo' "dawgsbody", n' so
+return dat when PCRE_PARTIAL_HARD is set.
+.
+.
+.SH "PARTIAL MATCHING AND WORD BOUNDARIES"
+.rs
+.sp
+If a pattern endz wit one of sequences \eb or \eB, which test fo' word
+boundaries, partial matchin wit PCRE_PARTIAL_SOFT can give counter-intuitive
+results, n' you can put dat on yo' toast. Consider dis pattern:
+.sp
+  /\ebcat\eb/
+.sp
+This matches "cat", provided there be a word boundary at either end yo, but it ain't no stoppin cause I be still poppin'. If the
+subject strang is "the cat", tha comparison of tha final "t" wit a gangbangin' following
+characta cannot take place, so a partial match is found. Y'all KNOW dat shit, muthafucka! But fuck dat shiznit yo, tha word on tha street is dat normal
+matchin carries on, n' \eb matches all up in tha end of tha subject when tha last
+characta be a letter, so a cold-ass lil complete match is found. Y'all KNOW dat shit, muthafucka! Da result, therefore, is
+\fInot\fP PCRE_ERROR_PARTIAL. Usin PCRE_PARTIAL_HARD up in dis case do yield
+PCRE_ERROR_PARTIAL, cuz then tha partial match takes precedence.
+.
+.
+.SH "FORMERLY RESTRICTED PATTERNS"
+.rs
+.sp
+For releasez of PCRE prior ta 8.00, cuz of tha way certain internal
+optimizations was implemented up in tha \fBpcre_exec()\fP function, the
+PCRE_PARTIAL option (predecessor of PCRE_PARTIAL_SOFT) could not be used with
+all patterns. From release 8.00 onwards, tha restrictions no longer apply, and
+partial matchin wit can be axed fo' any pattern.
+.P
+Items dat was formerly restricted was repeated single charactas and
+repeated metasequences. If PCRE_PARTIAL was set fo' a pattern dat did not
+conform ta tha restrictions, \fBpcre_exec()\fP returned tha error code
+PCRE_ERROR_BADPARTIAL (-13). This error code is no longer up in use. The
+PCRE_INFO_OKPARTIAL call ta \fBpcre_fullinfo()\fP ta smoke up if a cold-ass lil compiled
+pattern can be used fo' partial matchin now always returns 1.
+.
+.
+.SH "EXAMPLE OF PARTIAL MATCHING USING PCRETEST"
+.rs
+.sp
+If tha escape sequence \eP is present up in a \fBpcretest\fP data line, the
+PCRE_PARTIAL_SOFT option is used fo' tha match yo. Here be a run of \fBpcretest\fP
+that uses tha date example quoted above:
+.sp
+    re> /^\ed?\ed(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\ed\ed$/
+  data> 25jun04\eP
+   0: 25jun04
+   1: jun
+  data> 25dec3\eP
+  Partial match: 23dec3
+  data> 3ju\eP
+  Partial match: 3ju
+  data> 3juj\eP
+  No match
+  data> j\eP
+  No match
+.sp
+Da first data strang is matched straight-up, so \fBpcretest\fP shows the
+matched substrings. Da remainin four strings do not match tha complete
+pattern yo, but tha straight-up original gangsta two is partial matches. Right back up in yo muthafuckin ass. Similar output is obtained
+if DFA matchin is used.
+.P
+If tha escape sequence \eP is present mo' than once up in a \fBpcretest\fP data
+line, tha PCRE_PARTIAL_HARD option is set fo' tha match.
+.
+.
+.SH "MULTI-SEGMENT MATCHING WITH pcre_dfa_exec() OR pcre[16|32]_dfa_exec()"
+.rs
+.sp
+When a partial match has been found rockin a DFA matchin function, it is
+possible ta continue tha match by providin additionizzle subject data n' calling
+the function again n' again n' again wit tha same compiled regular expression, dis time setting
+the PCRE_DFA_RESTART option. I aint talkin' bout chicken n' gravy biatch. Yo ass must pass tha same ol' dirty hustlin space as before,
+because dis is where detailz of tha previous partial match is stored. Y'all KNOW dat shit, muthafucka! Here is
+an example rockin \fBpcretest\fP, rockin tha \eR escape sequence ta set the
+PCRE_DFA_RESTART option (\eD specifies tha use of tha DFA matchin function):
+.sp
+    re> /^\ed?\ed(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\ed\ed$/
+  data> 23ja\eP\eD
+  Partial match: 23ja
+  data> n05\eR\eD
+   0: n05
+.sp
+Da first call has "23ja" as tha subject, n' requests partial matching; the
+second call has "n05" as tha subject fo' tha continued (restarted) match.
+Notice dat when tha match is complete, only tha last part is shown; PCRE do
+not retain tha previously partially-matched string. Well shiiiit, it is up ta tha calling
+program ta do dat if it needz to.
+.P
+Yo ass can set tha PCRE_PARTIAL_SOFT or PCRE_PARTIAL_HARD options with
+PCRE_DFA_RESTART ta continue partial matchin over multiple segments, n' you can put dat on yo' toast. This
+facilitizzle can be used ta pass straight-up long subject strings ta tha DFA matching
+functions.
+.
+.
+.SH "MULTI-SEGMENT MATCHING WITH pcre_exec() OR pcre[16|32]_exec()"
+.rs
+.sp
+From release 8.00, tha standard matchin functions can also be used ta do
+multi-segment matching. Unlike tha DFA functions, it aint possible to
+restart tha previous match wit a freshly smoked up segment of data. Instead, freshly smoked up data must
+be added ta tha previous subject string, n' tha entire match re-run, starting
+from tha point where tha partial match occurred. Y'all KNOW dat shit, muthafucka! Earlier data can be discarded.
+.P
+It be dopest ta use PCRE_PARTIAL_HARD up in dis thang, cuz it do not
+treat tha end of a segment as tha end of tha subject when matchin \ez, \eZ,
+\eb, \eB, n' $. Consider a unanchored pattern dat matches dates:
+.sp
+    re> /\ed?\ed(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\ed\ed/
+  data> Da date is 23ja\eP\eP
+  Partial match: 23ja
+.sp
+At dis stage, a application could discard tha text precedin "23ja", add on
+text from tha next segment, n' call tha matchin function again. I aint talkin' bout chicken n' gravy biatch. Unlike the
+DFA matchin functions, tha entire matchin strang must always be available,
+and tha complete matchin process occurs fo' each call, so mo' memory n' more
+processin time is needed.
+.P
+\fBNote:\fP If tha pattern gotz nuff lookbehind assertions, or \eK, or starts
+with \eb or \eB, tha strang dat is returned fo' a partial match includes
+charactas dat precede tha start of what tha fuck would be returned fo' a cold-ass lil complete
+match, cuz it gotz nuff all tha charactas dat was inspected durin the
+partial match.
+.
+.
+.SH "ISSUES WITH MULTI-SEGMENT MATCHING"
+.rs
+.sp
+Certain typez of pattern may give problems wit multi-segment matching,
+whichever matchin function is used.
+.P
+1. If tha pattern gotz nuff a test fo' tha beginnin of a line, you need ta pass
+the PCRE_NOTBOL option when tha subject strang fo' any call do start at the
+beginnin of a line. There be also a PCRE_NOTEOL option yo, but up in practice when
+fuckin wit multi-segment matchin you should be rockin PCRE_PARTIAL_HARD, which
+includes tha effect of PCRE_NOTEOL.
+.P
+2. Lookbehind assertions dat have already been obeyed is catered fo' up in the
+offsets dat is returned fo' a partial match yo. However a lookbehind assertion
+lata up in tha pattern could require even earlier charactas ta be inspected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. You
+can handle dis case by rockin tha PCRE_INFO_MAXLOOKBEHIND option of the
+\fBpcre_fullinfo()\fP or \fBpcre[16|32]_fullinfo()\fP functions ta obtain the
+length of tha longest lookbehind up in tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. This length is given in
+characters, not bytes. If you always retain at least dat nuff characters
+before tha partially matched string, all should be well. (Of course, near the
+start of tha subject, fewer charactas may be present; up in dat case all
+charactas should be retained.)
+.P
+From release 8.33, there be a mo' accurate way of decidin which charactas to
+retain. I aint talkin' bout chicken n' gravy biatch. Instead of subtractin tha length of tha longest lookbehind from the
+earliest inspected characta (\fIoffsets[0]\fP), tha match start position
+(\fIoffsets[2]\fP) should be used, n' tha next match attempt started at the
+\fIoffsets[2]\fP characta by settin tha \fIstartoffset\fP argument of
+\fBpcre_exec()\fP or \fBpcre_dfa_exec()\fP.
+.P
+For example, if tha pattern "(?<=123)abc" is partially
+matched against tha strang "xx123a", tha three offset joints returned is 2, 6,
+and 5. This indicates dat tha matchin process dat gave a partial match
+started at offset 5 yo, but tha charactas "123a" was all inspected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da maximum
+lookbehind fo' dat pattern is 3, so takin dat away from 5 shows dat we need
+only keep "123a", n' tha next match attempt can be started at offset 3 (that
+is, at "a") when further charactas done been added. Y'all KNOW dat shit, muthafucka! When tha match start is
+not tha earliest inspected character, \fBpcretest\fP shows it explicitly:
+.sp
+    re> "(?<=123)abc"
+  data> xx123a\eP\eP
+  Partial match at offset 5: 123a
+.P
+3. Because a partial match must always contain at least one character, what
+might be considered a partial match of a empty strang straight-up gives a "no
+match" result. For example:
+.sp
+    re> /c(?<=abc)x/
+  data> ab\eP
+  No match
+.sp
+If tha next segment begins "cx", a match should be found yo, but dis will only
+happen if charactas from tha previous segment is retained. Y'all KNOW dat shit, muthafucka! For dis reason, a
+"no match" result should be interpreted as "partial match of a empty string"
+when tha pattern gotz nuff lookbehinds.
+.P
+4. Matchin a subject strang dat is split tha fuck into multiple segments may not
+always produce exactly tha same result as matchin over one single long string,
+especially when PCRE_PARTIAL_SOFT is used. Y'all KNOW dat shit, muthafucka! Da section "Partial Matchin and
+Word Boundaries" above raps bout a issue dat arises if tha pattern endz with
+\eb or \eB fo' realz. Another kind of difference may occur when there be multiple
+matchin possibilities, cuz (for PCRE_PARTIAL_SOFT) a partial match result
+is given only when there be no completed matches. This means dat as soon as
+the shortest match has been found, continuation ta a freshly smoked up subject segment is no
+longer possible. Consider again n' again n' again dis \fBpcretest\fP example:
+.sp
+    re> /dog(sbody)?/
+  data> dawgsb\eP
+   0: dog
+  data> do\eP\eD
+  Partial match: do
+  data> gsb\eR\eP\eD
+   0: g
+  data> dawgsbody\eD
+   0: dawgsbody
+   1: dog
+.sp
+Da first data line passes tha strang "dawgsb" ta a standard matchin function,
+settin tha PCRE_PARTIAL_SOFT option. I aint talkin' bout chicken n' gravy biatch fo' realz. Although tha strang be a partial match
+for "dawgsbody", tha result aint PCRE_ERROR_PARTIAL, cuz tha shorter
+strin "dog" be a cold-ass lil complete match. Right back up in yo muthafuckin ass. Similarly, when tha subject is presented to
+a DFA matchin function up in nuff muthafuckin parts ("do" n' "gsb" bein tha straight-up original gangsta two)
+the match stops when "dog" has been found, n' it aint possible ta continue.
+On tha other hand, if "dawgsbody" is presented as a single string, a DFA
+matchin function findz both matches.
+.P
+Because of these problems, it is dopest ta use PCRE_PARTIAL_HARD when matching
+multi-segment data. Da example above then behaves differently:
+.sp
+    re> /dog(sbody)?/
+  data> dawgsb\eP\eP
+  Partial match: dawgsb
+  data> do\eP\eD
+  Partial match: do
+  data> gsb\eR\eP\eP\eD
+  Partial match: gsb
+.sp
+5. Patterns dat contain alternatives all up in tha top level which do not all start
+with tha same pattern item may not work as expected when PCRE_DFA_RESTART is
+used. Y'all KNOW dat shit, muthafucka! For example, consider dis pattern:
+.sp
+  1234|3789
+.sp
+If tha straight-up original gangsta part of tha subject is "ABC123", a partial match of tha first
+alternatizzle is found at offset 3. There is no partial match fo' tha second
+alternative, cuz such a match do not start all up in tha same point up in the
+subject strin fo' realz. Attemptin ta continue wit tha strang "7890" do not yield a
+match cuz only dem alternatives dat match at one point up in tha subject
+are remembered. Y'all KNOW dat shit, muthafucka! Da problem arises cuz tha start of tha second alternative
+matches within tha straight-up original gangsta alternative. There is no problem wit anchored
+patterns or patterns such as:
+.sp
+  1234|ABCD
+.sp
+where no strang can be a partial match fo' both alternatives. This aint a
+problem if a standard matchin function is used, cuz tha entire match has
+to be rerun each time:
+.sp
+    re> /1234|3789/
+  data> ABC123\eP\eP
+  Partial match: 123
+  data> 1237890
+   0: 3789
+.sp
+Of course, instead of rockin PCRE_DFA_RESTART, tha same technique of re-running
+the entire match can also be used wit tha DFA matchin functions fo' realz. Another
+possibilitizzle is ta work wit two buffers. If a partial match at offset \fIn\fP
+in tha straight-up original gangsta buffer is followed by "no match" when PCRE_DFA_RESTART is used on
+the second buffer, you can then try a freshly smoked up match startin at offset \fIn+1\fP in
+the first buffer.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 20 February 2013
+Copyright (c) 1997-2013 Universitizzle of Cambridge.
+.fi

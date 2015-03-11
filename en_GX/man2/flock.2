@@ -1,0 +1,222 @@
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu) and
+.\" n' Copyright 2002 Mike Kerrisk
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Fri Jan 31 16:26:07 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Fri Dec 11 17:57:27 1998 by Jizzy Lokier <jamie@imbolc.ucc.ie>
+.\" Modified 24 Apr 2002 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Substantial rewrites n' additions
+.\" 2005-05-10 mtk, noted dat lock conversions is not atomic.
+.\"
+.\" FIXME: Maybe document LOCK_MAND, LOCK_RW, LOCK_READ, LOCK_WRITE
+.\"        which only have effect fo' SAMBA.
+.\"
+.TH FLOCK 2 2013-02-11 "Linux" "Linux Programmerz Manual"
+.SH NAME
+flock \- apply or remove a advisory lock on a open file
+.SH SYNOPSIS
+.B #include <sys/file.h>
+.sp
+.BI "int flock(int " fd ", int " operation );
+.SH DESCRIPTION
+Apply or remove a advisory lock on tha open file specified by
+.IR fd .
+Da argument
+.I operation
+is one of tha following:
+.RS 4
+.TP 9
+.B LOCK_SH
+Place a gangbangin' finger-lickin' dirty-ass shared lock.
+Mo' than one process may hold a gangbangin' finger-lickin' dirty-ass shared lock fo' a given file
+at a given time.
+.TP
+.B LOCK_EX
+Place a exclusive lock.
+Only one process may hold a exclusive lock fo' a given
+file at a given time.
+.TP
+.B LOCK_UN
+Remove a existin lock held by dis process.
+.RE
+.PP
+A call to
+.BR flock ()
+may block if a incompatible lock is held by another process.
+To cook up a nonblockin request, include
+.B LOCK_NB
+(by ORing)
+with any of tha above operations.
+
+A single file may not simultaneously have both shared n' exclusive locks.
+
+Locks pimped by
+.BR flock ()
+are associated wit a open file table entry.
+This means dat duplicate file descriptors (created by, fo' example,
+.BR fork (2)
+or
+.BR dup (2))
+refer ta tha same lock, n' dis lock may be modified
+or busted out rockin any of these descriptors.
+Furthermore, tha lock is busted out either by a explicit
+.B LOCK_UN
+operation on any of these duplicate descriptors, or when all
+such descriptors done been closed.
+
+If a process uses
+.BR open (2)
+(or similar) ta obtain mo' than one descriptor fo' tha same file,
+these descriptors is treated independently by
+.BR flock ().
+An attempt ta lock tha file rockin one of these file descriptors
+may be denied by a lock dat tha callin process has
+already placed via another descriptor.
+
+A process may hold only one type of lock (shared or exclusive)
+on a gangbangin' file.
+Subsequent
+.BR flock ()
+calls on a already locked file will convert a existin lock ta tha new
+lock mode.
+
+Locks pimped by
+.BR flock ()
+are preserved across an
+.BR execve (2).
+
+A shared or exclusive lock can be placed on a gangbangin' file regardless of the
+mode up in which tha file was opened.
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EBADF
+.I fd
+is not a open file descriptor.
+.TP
+.B EINTR
+While waitin ta acquire a lock, tha call was interrupted by
+delivery of a signal caught by a handlez; see
+.BR signal (7).
+.TP
+.B EINVAL
+.I operation
+is invalid.
+.TP
+.B ENOLCK
+Da kernel ran outta memory fo' allocatin lock records.
+.TP
+.B EWOULDBLOCK
+Da file is locked n' the
+.B LOCK_NB
+flag was selected.
+.SH CONFORMING TO
+4.4BSD (the
+.BR flock ()
+call first rocked up in 4.2BSD).
+A version of
+.BR flock (),
+possibly implemented up in terms of
+.BR fcntl (2),
+appears on most UNIX systems.
+.SH NOTES
+.BR flock ()
+does not lock filez over NFS.
+Use
+.BR fcntl (2)
+instead: dat do work over NFS, given a sufficiently recent version of
+Linux n' a server which supports locking.
+.PP
+Since kernel 2.0,
+.BR flock ()
+is implemented as a system call up in its own right rather
+than bein emulated up in tha GNU C library as a cold-ass lil call to
+.BR fcntl (2).
+This yieldz legit BSD semantics:
+there is no interaction between tha typez of lock
+placed by
+.BR flock ()
+and
+.BR fcntl (2),
+and
+.BR flock ()
+does not detect deadlock.
+.PP
+.BR flock ()
+places advisory locks only; given suitable permissions on a gangbangin' file,
+a process is free ta ignore tha use of
+.BR flock ()
+and big-ass up I/O on tha file.
+.PP
+.BR flock ()
+and
+.BR fcntl (2)
+locks have different semantics wit respect ta forked processes and
+.BR dup (2).
+On systems dat implement
+.BR flock ()
+using
+.BR fcntl (2),
+the semantics of
+.BR flock ()
+will be different from dem busted lyrics bout up in dis manual page.
+.PP
+Convertin a lock
+(shared ta exclusive, or vice versa) aint guaranteed ta be atomic:
+the existin lock is first removed, n' then a freshly smoked up lock is established.
+Between these two steps,
+a pendin lock request by another process may be granted,
+with tha result dat tha conversion either blocks, or fails if
+.B LOCK_NB
+was specified.
+(This is tha original gangsta BSD behavior,
+and occurs on nuff other implementations.)
+.\" Kernel 2.5.21 chizzled thangs a lil: durin lock conversion
+.\" it is now tha highest prioritizzle process dat will git tha lock -- mtk
+.SH SEE ALSO
+.BR flock (1),
+.BR close (2),
+.BR dup (2),
+.BR execve (2),
+.BR fcntl (2),
+.BR fork (2),
+.BR open (2),
+.BR lockf (3)
+
+.I Documentation/filesystem/locks.txt
+in tha Linux kernel source tree
+.RI ( Documentation/locks.txt
+in olda kernels)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

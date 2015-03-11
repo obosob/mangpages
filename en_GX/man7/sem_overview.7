@@ -1,0 +1,169 @@
+'\" t
+.\" Copyright (C) 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH SEM_OVERVIEW 7 2012-05-13 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sem_overview \- overview of POSIX semaphores
+.SH DESCRIPTION
+POSIX semaphores allow processes n' threadz ta synchronize they actions.
+
+A semaphore be a integer whose value is never allowed ta fall below zero.
+Two operations can be performed on semaphores:
+increment tha semaphore value by one
+.RB ( sem_post (3));
+and decrement tha semaphore value by one
+.RB ( sem_wait (3)).
+If tha value of a semaphore is currently zero, then a
+.BR sem_wait (3)
+operation will block until tha value becomes pimped outa than zero.
+
+POSIX semaphores come up in two forms: named semaphores and
+unnamed semaphores.
+.TP
+.B Named semaphores
+A named semaphore is identified by a name of tha form
+.IR /somename ;
+that is, a null-terminated strang of up to
+.BI NAME_MAX \-4
+(i.e., 251) charactas consistin of a initial slash,
+.\" glibc allows tha initial slash ta be omitted, n' makes
+.\" multiple initial slashes equivalent ta a single slash.
+.\" This differs from tha implementation of POSIX message queues.
+followed by one or mo' characters, none of which is slashes.
+.\" glibc allows subdirectory components up in tha name, up in which
+.\" case tha subdirectory tree must exist under /dev/shm, and
+.\" tha fist subdirectory component must exist as tha name
+.\" sem.name, n' all of tha subdirectory components must allow the
+.\" required permissions if a user wants ta create a semaphore
+.\" object up in a subdirectory.
+Two processes can operate on tha same named semaphore by passing
+the same name to
+.BR sem_open (3).
+
+The
+.BR sem_open (3)
+function creates a freshly smoked up named semaphore or opens a existing
+named semaphore.
+Afta tha semaphore has been opened, it can be operated on using
+.BR sem_post (3)
+and
+.BR sem_wait (3).
+When a process has finished rockin tha semaphore, it can use
+.BR sem_close (3)
+to close tha semaphore.
+When all processes have finished rockin tha semaphore,
+it can be removed from tha system using
+.BR sem_unlink (3).
+.TP
+.B Unnamed semaphores (memory-based semaphores)
+An unnamed semaphore aint gots a name.
+Instead tha semaphore is placed up in a region of memory that
+is shared between multiple threadz (a
+.IR "thread-shared semaphore" )
+or processes (a
+.IR "process-shared semaphore" ).
+A thread-shared semaphore is placed up in a area of memory shared
+between tha threadz of a process, fo' example, a global variable.
+A process-shared semaphore must be placed up in a gangbangin' finger-lickin' dirty-ass shared memory region
+(e.g., a System V shared memory segment pimped using
+.BR shmget (2),
+or a POSIX shared memory object built pimped using
+.BR shm_open (3)).
+
+Before bein used, a unnamed semaphore must be initialized using
+.BR sem_init (3).
+It can then be operated on using
+.BR sem_post (3)
+and
+.BR sem_wait (3).
+When tha semaphore is no longer required,
+and before tha memory up in which it is located is deallocated,
+the semaphore should be destroyed using
+.BR sem_destroy (3).
+.PP
+Da remainder of dis section raps bout some specific details
+of tha Linux implementation of POSIX semaphores.
+.SS Versions
+Prior ta kernel 2.6, Linux supported only unnamed,
+thread-shared semaphores.
+On a system wit Linux 2.6 n' a glibc dat serves up tha NPTL
+threadin implementation,
+a complete implementation of POSIX semaphores is provided.
+.SS Persistence
+POSIX named semaphores have kernel persistence:
+if not removed by
+.BR sem_unlink (3),
+a semaphore will exist until tha system is shut down.
+.SS Linking
+Programs rockin tha POSIX semaphores API must be compiled with
+.I cc \-pthread
+to link against tha real-time library,
+.IR librt .
+.SS Accessin named semaphores via tha file system
+On Linux, named semaphores is pimped up in a virtual file system,
+normally mounted under
+.IR /dev/shm ,
+with namez of tha form
+.IR \fBsem.\fPsomename .
+(This is tha reason dat semaphore names is limited to
+.BI NAME_MAX \-4
+rather than
+.B NAME_MAX
+characters.)
+
+Since Linux 2.6.19, ACLs can be placed on filez under dis directory,
+to control object permissions on a per-user n' per-group basis.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+System V semaphores
+.RB ( semget (2),
+.BR semop (2),
+etc.) is a olda semaphore API.
+POSIX semaphores provide a simpler, n' betta designed intercourse than
+System V semaphores;
+on tha other hand POSIX semaphores is less widely available
+(especially on olda systems) than System V semaphores.
+.SH EXAMPLE
+An example of tha use of various POSIX semaphore functions is shown in
+.BR sem_wait (3).
+.SH SEE ALSO
+.BR sem_close (3),
+.BR sem_destroy (3),
+.BR sem_getvalue (3),
+.BR sem_init (3),
+.BR sem_open (3),
+.BR sem_post (3),
+.BR sem_unlink (3),
+.BR sem_wait (3),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

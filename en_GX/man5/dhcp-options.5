@@ -1,0 +1,2256 @@
+.\"	$Id: dhcp-options.5,v 1.45.18.6 2011/05/20 14:33:26 tomass Exp $
+.\"
+.\" Copyright (c) 2012-2014 by Internizzle Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 2004-2010 by Internizzle Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 1996-2003 by Internizzle Software Consortium
+.\"
+.\" Permission ta use, copy, modify, n' distribute dis software fo' any
+.\" purpose wit or without fee is hereby granted, provided dat tha above
+.\" copyright notice n' dis permission notice step tha fuck up in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+.\" OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\"   Internizzle Systems Consortium, Inc.
+.\"   950 Charta Street
+.\"   Redwood City, CA 94063
+.\"   <info@isc.org>
+.\"   https://www.isc.org/
+.\"
+.\" Support n' other skillz is available fo' ISC shizzle - see
+.\" https://www.isc.org fo' mo' shiznit or ta learn mo' bout ISC.
+.\"
+.TH dhcp-options 5
+.SH NAME
+dhcp-options - Dynamic Host Configuration Protocol options
+.SH DESCRIPTION
+Da Dynamic Host Configuration protocol allows tha client ta receive
+.B options
+from tha DHCP server describin tha network configuration n' various
+skillz dat is available on tha network.  When configuring
+.B dhcpd(8)
+or
+.B dhclient(8) ,
+options must often be declared. Y'all KNOW dat shit, muthafucka!  Da syntax fo' declarin options,
+and tha names n' formatz of tha options dat can be declared, are
+documented here.
+.SH REFERENCE: OPTION STATEMENTS
+.PP
+DHCP \fIoption\fR statements always start wit tha \fIoption\fR
+keyword, followed by a option name, followed by option data.  The
+option names n' data formats is busted lyrics bout below.  It be not
+necessary ta exhaustively specify all DHCP options - only them
+options which is needed by clients must be specified.
+.PP
+Option data comes up in a variety of formats, as defined below:
+.PP
+The
+.B ip-address
+data type can be entered either as a explicit IP
+address (e.g., 239.254.197.10) or as a thugged-out domain name (e.g.,
+haagen.isc.org).  When enterin a thugged-out domain name, be shizzle dat that
+domain name resolves ta a single IP address.
+.PP
+The
+.B ip6-address
+data specifies a IPv6 address, like ::1 or 3ffe:bbbb:aaaa:aaaa::1.
+.PP
+The
+.B int32
+data type specifies a signed 32-bit integer n' shit.  The
+.B uint32
+data type specifies a unsigned 32-bit integer n' shit.  The
+.B int16
+and
+.B uint16
+data types specify signed n' unsigned 16-bit integers.  The
+.B int8
+and
+.B uint8
+data types specify signed n' unsigned 8-bit integers.
+Unsigned 8-bit integers is also sometimes referred ta as octets.
+.PP
+The
+.B text
+data type specifies a NVT ASCII string, which must be
+enclosed up in double quotes - fo' example, ta specify a root-path
+option, tha syntax would be
+.nf
+.sp 1
+option root-path "10.0.1.4:/var/tmp/rootfs";
+.fi
+.PP
+The
+.B domain-name
+data type specifies a thugged-out domain name, which must not be
+enclosed up in double quotes.  This data type aint used fo' any
+existin DHCP options.  Da domain name is stored just as if it were
+a text option.
+.PP
+The
+.B domain-list
+data type specifies a list of domain names, enclosed up in double quotes and
+separated by commas ("example.com", "foo.example.com").
+.PP
+The
+.B flag
+data type specifies a funky-ass boolean value.  Booleans can be either legit or
+false (or on or off, if dat make mo' sense ta you).
+.PP
+The
+.B string
+data type specifies either a NVT ASCII string
+enclosed up in double quotes, or a seriez of octets specified in
+hexadecimal, separated by colons.  For example:
+.nf
+.sp 1
+  option dhcp-client-identifier "CLIENT-FOO";
+or
+  option dhcp-client-identifier 43:4c:49:45:54:2d:46:4f:4f;
+.fi
+.PP
+The
+.B destination-descriptor
+describe tha IP subnet number n' subnet mask
+of a particular destination rockin a cold-ass lil compact encoding. This encoding
+consistz of one octet describin tha width of tha subnet mask,
+followed by all tha dope octetz of tha subnet number.
+Da followin table gotz nuff some examplez of how tha fuck various subnet
+number/mask combinations can be encoded:
+.nf
+.sp 1
+Subnet number   Subnet mask      Destination descriptor
+0               0                0
+10.0.0.0        255.0.0.0        8.10
+10.0.0.0        255.255.255.0    24.10.0.0
+10.17.0.0       255.255.0.0      16.10.17
+10.27.129.0     255.255.255.0    24.10.27.129
+10.229.0.128    255.255.255.128  25.10.229.0.128
+10.198.122.47   255.255.255.255  32.10.198.122.47
+.fi
+.SH SETTING OPTION VALUES USING EXPRESSIONS
+Sometimes itz helpful ta be able ta set tha value of a DHCP option
+based on some value dat tha client has sent.  To do this, you can
+use expression evaluation. I aint talkin' bout chicken n' gravy biatch.  Da 
+.B dhcp-eval(5)
+manual page raps bout how tha fuck ta write expressions.  To assign tha result
+of a evaluation ta a option, define tha option as bigs up:
+.nf
+.sp 1
+  \fBoption \fImy-option \fB= \fIexpression \fB;\fR
+.fi
+.PP
+For example:
+.nf
+.sp 1
+  option hostname = binary-to-ascii (16, 8, "-",
+                                     substrin (hardware, 1, 6));
+.fi
+.SH STANDARD DHCPV4 OPTIONS
+Da documentation fo' tha various options mentioned below is taken
+from tha sickest fuckin IETF draft document on DHCP options.  Options not
+listed below may not yet be implemented yo, but it is possible ta use
+such options by definin dem up in tha configuration file.  Please see
+the DEFINING NEW OPTIONS headin lata up in dis document fo' more
+information.
+.PP
+Some of tha options documented here is automatically generated by
+the DHCP server or by clients, n' cannot be configured by tha user.
+Da value of such a option can be used up in tha configuration file of
+the receivin DHCP protocol agent (server or client), fo' example in
+conditionizzle expressions. But fuck dat shiznit yo, tha word on tha street is dat tha value of tha option cannot be
+used up in tha configuration file of tha bustin  agent, cuz tha value
+is determined only \fIafter\fR tha configuration file has been
+processed. Y'all KNOW dat shit, muthafucka! In tha followin documentation, such options is ghon be shown
+as "not user configurable"
+.PP
+Da standard options are:
+.PP
+.B option \fBall-subnets-local\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client may assume dat all
+subnetz of tha IP network ta which tha client is connected use the
+same MTU as tha subnet of dat network ta which tha client is
+directly connected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  A value of legit indicates dat all subnets share
+the same MTU.  A value of false means dat tha client should assume that
+some subnetz of tha directly connected network may have smalla MTUs.
+.RE
+.PP
+.B option \fBarp-cache-timeout\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha timeout up in secondz fo' ARP cache entries.
+.RE
+.PP
+.B option \fBassociated-ip\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+This option is part of lease query.  It be used to
+return all of tha IP addresses associated wit a given DHCP client.
+.PP
+This option aint user configurable.
+.RE
+.PP
+.B option \fBbcms-controller-address\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+This option configures a list of IPv4 addresses fo' use as Broadcast and
+Multicast Controlla Servers ("BCMS").
+.RE
+.PP
+.B option \fBbcms-controller-names\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+This option gotz nuff tha domain namez of local Broadcast and
+Multicast Controlla Servers ("BCMS") controllaz which tha client
+may use.
+.RE
+.PP
+.B option \fBbootfile-name\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used ta identify a funky-ass bootstrap file.  If supported by the
+client, it should have tha same effect as tha \fBfilename\fR
+declaration. I aint talkin' bout chicken n' gravy biatch.  BOOTP clients is unlikely ta support dis option. I aint talkin' bout chicken n' gravy biatch.  Some
+DHCP clients will support it, n' others straight-up require dat shit.
+.RE
+.PP
+.B option \fBboot-size\fR \fIuint16\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha length up in 512-octet blockz of tha default
+boot image fo' tha client.
+.RE
+.PP
+.B option \fBbroadcast-address\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha broadcast address up in use on tha client's
+subnet.  Legal joints fo' broadcast addresses is specified in
+section 3.2.1.3 of STD 3 (RFC1122).
+.RE
+.PP
+.B option \fBclient-last-transaction-time\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is part of lease query.  It allows the
+receiver ta determine tha time of da most thugged-out recent access by the
+client.  Da value be a thugged-out duration up in secondz from when tha client
+last communicated wit tha DHCP server.
+.PP
+This option aint user configurable.
+.RE
+.PP
+.B option \fBcookie-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da cookie server option specifies a list of RFC 865 cookie
+servers available ta tha client.  Servers should be listed up in order
+of preference.
+.RE
+.PP
+.B option \fBdefault-ip-ttl\fR \fIuint8;\fR
+.RS 0.25i
+.PP
+This option specifies tha default time-to-live dat tha client should
+use on outgoin datagrams.
+.RE
+.PP
+.B option \fBdefault-tcp-ttl\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha default TTL dat tha client should use when
+sendin TCP segments, n' you can put dat on yo' toast.  Da minimum value is 1.
+.RE
+.PP
+.B option \fBdefault-url\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da format n' meanin of dis option aint busted lyrics bout up in any standards
+document yo, but is fronted ta be up in use by Applez Computer n' shit.  It aint known
+what clients may reasonably do if supplied wit dis option. I aint talkin' bout chicken n' gravy biatch.  Use at your
+own risk.
+.RE
+.PP
+.B option \fBdhcp-client-identifier\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+This option can be used ta specify a DHCP client identifier up in a
+host declaration, so dat dhcpd can find tha host record by matching
+against tha client identifier.
+.PP
+Please be aware dat some DHCP clients, when configured wit client
+identifiers dat is ASCII text, will prepend a zero ta tha ASCII
+text.  So you may need ta write:
+.nf
+
+	option dhcp-client-identifier "\\0foo";
+
+rather than:
+
+	option dhcp-client-identifier "foo";
+.fi
+.RE
+.PP
+.B option \fBdhcp-lease-time\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used up in a cold-ass lil client request (DHCPDISCOVER or DHCPREQUEST)
+to allow tha client ta request a lease time fo' tha IP address.  In a
+server reply (DHCPOFFER), a DHCP server uses dis option ta specify
+the lease time it is willin ta offer.
+.PP
+This option aint directly user configurable up in tha server; refer ta the
+\fImax-lease-time\fR n' \fIdefault-lease-time\fR server options in
+.B dhcpd.conf(5).
+.RE
+.PP
+.B option \fBdhcp-max-message-size\fR \fIuint16\fR\fB;\fR
+.RS 0.25i
+.PP
+This option, when busted by tha client, specifies tha maximum size of
+any response dat tha server sendz ta tha client.  When specified on
+the server, if tha client did not bust a thugged-out dhcp-max-message-size option,
+the size specified on tha server is used. Y'all KNOW dat shit, muthafucka!  This works fo' BOOTP as
+well as DHCP responses.
+.RE
+.PP
+.B option \fBdhcp-message\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used by a DHCP server ta provide a error message ta a
+DHCP client up in a DHCPNAK message up in tha event of a gangbangin' failure fo' realz. A client
+may use dis option up in a DHCPDECLINE message ta indicate why the
+client declined tha offered parameters.
+.PP
+This option aint user configurable.
+.RE
+.PP
+.B option \fBdhcp-message-type\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+This option, busted by both client n' server, specifies tha type of DHCP
+message contained up in tha DHCP packet. Possible joints (taken directly from
+RFC2132) are:
+.PP
+.nf
+             1     DHCPDISCOVER
+             2     DHCPOFFER
+             3     DHCPREQUEST
+             4     DHCPDECLINE
+             5     DHCPACK
+             6     DHCPNAK
+             7     DHCPRELEASE
+             8     DHCPINFORM
+.fi
+.PP
+This option aint user configurable.
+.PP
+.RE
+.B option \fBdhcp-option-overload\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used ta indicate dat tha DHCP \'sname\' or \'file\'
+fieldz is bein overloaded by rockin dem ta carry DHCP options fo' realz. A
+DHCP server bangs dis option if tha returned parametas will
+exceed tha usual space allotted fo' options.
+.PP
+If dis option is present, tha client interprets tha specified
+additionizzle fieldz afta it concludes interpretation of tha standard
+option fields.
+.PP
+Legal joints fo' dis option are:
+.PP
+.nf
+             1     tha \'file\' field is used ta hold options
+             2     tha \'sname\' field is used ta hold options
+             3     both fieldz is used ta hold options
+.fi
+.PP
+This option aint user configurable.
+.PP
+.RE
+.PP
+.B option \fBdhcp-parameter-request-list\fR \fIuint8\fR [\fB,\fR
+\fIuint8\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+This option, when busted by tha client, specifies which options the
+client wishes tha server ta return, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch.  Normally, up in tha ISC DHCP
+client, dis is done rockin tha \fIrequest\fR statement.  If this
+option aint specified by tha client, tha DHCP server will normally
+return every last muthafuckin option dat is valid up in scope n' dat fits tha fuck into the
+reply.  When dis option is specified on tha server, tha server
+returns tha specified options.  This can be used ta force a cold-ass lil client to
+take options dat it aint requested, n' it can also be used to
+tailor tha response of tha DHCP server fo' clients dat may need a
+more limited set of options than dem tha server would normally
+return.
+.RE
+.PP
+.B option \fBdhcp-rebinding-time\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha number of secondz from tha time a cold-ass lil client gets
+an address until tha client transitions ta tha REBINDING state.
+.PP
+This option is user configurable yo, but it is ghon be ignored if tha value is
+greata than or equal ta tha lease time.
+.PP
+To make DHCPv4+DHCPv6 migration easier up in tha future, any value configured
+in dis option be also used as a DHCPv6 "T1" (renew) time.
+.PP
+.RE
+.PP
+.B option \fBdhcp-renewal-time\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha number of secondz from tha time a cold-ass lil client gets
+an address until tha client transitions ta tha RENEWING state.
+.PP
+This option is user configurable yo, but it is ghon be ignored if tha value is
+greata than or equal ta tha rebindin time, or lease time.
+.PP
+To make DHCPv4+DHCPv6 migration easier up in tha future, any value configured
+in dis option be also used as a DHCPv6 "T2" (rebind) time.
+.PP
+.RE
+.PP
+.B option \fBdhcp-requested-address\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used by tha client up in a DHCPDISCOVER to
+request dat a particular IP address be assigned.
+.PP
+This option aint user configurable.
+.PP
+.RE
+.PP
+.B option \fBdhcp-server-identifier\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used up in DHCPOFFER n' DHCPREQUEST lyrics, n' may
+optionally be included up in tha DHCPACK n' DHCPNAK lyrics.  DHCP
+servers include dis option up in tha DHCPOFFER up in order ta allow the
+client ta distinguish between lease offers.  DHCP clients use the
+contentz of tha \'server identifier\' field as tha destination address
+for any DHCP lyrics unicast ta tha DHCP server n' shit.  DHCP clients also
+indicate which of nuff muthafuckin lease offers is bein accepted by including
+this option up in a DHCPREQUEST message.
+.PP
+Da value of dis option is tha IP address of tha server.
+.PP
+This option aint directly user configurable. Right back up in yo muthafuckin ass. See the
+\fIserver-identifier\fR server option in
+.B \fIdhcpd.conf(5).
+.PP
+.RE
+.PP
+.B option \fBdomain-name\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha domain name dat client should use when
+resolvin hostnames via tha Domain Name System.
+.RE
+.PP
+.B option \fBdomain-name-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da domain-name-servers option specifies a list of Domain Name System
+(STD 13, RFC 1035) name servers available ta tha client.  Servers
+should be listed up in order of preference.
+.RE
+.PP
+.B option \fBdomain-search\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+Da domain-search option specifies a \'search list\' of Domain Names ta be
+used by tha client ta locate not-fully-qualified domain names.  Da difference
+between dis option n' phat use of tha domain-name option fo' tha same
+endz is dat dis option is encoded up in RFC1035 compressed labels on tha wire.
+For example:
+.nf
+.sp 1
+  option domain-search "example.com", "sales.example.com",
+                       "eng.example.com";
+.fi
+.RE
+.PP
+.B option \fBextensions-path\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha name of a gangbangin' file containin additionizzle options
+to be interpreted accordin ta tha DHCP option format as specified in
+RFC2132.
+.RE
+.PP
+.B option \fBfinger-server\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da Finger server option specifies a list of Finger servers available
+to tha client.  Servers should be listed up in order of preference.
+.RE
+.PP
+.B option \fBfont-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of X Window System Font servers available
+to tha client. Right back up in yo muthafuckin ass. Servers should be listed up in order of preference.
+.RE
+.PP
+.B option \fBhost-name\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha name of tha client.  Da name may or may
+not be qualified wit tha local domain name (it is preferable ta use
+the domain-name option ta specify tha domain name).  See RFC 1035 for
+characta set restrictions.  This option is only honored by
+.B dhclient-script(8)
+if tha hostname fo' tha client machine aint set.
+.RE
+.PP
+.B option \fBieee802-3-encapsulation\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client should use Ethernet
+Version 2 (RFC 894) or IEEE 802.3 (RFC 1042) encapsulation if the
+interface be a Ethernet.  A value of false indicates dat tha client
+should use RFC 894 encapsulation. I aint talkin' bout chicken n' gravy biatch.  A value of legit means dat tha client
+should use RFC 1042 encapsulation.
+.RE
+.PP
+.B option \fBien116-name-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+];
+.RS 0.25i
+.PP
+Da ien116-name-servers option specifies a list of IEN 116 name servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option \fBimpress-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da impress-server option specifies a list of Imagen Impress servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option \fBinterface-mtu\fR \fIuint16\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha MTU ta use on dis intercourse.  Da minimum
+legal value fo' tha MTU is 68.
+.RE
+.PP
+.B option \fBip-forwarding\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether tha client should configure its IP
+layer fo' packet forwarding.  A value of false means disable IP
+forwarding, n' a value of legit means enable IP forwarding.
+.RE
+.PP
+.B option \fBirc-server\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da IRC server option specifies a list of IRC servers available
+to tha client.  Servers should be listed up in order of preference.
+.RE
+.PP
+.B option \fBlog-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da log-server option specifies a list of MIT-LCS UDP log servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option \fBlpr-servers\fR \fIip-address \fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da LPR server option specifies a list of RFC 1179 line printer
+servers available ta tha client.  Servers should be listed up in order
+of preference.
+.RE
+.PP
+.B option \fBmask-supplier\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client should respond to
+subnet mask requests rockin ICMP.  A value of false indicates dat the
+client should not respond. Y'all KNOW dat shit, muthafucka!  A value of legit means dat tha client should
+respond.
+.RE
+.PP
+.B option \fBmax-dgram-reassembly\fR \fIuint16\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha maximum size datagram dat tha client
+should be prepared ta reassemble.  Da minimum legal value is
+576.
+.RE
+.PP
+.B option \fBmerit-dump\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha path-name of a gangbangin' file ta which tha client's
+core image should be dumped up in tha event tha client crashes.  The
+path is formatted as a cold-ass lil characta strang consistin of charactas from
+the NVT ASCII characta set.
+.RE
+.PP
+.B option \fBmobile-ip-home-agent\fR \fIip-address\fR [\fB,\fR \fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of IP addresses indicatin mobile IP
+home agents available ta tha client.  Agents should be listed in
+order of preference, although normally there is ghon be only one such
+agent.
+.RE
+.PP
+.B option \fBnds-context\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da nds-context option specifies tha name of tha initial Netware
+Directory Service fo' a NDS client.
+.RE
+.PP
+.B option \fBnds-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da nds-servers option specifies a list of IP addressez of NDS servers.
+.RE
+.PP
+.B option \fBnds-tree-name\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da nds-tree-name option specifies NDS tree name dat tha NDS client
+should use.
+.RE
+.PP
+.B option \fBnetbios-dd-server\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da NetBIOS datagram distribution server (NBDD) option specifies a
+list of RFC 1001/1002 NBDD servers listed up in order of preference.
+.RE
+.PP
+.B option \fBnetbios-name-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...]\fB;\fR
+.RS 0.25i
+.PP
+Da NetBIOS name server (NBNS) option specifies a list of RFC
+1001/1002 NBNS name servers listed up in order of preference.  NetBIOS
+Name Service is currently mo' commonly referred ta as WINS.  WINS
+servers can be specified rockin tha netbios-name-servers option.
+.RE
+.PP
+.B option \fBnetbios-node-type\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+Da NetBIOS node type option allows NetBIOS over TCP/IP clients which
+are configurable ta be configured as busted lyrics bout up in RFC 1001/1002.  The
+value is specified as a single octet which identifies tha client type.
+.PP
+Possible node types are:
+.PP
+.TP 5
+.I 1
+B-node: Broadcast - no WINS
+.TP
+.I 2
+P-node: Peer - WINS only
+.TP
+.I 4
+M-node: Mixed - broadcast, then WINS
+.TP
+.I 8
+H-node: Hybrid - WINS, then broadcast
+.RE
+.PP
+.B option \fBnetbios-scope\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da NetBIOS scope option specifies tha NetBIOS over TCP/IP scope
+parameta fo' tha client as specified up in RFC 1001/1002. Right back up in yo muthafuckin ass. See RFC1001,
+RFC1002, n' RFC1035 fo' character-set restrictions.
+.RE
+.PP
+.B option \fBnetinfo-server-address\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da \fBnetinfo-server-address\fR option has not been busted lyrics bout up in any
+RFC yo, but has been allocated (and is fronted ta be up in use) by Apple
+Computers.  It aint nuthin but hard ta say if tha above is tha erect format, or
+what clients might be sposed ta fuckin do if joints was configured. Y'all KNOW dat shit, muthafucka!  Use
+at yo' own risk.
+.RE
+.PP
+.B option \fBnetinfo-server-tag\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBnetinfo-server-tag\fR option has not been busted lyrics bout up in any
+RFC yo, but has been allocated (and is fronted ta be up in use) by Apple
+Computers.  It aint nuthin but hard ta say if tha above is tha erect format,
+or what tha fuck clients might be sposed ta fuckin do if joints was configured. Y'all KNOW dat shit, muthafucka!  Use
+at yo' own risk.
+.RE
+.PP
+.B option \fBnis-domain\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha name of tha clientz NIS (Sun Network
+Hype Skillz) domain. I aint talkin' bout chicken n' gravy biatch.  Da domain is formatted as a cold-ass lil character
+strin consistin of charactas from tha NVT ASCII characta set.
+.RE
+.PP
+.B option \fBnis-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of IP addresses indicatin NIS servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option \fBnisplus-domain\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha name of tha clientz NIS+ domain. I aint talkin' bout chicken n' gravy biatch.  The
+domain is formatted as a cold-ass lil characta strang consistin of characters
+from tha NVT ASCII characta set.
+.RE
+.PP
+.B option \fBnisplus-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of IP addresses indicatin NIS+ servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option \fBnntp-server\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da NNTP server option specifies a list of NNTP servesr available
+to tha client.  Servers should be listed up in order of preference.
+.RE
+.PP
+.B option \fBnon-local-source-routing\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether tha client should configure its IP
+layer ta allow forwardin of datagrams wit non-local source routes
+(see Section 3.3.5 of [4] fo' a gangbangin' finger-lickin' rap of dis topic).  A value
+of false means disallow forwardin of such datagrams, n' a value of true
+means allow forwarding.
+.RE
+.PP
+.B option \fBntp-servers\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of IP addresses indicatin NTP (RFC 5905)
+servers available ta tha client.  Servers should be listed up in order
+of preference.
+.RE
+.PP
+.B option \fBnwip-domain\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da name of tha NetWare/IP domain dat a NetWare/IP client should
+use.
+.RE
+.PP
+.B option \fBnwip-suboptions\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+A sequence of suboptions fo' NetWare/IP clients - peep RFC2242 for
+details.  Normally dis option is set by specifyin specific
+NetWare/IP suboptions - peep tha NETWARE/IP SUBOPTIONS section fo' more
+information.
+.RE
+.PP
+.B option \fBpath-mtu-aging-timeout\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha timeout (in seconds) ta use when agin Path
+MTU joints discovered by tha mechanizzle defined up in RFC 1191.
+.RE
+.PP
+.B option \fBpath-mtu-plateau-table\fR \fIuint16\fR [\fB,\fR \fIuint16\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a table of MTU sizes ta use when struttin
+Path MTU Discovery as defined up in RFC 1191.  Da table is formatted as
+a list of 16-bit unsigned integers, ordered from smallest ta phattest.
+Da minimum MTU value cannot be smalla than 68.
+.RE
+.PP
+.B option \fBperform-mask-discovery\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client should big-ass up subnet
+mask discovery rockin ICMP.  A value of false indicates dat tha client
+should not big-ass up mask discovery.  A value of legit means dat the
+client should big-ass up mask discovery.
+.RE
+.PP
+.nf
+.B option \fBpolicy-filter\fR \fIip-address ip-address\fR
+                  [\fB,\fR \fIip-address ip-address\fR...]\fB;\fR
+.RE
+.fi
+.RS 0.25i
+.PP
+This option specifies policy filtas fo' non-local source routing.
+Da filtas consist of a list of IP addresses n' masks which specify
+destination/mask pairs wit which ta filta incomin source routes.
+.PP
+Any source routed datagram whose next-hop address do not match one
+of tha filtas should be discarded by tha client.
+.PP
+See STD 3 (RFC1122) fo' further shiznit.
+.RE
+.PP
+.B option \fBpop-server\fR \fIip-address\fR [\fB,\fR \fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da POP3 server option specifies a list of POP3 servers available
+to tha client.  Servers should be listed up in order of preference.
+.RE
+.PP
+.B option \fBresource-location-servers\fR \fIip-address\fR
+                              [\fB, \fR\fIip-address\fR...]\fB;\fR
+.fi
+.RS 0.25i
+.PP
+This option specifies a list of RFC 887 Resource Location
+servers available ta tha client.  Servers should be listed up in order
+of preference.
+.RE
+.PP
+.B option \fBroot-path\fR \fItext\fB;\fR\fR
+.RS 0.25i
+.PP
+This option specifies tha path-name dat gotz nuff tha clientz root
+disk.  Da path is formatted as a cold-ass lil characta strang consistin of
+charactas from tha NVT ASCII characta set.
+.RE
+.PP
+.B option \fBrouter-discovery\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client should solicit
+routas rockin tha Routa Discovery mechanizzle defined up in RFC 1256.
+A value of false indicates dat tha client should not perform
+routa discovery.  A value of legit means dat tha client should perform
+routa discovery.
+.RE
+.PP
+.B option \fBrouter-solicitation-address\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha address ta which tha client should transmit
+routa solicitation requests.
+.RE
+.PP
+.B option routas \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da routas option specifies a list of IP addresses fo' routas on the
+clientz subnet.  Routas should be listed up in order of preference.
+.RE
+.PP
+.B option slp-directory-agent \fIboolean ip-address
+[\fB,\fR \fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies two thangs: tha IP addressez of one or more
+Service Location Protocol Directory Agents, n' whether tha use of
+these addresses is mandatory.  If tha initial boolean value is true,
+the SLP agent should just use tha IP addresses given. I aint talkin' bout chicken n' gravy biatch.  If tha value
+is false, tha SLP agent may additionally do actizzle or passive
+multicast discovery of SLP agents (see RFC2165 fo' details).
+.PP
+Please note dat up in dis option n' tha slp-service-scope option, the
+term "SLP Agent" is bein used ta refer ta a Service Location Protocol
+agent hustlin on a machine dat is bein configured rockin tha DHCP
+protocol.
+.PP
+Also, please be aware dat some g-units may refer ta SLP as NDS.
+If you have a NDS directory agent whose address you need to
+configure, tha slp-directory-agent option should work.
+.RE
+.PP
+.B option slp-service-scope \fIboolean text\fR\fB;\fR
+.RS 0.25i
+.PP
+Da Service Location Protocol Service Scope Option specifies two
+things: a list of steez scopes fo' SLP, n' whether tha use of this
+list is mandatory.  If tha initial boolean value is true, tha SLP
+agent should only use tha list of scopes provided up in dis option;
+otherwise, it may use its own static configuration up in preference to
+the list provided up in dis option.
+.PP
+Da text strang should be a cold-ass lil comma-separated list of scopes dat the
+SLP agent should use.  It may be omitted, up in which case tha SLP Agent
+will use tha aggregated list of scopez of all directory agents known
+to tha SLP agent.
+.RE
+.PP
+.B option \fBsmtp-server\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da SMTP server option specifies a list of SMTP servers available to
+the client.  Servers should be listed up in order of preference.
+.RE
+.PP
+.nf
+.B option \fBstatic-routes\fR \fIip-address ip-address\fR
+                  [\fB,\fR \fIip-address ip-address\fR...]\fB;\fR
+.fi
+.RS 0.25i
+.PP
+This option specifies a list of static routes dat tha client should
+install up in its routin cache.  If multiple routes ta tha same
+destination is specified, they is listed up in descendin order of
+priority.
+.PP
+Da routes consist of a list of IP address pairs.  Da first address
+is tha destination address, n' tha second address is tha routa for
+the destination.
+.PP
+Da default route (0.0.0.0) be a illegal destination fo' a static
+route.  To specify tha default route, use the
+.B routers
+option. I aint talkin' bout chicken n' gravy biatch.  Also, please note dat dis option aint intended for
+classless IP routin - it do not include a subnet mask.  Since
+classless IP routin is now da most thugged-out widely deployed routin standard,
+this option is virtually useless, n' aint implemented by any of the
+popular DHCP clients, fo' example tha Microsizzlez DHCP client.
+.PP
+NOTE ta Fedora dhclient users:
+.br
+dhclient-script interprets trailin 0 octetz of tha target as indicating
+the subnet class of tha route, so fo' tha followin static-routes value:
+.br
+        option static-routes 172.0.0.0 172.16.2.254,
+.br
+                             192.168.0.0 192.168.2.254;
+.br
+dhclient-script will create routes:
+.br
+        172/8 via 172.16.2.254 dev $interface
+.br
+        192.168/16 via 192.168.2.254 dev $interface
+.RE
+.PP
+.nf
+.B option \fBclassless-static-routes\fR \fIdestination-descriptor ip-address\fR
+                            [\fB,\fR \fIdestination-descriptor ip-address\fR...]\fB;\fR
+.fi
+.RS 0.25i
+.PP
+This option (see RFC3442) specifies a list of classless static routes
+that tha client should install up in its routin cache.
+.PP
+This option can contain one or mo' static routes, each of which
+consistz of a thugged-out destination descriptor n' tha IP address of tha router
+that should be used ta reach dat destination.
+.PP
+Many clients may not implement tha Classless Static Routes option.
+DHCP server administrators should therefore configure they DHCP
+servers ta bust both a Routa option n' a Classless Static Routes
+option, n' should specify tha default router(s) both up in tha Router
+option n' up in tha Classless Static Routes option.
+.PP
+If tha DHCP server returns both a Classless Static Routes option and
+a Routa option, tha DHCP client ignores tha Routa option.
+.RE
+.PP
+.nf
+.B option \fBstreettalk-directory-assistance-server\fR \fIip-address\fR
+                                           [\fB,\fR \fIip-address\fR...]\fB;\fR
+.fi
+.RS 0.25i
+.PP
+Da StreetTalk Directory Assistizzle (STDA) server option specifies a
+list of STDA servers available ta tha client.  Servers should be
+listed up in order of preference.
+.RE
+.PP
+.B option \fBstreettalk-server\fR \fIip-address\fR [\fB,\fR \fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da StreetTalk server option specifies a list of StreetTalk servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option subnet-mask \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+Da subnet mask option specifies tha clientz subnet mask as per RFC
+950.  If no subnet mask option is provided anywhere up in scope, as a
+last resort dhcpd will use tha subnet mask from tha subnet declaration
+for tha network on which a address is bein assigned. Y'all KNOW dat shit, muthafucka!  However,
+.I any
+subnet-mask option declaration dat is up in scope fo' tha address being
+assigned will override tha subnet mask specified up in tha subnet
+declaration.
+.RE
+.PP
+.B option \fBsubnet-selection\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+Sent by tha client if a address is required up in a subnet other than tha one
+that would normally be selected (based on tha relayin address of the
+connected subnet tha request is obtained from). Right back up in yo muthafuckin ass. See RFC3011. Note dat the
+option number used by dis server is 118; dis has not always been the
+defined number, n' some clients may bust a gangbangin' finger-lickin' different value. Use of this
+option should be regarded as slightly experimental!
+.RE
+.PP
+This option aint user configurable up in tha server.
+.PP
+.PP
+.B option \fBswap-server\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+This specifies tha IP address of tha clientz swap server.
+.RE
+.PP
+.B option \fBtcp-keepkickin it-garbage\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client should bust TCP
+keepkickin it lyrics wit a octet of garbage fo' compatibilitizzle with
+olda implementations.  A value of false indicates dat a garbage octet
+should not be sent fo' realz. A value of legit indicates dat a garbage octet
+should be sent.
+.RE
+.PP
+.B option \fBtcp-keepkickin it-interval\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha interval (in seconds) dat tha client TCP
+should wait before bustin  a keepkickin it message on a TCP connection.
+Da time is specified as a 32-bit unsigned integer n' shit.  A value of zero
+indicates dat tha client should not generate keepkickin it lyrics on
+connections unless specifically axed by a application.
+.RE
+.PP
+.B option \fBtftp-server-name\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used ta identify a TFTP server and, if supported by the
+client, should have tha same effect as tha \fBserver-name\fR
+declaration. I aint talkin' bout chicken n' gravy biatch.  BOOTP clients is unlikely ta support dis option.
+Some DHCP clients will support it, n' others straight-up require dat shit.
+.RE
+.PP
+.B option time-offset \fIint32\fR\fB;\fR
+.RS 0.25i
+.PP
+Da time-offset option specifies tha offset of tha clientz subnet in
+secondz from Coordinated Universal Time (UTC).
+.RE
+.PP
+.B option time-servers \fIip-address\fR [, \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+Da time-server option specifies a list of RFC 868 time servers
+available ta tha client.  Servers should be listed up in order of
+preference.
+.RE
+.PP
+.B option \fBtrailer-encapsulation\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies whether or not tha client should negotiate the
+use of trailaz (RFC 893 [14]) when rockin tha ARP protocol.  A value
+of false indicates dat tha client should not attempt ta use trailers.  A
+value of legit means dat tha client should attempt ta use trailers.
+.RE
+.PP
+.B option \fBuap-servers\fR \fItext\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of URLs, each pointin ta a user
+authentication steez dat is capable of processin authentication
+requests encapsulated up in tha User Authentication Protocol (UAP).  UAP
+servers can accept either HTTP 1.1 or SSLv3 connections.  If tha list
+includes a URL dat do not contain a port component, tha normal
+default port be assumed (i.e., port 80 fo' http n' port 443 for
+https).  If tha list includes a URL dat do not contain a path
+component, tha path /uap be assumed. Y'all KNOW dat shit, muthafucka!  If mo' than one URL is
+specified up in dis list, tha URLs is separated by spaces.
+.RE
+.PP
+.B option \fBuser-class\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used by some DHCP clients as a way fo' playas to
+specify identifyin shiznit ta tha client.  This can be used up in a
+similar way ta tha vendor-class-identifier option yo, but tha value of
+the option is specified by tha user, not tha vendor. Shiiit, dis aint no joke.  Most recent
+DHCP clients gotz a way up in tha user intercourse ta specify tha value for
+this identifier, probably as a text string.
+.RE
+.PP
+.B option \fBvendor-class-identifier\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+This option is used by some DHCP clients ta identify tha vendor
+type n' possibly tha configuration of a DHCP client.  Da shiznit
+is a strang of bytes whose contents is specific ta tha vendor n' are
+not specified up in a standard. Y'all KNOW dat shit, muthafucka!  To peep what tha fuck vendor class identifier
+clients is sending, you can write tha followin up in yo' DHCP server
+configuration file:
+.nf
+.PP
+set vendor-strin = option vendor-class-identifier;
+.fi
+.PP
+This will result up in all entries up in tha DHCP server lease database file
+for clients dat busted vendor-class-identifier options havin a set
+statement dat looks suttin' like this:
+.nf
+.PP
+set vendor-strin = "SUNW.Ultra-5_10";
+.fi
+.PP
+Da vendor-class-identifier option is normally used by tha DHCP server
+to determine tha options dat is returned up in the
+.B vendor-encapsulated-options
+option. I aint talkin' bout chicken n' gravy biatch.  Please peep tha VENDOR ENCAPSULATED OPTIONS section lata up in this
+manual page fo' further shiznit.
+.RE
+.PP
+.B option \fBvendor-encapsulated-options\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBvendor-encapsulated-options\fR option can contain either a
+single vendor-specific value or one or mo' vendor-specific
+suboptions.  This option aint normally specified up in tha DHCP server
+configuration file - instead, a vendor class is defined fo' each
+vendor, vendor class suboptions is defined, joints fo' them
+suboptions is defined, n' tha DHCP server make up a response on
+that basis.
+.PP
+Some default behaviours fo' well-known DHCP client vendors (currently,
+the Microsizzlez Windows 2000 DHCP client) is configured automatically,
+but otherwise dis must be configured manually - peep tha VENDOR
+ENCAPSULATED OPTIONS section lata up in dis manual page fo' details.
+.RE
+.PP
+.B option \fBvivso\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBvivso\fR option can contain multiple separate options, one for
+each 32-bit Enterprise ID.  Each Enterprise-ID discriminated option then
+gotz nuff additionizzle options whose format is defined by tha vendor who
+holdz dat ID.  This option is probably not configured manually yo, but
+rather is configured via intervenin option definitions.  Please also
+see tha VENDOR ENCAPSULATED OPTIONS section lata up in dis manual page
+for details.
+.RE
+.PP
+.B option \fBwww-server\fR \fIip-address\fR [\fB,\fR
+\fIip-address\fR... ]\fB;\fR
+.RS 0.25i
+.PP
+Da WWW server option specifies a list of WWW servers available
+to tha client.  Servers should be listed up in order of preference.
+.RE
+.PP
+.B option \fBx-display-manager\fR \fIip-address\fR [\fB,\fR \fIip-address\fR...
+]\fB;\fR
+.RS 0.25i
+.PP
+This option specifies a list of systems dat is hustlin tha X Window
+System Display Manager n' is available ta tha client.  Addresses
+should be listed up in order of preference.
+.RE
+.SH RELAY AGENT INFORMATION OPTION
+An IETF draft, draft-ietf-dhc-agent-options-11.txt, defines a series
+of encapsulated options dat a relay agent can add ta a DHCP packet
+when relayin it ta tha DHCP server n' shit.  Da server can then make
+address allocation decisions (or whatever other decisions it wants)
+based on these options.  Da server also returns these options up in any
+replies it sendz all up in tha relay agent, so dat tha relay agent can
+use tha shiznit up in these options fo' delivery or accounting
+purposes.
+.PP
+Da current draft defines two options.  To reference
+these options up in tha dhcp server, specify tha option space name,
+"agent", followed by a period, followed by tha option name.  It is
+not normally useful ta define joints fo' these options up in tha server,
+although it is permissible.  These options is not supported up in the
+client.
+.PP
+.B option \fBagent.circuit-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da circuit-id suboption encodes a agent-local identifier of the
+circuit from which a DHCP client-to-server packet was received. Y'all KNOW dat shit, muthafucka!  It is
+intended fo' use by agents up in relayin DHCP responses back ta the
+proper circuit.  Da format of dis option is currently defined ta be
+vendor-dependent, n' will probably remain dat way, although the
+current draft allows fo' tha possibilitizzle of standardizin the
+format up in tha future.
+.RE
+.PP
+.B option \fBagent.remote-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da remote-id suboption encodes shiznit bout tha remote host end
+of a cold-ass lil circuit.  Examplez of what tha fuck it might contain include calla ID
+information, username shiznit, remote ATM address, cable modem ID,
+and similar thangs.  In principal, tha meanin aint well-specified,
+and it should generally be assumed ta be a opaque object dat is
+administratively guaranteed ta be unique ta a particular remote end of
+a circuit.
+.RE
+.PP
+.B option \fBagent.DOCSIS-device-class\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+Da DOCSIS-device-class suboption is intended ta convey shiznit about
+the host endpoint, hardware, n' software, dat either tha host operating
+system or tha DHCP server may not otherwise be aware of (but tha relay is
+able ta distinguish).  This is implemented as a 32-bit field (4 octets),
+each bit representin a gangbangin' flag describin tha host up in one of these ways.
+So far, only bit zero (bein tha least dope bit) is defined in
+RFC3256.  If dis bit is set ta one, tha host is considered a CPE
+Controlled Cable Modem (CCCM).  All other bits is reserved.
+.RE
+.PP
+.B option \fBagent.link-selection\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+Da link-selection suboption is provided by relay agents ta inform servers
+what subnet tha client is straight-up attached to.  This is useful up in them
+cases where tha giaddr (where responses must be busted ta tha relay agent)
+is not on tha same subnet as tha client.  When dis option is present in
+a packet from a relay agent, tha DHCP server will use its contents ta find
+a subnet declared up in configuration, n' from here take one step further
+backwardz ta any shared-network tha subnet may be defined within; the
+client may be given any address within dat shared network, as normally
+appropriate.
+.RE
+.SH THE CLIENT FQDN SUBOPTIONS
+Da Client FQDN option, currently defined up in tha Internizzle Draft
+draft-ietf-dhc-fqdn-option-00.txt aint a standard yet yo, but is in
+sufficiently wide use already dat our crazy asses have implemented dat shit.  Due to
+the complexitizzle of tha option format, our crazy asses have implemented it as a
+suboption space rather than a single option. I aint talkin' bout chicken n' gravy biatch.  In general this
+option should not be configured by tha user - instead it should be
+used as part of a automatic DNS update system.
+.PP
+.B option fqdn.no-client-update \fIflag\fB;
+.RS 0.25i
+.PP
+When tha client sendz this, if it is true, it means tha client will not
+attempt ta update its A record. Y'all KNOW dat shit, muthafucka!  When busted by tha server ta tha client,
+it means dat tha client \fIshould not\fR update its own A record.
+.RE
+.PP
+.B option fqdn.server-update \fIflag\fB;
+.RS 0.25i
+.PP
+When tha client sendz dis ta tha server, it is requestin dat tha server
+update its A record. Y'all KNOW dat shit, muthafucka!  When busted by tha server, it means dat tha server
+has updated (or be bout ta update) tha clientz A record.
+.RE
+.PP
+.B option fqdn.encoded \fIflag\fB;
+.RS 0.25i
+.PP
+If true, dis indicates dat tha domain name included up in tha option is
+encoded up in DNS wire format, rather than as plain ASCII text.  Da client
+normally sets dis ta false if it don't support DNS wire format up in the
+FQDN option. I aint talkin' bout chicken n' gravy biatch.  Da server should always bust back tha same value dat the
+client sent.  When dis value is set on tha configuration side, it controls
+the format up in which tha \fIfqdn.fqdn\fR suboption is encoded.
+.RE
+.PP
+.B option fqdn.rcode1 \fIflag\fB;
+.PP
+.B option fqdn.rcode2 \fIflag\fB;
+.RS 0.25i
+.PP
+These options specify tha result of tha thugged-out shiznit of tha A n' PTR records,
+respectively, n' is only busted by tha DHCP server ta tha DHCP client.
+Da jointz of these fieldz is dem defined up in tha DNS protocol justification.
+.RE
+.PP
+.B option fqdn.fqdn \fItext\fB;
+.RS 0.25i
+.PP
+Specifies tha domain name dat tha client wishes ta use.  This can be a
+fully-qualified domain name, or a single label.  If there is no trailing
+\'.\' characta up in tha name, it aint fully-qualified, n' tha server will
+generally update dat name up in some locally-defined domain.
+.RE
+.PP
+.B option fqdn.hostname \fI--never set--\fB;
+.RS 0.25i
+.PP
+This option should never be set yo, but it can be read back rockin tha \fBoption\fR
+and \fBconfig-option\fR operators up in a expression, up in which case it returns
+the first label up in tha \fBfqdn.fqdn\fR suboption - fo' example, if
+the value of \fBfqdn.fqdn\fR is "foo.example.com.", then \fBfqdn.hostname\fR
+will be "foo".
+.RE
+.PP
+.B option fqdn.domainname \fI--never set--\fB;
+.RS 0.25i
+.PP
+This option should never be set yo, but it can be read back rockin tha \fBoption\fR
+and \fBconfig-option\fR operators up in a expression, up in which case it returns
+all labels afta tha straight-up original gangsta label up in tha \fBfqdn.fqdn\fR suboption - for
+example, if tha value of \fBfqdn.fqdn\fR is "foo.example.com.",
+then \fBfqdn.hostname\fR is ghon be "example.com.".  If dis suboption value
+is not set, it means dat a unqualified name was busted up in tha \fBfqdn\fR option,
+or dat no \fBfqdn\fR option was busted at all.
+.RE
+.PP
+If you wish ta use any of these suboptions, we straight fuckin recommend dat you
+refer ta tha Client FQDN option draft (or standard, when it becomes a
+standard) - tha documentation here is sketchy n' incomplete up in comparison,
+and is just intended fo' reference by playas whoz ass already KNOW the
+Client FQDN option justification.
+.SH THE NETWARE/IP SUBOPTIONS
+RFC2242 defines a set of encapsulated options fo' Novell NetWare/IP
+clients, n' you can put dat on yo' toast.  To use these options up in tha dhcp server, specify tha option
+space name, "nwip", followed by a period, followed by tha option name.
+Da followin options can be specified:
+.PP
+.B option \fBnwip.nsq-broadcast\fR \fIflag\fR\fB;\fR
+.RS 0.25i
+.PP
+If true, tha client should use tha NetWare Nearest Server Query to
+locate a NetWare/IP server n' shit.  Da behaviour of tha Novell client if
+this suboption is false, or aint present, aint specified.
+.PP
+.RE
+.B option \fBnwip.preferred-dss\fR \fIip-address\fR [\fB,\fR \fIip-address\fR... ]\fR\fB;\fR
+.RS 0.25i
+.PP
+This suboption specifies a list of up ta five IP addresses, each of
+which should be tha IP address of a NetWare Domain SAP/RIP server
+(DSS).
+.RE
+.PP
+.B option \fBnwip.nearest-nwip-server\fR \fI\fIip-address\fR
+                             [\fB,\fR \fIip-address\fR...]\fR\fB;\fR
+.RS 0.25i
+.PP
+This suboption specifies a list of up ta five IP addresses, each of
+which should be tha IP address of a Nearest NetWare IP server.
+.RE
+.PP
+.B option \fBnwip.autoretries\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+Specifies tha number of times dat a NetWare/IP client should attempt
+to rap wit a given DSS server at startup.
+.RE
+.PP
+.B option \fBnwip.autoretry-secs\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+Specifies tha number of secondz dat a Netware/IP client should wait
+between retries when attemptin ta establish communications wit a DSS
+server at startup.
+.RE
+.PP
+.B option \fBnwip.nwip-1-1\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+If true, tha NetWare/IP client should support NetWare/IP version 1.1
+compatibility.  This is only needed if tha client is ghon be contacting
+Netware/IP version 1.1 servers.
+.RE
+.PP
+.B option \fBnwip.primary-dss\fR \fIip-address\fR\fB;\fR
+.RS 0.25i
+.PP
+Specifies tha IP address of tha Primary Domain SAP/RIP Service server
+(DSS) fo' dis NetWare/IP domain. I aint talkin' bout chicken n' gravy biatch.  Da NetWare/IP administration
+utilitizzle uses dis value as Primary DSS server when configurin a
+secondary DSS server.
+.RE
+.SH STANDARD DHCPV6 OPTIONS
+DHCPv6 options differ from DHCPv4 options partially cuz of using
+16-bit code n' length tags yo, but semantically zero-length options
+are legal up in DHCPv6, n' multiple options is treated differently.
+Whereas up in DHCPv4 multiple options would be concatenated ta form one
+option, up in DHCPv6 they is sposed ta fuckin be individual instantiations.
+Understandably, nuff options is not "allowed" ta have multiple
+instances up in a packet - normally these is options which is digested
+by tha DHCP protocol software, n' not by playas or applications.
+.PP
+.B option \fBdhcp6.client-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha clientz DUID identifier n' shit.  DUIDs is similar
+but different from DHCPv4 client identifiers - there be documented duid
+types:
+.PP
+.I duid-llt
+.PP
+.I duid-en
+.PP
+.I duid-ll
+.PP
+This value should not be configured yo, but rather is provided by clients
+and treated as a opaque identifier key blob by servers.
+.RE
+.PP
+.B option \fBdhcp6.server-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+This option specifies tha serverz DUID identifier n' shit.  One may use this
+option ta configure a opaque binary blob fo' yo' serverz identifier.
+.RE
+.PP
+.B option \fBdhcp6.ia-na\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da Identitizzle Association fo' Non-temporary Addresses (ia-na) carries
+assigned addresses dat is not temporary addresses fo' use by the
+DHCPv6 client.  This option is produced by tha DHCPv6 server software,
+and should not be configured.
+.RE
+.PP
+.B option \fBdhcp6.ia-ta\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da Identitizzle Association fo' Temporary Addresses (ia-ta) carries
+temporary addresses, which may chizzle upon every last muthafuckin renewal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  There is
+no support fo' dis up in tha current DHCPv6 software.
+.RE
+.PP
+.B option \fBdhcp6.ia-addr\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da Identitizzle Association Address option is encapsulated inside ia-na
+or ia-ta options up in order ta represent addresses associated wit them
+IA's.  These options is manufactured by tha software, so should not
+be configured.
+.RE
+.PP
+.B option \fBdhcp6.oro\fR \fIuint16\fR [ \fB,\fR \fIuint16\fR\fB,\fR ... ]\fB;\fR
+.RS 0.25i
+.PP
+Da Option Request Option ("ORO") is tha DHCPv6 equivalent of the
+parameter-request-list.  Clients supply dis option ta ask servers
+to reply wit options relevant ta they needz n' use.  This option
+must not be directly configured, tha request syntax up in dhclient.conf (5)
+should be used instead.
+.RE
+.PP
+.B option \fBdhcp6.preference\fR \fIuint8\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBpreference\fR option informs a DHCPv6 client which server is
+\'preferred\' fo' use on a given subnet.  This preference is only
+applied durin tha initial stagez of configuration - once a cold-ass lil client
+is bound ta a IA, it will remain bound ta dat IA until it is no
+longer valid or has expired. Y'all KNOW dat shit, muthafucka!  This value may be configured on the
+server, n' is digested by tha client software.
+.RE
+.PP
+.B option \fBdhcp6.elapsed-time\fR \fIuint16\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBelapsed-time\fR option is constructed by tha DHCPv6 client
+software, n' is potentially consumed by intermediaries. Put ya muthafuckin choppers up if ya feel dis!  This
+option should not be configured.
+.RE
+.PP
+.B option \fBdhcp6.relay-msg\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBrelay-msg\fR option is constructed by intervenin DHCPv6
+relay agent software.  This option is entirely used by protocol
+software, n' aint meant fo' user configuration.
+.RE
+.PP
+.B option \fBdhcp6.unicast\fR \fIip6-address\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBunicast\fR option is provided by DHCPv6 servers which are
+willin (or prefer) ta receive Renew packets from they clients
+by exchangin UDP unicasts wit em.  Normally, DHCPv6 clients
+will multicast they Renew lyrics.  This may be configured on
+the server, n' should be configured as a address tha server
+is locked n loaded ta reply to.
+.RE
+.PP
+.B option \fBdhcp6.status-code\fR \fIstatus-code\fR [ \fIstring\fR ] \fB;\fR
+.RS 0.25i
+.PP
+Da \fBstatus-code\fR option is provided by DHCPv6 servers ta inform
+clientz of error conditions durin protocol communication. I aint talkin' bout chicken n' gravy biatch.  This option
+is manufactured n' digested by protocol software, n' should not be
+configured.
+.RE
+.PP
+.B option \fBdhcp6.rapid-commit\fR \fB;\fR
+.RS 0.25i
+.PP
+Da \fBrapid-commit\fR option be a zero-length option dat clients use
+to indicate they desire ta enta tha fuck into rapid-commit wit tha server.
+.RE
+.PP
+.B option \fBdhcp6.vendor-opts\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBvendor-opts\fR option is straight-up a encapsulated sub-option space,
+in which each Vendor-specific Hype Option (VSIO) is identified by
+a 32-bit Enterprise-ID number n' shit.  Da encapsulated option spaces within these
+options is defined by tha vendors.
+.PP
+To make use of dis option, tha dopest way is ta examine tha section
+titled VENDOR ENCAPSULATED OPTIONS below, up in particular tha bits about
+the "vsio" option space.
+.RE
+.PP
+.B option \fBdhcp6.interface-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBinterface-id\fR option is manufactured by relay agents, n' may
+be used ta guide configuration differentiatin clients by tha intercourse
+they is remotely attached to.  It do not make sense ta configure a
+value fo' dis option yo, but it may make sense ta inspect its contents.
+.RE
+.PP
+.B option \fBdhcp6.reconf-msg\fR \fIdhcpv6-message\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBreconf-msg\fR option is manufactured by servers, n' busted to
+clients up in Reconfigure lyrics ta inform dem of what tha fuck message
+the client should Reconfigure using.  There is no support for
+DHCPv6 Reconfigure extensions, n' dis option is documented
+informationally only.
+.RE
+.PP
+.B option \fBdhcp6.reconf-accept ;\fR
+.RS 0.25i
+.PP
+Da \fBreconf-accept\fR option is included by DHCPv6 clients that
+support tha Reconfigure extentions, advertisin dat they will
+respond if tha server was ta ask dem ta Reconfigure.  There is
+no support fo' DHCPv6 Reconfigure extensions, n' dis option is
+documented shiznitally only.
+.RE
+.PP
+.B option \fBdhcp6.sip-servers-names\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBsip-servers-names\fR option allows SIP clients ta locate a
+local SIP server dat is ta be used fo' all outbound SIP requests, a
+so-called"outbound proxy server."  If you wish ta use manually entered
+IPv6 addresses instead, please peep tha \fBsip-servers-addresses\fR option
+below.
+.RE
+.PP
+.B option
+.B dhcp6.sip-servers-addresses
+.I ip6-address \fR[\fB,\fR
+.I ip6-address \fR... ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBsip-servers-addresses\fR option allows SIP clients ta locate
+a local SIP server dat is ta be used fo' all outbound SIP requests,
+a so-called "outbound proxy servers."  If you wish ta use domain names
+rather than IPv6 addresses, please peep tha \fBsip-servers-names\fR option
+above.
+.RE
+.PP
+.B option 
+.B dhcp6.name-servers
+.I ip6-address \fR[\fB,\fR
+.I ip6-address \fR... ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBname-servers\fR option instructs clients bout locally available
+recursive DNS servers.  It be easiest ta describe dis as tha "nameserver"
+line up in /etc/resolv.conf.
+.RE
+.PP
+.B option \fBdhcp6.domain-search\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBdomain-search\fR option specifies tha clientz domain search path
+to be applied ta recursive DNS queries. Put ya muthafuckin choppers up if ya feel dis!  It be easiest ta describe dis as
+the "search" line up in /etc/resolv.conf.
+.RE
+.PP
+.B option \fBdhcp6.ia-pd\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBia-pd\fR option is manufactured by clients n' servers ta create a
+Prefix Delegation bindin - ta delegate a IPv6 prefix ta tha client.  It is
+not directly edited up in dhcpd.conf(5) or dhclient.conf(5) yo, but rather is
+manufactured n' consumed by tha software.
+.RE
+.PP
+.B option \fBdhcp6.ia-prefix\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBia-prefix\fR option is placed inside \fBia-pd\fR options up in order
+to identify tha prefix(es) allocated ta tha client.  It aint directly
+edited up in dhcpd.conf(5) or dhclient.conf(5) yo, but rather is  
+manufactured n' consumed by tha software.
+.RE
+.PP
+.B option
+.B dhcp6.nis-servers
+.I ip6-address \fR[\fB,
+.I ip6-address \fR...  ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBnis-servers\fR option identifies, up in order, NIS servers available
+to tha client.
+.RE
+.PP
+.B option
+.B dhcp6.nisp-servers
+.I ip6-address \fR[\fB,
+.I ip6-address \fR... ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBnisp-servers\fR option identifies, up in order, NIS+ servers available
+to tha client.
+.RE
+.PP
+.B option \fBnis-domain-name\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBnis-domain-name\fR option specifies tha NIS domain name tha client is
+sposed ta fuckin use, n' is related ta tha \fBnis-servers\fR option.
+.RE
+.PP
+.B option \fBdhcp6.nis-domain-name\fR \fIdomain-name\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBdhcp6.nis-domain-name\fR option specifies NIS domain name the
+client is sposed ta fuckin use, n' is related ta \fBdhcp6.nis-servers\fR option.
+.RE
+.PP
+.B option \fBnisp-domain-name\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBnisp-domain-name\fR option specifies tha NIS+ domain name tha client
+is sposed ta fuckin use, n' is related ta tha \fBnisp-servers\fR option.
+.RE
+.PP
+.B option \fBdhcp6.nisp-domain-name\fR \fIdomain-name\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBdhcp6.nis-domain-name\fR option specifies NIS+ domain name the
+client is sposed ta fuckin use, n' is related ta \fBdhcp6.nisp-servers\fR option.
+.RE
+.PP
+.B option
+.B dhcp6.sntp-servers
+.I ip6-address \fR[\fB,
+.I ip6-address \fR... ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBsntp-servers\fR option specifies a list of local SNTP servers
+available fo' tha client ta synchronize they clocks.
+.RE
+.PP
+.B option \fBdhcp6.info-refresh-time\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBinfo-refresh-time\fR option gives DHCPv6 clients using
+Information-request lyrics a hint as ta how tha fuck long they should between
+refreshin tha shiznit they was given. I aint talkin' bout chicken n' gravy biatch.  Note dat dis option will
+only be served up ta tha client, n' be likely ta affect tha client's
+behaviour, if tha client axed tha option.
+.RE
+.PP
+.B option \fBdhcp6.bcms-server-d\fR \fIdomain-list\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBbcms-server-d\fR option gotz nuff tha domain namez of local BCMS
+(Broadcast n' Multicast Control Skillz) controllaz which tha client
+may use.
+.RE
+.PP
+.B option
+.B dhcp6.bcms-server-a
+.I ip6-address \fR[\fB,
+.I ip6-address \fR... ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBbcms-server-a\fR option gotz nuff tha IPv6 addressez of local BCMS
+(Broadcast n' Multicast Control Skillz) controllaz which tha client
+may use.
+.RE
+.PP
+.B option \fBdhcp6.remote-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBremote-id\fR option is constructed by relay agents, ta inform the
+server of details pertainin ta what tha fuck tha relay knows bout tha client (such
+as what tha fuck port it be attached to, n' so forth).  Da contentz of dis option
+have some vendor-specific structure (similar ta VSIO) yo, but our crazy asses have chosen
+to treat dis option as a opaque field.
+.RE
+.PP
+.B option \fBdhcp6.subscriber-id\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBsubscriber-id\fR option be a opaque field provided by tha relay agent,
+which serves up additionizzle shiznit bout tha subscriber up in question. I aint talkin' bout chicken n' gravy biatch.  The
+exact contentz of dis option depend upon tha vendor and/or tha operator's
+configuration of tha remote device, n' as such be a opaque field.
+.RE
+.PP
+.B option \fBdhcp6.fqdn\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBfqdn\fR option is normally constructed by tha client or server,
+and negotiates tha clientz Fully Qualified Domain Name, as well as which
+party is responsible fo' Dynamic DNS Updates.  See tha section on the
+Client FQDN SubOptions fo' full details (the DHCPv4 n' DHCPv6 FQDN options
+use tha same "fqdn." encapsulated space, so is up in all ways identical).
+.RE
+.PP
+.B option \fBdhcp6.lq-query\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBlq-query\fR option is used internally by fo' lease query.
+.RE
+.PP
+.B option \fBdhcp6.client-data\fR \fIstring\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBclient-data\fR option is used internally by fo' lease query.
+.RE
+.PP
+.B option \fBdhcp6.clt-time\fR \fIuint32\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBclt-time\fR option is used internally by fo' lease query.
+.RE
+.PP
+.B option \fBdhcp6.lq-relay-data\fR \fIip6-address string\fR\fB;\fR
+.RS 0.25i
+.PP
+Da \fBlq-relay-data\fR option is used internally by fo' lease query.
+.RE
+.PP
+.B option
+.B dhcp6.lq-client-link
+.I ip6-address \fR[\fB,\fR
+.I ip6-address \fR... ]
+.B ;
+.RS 0.25i
+.PP
+Da \fBlq-client-link\fR option is used internally by fo' lease query.
+.RE
+.PP
+
+.B option
+.B dhcp6.bootfile-url
+.I strang 
+.B ;
+.RS 0.25i
+.PP
+Da server sendz dis option ta inform tha client on some URL ta a
+boot file.  Used primarily fo' UEFI network booting, it gotz nuff a RFC3986
+compliant URI which tha client may use ta boot a operatin system.  This option
+is defined up in RFC5970
+.RE
+.PP
+
+.B option
+.B dhcp6.arch-type
+.I arch-id \fR[\fB,\fR arch-id\fR...] 
+.B ;
+.RS 0.25i
+.PP
+A client will bust dis option ta a server so dat tha server may make decisions
+on what tha fuck options n' addresses ta offer tha requestin client.  Da option
+consistz of a list of 16 bit unsigned joints dat represent tha architecture of
+the requestin client.  These joints corespond ta tha joints available ta the
+dhcpv4 option architecture-type, as defined up in RFC4578, section 2.1.
+This option is defined up in RFC5970
+ .RE
+.PP
+
+.B option
+.B dhcp6.net-id
+.I uint8 uint8 uint8 
+.B ;
+.RS 0.25i
+.PP
+A client will bust dis option ta a server ta inform it bout tha clients level
+of UNDI support.  Da option consistz of 3 octets (a type, major n' minor
+value).  Specific meaningz of these joints is doumented up in section 2.2 of
+RFC4578.
+This option is defined up in RFC5970
+.RE
+.PP
+.SH DEFINING NEW OPTIONS
+Da Internizzle Systems Consortium DHCP client n' server provide the
+capabilitizzle ta define freshly smoked up options.  Each DHCP option has a name, a
+code, n' a structure.  Da name is used by you ta refer ta the
+option. I aint talkin' bout chicken n' gravy biatch.  Da code be a number, used by tha DHCP server n' client to
+refer ta a option. I aint talkin' bout chicken n' gravy biatch.  Da structure raps bout what tha fuck tha contentz of an
+option looks like.
+.PP
+To define a freshly smoked up option, you need ta chizzle a name fo' it dat is not
+in use fo' some other option - fo' example, you can't use "host-name"
+because tha DHCP protocol already defines a host-name option, which is
+documented earlier up in dis manual page.  If a option name don't
+appear up in dis manual page, you can use it yo, but itz probably a good
+idea ta put some kind of unique strang all up in tha beginnin so you can be
+sure dat future options don't take yo' name.  For example, you
+might define a option, "local-host-name", feelin some confidence
+that no straight-up legit DHCP option name will eva start wit "local".
+.PP
+Once you have chosen a name, you must chizzle a cold-ass lil code.  All codes between
+224 n' 254 is reserved as \'site-local\' DHCP options, so you can pick
+any one of these fo' yo' joint (not fo' yo' product/application).  In
+RFC3942, crib-local space was moved from startin at 128 ta startin at
+224.  In practice, some vendors have interpreted tha protocol rather
+loosely n' have used option code joints pimped outa than 128 theyselves.
+Therez no real way ta avoid dis problem, n' dat shiznit was thought ta be
+unlikely ta cause too much shiznit up in practice.  If you come across
+a vendor-documented option code up in either tha freshly smoked up or oldschool crib-local
+spaces, please contact yo' vendor n' inform dem bout rfc3942.
+.PP
+Da structure of a option is simply tha format up in which tha option
+data appears.  Da ISC DHCP server currently supports all dem simple
+types, like integers, booleans, strings n' IP addresses, n' it also
+supports tha mobilitizzle ta define arrayz of single types or arrays of
+fixed sequencez of types.
+.PP
+New options is declared as bigs up:
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.I definition
+.B ;
+.PP
+Da joints of
+.I new-name
+and
+.I new-code
+should be tha name you have chosen fo' tha freshly smoked up option n' tha code you
+have chosen. I aint talkin' bout chicken n' gravy biatch.  The
+.I definition
+should be tha definizzle of tha structure of tha option.
+.PP
+Da followin simple option type definitions is supported:
+.PP
+.B BOOLEAN
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B boolean
+.B ;
+.PP
+An option of type boolean be a gangbangin' flag wit a value of either on or off
+(or legit or false).  So a example use of tha boolean type would be:
+.nf
+
+option use-zephyr code 180 = boolean;
+option use-zephyr on;
+
+.fi
+.B INTEGER
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.I sign
+.B integer
+.I width
+.B ;
+.PP
+Da \fIsign\fR token should either be blank, \fIunsigned\fR
+or \fIsigned\fR.  Da width can be either 8, 16 or 32, n' refers to
+the number of bits up in tha integer n' shit.  So fo' example, tha followin two
+lines show a thugged-out definizzle of tha sql-connection-max option n' its use:
+.nf
+
+option sql-connection-max code 192 = unsigned integer 16;
+option sql-connection-max 1536;
+
+.fi
+.B IP-ADDRESS
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B ip-address
+.B ;
+.PP
+An option whose structure be a IP address can be expressed either as
+a domain name or as a thugged-out dotted quad. Y'all KNOW dat shit, muthafucka!  So tha followin be a example use
+of tha ip-address type:
+.nf
+
+option sql-server-address code 193 = ip-address;
+option sql-server-address sql.example.com;
+
+.fi
+.B IP6-ADDRESS
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B ip6-address
+.B ;
+.PP
+An option whose structure be a IPv6 address must be expressed as
+a valid IPv6 address.  Da followin be a example use of tha 
+ip6-address type:
+.nf
+
+option dhcp6.some-server code 1234 = array of ip6-address;
+option dhcp6.some-server 3ffe:bbbb:aaaa:aaaa::1, 3ffe:bbbb:aaaa:aaaa::2;
+
+.fi
+.PP
+.B TEXT
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B text
+.B ;
+.PP
+An option whose type is text will encode a ASCII text string.  For
+example:
+.nf
+
+option sql-default-connection-name code 194 = text;
+option sql-default-connection-name "PRODZA";
+
+.fi
+.PP
+.B DATA STRING
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B string
+.B ;
+.PP
+An option whose type be a thugged-out data strang is essentially just a cold-ass lil collection
+of bytes, n' can be specified either as quoted text, like tha text
+type, or as a list of hexadecimal contents separated by colons whose
+values must be between 0 n' FF.  For example:
+.nf
+
+option sql-identification-token code 195 = string;
+option sql-identification-token 17:23:19:a6:42:ea:99:7c:22;
+
+.fi
+.PP
+.B DOMAIN-LIST
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B domain-list
+.B [compressed]
+.B ;
+.PP
+An option whose type is \fBdomain-list\fR be a RFC1035 formatted (on the
+wire, "DNS Format") list of domain names, separated by root labels.  The
+optionizzle \fBcompressed\fR keyword indicates if tha option should be
+compressed relatizzle ta tha start of tha option contents (not tha packet
+contents).
+.PP
+When up in doubt, omit tha \fBcompressed\fR keyword. Y'all KNOW dat shit, muthafucka!  When tha software receives
+an option dat is compressed n' tha \fBcompressed\fR keyword is omitted, it
+will still decompress tha option (relatizzle ta tha option contents field).  The
+keyword only controls whether or not transmitted packets is compressed.
+.PP
+Note dat when
+.B domain-list
+formatted options is output as environment variablez to
+.B dhclient-script(8),
+the standard DNS \-escape mechanizzle is used: they is decimal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  This is
+appropriate fo' direct use up in eg /etc/resolv.conf.
+.nf
+
+.fi
+.PP
+.B ENCAPSULATION
+.PP
+.B option
+.I new-name
+.B code
+.I new-code
+.B =
+.B encapsulate
+.I identifier
+.B ;
+.PP
+An option whose type is \fBencapsulate\fR will encapsulate the
+contentz of tha option space specified up in \fIidentifier\fR.  Examples
+of encapsulated options up in tha DHCP protocol as it currently exists
+include tha vendor-encapsulated-options option, tha netware-suboptions
+option n' tha relay-agent-information option.
+.nf
+
+option space local;
+option local.demo code 1 = text;
+option local-encapsulation code 197 = encapsulate local;
+option local.demo "demo";
+
+.fi
+.PP
+.B ARRAYS
+.PP
+Options can contain arrayz of any of tha above types except fo' the
+text n' data strang types, which aren't currently supported in
+arrays.  An example of a array definizzle be as bigs up:
+.nf
+
+option kerberos-servers code 200 = array of ip-address;
+option kerberos-servers 10.20.10.1, 10.20.11.1;
+
+.fi
+.B RECORDS
+.PP
+Options can also contain data structures consistin of a sequence of
+data types, which is sometimes called a record type.  For example:
+.nf
+
+option contrived-001 code 201 = { boolean, integer 32, text };
+option contrived-001 on 1772 "contrivance";
+
+.fi
+It aint nuthin but also possible ta have options dat is arrayz of records, for
+example:
+.nf
+
+option new-static-routes code 201 = array of {
+	ip-address, ip-address, ip-address, integer 8 };
+option static-routes
+	10.0.0.0 255.255.255.0 net-0-rtr.example.com 1,
+	10.0.1.0 255.255.255.0 net-1-rtr.example.com 1,
+	10.2.0.0 255.255.224.0 net-2-0-rtr.example.com 3;
+
+.fi	
+.SH VENDOR ENCAPSULATED OPTIONS
+Da DHCP protocol defines tha \fBvendor-encapsulated-options\fR
+option, which allows vendors ta define they own options dat will be
+sent encapsulated up in a standard DHCP option. I aint talkin' bout chicken n' gravy biatch.  It also defines
+the \fBVendor Identified Vendor Sub Options\fR option ("VIVSO"), n' the
+DHCPv6 protocol defines tha \fBVendor-specific Hype Option\fR
+("VSIO").  Da format of all of these options is probably internally a
+strin of options, similarly ta other aiiight DHCP options.  Da VIVSO
+and VSIO options differ up in dat they contain options dat correspond
+to vendor Enterprise-ID numbers (assigned by IANA), which then contain
+options accordin ta each Vendorz justifications.  Yo ass will need ta refer
+to yo' vendorz documentation up in order ta form options ta their
+specification.
+.PP
+Da value of these options can be set up in one of two ways.  Da first
+way is ta simply specify tha data directly, rockin a text strang or a
+colon-separated list of hexadecimal joints, n' you can put dat on yo' toast.  For help up in formin these
+strings, please refer ta \fBRFC2132\fR fo' tha DHCPv4 \fBVendor Specific
+Hype Option\fR, \fBRFC3925\fR fo' tha DHCPv4 \fBVendor Identified Vendor
+Sub Options\fR, or \fBRFC3315\fR fo' tha DHCPv6 \fBVendor-specific Information
+Option\fR.  For example:
+.PP
+.nf
+option vendor-encapsulated-options
+    2:4:
+	AC:11:41:1:
+    3:12:
+	73:75:6e:64:68:63:70:2d:73:65:72:76:65:72:31:37:2d:31:
+    4:12:
+	2f:65:78:70:6f:72:74:2f:72:6f:6f:74:2f:69:38:36:70:63;
+option vivso
+    00:00:09:bf:0E:
+	01:0c:
+	    48:65:6c:6c:6f:20:77:6f:72:6c:64:21;
+option dhcp6.vendor-opts
+    00:00:09:bf:
+	00:01:00:0c:
+	    48:65:6c:6c:6f:20:77:6f:72:6c:64:21;
+.fi
+.PP
+Da second way of settin tha value of these options is ta have tha DHCP
+server generate a vendor-specific option buffer n' shit.  To do this, you
+must do four thangs: define a option space, define some options in
+that option space, provide joints fo' them, n' specify dat that 
+option space should be used ta generate tha relevant option.
+.PP
+To define a freshly smoked up option space up in which vendor options can be stored,
+use tha \fRoption space\fP statement:
+.PP
+.B option
+.B space
+.I name
+.B [ [ code width
+.I number
+.B ] [ length width
+.I number
+.B ] [ hash size
+.I number
+.B ] ] ;
+.PP
+Where tha numbers followin \fBcode width\fR, \fBlength width\fR,
+and \fBhash size\fR respectively identify tha number of bytes used to
+describe option codes, option lengths, n' tha size up in bucketz of the
+hash tablez ta hold options up in dis space (most DHCPv4 option spaces
+use 1 byte codes n' lengths, which is tha default, whereas most
+DHCPv6 option spaces use 2 byte codes n' lengths).
+.PP
+Da code n' length widths is used up in DHCP protocol - you must configure
+these numbers ta match tha applicable option space yo ass is configuring.
+They each default ta 1.  Valid joints fo' code widths is 1, 2 or 4.
+Valid joints fo' length widths is 0, 1 or 2.  Most DHCPv4 option spaces
+use 1 byte codes n' lengths, which is tha default, whereas most DHCPv6
+option spaces use 2 byte codes n' lengths.  A zero-byte length produces
+options similar ta tha DHCPv6 Vendor-specific Hype Option - but
+not they contents!
+.PP
+Da hash size defaults depend upon tha \fBcode width\fR selected, and
+may be 254 or 1009.  Valid joints range between 1 n' 65535.  Note
+that tha higher you configure dis value, tha mo' memory is ghon be used. Y'all KNOW dat shit, muthafucka!  It
+is considered phat practice ta configure a value dat is slightly larger
+than tha estimated number of options you plan ta configure within the
+space.  Previous versionz of ISC DHCP (up ta n' includin DHCP 3.0.*),
+this value was fixed at 9973.
+.PP
+Da name can then be used up in option definitions, as busted lyrics bout earlier in
+this document.  For example:
+.nf
+
+option space SUNW code width 1 length width 1 hash size 3;
+option SUNW.server-address code 2 = ip-address;
+option SUNW.server-name code 3 = text;
+option SUNW.root-path code 4 = text;
+
+option space ISC code width 1 length width 1 hash size 3;
+option ISC.sample code 1 = text;
+option vendor.ISC code 2495 = encapsulate vivso-sample;
+option vendor-class.ISC code 2495 = text;
+
+option ISC.sample "configuration text here";
+option vendor-class.ISC "vendor class here";
+
+option space docsis code width 2 length width 2 hash size 17;
+option docsis.tftp-servers code 32 = array of ip6-address;
+option docsis.cablelabs-configuration-file code 33 = text;
+option docsis.cablelabs-syslog-servers code 34 = array of ip6-address;
+option docsis.device-id code 36 = string;
+option docsis.time-servers code 37 = array of ip6-address;
+option docsis.time-offset code 38 = signed integer 32;
+option vsio.docsis code 4491 = encapsulate docsis;
+
+.fi
+Once you have defined a option space n' tha format of some options,
+you can set up scopes dat define joints fo' dem options, n' you
+can say when ta use em.  For example, suppose you wanna handle
+two different classez of clients, n' you can put dat on yo' toast.  Usin tha option space definition
+shown up in tha previous example, you can bust different option joints to
+different clients based on tha vendor-class-identifier option dat the
+clients send, as bigs up:
+.PP
+.nf
+class "vendor-classes" {
+  match option vendor-class-identifier;
+}
+
+subclass "vendor-classes" "SUNW.Ultra-5_10" {
+  vendor-option-space SUNW;
+  option SUNW.root-path "/export/root/sparc";
+}
+
+subclass "vendor-classes" "SUNW.i86pc" {
+  vendor-option-space SUNW;
+  option SUNW.root-path "/export/root/i86pc";
+}
+
+option SUNW.server-address 172.17.65.1;
+option SUNW.server-name "sundhcp-server17-1";
+
+option vivso-sample.sample "Wuz crackalackin' ghetto!";
+
+option docsis.tftp-servers ::1;
+
+.fi
+.PP
+As you can peep up in tha precedin example, regular scopin rulez apply,
+so you can define joints dat is global up in tha global scope, n' only
+define joints dat is specific ta a particular class up in tha local
+scope.  Da \fBvendor-option-space\fR declaration  drops some lyrics ta tha DHCP
+server ta use options up in tha SUNW option space ta construct tha DHCPv4
+.B vendor-encapsulated-options
+option. I aint talkin' bout chicken n' gravy biatch.  This be a limitation of dat option - tha DHCPv4 VIVSO n' the
+DHCPv6 VSIO options can have multiple vendor definitions all at once (even
+transmitted ta tha same client), so it aint necessary ta configure all dis bullshit.
+.SH SEE ALSO
+dhcpd.conf(5), dhcpd.leases(5), dhclient.conf(5), dhcp-eval(5), dhcpd(8),
+dhclient(8), RFC2132, RFC2131, RFC3046, RFC3315.
+.SH AUTHOR
+Hype bout Internizzle Systems Consortium can be found at
+.B https://www.isc.org.

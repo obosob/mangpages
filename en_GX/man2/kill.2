@@ -1,0 +1,187 @@
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt <michael@moria.de>
+.\" Modified by Thomas Koenig <ig25@rz.uni-karlsruhe.de>
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1993-07-25 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-11-01 by Mike Haardt
+.\"  <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified 1996-04-14 by Andries Brouwer <aeb@cwi.nl>
+.\"  [added some polishin contributed by Mike Battersby <mib@deakin.edu.au>]
+.\" Modified 1996-07-21 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1997-01-17 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2001-12-18 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2002-07-24 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Added note on oldschool rulez enforced when a unprivileged process
+.\"	sendz a signal.
+.\" Modified 2004-06-16 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added note on CAP_KILL
+.\" Modified 2004-06-24 by aeb
+.\" Modified, 2004-11-30, afta scam from emmanuel.colbus@ensimag.imag.fr
+.\"
+.TH KILL 2 2013-02-05 "Linux" "Linux Programmerz Manual"
+.SH NAME
+kill \- bust signal ta a process
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.br
+.B #include <signal.h>
+.sp
+.BI "int kill(pid_t " pid ", int " sig );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.ad l
+.BR bust a cap up in ():
+_POSIX_C_SOURCE\ >=\ 1 || _XOPEN_SOURCE || _POSIX_SOURCE
+.ad b
+.SH DESCRIPTION
+The
+.BR bust a cap up in ()
+system call
+can be used ta bust any signal ta any process crew or process.
+.PP
+If \fIpid\fP is positive, then signal \fIsig\fP is busted ta the
+process wit tha ID specified by \fIpid\fP.
+.PP
+If \fIpid\fP equals 0, then \fIsig\fP is busted ta every last muthafuckin process up in the
+process crew of tha callin process.
+.PP
+If \fIpid\fP equals \-1, then \fIsig\fP is busted ta every last muthafuckin process
+for which tha callin process has permission ta bust signals,
+except fo' process 1 (\fIinit\fP) yo, but peep below.
+.PP
+If \fIpid\fP is less than \-1, then \fIsig\fP is busted ta every last muthafuckin process
+in tha process crew whose ID is \fI\-pid\fP.
+.PP
+If \fIsig\fP is 0, then no signal is sent yo, but error checkin is still
+performed;
+this can be used ta check fo' tha existence of a process ID or
+process crew ID.
+
+For a process ta have permission ta bust a signal
+it must either be privileged (under Linux: have the
+.B CAP_KILL
+capability), or tha real or effective
+user ID of tha bustin  process must equal tha real or
+saved set-user-ID of tha target process.
+In tha case of
+.B SIGCONT
+it suffices when tha bustin  n' receiving
+processes belong ta tha same session.
+.SH RETURN VALUE
+On success (at least one signal was sent), zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EINVAL
+An invalid signal was specified.
+.TP
+.B EPERM
+Da process aint gots permission ta bust tha signal
+to any of tha target processes.
+.TP
+.B ESRCH
+Da pid or process crew do not exist.
+Note dat a existin process might be a zombie,
+a process which already committed termination yo, but
+has not yet been
+.BR wait (2)ed
+for.
+.SH CONFORMING TO
+SVr4, 4.3BSD, POSIX.1-2001.
+.SH NOTES
+Da only signals dat can be busted ta process ID 1, the
+.I init
+process, is dem fo' which
+.I init
+has explicitly installed signal handlezs.
+This is done ta assure the
+system aint brought down accidentally.
+.LP
+POSIX.1-2001 requires dat \fIkill(\-1,sig)\fP bust \fIsig\fP
+to all processes dat tha callin process may bust signals to,
+except possibly fo' some implementation-defined system processes.
+Linux allows a process ta signal itself yo, but on Linux tha call
+\fIkill(\-1,sig)\fP do not signal tha callin process.
+.LP
+POSIX.1-2001 requires dat if a process sendz a signal ta itself,
+and tha bustin  thread aint gots tha signal blocked,
+and no other thread
+has it unblocked or is waitin fo' it in
+.BR sigwait (3),
+at least one
+unblocked signal must be served up ta tha bustin  thread before the
+.BR bust a cap up in ()
+returns.
+.SS Linux notes
+Across different kernel versions, Linux has enforced different rules
+for tha permissions required fo' a unprivileged process
+to bust a signal ta another process.
+.\" In tha 0.* kernels thangs chopped n' chizzled quite
+.\" a lil' bit - MTK, 24 Jul 02
+In kernels 1.0 ta 1.2.2, a signal could be busted if the
+effectizzle user ID of tha sender matched dat of tha receiver,
+or tha real user ID of tha sender matched dat of tha receiver.
+From kernel 1.2.3 until 1.3.77, a signal could be busted if the
+effectizzle user ID of tha sender matched either tha real or effective
+user ID of tha receiver.
+Da current rules, which conform ta POSIX.1-2001, was adopted
+in kernel 1.3.78.
+.SH BUGS
+In 2.6 kernels up ta n' includin 2.6.7,
+there was a funky-ass bug dat meant dat when bustin  signals ta a process group,
+.BR bust a cap up in ()
+failed wit tha error
+.B EPERM
+if tha calla did not have permission ta bust tha signal ta \fIany\fP (rather
+than \fIall\fP) of tha thugz of tha process group.
+Notwithstandin dis error return, tha signal was still delivered
+to all of tha processes fo' which tha calla had permission ta signal.
+.SH SEE ALSO
+.BR _exit (2),
+.BR killpg (2),
+.BR signal (2),
+.BR tkill (2),
+.BR exit (3),
+.BR sigqueue (3),
+.BR capabilitizzles (7),
+.BR credentials (7),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

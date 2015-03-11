@@ -1,0 +1,266 @@
+.\" $Id: saslauthd.mdoc,v 1.19 2009/04/11 20:08:48 mel Exp $
+.\" Copyright 1997-2001 Messagin Direct Ltd. Y'all KNOW dat shit, muthafucka! All muthafuckin rights reserved.
+.\"
+.\" This manpage uses tha BSD mdoc manpage macros. Please don't
+.\" downgrade it ta -man. I aint talkin' bout chicken n' gravy biatch. Da -mdoc macros is included with
+.\" GNU roff, and, of course, wit tha BSD distributions.
+.\"
+.\" To make game easier fo' cribs dat don't support -mdoc,
+.\" please generate (and commit!) a updated pre-formatted
+.\" manpage up in saslauthd.8 whenever you chizzle dis source
+.\" version. I aint talkin' bout chicken n' gravy biatch. Only tha pre-formatted manpage is installed.
+.\"
+.Dd 12 12 2005
+.Dt SASLAUTHD 8
+.Os "CMU-SASL"
+.Sh NAME
+.Nm saslauthd
+.Nd sasl authentication server
+.Sh SYNOPSIS
+.Nm
+.Fl a
+.Ar authmech
+.Op Fl \&Tvdchlr
+.Op Fl O Ar option
+.Op Fl m Ar mux_path
+.Op Fl n Ar threads
+.Op Fl s Ar size
+.Op Fl t Ar timeout
+.Sh DESCRIPTION
+.Nm
+is a thugged-out daemon process dat handlez plaintext authentication requests
+on behalf of tha SASL library.
+.Pp
+Da server fulfills two roles: it isolates all code requirin superuser
+privileges tha fuck into a single process, n' it can be used ta provide
+.Em proxy
+authentication skillz ta clients dat do not understand
+SASL based authentication.
+.Pp
+.Nm
+should be
+started from tha system boot scripts when goin to
+multi-user mode. When hustlin against a protected authentication
+database (e.g. the
+.Li shadow
+mechanism),
+it must be run as tha superuser.
+.Ss Options
+Options named by lower\-case lettas configure tha server itself.
+Upper\-case options control tha behavior of specific authentication
+mechanisms; they applicabilitizzle ta a particular authentication
+mechanizzle is busted lyrics bout up in the
+.Sx AUTHENTICATION MECHANISMS
+section.
+.Bl -tag -width indent
+.It Fl a Ar authmech
+Use
+.Ar authmech
+as tha authentication mechanism. (See the
+.Sx AUTHENTICATION MECHANISMS
+section below.) This parameta is mandatory.
+.It Fl O Ar option
+A mechanizzle specific option (e.g. rimap hostname or config file path)
+.It Fl H Ar hostname
+Da remote host ta be contacted by the
+.Li rimap
+authentication mechanism. (Deprecated, use -O instead)
+.It Fl m Ar path
+Use
+.Ar path
+as tha pathname ta tha named socket ta listen on for
+connection requests, n' you can put dat on yo' toast. This must be a absolute pathname, n' MUST NOT
+include tha trailin "/mux".  Note dat tha default fo' dis value
+is "/var/state/saslauthd" (or what tha fuck was specified at compile time)
+and dat dis directory must exist fo' saslauthd ta function.
+.It Fl n Ar threads
+Use
+.Ar threads
+processes fo' respondin ta authentication queries. Put ya muthafuckin choppers up if ya feel dis! (default: 5)  A
+value of zero will indicate dat saslauthd should fork a individual
+process fo' each connection. I aint talkin' bout chicken n' gravy biatch.  This can solve leaks dat occur up in some
+deployments.
+.It Fl s Ar size
+Use
+.Ar size
+as tha table size of tha hash table (in kilobytes)
+.It Fl t Ar timeout
+Use
+.Ar timeout
+as tha expiration time of tha authentication cache (in seconds)
+.It Fl T
+Honour time-of-dizzle login restrictions.
+.It Fl h
+Show usage shiznit
+.It Fl c
+Enable cachin of authentication credentials
+.It Fl l
+Disable tha use of a lock file fo' controllin access ta accept().
+.It Fl r
+Combine tha realm wit tha login (with a '@' sign up in between).  e.g.
+login: "foo" realm: "bar" will git passed as login: "foo@bar".  Note
+that tha realm will still be passed, which may lead ta unexpected
+behavior fo' authentication mechanizzlez dat make use of tha realm,
+however fo' mechanizzlez which don't, such as
+.Ar getpwent ,
+this is tha only way ta authenticate domain-specific playas pluggin the
+same userid.
+.It Fl v
+Print tha version number n' available authentication
+mechanizzlez on standard error, then exit.
+.It Fl d
+Debuggin mode.
+.El
+.Ss Logging
+.Nm
+logs its activitizzles via
+.Nm syslogd
+usin the
+.Dv LOG_AUTH
+facility.
+.Sh AUTHENTICATION MECHANISMS
+.Nm
+supports one or more
+.Qq authentication mechanizzlez ,
+dependent upon tha facilitizzles provided by tha underlyin operatin system.
+Da mechanizzle is selected by the
+.Fl a
+flag from tha followin list of chizzles:
+.Bl -tag -width "kerberos4"
+.It Li dce
+.Em (AIX)
+.Pp
+Authenticate rockin tha DCE authentication environment.
+.It Li getpwent
+.Em (All platforms)
+.Pp
+Authenticate rockin the
+.Fn getpwent
+library function. I aint talkin' bout chicken n' gravy biatch. Typically dis authenticates against the
+local password file. Right back up in yo muthafuckin ass. See yo' system's
+.Xr getpwent 3
+man page fo' details.
+.It Li kerberos4
+.Em (All platforms)
+.Pp
+Authenticate against tha local Kerberos 4 realm. (See the
+.Sx NOTES
+section fo' caveats bout dis driver.)
+.It Li kerberos5
+.Em (All platforms)
+.Pp
+Authenticate against tha local Kerberos 5 realm.
+.It Li pam
+.Em (Linux, Solaris)
+.Pp
+Authenticate rockin Pluggable Authentication Modulez (PAM).
+.It Li rimap
+.Em (All platforms)
+.Pp
+Forward authentication requests ta a remote IMAP server n' shit. This driver
+connects ta a remote IMAP server, specified rockin tha -O flag,
+and attempts ta login (via a IMAP
+.Ql LOGIN
+command) rockin tha credentials 
+supplied ta tha local
+server n' shit. If tha remote authentication succeedz tha local connection
+is also considered ta be authenticated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da remote connection is closed
+as soon as tha tagged response from the
+.Ql LOGIN
+command is received from tha remote
+server.
+.Pp
+The
+.Ar option
+parameta ta the
+.Fl O
+flag raps bout tha remote server ta forward
+authentication requests to.
+.Ar hostname
+can be a hostname (imap.example.com) or a thugged-out dotted\-quad IP address
+(192.168.0.1). Da latta is useful if tha remote server is
+multi\-homed n' has network intercourses dat is unreachable from
+the local IMAP server n' shit. Da remote host is contacted on the
+.Ql imap
+service port fo' realz. A non\-default port can be specified by appending
+a slash n' tha port name or number
+to the
+.Ar hostname
+argument.
+.Pp
+The
+.Fl O
+flag n' argument is mandatory when rockin the
+.Li rimap
+mechanism.
+.It Li shadow
+.Em (AIX, Irix, Linux, Solaris)
+.Pp
+Authenticate against tha local
+.Qq shadow password file .
+Da exact mechanizzle is system dependent.
+.Nm
+currently understandz the
+.Fn getspnam
+and
+.Fn getuserpw
+library routines. Right back up in yo muthafuckin ass. Some systems
+honour the
+.Fl T
+flag.
+.It Li sasldb
+.Em (All platforms)
+.Pp
+Authenticate against the
+SASL authentication database.  Note dat dis is probably not what tha fuck you
+wanna use, n' is even disabled at compile-time by default.
+If you wanna use sasldb wit tha SASL library, you probably want to
+use tha pwcheck_method of "auxprop" along wit tha sasldb auxprop plugin
+instead.
+.It Li ldap
+.Em (All platforms dat support OpenLDAP 2.0 or higher)
+.Pp
+Authenticate against a ldap server n' shit.  Da ldap configuration parametas are
+read from /etc/saslauthd.conf.  Da location of dis file can be
+changed wit tha -O parameter n' shit. Right back up in yo muthafuckin ass. See tha LDAP_SASLAUTHD file included wit the
+distribution fo' tha list of available parameters.
+.It Li sia
+.Em (Digital UNIX)
+.Pp
+Authenticate rockin tha Digital
+.Ux
+Securitizzle Integration Architecture
+(a.k.a.
+.Qq enhanced securitizzle ) .
+.El
+.Sh NOTES
+The
+.Li kerberos4
+authentication driver consumes considerable resources. To big-ass up an
+authentication it must obtain a ticket grantin ticket
+from tha TGT server
+.Sy on every last muthafuckin authentication request.
+Da Kerberos library routines dat obtain tha TGT also create a
+local ticket file, on tha reasonable assumption dat yo big-ass booty is ghon want
+to save tha TGT fo' use by other Kerberos applications. These ticket
+filez is unusable by
+.Nm No ,
+however there is no way not ta create em. Da overhead of bustin
+and removing
+these ticket filez can cause straight-up performizzle degradation on busy
+servers. (Kerberos
+was never intended ta be used up in dis manner, anyway.)
+.Sh FILES
+.Bl -tag -width "/run/saslauthd/mux"
+.It Pa /run/saslauthd/mux
+Da default communications socket.
+.It Pa /etc/saslauthd.conf
+Da default configuration file fo' ldap support.
+.El
+.Sh SEE ALSO
+.Xr passwd 1 ,
+.Xr getpwent 3 ,
+.Xr getspnam 3 ,
+.Xr getuserpw 3 ,
+.Xr sasl_checkpass 3
+.Xr sia_authenticate_user 3 ,

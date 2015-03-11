@@ -1,0 +1,1762 @@
+.\"@(#)nfs.5"
+.TH NFS 5 "9 October 2012"
+.SH NAME
+nfs \- fstab format n' options fo' the
+.B nfs
+file systems
+.SH SYNOPSIS
+.I /etc/fstab
+.SH DESCRIPTION
+NFS be a Internizzle Standard protocol
+created by Sun Microsystems up in 1984. NFS was pimped
+to allow file pluggin between systems residing
+on a local area network.
+Da Linux NFS client supports three versions
+of tha NFS protocol:
+NFS version 2 [RFC1094],
+NFS version 3 [RFC1813],
+and NFS version 4 [RFC3530].
+.P
+The
+.BR mount (8)
+command attaches a gangbangin' file system ta tha system's
+name space hierarchy at a given mount point.
+The
+.I /etc/fstab
+file raps bout how
+.BR mount (8)
+should assemble a systemz file name hierarchy
+from various independent file systems
+(includin file systems exported by NFS servers).
+Each line up in the
+.I /etc/fstab
+file raps on some single file system, its mount point,
+and a set of default mount options fo' dat mount point.
+.P
+For NFS file system mounts, a line up in the
+.I /etc/fstab
+file specifies tha server name,
+the path name of tha exported server directory ta mount,
+the local directory dat is tha mount point,
+the type of file system dat is bein mounted,
+and a list of mount options dat control
+the way tha filesystem is mounted and
+how tha NFS client behaves when accessing
+filez on dis mount point.
+Da fifth n' sixth fieldz on each line is not used
+by NFS, thus conventionally each contain tha digit zero. For example:
+.P
+.nf
+.ta 8n +14n +14n +9n +20n
+	server:path	/mountpoint	fstype	option,option,...	0 0
+.fi
+.P
+Da serverz hostname n' export pathname
+are separated by a cold-ass lil colon, while
+the mount options is separated by commas. Da remainin fields
+are separated by blanks or tabs.
+.P
+Da serverz hostname can be a unqualified hostname,
+a straight-up qualified domain name,
+a dotted quad IPv4 address, or
+an IPv6 address enclosed up in square brackets.
+Link-local n' crib-local IPv6 addresses must be accompanied by an
+interface identifier.
+See
+.BR ipv6 (7)
+for details on specifyin raw IPv6 addresses.
+.P
+The
+.I fstype
+field gotz nuff "nfs".  Use of tha "nfs4" fstype in
+.I /etc/fstab
+is deprecated.
+.SH "MOUNT OPTIONS"
+Refer to
+.BR mount (8)
+for a thugged-out description of generic mount options
+available fo' all file systems. If you do not need to
+specify any mount options, use tha generic option
+.B defaults
+in
+.IR /etc/fstab .
+.DT
+.SS "Options supported by all versions"
+These options is valid ta use wit any NFS version.
+.TP 1.5i
+.BI nfsvers= n
+Da NFS protocol version number used ta contact tha serverz NFS service.
+If tha server do not support tha axed version, tha mount request 
+fails.
+If dis option aint specified, tha client negotiates a suitable version 
+with
+the server, tryin version 4 first, version 3 second, n' version 2 last.
+.TP 1.5i
+.BI vers= n
+This option be a alternatizzle ta the
+.B nfsvers
+option.
+It be included fo' compatibilitizzle wit other operatin systems
+.TP 1.5i
+.BR soft " / " hard
+Determines tha recovery behavior of tha NFS client
+afta a NFS request times out.
+If neither option is specified (or if the
+.B hard
+option is specified), NFS requests is retried indefinitely.
+If the
+.B soft
+option is specified, then tha NFS client fails a NFS request
+after
+.B retrans
+retransmissions done been sent,
+causin tha NFS client ta return a error
+to tha callin application.
+.IP
+.I NB:
+A so-called "soft" timeout can cause
+silent data corruption up in certain cases fo' realz. As such, use the
+.B soft
+option only when client responsiveness
+is mo' blingin than data integrity.
+Usin NFS over TCP or increasin tha value of the
+.B retrans
+option may mitigate a shitload of tha riskz of rockin the
+.B soft
+option.
+.TP 1.5i
+.BR intr " / " nointr
+This option is provided fo' backward compatibility.
+It be ignored afta kernel 2.6.25.
+.TP 1.5i
+.BI timeo= n
+Da time up in decisecondz (tenthz of a second) tha NFS client waits fo' a
+response before it retries a NFS request.
+.IP
+For NFS over TCP tha default
+.B timeo
+value is 600 (60 seconds).
+Da NFS client performs linear backoff: Afta each retransmission tha 
+timeout is increased by
+.BR timeo 
+up ta tha maximum of 600 seconds.
+.IP
+But fuck dat shiznit yo, tha word on tha street is dat fo' NFS over UDP, tha client uses a adaptive
+algorithm ta estimate a appropriate timeout value fo' frequently used
+request types (like fuckin READ n' WRITE requests) yo, but uses the
+.B timeo
+settin fo' infrequently used request types (like fuckin FSINFO requests).
+If the
+.B timeo
+option aint specified,
+infrequently used request types is retried afta 1.1 seconds.
+Afta each retransmission, tha NFS client doublez tha timeout for
+that request,
+up ta a maximum timeout length of 60 seconds.
+.TP 1.5i
+.BI retrans= n
+Da number of times tha NFS client retries a request before
+it attempts further recovery action. I aint talkin' bout chicken n' gravy biatch. If the
+.B retrans
+option aint specified, tha NFS client tries each request
+three times.
+.IP
+Da NFS client generates a "server not responding" message
+after
+.B retrans
+retries, then attempts further recovery (dependin on whether the
+.B hard
+mount option is up in effect).
+.TP 1.5i
+.BI rsize= n
+Da maximum number of bytes up in each network READ request
+that tha NFS client can receive when readin data from a gangbangin' file
+on a NFS server.
+Da actual data payload size of each NFS READ request is equal to
+or smalla than the
+.B rsize
+setting. Da phattest read payload supported by tha Linux NFS client
+is 1,048,576 bytes (one megabyte).
+.IP
+The
+.B rsize
+value be a positizzle integral multiple of 1024.
+Specified
+.B rsize
+values lower than 1024 is replaced wit 4096; joints larger than
+1048576 is replaced wit 1048576. If a specified value is within tha supported
+range but not a multiple of 1024, it is rounded down ta tha nearest
+multiple of 1024.
+.IP
+If an
+.B rsize
+value aint specified, or if tha specified
+.B rsize
+value is larger than tha maximum dat either client or server can support,
+the client n' server negotiate tha phattest
+.B rsize
+value dat they can both support.
+.IP
+The
+.B rsize
+mount option as specified on the
+.BR mount (8)
+command line appears up in the
+.I /etc/mtab
+file. But fuck dat shiznit yo, tha word on tha street is dat tha effective
+.B rsize
+value negotiated by tha client n' server is reported up in the
+.I /proc/mounts
+file.
+.TP 1.5i
+.BI wsize= n
+Da maximum number of bytes per network WRITE request
+that tha NFS client can bust when freestylin data ta a gangbangin' file
+on a NFS server n' shit. Da actual data payload size of each
+NFS WRITE request is equal to
+or smalla than the
+.B wsize
+setting. Da phattest write payload supported by tha Linux NFS client
+is 1,048,576 bytes (one megabyte).
+.IP
+Similar to
+.B rsize
+, the
+.B wsize
+value be a positizzle integral multiple of 1024.
+Specified
+.B wsize
+values lower than 1024 is replaced wit 4096; joints larger than
+1048576 is replaced wit 1048576. If a specified value is within tha supported
+range but not a multiple of 1024, it is rounded down ta tha nearest
+multiple of 1024.
+.IP
+If a
+.B wsize
+value aint specified, or if tha specified
+.B wsize
+value is larger than tha maximum dat either client or server can support,
+the client n' server negotiate tha phattest
+.B wsize
+value dat they can both support.
+.IP
+The
+.B wsize
+mount option as specified on the
+.BR mount (8)
+command line appears up in the
+.I /etc/mtab
+file. But fuck dat shiznit yo, tha word on tha street is dat tha effective
+.B wsize
+value negotiated by tha client n' server is reported up in the
+.I /proc/mounts
+file.
+.TP 1.5i
+.BR ac " / " noac
+Selects whether tha client may cache file attributes. If neither
+option is specified (or if
+.B ac
+is specified), tha client caches file
+attributes.
+.IP
+To improve performance, NFS clients cache file
+attributes. Every few seconds, a NFS client checks tha serverz version of each
+filez attributes fo' thugged-out shit.  Chizzlez dat occur on tha server in
+those lil' small-ass intervals remain undetected until tha client checks the
+server again. I aint talkin' bout chicken n' gravy biatch. The
+.B noac
+option prevents clients from cachin file
+attributes so dat applications can mo' quickly detect file chizzles
+on tha server.
+.IP
+In addizzle ta preventin tha client from cachin file attributes,
+the
+.B noac
+option forces application writes ta become synchronous so
+that local chizzlez ta a gangbangin' file become visible on tha server
+immediately.  That way, other clients can quickly detect recent
+writes when they check tha filez attributes.
+.IP
+Usin the
+.B noac
+option serves up pimped outa cache coherence among NFS clients
+accessin tha same files,
+but it extracts a thugged-out dope performizzle penalty.
+As such, judicious use of file lockin is encouraged instead.
+Da DATA AND METADATA COHERENCE section gotz nuff a thugged-out detailed rap
+of these trade-offs.
+.TP 1.5i
+.BI acregmin= n
+Da minimum time (in seconds) dat tha NFS client caches
+attributez of a regular file before it requests
+fresh attribute shiznit from a server.
+If dis option aint specified, tha NFS client uses
+a 3-second minimum.
+See tha DATA AND METADATA COHERENCE section
+for a gangbangin' full rap of attribute caching.
+.TP 1.5i
+.BI acregmax= n
+Da maximum time (in seconds) dat tha NFS client caches
+attributez of a regular file before it requests
+fresh attribute shiznit from a server.
+If dis option aint specified, tha NFS client uses
+a 60-second maximum.
+See tha DATA AND METADATA COHERENCE section
+for a gangbangin' full rap of attribute caching.
+.TP 1.5i
+.BI acdirmin= n
+Da minimum time (in seconds) dat tha NFS client caches
+attributez of a gangbangin' finger-lickin' directory before it requests
+fresh attribute shiznit from a server.
+If dis option aint specified, tha NFS client uses
+a 30-second minimum.
+See tha DATA AND METADATA COHERENCE section
+for a gangbangin' full rap of attribute caching.
+.TP 1.5i
+.BI acdirmax= n
+Da maximum time (in seconds) dat tha NFS client caches
+attributez of a gangbangin' finger-lickin' directory before it requests
+fresh attribute shiznit from a server.
+If dis option aint specified, tha NFS client uses
+a 60-second maximum.
+See tha DATA AND METADATA COHERENCE section
+for a gangbangin' full rap of attribute caching.
+.TP 1.5i
+.BI actimeo= n
+Using
+.B actimeo
+sets all of
+.BR acregmin ,
+.BR acregmax ,
+.BR acdirmin ,
+and
+.B acdirmax
+to tha same value.
+If dis option aint specified, tha NFS client uses
+the defaults fo' each of these options listed above.
+.TP 1.5i
+.BR bg " / " fg
+Determines how tha fuck the
+.BR mount (8)
+command behaves if a attempt ta mount a export fails.
+The
+.B fg
+option causes
+.BR mount (8)
+to exit wit a error status if any part of tha mount request
+times up or fails outright.
+This is called a "foreground" mount,
+and is tha default behavior if neither the
+.B fg
+nor
+.B bg
+mount option is specified.
+.IP
+If the
+.B bg
+option is specified, a timeout or failure causes the
+.BR mount (8)
+command ta fork a cold-ass lil lil pimp which continues ta attempt
+to mount tha export.
+Da parent immediately returns wit a zero exit code.
+This is known as a "background" mount.
+.IP
+If tha local mount point directory is missing, the
+.BR mount (8)
+command acts as if tha mount request timed out.
+This permits nested NFS mounts specified in
+.I /etc/fstab
+to proceed up in any order durin system initialization,
+even if some NFS servers is not yet available.
+Alternatively these thangs can be addressed
+usin a automounta (refer to
+.BR automount (8)
+for details).
+.TP 1.5i
+.BR rdirplus " / " nordirplus
+Selects whether ta use NFS v3 or v4 READDIRPLUS requests.
+If dis option aint specified, tha NFS client uses READDIRPLUS requests
+on NFS v3 or v4 mounts ta read lil' small-ass directories.
+Some applications big-ass up betta if tha client uses only READDIR requests
+for all directories.
+.TP 1.5i
+.BI retry= n
+Da number of minutes dat the
+.BR mount (8)
+command retries a NFS mount operation
+in tha foreground or background before givin up.
+If dis option aint specified, tha default value fo' foreground mounts
+is 2 minutes, n' tha default value fo' background mounts is 10000 minutes
+(80 minutes shy of one week).
+If a value of zero is specified, the
+.BR mount (8)
+command exits immediately afta tha straight-up original gangsta failure.
+.TP 1.5i
+.BI sec= flavors
+A colon-separated list of one or mo' securitizzle flavors ta use fo' accessing
+filez on tha mounted export. If tha server do not support any of these
+flavors, tha mount operation fails.
+If
+.B sec=
+is not specified, tha client attempts ta find
+a securitizzle flavor dat both tha client n' tha server supports.
+Valid
+.I flavors
+are
+.BR none ,
+.BR sys ,
+.BR krb5 ,
+.BR krb5i ,
+and
+.BR krb5p .
+Refer ta tha SECURITY CONSIDERATIONS section fo' details.
+.TP 1.5i
+.BR sharecache " / " nosharecache
+Determines how tha fuck tha clientz data cache n' attribute cache is shared
+when mountin tha same export mo' than once concurrently.  Usin the
+same cache reduces memory requirements on tha client n' presents
+identical file contents ta applications when tha same remote file is
+accessed via different mount points.
+.IP
+If neither option is specified, or if the
+.B sharecache
+option is
+specified, then a single cache is used fo' all mount points that
+access tha same ol' dirty export.  If the
+.B nosharecache
+option is specified,
+then dat mount point gets a unique cache.  Note dat when data and
+attribute caches is shared, tha mount options from tha straight-up original gangsta mount
+point take effect fo' subsequent concurrent mountz of tha same export.
+.IP
+Az of kernel 2.6.18, tha behavior specified by
+.B nosharecache
+is legacy cachin behavior. Shiiit, dis aint no joke. This
+is considered a thugged-out data risk since multiple cached copies
+of tha same file on tha same client can become outta sync
+followin a local update of one of tha copies.
+.TP 1.5i
+.BR resvport " / " noresvport
+Specifies whether tha NFS client should bust a privileged source port
+when communicatin wit a NFS server fo' dis mount point.
+If dis option aint specified, or the
+.B resvport
+option is specified, tha NFS client uses a privileged source port.
+If the
+.B noresvport
+option is specified, tha NFS client uses a non-privileged source port.
+This option is supported up in kernels 2.6.28 n' later.
+.IP
+Usin non-privileged source ports helps increase tha maximum number of
+NFS mount points allowed on a cold-ass lil client yo, but NFS servers must be configured
+to allow clients ta connect via non-privileged source ports.
+.IP
+Refer ta tha SECURITY CONSIDERATIONS section fo' blingin details.
+.TP 1.5i
+.BI lookupcache= mode
+Specifies how tha fuck tha kernel manages its cache of directory entries
+for a given mount point.
+.I mode
+can be one of
+.BR all ,
+.BR none ,
+.BR pos ,
+or
+.BR positizzle .
+This option is supported up in kernels 2.6.28 n' later.
+.IP
+Da Linux NFS client caches tha result of all NFS LOOKUP requests.
+If tha axed directory entry exists on tha server,
+the result is referred ta as
+.IR positizzle .
+If tha axed directory entry do not exist on tha server,
+the result is referred ta as
+.IR wack .
+.IP
+If dis option aint specified, or if
+.B all
+is specified, tha client assumes both typez of directory cache entries
+are valid until they parent directoryz cached attributes expire.
+.IP
+If
+.BR pos " or " positive
+is specified, tha client assumes positizzle entries is valid
+until they parent directoryz cached attributes expire yo, but
+always revalidates wack entires before a application
+can use em.
+.IP
+If
+.B none
+is specified,
+the client revalidates both typez of directory cache entries
+before a application can use em.
+This permits quick detection of filez dat was pimped or removed
+by other clients yo, but can impact application n' server performance.
+.IP
+Da DATA AND METADATA COHERENCE section gotz nuff a
+detailed rap of these trade-offs.
+.TP 1.5i
+.BR fsc " / " nofsc
+Enable/Disablez tha cache of (read-only) data pages ta tha local disk 
+usin tha FS-Cache facility. Right back up in yo muthafuckin ass. See cachefilesd(8) 
+and <kernel_soruce>/Documentation/filesystems/caching
+for detail on how tha fuck ta configure tha FS-Cache facility.
+Default value is nofsc.
+.SS "Options fo' NFS versions 2 n' 3 only"
+Use these options, along wit tha options up in tha above subsection,
+for NFS versions 2 n' 3 only.
+.TP 1.5i
+.BI proto= netid
+The
+.I netid
+determines tha transhiznit dat is used ta rap wit tha NFS
+server n' shit.  Available options are
+.BR udp ", " udp6 ", "tcp ", " tcp6 ", n' " rdma .
+Those which end in
+.B 6
+use IPv6 addresses n' is only available if support fo' TI-RPC is
+built in. I aint talkin' bout chicken n' gravy biatch. Others use IPv4 addresses.
+.IP
+Each transhiznit protocol uses different default
+.B retrans
+and
+.B timeo
+settings.
+Refer ta tha description of these two mount options fo' details.
+.IP
+In addizzle ta controllin how tha fuck tha NFS client transmits requests to
+the server, dis mount option also controls how tha fuck the
+.BR mount (8)
+command communicates wit tha serverz rpcbind n' mountd skillz.
+Specifyin a netid dat uses TCP forces all traffic from the
+.BR mount (8)
+command n' tha NFS client ta use TCP.
+Specifyin a netid dat uses UDP forces all traffic types ta use UDP.
+.IP
+.B Before rockin NFS over UDP, refer ta tha TRANSPORT METHODS section.
+.IP
+If the
+.B proto
+mount option aint specified, the
+.BR mount (8)
+command discovers which protocols tha server supports
+and chizzlez a appropriate transhiznit fo' each service.
+Refer ta tha TRANSPORT METHODS section fo' mo' details.
+.TP 1.5i
+.B udp
+The
+.B udp
+option be a alternatizzle ta specifying
+.BR proto=udp.
+It be included fo' compatibilitizzle wit other operatin systems.
+.IP
+.B Before rockin NFS over UDP, refer ta tha TRANSPORT METHODS section.
+.TP 1.5i
+.B tcp
+The
+.B tcp
+option be a alternatizzle ta specifying
+.BR proto=tcp.
+It be included fo' compatibilitizzle wit other operatin systems.
+.TP 1.5i
+.B rdma
+The
+.B rdma
+option be a alternatizzle ta specifying
+.BR proto=rdma.
+.TP 1.5i
+.BI port= n
+Da numeric value of tha serverz NFS steez port.
+If tha serverz NFS steez aint available on tha specified port,
+the mount request fails.
+.IP
+If dis option aint specified, or if tha specified port value is 0,
+then tha NFS client uses tha NFS steez port number
+advertised by tha serverz rpcbind service.
+Da mount request fails if tha serverz rpcbind steez aint available,
+the serverz NFS steez aint registered wit its rpcbind service,
+or tha serverz NFS steez aint available on tha advertised port.
+.TP 1.5i
+.BI mountport= n
+Da numeric value of tha serverz mountd port.
+If tha serverz mountd steez aint available on tha specified port,
+the mount request fails.
+.IP
+If dis option aint specified,
+or if tha specified port value is 0, then the
+.BR mount (8)
+command uses tha mountd steez port number
+advertised by tha serverz rpcbind service.
+Da mount request fails if tha serverz rpcbind steez aint available,
+the serverz mountd steez aint registered wit its rpcbind service,
+or tha serverz mountd steez aint available on tha advertised port.
+.IP
+This option can be used when mountin a NFS server
+all up in a gangbangin' firewall dat blocks tha rpcbind protocol.
+.TP 1.5i
+.BI mountproto= netid
+Da transhiznit tha NFS client uses
+to transmit requests ta tha NFS serverz mountd steez when struttin
+this mount request, n' when lata unmountin dis mount point.
+.IP
+.I netid
+may be one of
+.BR udp ", n' " tcp
+which use IPv4 address or, if TI-RPC is built tha fuck into the
+.B mount.nfs
+command,
+.BR udp6 ", n' " tcp6
+which use IPv6 addresses.
+.IP
+This option can be used when mountin a NFS server
+all up in a gangbangin' firewall dat blocks a particular transport.
+When used up in combination wit the
+.B proto
+option, different transports fo' mountd requests n' NFS requests
+can be specified.
+If tha serverz mountd steez aint available via tha specified
+transport, tha mount request fails.
+.IP
+Refer ta tha TRANSPORT METHODS section fo' mo' on how tha fuck the
+.B mountproto
+mount option interacts wit the
+.B proto
+mount option.
+.TP 1.5i
+.BI mounthost= name
+Da hostname of tha host hustlin mountd.
+If dis option aint specified, the
+.BR mount (8)
+command assumes dat tha mountd steez runs
+on tha same host as tha NFS service.
+.TP 1.5i
+.BI mountvers= n
+Da RPC version number used ta contact tha serverz mountd.
+If dis option aint specified, tha client uses a version number
+appropriate ta tha axed NFS version.
+This option is useful when multiple NFS skillz
+are hustlin on tha same remote server host.
+.TP 1.5i
+.BI namlen= n
+Da maximum length of a pathname component on dis mount.
+If dis option aint specified, tha maximum length is negotiated
+with tha server n' shit. In most cases, dis maximum length is 255 characters.
+.IP
+Some early versionz of NFS did not support dis negotiation.
+Usin dis option ensures that
+.BR pathconf (3)
+reports tha proper maximum component length ta applications
+in such cases.
+.TP 1.5i
+.BR lock " / " nolock
+Selects whether ta use tha NLM sideband protocol ta lock filez on tha server.
+If neither option is specified (or if
+.B lock
+is specified), NLM lockin is used fo' dis mount point.
+When rockin the
+.B nolock
+option, applications can lock files,
+but such locks provide exclusion only against other applications
+runnin on tha same client.
+Remote applications is not affected by these locks.
+.IP
+NLM lockin must be disabled wit the
+.B nolock
+option when rockin NFS ta mount
+.I /var
+because
+.I /var
+gotz nuff filez used by tha NLM implementation on Linux.
+Usin the
+.B nolock
+option be also required when mountin exports on NFS servers
+that do not support tha NLM protocol.
+.TP 1.5i
+.BR cto " / " nocto
+Selects whether ta use close-to-open cache coherence semantics.
+If neither option is specified (or if
+.B cto
+is specified), tha client uses close-to-open
+cache coherence semantics. If the
+.B nocto
+option is specified, tha client uses a non-standard heuristic ta determine when
+filez on tha server have chizzled.
+.IP
+Usin the
+.B nocto
+option may improve performizzle fo' read-only mounts,
+but should be used only if tha data on tha server chizzlez only occasionally.
+Da DATA AND METADATA COHERENCE section discusses tha behavior
+of dis option up in mo' detail.
+.TP 1.5i
+.BR acl " / " noacl
+Selects whether ta use tha NFSACL sideband protocol on dis mount point.
+Da NFSACL sideband protocol be a proprietary protocol
+implemented up in Solaris dat manages Access Control Lists, n' you can put dat on yo' toast. NFSACL was never
+made a standard part of tha NFS protocol justification.
+.IP
+If neither
+.B acl
+nor
+.B noacl
+option is specified,
+the NFS client negotiates wit tha server
+to peep if tha NFSACL protocol is supported,
+and uses it if tha server supports dat shit.
+Disablin tha NFSACL sideband protocol may be necessary
+if tha negotiation causes problems on tha client or server.
+Refer ta tha SECURITY CONSIDERATIONS section fo' mo' details.
+.TP 1.5i
+.BR local_lock= mechanism
+Specifies whether ta use local lockin fo' any or both of tha flock n' the
+POSIX lockin mechanisms.
+.I mechanism
+can be one of
+.BR all ,
+.BR flock ,
+.BR posix ,
+or
+.BR none .
+This option is supported up in kernels 2.6.37 n' later.
+.IP
+Da Linux NFS client serves up a way ta make locks local. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. This means, the
+applications can lock filez yo, but such locks provide exclusion only against
+other applications hustlin on tha same client. Remote applications is not
+affected by these locks.
+.IP
+If dis option aint specified, or if
+.B none
+is specified, tha client assumes dat tha locks is not local.
+.IP
+If
+.BR all
+is specified, tha client assumes dat both flock n' POSIX locks is local.
+.IP
+If
+.BR flock
+is specified, tha client assumes dat only flock locks is local n' uses
+NLM sideband protocol ta lock filez when POSIX locks is used.
+.IP
+If
+.BR posix
+is specified, tha client assumes dat POSIX locks is local n' uses NLM
+sideband protocol ta lock filez when flock locks is used.
+.IP
+To support legacy flock behavior similar ta dat of NFS clients < 2.6.12, 
+use 'local_lock=flock'. This option is required when exportin NFS mounts via
+Samba as Samba maps Windows share mode locks as flock. Right back up in yo muthafuckin ass. Since NFS clients >
+2.6.12 implement flock by emulatin POSIX locks, dis will result in
+conflictin locks.
+.IP
+NOTE: When used together, tha 'local_lock' mount option is ghon be overridden
+by 'nolock'/'lock' mount option.
+.SS "Options fo' NFS version 4 only"
+Use these options, along wit tha options up in tha straight-up original gangsta subsection above,
+for NFS version 4 n' newer.
+.TP 1.5i
+.BI proto= netid
+The
+.I netid
+determines tha transhiznit dat is used ta rap wit tha NFS
+server n' shit.  Supported options are
+.BR tcp ", " tcp6 ", n' " rdma .
+.B tcp6
+use IPv6 addresses n' is only available if support fo' TI-RPC is
+built in. I aint talkin' bout chicken n' gravy biatch. Both others use IPv4 addresses.
+.IP
+All NFS version 4 servers is required ta support TCP,
+so if dis mount option aint specified, tha NFS version 4 client
+uses tha TCP protocol.
+Refer ta tha TRANSPORT METHODS section fo' mo' details.
+.TP 1.5i
+.BI port= n
+Da numeric value of tha serverz NFS steez port.
+If tha serverz NFS steez aint available on tha specified port,
+the mount request fails.
+.IP
+If dis mount option aint specified,
+the NFS client uses tha standard NFS port number of 2049
+without first checkin tha serverz rpcbind service.
+This allows a NFS version 4 client ta contact a NFS version 4
+server all up in a gangbangin' firewall dat may block rpcbind requests.
+.IP
+If tha specified port value is 0,
+then tha NFS client uses tha NFS steez port number
+advertised by tha serverz rpcbind service.
+Da mount request fails if tha serverz rpcbind steez aint available,
+the serverz NFS steez aint registered wit its rpcbind service,
+or tha serverz NFS steez aint available on tha advertised port.
+.TP 1.5i
+.BR cto " / " nocto
+Selects whether ta use close-to-open cache coherence semantics
+for NFS directories on dis mount point.
+If neither
+.B cto
+nor
+.B nocto
+is specified,
+the default is ta use close-to-open cache coherence
+semantics fo' directories.
+.IP
+File data cachin behavior aint affected by dis option.
+Da DATA AND METADATA COHERENCE section discusses
+the behavior of dis option up in mo' detail.
+.TP 1.5i
+.BI clientaddr= n.n.n.n
+.TP 1.5i
+.BI clientaddr= n:n: ... :n
+Specifies a single IPv4 address (in dotted-quad form),
+or a non-link-local IPv6 address,
+that tha NFS client advertises ta allow servers
+to big-ass up NFS version 4 callback requests against
+filez on dis mount point. If  tha  server is unable to
+establish callback connections ta clients, performance
+may degrade, or accesses ta filez may temporarily hang.
+.IP
+If dis option aint specified, the
+.BR mount (8)
+command attempts ta discover a appropriate callback address automatically.
+Da automatic discovery process aint perfect, however.
+In tha presence of multiple client network intercourses,
+special routin policies,
+or atypical network topologies,
+the exact address ta use fo' callbacks may be nontrivial ta determine.
+.TP 1.5i
+.BR migration " / " nomigration
+Selects whether tha client uses a identification strang dat is compatible
+with NFSv4 Transparent State Migration (TSM).
+If tha mounted server supports NFSv4 migration wit TSM, specify the
+.B migration
+option.
+.IP
+Some server features misbehave up in tha grill of a migration-compatible
+identification string.
+The
+.B nomigration
+option retains tha use of a traditionizzle client indentification string
+which is compatible wit legacy NFS servers.
+This be also tha behavior if neither option is specified.
+A clientz open n' lock state cannot be migrated transparently
+when it identifies itself via a traditionizzle identification string.
+.IP
+This mount option has no effect wit NFSv4 minor versions newer than zero,
+which always use TSM-compatible client identification strings.
+.SH nfs4 FILE SYSTEM TYPE
+The
+.BR nfs4
+file system type be a oldschool syntax fo' specifyin NFSv4 usage. Well shiiiit, it can still 
+be used wit all NFSv4-specific n' common options, excepted the
+.B nfsvers
+mount option.
+.SH MOUNT CONFIGURATION FILE
+If tha mount command is configured ta do so, all of tha mount options 
+busted lyrics bout up in tha previous section can also be configured up in tha 
+.I /etc/nfsmount.conf 
+file. Right back up in yo muthafuckin ass. See 
+.BR nfsmount.conf(5)
+for details.
+.SH EXAMPLES
+To mount a export rockin NFS version 2,
+use the
+.B nfs
+file system type n' specify the
+.B nfsvers=2
+mount option.
+To mount rockin NFS version 3,
+use the
+.B nfs
+file system type n' specify the
+.B nfsvers=3
+mount option.
+To mount rockin NFS version 4,
+use either the
+.B nfs
+file system type, wit the
+.B nfsvers=4
+mount option, or tha 
+.B nfs4
+file system type.
+.P
+Da followin example from an
+.I /etc/fstab
+file causes tha mount command ta negotiate
+reasonable defaults fo' NFS behavior.
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	server:/export	/mnt	nfs	defaults	0 0
+.fi
+.P
+Here be a example from a /etc/fstab file fo' a NFS version 2 mount over UDP.
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	server:/export	/mnt	nfs	nfsvers=2,proto=udp	0 0
+.fi
+.P
+This example shows how tha fuck ta mount rockin NFS version 4 over TCP
+with Kerberos 5 mutual authentication.
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	server:/export	/mnt	nfs4	sec=krb5	0 0
+.fi
+.P
+This example shows how tha fuck ta mount rockin NFS version 4 over TCP
+with Kerberos 5 privacy or data integritizzle mode.
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	server:/export	/mnt	nfs4	sec=krb5p:krb5i	0 0
+.fi
+.P
+This example can be used ta mount /usr over NFS.
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	server:/export	/usr	nfs	ro,nolock,nocto,actimeo=3600	0 0
+.fi
+.P
+This example shows how tha fuck ta mount a NFS server
+usin a raw IPv6 link-local address.
+.P
+.nf
+.ta 8n +40n +5n +4n +9n
+	[fe80::215:c5ff:fb3e:e2b1%eth0]:/export	/mnt	nfs	defaults	0 0
+.fi
+.SH "TRANSPORT METHODS"
+NFS clients bust requests ta NFS servers via
+Remote Procedure Calls, or
+.IR RPCs .
+Da RPC client discovers remote steez endpoints automatically,
+handlez per-request authentication,
+adjusts request parametas fo' different byte endiannizz on client n' server,
+and retransmits requests dat may done been lost by tha network or server.
+RPC requests n' replies flow over a network transport.
+.P
+In most cases, the
+.BR mount (8)
+command, NFS client, n' NFS server
+can automatically negotiate proper transport
+and data transfer size settings fo' a mount point.
+In some cases, however, it pays ta specify
+these settings explicitly rockin mount options.
+.P
+Traditionally, NFS clients used tha UDP transhiznit exclusively for
+transmittin requests ta servers.  Though its implementation is
+simple, NFS over UDP has nuff limitations dat prevent smooth
+operation n' phat performizzle up in some common deployment
+environments, n' you can put dat on yo' toast.  Even a insignificant packet loss rate thangs up in dis biatch up in the
+loss of whole NFS requests; as such, retransmit timeouts is usually
+in tha subsecond range ta allow clients ta recover quickly from
+dropped requests yo, but dis can result up in extraneous network traffic
+and server load.
+.P
+But fuck dat shiznit yo, tha word on tha street is dat UDP can be like effectizzle up in specialized settings where
+the networks MTU is big-ass relatizzle ta NFSs data transfer size (such
+as network environments dat enable jumbo Ethernet frames).  In such
+environments, trimmin the
+.B rsize
+and
+.B wsize
+settings so dat each
+NFS read or write request fits up in just all dem network frames (or even
+in  a single  frame) be advised. Y'all KNOW dat shit, muthafucka!  This reduces tha probabilitizzle that
+the loss of a single MTU-sized network frame thangs up in dis biatch up in tha loss of
+an entire big-ass read or write request.
+.P
+TCP is tha default transhiznit protocol used fo' all modern NFS
+implementations.  It performs well up in almost every last muthafuckin conceivable
+network environment n' serves up pimpin guarantees against data
+corruption caused by network unreliability.  TCP is often a
+requirement fo' mountin a server all up in a network firewall.
+.P
+Under aiiight circumstances, networks drop packets much more
+frequently than NFS servers drop requests, n' you can put dat on yo' toast.  As such, a aggressive
+retransmit timeout  settin fo' NFS over TCP is unnecessary. Typical
+timeout settings fo' NFS over TCP is between one n' ten minutes.
+Afta  tha client exhausts its retransmits (the value of the
+.B retrans
+mount option), it assumes a network partizzle has occurred,
+and attempts ta reconnect ta tha server on a gangbangin' fresh socket. Right back up in yo muthafuckin ass. Since
+TCP itself make network data transfer reliable,
+.B rsize
+and
+.B wsize
+can safely be allowed ta default ta tha phattest joints supported by
+both client n' server, independent of tha networkz MTU size.
+.SS "Usin tha mountproto mount option"
+This section applies only ta NFS version 2 n' version 3 mounts
+since NFS version 4 do not bust a separate protocol fo' mount
+requests.
+.P
+Da Linux NFS client can bust a gangbangin' finger-lickin' different transhiznit for
+contactin a NFS serverz rpcbind service, its mountd service,
+its Network Lock Manager (NLM) service, n' its NFS service.
+Da exact transports employed by tha Linux NFS client for
+each mount point dependz on tha settingz of tha transport
+mount options, which include
+.BR proto ,
+.BR mountproto ,
+.BR udp ", n' " tcp .
+.P
+Da client sendz Network Status Manager (NSM) notifications
+via UDP no matta what tha fuck transhiznit options is specified yo, but
+listens fo' server NSM notifications on both UDP n' TCP.
+Da NFS Access Control List (NFSACL) protocol shares tha same
+transhiznit as tha main NFS service.
+.P
+If no transhiznit options is specified, tha Linux NFS client
+uses UDP ta contact tha serverz mountd service, n' TCP to
+contact its NLM n' NFS skillz by default.
+.P
+If tha server do not support these transports fo' these skillz, the
+.BR mount (8)
+command attempts ta discover what tha fuck tha server supports, n' then retries
+the mount request once rockin tha discovered transports.
+If tha server do not advertise any transhiznit supported by tha client
+or is misconfigured, tha mount request fails.
+If the
+.B bg
+option is up in effect, tha mount command backgroundz itself n' continues
+to attempt tha specified mount request.
+.P
+When the
+.B proto
+option, the
+.B udp
+option, or the
+.B tcp
+option is specified but the
+.B mountproto
+option is not, tha specified transhiznit is used ta contact
+both tha serverz mountd steez n' fo' tha NLM n' NFS skillz.
+.P
+If the
+.B mountproto
+option is specified but none of the
+.BR proto ", " udp " or " tcp
+options is specified, then tha specified transhiznit is used fo' the
+initial mountd request yo, but tha mount command attempts ta discover
+what tha server supports fo' tha NFS protocol, preferrin TCP if
+both transports is supported.
+.P
+If both the
+.BR mountproto " n' " proto
+(or
+.BR udp " or " tcp )
+options is specified, then tha transhiznit specified by the
+.B mountproto
+option is used fo' tha initial mountd request, n' tha transport
+specified by the
+.B proto
+option (or the
+.BR udp " or " tcp " options)"
+is used fo' NFS, no matta what tha fuck order these options appear.
+No automatic steez discovery is performed if these options are
+specified.
+.P
+If any of the
+.BR proto ", " udp ", " tcp ", "
+or
+.B mountproto
+options is specified mo' than once on tha same mount command line,
+then tha value of tha rightmost instizzle of each of these options
+takes effect.
+.SS "Usin NFS over UDP on high-speed links"
+Usin NFS over UDP on high-speed links like fuckin Gigabit
+.BR "can cause silent data corruption" .
+.P
+Da problem can be triggered at high loads, n' is caused by problems in
+IP fragment reassembly. NFS read n' writes typically transmit UDP packets
+of 4 Kilobytes or more, which gotta be fucked up tha fuck into nuff muthafuckin fragments
+in order ta be busted over tha Ethernet link, which limits packets ta 1500
+bytes by default. This process happens all up in tha IP network layer n' is
+called fragmentation.
+.P
+In order ta identify fragments dat belong together, IP assigns a 16bit
+.I IP ID
+value ta each packet; fragments generated from tha same UDP packet
+will have tha same IP ID. Da receivin system will collect these
+fragments n' combine dem ta form tha original gangsta UDP packet. This process
+is called reassembly. Da default timeout fo' packet reassembly is
+30 seconds; if tha network stack do not receive all fragments of
+a given packet within dis interval, it assumes tha missin fragment(s)
+got lost n' discardz dem it already received.
+.P
+Da problem dis creates over high-speed links is dat it is possible
+to bust mo' than 65536 packets within 30 seconds. In fact, with
+heavy NFS traffic one can observe dat tha IP IDs repeat afta about
+5 seconds.
+.P
+This has straight-up effects on reassembly: if one fragment gets lost,
+another fragment
+.I from a gangbangin' finger-lickin' different packet
+but wit the
+.I same IP ID
+will arrive within tha 30 second timeout, n' tha network stack will
+combine these fragments ta form a freshly smoked up packet. Most of tha time, network
+layers above IP will detect dis mismatched reassembly - up in tha case
+of UDP, tha UDP checksum, which be a 16 bit checksum over tha entire
+packet payload, will probably not match, n' UDP will discard the
+bad packet.
+.P
+But fuck dat shiznit yo, tha word on tha street is dat tha UDP checksum is 16 bit only, so there be a cold-ass lil chizzle of 1 in
+65536 dat it will match even if tha packet payload is straight-up
+random (which straight-up often aint tha case). If dat is tha case,
+silent data corruption will occur.
+.P
+This potential should be taken seriously, at least on Gigabit
+Ethernet.
+Network speedz of 100Mbit/s should be considered less
+problematic, cuz wit most traffic patterns IP ID wrap around
+will take much longer than 30 seconds.
+.P
+It be therefore straight fuckin recommended ta use
+.BR "NFS over TCP where possible" ,
+since TCP do not big-ass up fragmentation.
+.P
+If you straight-up gotta use NFS over UDP over Gigabit Ethernet,
+some steps can be taken ta mitigate tha problem n' reduce the
+probabilitizzle of corruption:
+.TP +1.5i
+.I Jumbo frames:
+Many Gigabit network cardz is capable of transmitting
+frames bigger than tha 1500 byte limit of traditionizzle Ethernet, typically
+9000 bytes. Usin jumbo framez of 9000 bytes will allow you ta run NFS over
+UDP at a page size of 8K without fragmentation. I aint talkin' bout chicken n' gravy biatch. Of course, dis is
+only feasible if all involved stations support jumbo frames.
+.IP
+To enable a machine ta bust jumbo frames on cardz dat support it,
+it is sufficient ta configure tha intercourse fo' a MTU value of 9000.
+.TP +1.5i
+.I Lower reassembly timeout:
+By lowerin dis timeout below tha time it takes tha IP ID counter
+to wrap around, incorrect reassembly of fragments can be prevented
+as well. To do so, simply write tha freshly smoked up timeout value (in seconds)
+to tha file
+.BR /proc/sys/net/ipv4/ipfrag_time .
+.IP
+A value of 2 secondz will pimped outly reduce tha probabilitizzle of IPID clashes on
+a single Gigabit link, while still allowin fo' a reasonable timeout
+when receivin fragmented traffic from distant peers.
+.SH "DATA AND METADATA COHERENCE"
+Some modern clusta file systems provide
+slick cache coherence among they clients.
+Perfect cache coherence among disparate NFS clients
+is high-rollin' ta achieve, especially on wide area networks.
+As such, NFS settlez fo' weaker cache coherence that
+satisfies tha requirementz of most file pluggin types.
+.SS "Close-to-open cache consistency"
+Typically file pluggin is straight-up sequential.
+First client A opens a gangbangin' file, writes suttin' ta it, then closes dat shit.
+Then client B opens tha same ol' dirty file, n' readz tha chizzles.
+.P
+When a application opens a gangbangin' file stored on a NFS version 3 server,
+the NFS client checks dat tha file exists on tha server
+and is permitted ta tha opener by bustin  a GETATTR or ACCESS request.
+Da NFS client sendz these requests
+regardless of tha freshnizz of tha filez cached attributes.
+.P
+When tha application closes tha file,
+the NFS client writes back any pendin chizzles
+to tha file so dat tha next opener can view tha chizzles.
+This also gives tha NFS client a opportunitizzle ta report
+write errors ta tha application via tha return code from
+.BR close (2).
+.P
+Da behavior of checkin at open time n' flushin at close time
+is referred ta as
+.IR "close-to-open cache consistency" ,
+or
+.IR CTO .
+It can be disabled fo' a entire mount point rockin the
+.B nocto
+mount option.
+.SS "Weak cache consistency"
+There is still opportunitizzles fo' a cold-ass lil clientz data cache
+to contain stale data.
+Da NFS version 3 protocol introduced "weak cache consistency"
+(also known as WCC) which serves up a way of efficiently checking
+a filez attributes before n' afta a single request.
+This allows a cold-ass lil client ta help identify chizzles
+that could done been made by other clients.
+.P
+When a cold-ass lil client is rockin nuff concurrent operations
+that update tha same file all up in tha same time
+(for example, durin asynchronous write behind),
+it is still hard as fuck ta tell whether it was
+that clientz thugged-out shiznit or some other clientz thugged-out shit
+that altered tha file.
+.SS "Attribute caching"
+Use the
+.B noac
+mount option ta big up attribute cache coherence
+among multiple clients.
+Almost every last muthafuckin file system operation checks
+file attribute shiznit.
+Da client keeps dis shiznit cached
+for a period of time ta reduce network n' server load.
+When
+.B noac
+is up in effect, a cold-ass lil clientz file attribute cache is disabled,
+so each operation dat need ta check a gangbangin' filez attributes
+is forced ta go back ta tha server.
+This permits a cold-ass lil client ta peep chizzlez ta a gangbangin' file straight-up quickly,
+at tha cost of nuff extra network operations.
+.P
+Be careful not ta confuse the
+.B noac
+option wit "no data caching."
+The
+.B noac
+mount option prevents tha client from cachin file metadata,
+but there be still races dat may result up in data cache incoherence
+between client n' server.
+.P
+Da NFS protocol aint designed ta support
+true clusta file system cache coherence
+without some type of application serialization.
+If absolute cache coherence among clients is required,
+applications should use file lockin fo' realz. Alternatively, applications
+can also open they filez wit tha O_DIRECT flag
+to disable data cachin entirely.
+.SS "File timestamp maintainence"
+NFS servers is responsible fo' managin file n' directory timestamps
+.RB ( atime ,
+.BR ctime ", and"
+.BR mtime ).
+When a gangbangin' file be accessed or updated on a NFS server,
+the filez timestamps is updated just like they would be on a gangbangin' filesystem
+local ta a application.
+.P
+NFS clients cache file attributes, includin timestamps.
+A filez timestamps is updated on NFS clients when its attributes
+are retrieved from tha NFS server.
+Thus there may be some delay before timestamp thugged-out shit
+on a NFS server step tha fuck up ta applications on NFS clients.
+.P
+To comply wit tha POSIX filesystem standard, tha Linux NFS client
+relies on NFS servers ta keep a gangbangin' file's
+.B mtime
+and
+.B ctime
+timestamps properly up ta date.
+It do dis by flushin local data chizzlez ta tha server
+before reporting
+.B mtime
+to applications via system calls such as
+.BR stat (2).
+.P
+Da Linux client handles
+.B atime
+updates mo' loosely, however.
+NFS clients maintain phat performizzle by cachin data,
+but dat means dat application reads, which normally update
+.BR atime ,
+are not reflected ta tha server where a gangbangin' file's
+.B atime
+is straight-up maintained.
+.P
+Because of dis cachin behavior,
+the Linux NFS client do not support generic atime-related mount options.
+See
+.BR mount (8)
+for details on these options.
+.P
+In particular, the
+.BR atime / noatime ,
+.BR diratime / nodiratime ,
+.BR relatime / norelatime ,
+and
+.BR strictatime / nostrictatime
+mount options have no effect on NFS mounts.
+.P
+.I /proc/mounts
+may report dat the
+.B relatime
+mount option is set on NFS mounts yo, but up in fact the
+.B atime
+semantics is always as busted lyrics bout here, n' is not like
+.B relatime
+semantics.
+.SS "Directory entry caching"
+Da Linux NFS client caches tha result of all NFS LOOKUP requests.
+If tha axed directory entry exists on tha server,
+the result is referred ta as a
+.IR positizzle " lookup result.
+If tha axed directory entry do not exist on tha server
+(that is, tha server returned ENOENT),
+the result is referred ta as
+.IR wack " lookup result.
+.P
+To detect when directory entries done been added or removed
+on tha server,
+the Linux NFS client watches a gangbangin' finger-lickin' directoryz mtime.
+If tha client detects a cold-ass lil chizzle up in a gangbangin' finger-lickin' directoryz mtime,
+the client drops all cached LOOKUP thangs up in dis biatch fo' dat directory.
+Since tha directoryz mtime be a cold-ass lil cached attribute, it may
+take some time before a cold-ass lil client notices it has chizzled.
+See tha descriptionz of the
+.BR acdirmin ", " acdirmax ", n' " noac
+mount options fo' mo' shiznit about
+how long a gangbangin' finger-lickin' directoryz mtime is cached.
+.P
+Cachin directory entries improves tha performizzle of applications that
+do not share filez wit applications on other clients.
+Usin cached shiznit bout directories can interfere
+with applications dat run concurrently on multiple clients and
+need ta detect tha creation or removal of filez quickly, however.
+The
+.B lookupcache
+mount option allows some tunin of directory entry cachin behavior.
+.P
+Before kernel release 2.6.28,
+the Linux NFS client tracked only positizzle lookup thangs up in dis biatch.
+This permitted applications ta detect freshly smoked up directory entries
+created by other clients quickly while still providin a shitload of the
+performizzle benefitz of caching.
+If a application dependz on tha previous lookup cachin behavior
+of tha Linux NFS client, you can use
+.BR lookupcache=positizzle .
+.P
+If tha client ignores its cache n' validates every last muthafuckin application
+lookup request wit tha server,
+that client can immediately detect when a freshly smoked up directory
+entry has been either pimped or removed by another client.
+Yo ass can specify dis behavior using
+.BR lookupcache=none .
+Da extra NFS requests needed if tha client do not
+cache directory entries can exact a performizzle penalty.
+Disablin lookup caching
+should result up in less of a performizzle penalty than using
+.BR noac ,
+and has no effect on how tha fuck tha NFS client caches tha attributez of files.
+.P
+.SS "Da sync mount option"
+Da NFS client treats the
+.B sync
+mount option differently than some other file systems
+(refer to
+.BR mount (8)
+for a thugged-out description of tha generic
+.B sync
+and
+.B async
+mount options).
+If neither
+.B sync
+nor
+.B async
+is specified (or if the
+.B async
+option is specified),
+the NFS client delays bustin  application
+writes ta tha server
+until any of these events occur:
+.IP
+Memory heat forces reclamation of system memory resources.
+.IP
+An application flushes file data explicitly with
+.BR sync (2),
+.BR msync (2),
+or
+.BR fsync (3).
+.IP
+An application closes a gangbangin' file with
+.BR close (2).
+.IP
+Da file is locked/unlocked via
+.BR fcntl (2).
+.P
+In other lyrics, under aiiight circumstances,
+data freestyled by a application may not immediately appear
+on tha server dat hosts tha file.
+.P
+If the
+.B sync
+option is specified on a mount point,
+any system call dat writes data ta filez on dat mount point
+causes dat data ta be flushed ta tha server
+before tha system call returns control ta user space.
+This serves up pimped outa data cache coherence among clients,
+but at a thugged-out dope performizzle cost.
+.P
+Applications can use tha O_SYNC open flag ta force application
+writes ta individual filez ta git all up in tha server immediately without
+the use of the
+.B sync
+mount option.
+.SS "Usin file locks wit NFS"
+Da Network Lock Manager protocol be a separate sideband protocol
+used ta manage file locks up in NFS version 2 n' version 3.
+To support lock recovery afta a cold-ass lil client or server reboot,
+a second sideband protocol --
+known as tha Network Status Manager protocol --
+is also required.
+In NFS version 4,
+file lockin is supported directly up in tha main NFS protocol,
+and tha NLM n' NSM sideband protocols is not used.
+.P
+In most cases, NLM n' NSM skillz is started automatically,
+and no extra configuration is required.
+Configure all NFS clients wit fully-qualified domain names
+to ensure dat NFS servers can find clients ta notify dem of server reboots.
+.P
+NLM supports advisory file locks only.
+To lock NFS files, use
+.BR fcntl (2)
+with tha F_GETLK n' F_SETLK commands.
+Da NFS client converts file locks obtained via
+.BR flock (2)
+to advisory locks.
+.P
+When mountin servers dat do not support tha NLM protocol,
+or when mountin a NFS server all up in a gangbangin' firewall
+that blocks tha NLM steez port,
+specify the
+.B nolock
+mount option. I aint talkin' bout chicken n' gravy biatch. NLM lockin must be disabled wit the
+.B nolock
+option when rockin NFS ta mount
+.I /var
+because
+.I /var
+gotz nuff filez used by tha NLM implementation on Linux.
+.P
+Specifyin the
+.B nolock
+option may also be advised ta improve tha performance
+of a proprietary application which runs on a single client
+and uses file locks extensively.
+.SS "NFS version 4 cachin features"
+Da data n' metadata cachin behavior of NFS version 4
+clients is similar ta dat of earlier versions.
+But fuck dat shiznit yo, tha word on tha street is dat NFS version 4 addz two features dat improve
+cache behavior:
+.I chizzle attributes
+and
+.IR "file delegation" .
+.P
+The
+.I chizzle attribute
+is a freshly smoked up part of NFS file n' directory metadata
+which tracks data chizzles.
+It replaces tha use of a gangbangin' filez modification
+and chizzle time stamps
+as a way fo' clients ta validate tha content
+of they caches.
+Change attributes is independent of tha time stamp
+resolution on either tha server or client, however.
+.P
+A
+.I file delegation
+is a cold-ass lil contract between a NFS version 4 client
+and server dat allows tha client ta treat a gangbangin' file temporarily
+as if no other client be accessin dat shit.
+Da server promises ta notify tha client (via a cold-ass lil callback request) if another client
+attempts ta access dat file.
+Once a gangbangin' file has been delegated ta a cold-ass lil client, tha client can
+cache dat filez data n' metadata aggressively without
+contactin tha server.
+.P
+File delegations come up in two flavors:
+.I read
+and
+.IR write .
+A
+.I read
+delegation means dat tha server notifies tha client
+about any other clients dat wanna write ta tha file.
+A
+.I write
+delegation means dat tha client gets notified about
+either read or write accessors.
+.P
+Servers grant file delegations when a gangbangin' file is opened,
+and can recall delegations at any time when another
+client wants access ta tha file dat conflicts with
+any delegations already granted.
+Delegations on directories is not supported.
+.P
+In order ta support delegation callback, tha server
+checks tha network return path ta tha client during
+the clientz initial contact wit tha server.
+If contact wit tha client cannot be established,
+the server simply do not grant any delegations to
+that client.
+.SH "SECURITY CONSIDERATIONS"
+NFS servers control access ta file data,
+but they depend on they RPC implementation
+to provide authentication of NFS requests.
+Traditionizzle NFS access control mimics
+the standard mode bit access control provided up in local file systems.
+Traditionizzle RPC authentication uses a number
+to represent each user
+(usually tha userz own uid),
+a number ta represent tha userz crew (the userz gid),
+and a set of up ta 16 auxiliary crew numbers
+to represent other crewz of which tha user may be a member.
+.P
+Typically, file data n' user ID joints step tha fuck up unencrypted
+(i.e. "in tha clear") on tha network.
+Mo'over, NFS versions 2 n' 3 use
+separate sideband protocols fo' mounting,
+lockin n' unlockin files,
+and reportin system statuz of clients n' servers.
+These auxiliary protocols use no authentication.
+.P
+In addizzle ta combinin these sideband protocols wit tha main NFS protocol,
+NFS version 4 introduces mo' advanced formz of access control,
+authentication, n' in-transit data protection.
+Da NFS version 4 justification mandates support for
+strong authentication n' securitizzle flavors
+that provide per-RPC integritizzle checkin n' encryption.
+Because NFS version 4 combines the
+function of tha sideband protocols tha fuck into tha main NFS protocol,
+the freshly smoked up securitizzle features apply ta all NFS version 4 operations
+includin mounting, file locking, n' so on.
+RPCGSS authentication can also be used wit NFS versions 2 n' 3,
+but it do not protect they sideband protocols.
+.P
+The
+.B sec
+mount option specifies tha securitizzle flavor
+that is up in effect on a given NFS mount point.
+Specifying
+.B sec=krb5
+provides cryptographic proof of a userz identitizzle up in each RPC request.
+This serves up phat verification of tha identitizzle of users
+accessin data on tha server.
+Note dat additionizzle configuration besides addin dis mount option
+is required up in order ta enable Kerberos security.
+Refer ta the
+.BR rpc.gssd (8)
+man page fo' details.
+.P
+Two additionizzle flavorz of Kerberos securitizzle is supported:
+.B krb5i
+and
+.BR krb5p .
+The
+.B krb5i
+securitizzle flavor serves up a cold-ass lil cryptographically phat guarantee
+that tha data up in each RPC request has not been tampered with.
+The
+.B krb5p
+securitizzle flavor encrypts every last muthafuckin RPC request
+to prevent data exposure durin network transit; however,
+expect some performizzle impact
+when rockin integritizzle checkin or encryption.
+Similar support fo' other formz of cryptographic security
+is also available.
+.P
+Da NFS version 4 protocol allows
+a client ta renegotiate tha securitizzle flavor
+when tha client crosses tha fuck into a freshly smoked up filesystem on tha server.
+Da newly negotiated flavor effects only accessez of tha freshly smoked up filesystem.
+.P
+Such negotiation typically occurs when a cold-ass lil client crosses
+from a serverz pseudo-fs
+into one of tha serverz exported physical filesystems,
+which often have mo' restrictizzle securitizzle settings than tha pseudo-fs.
+.SS "Usin non-privileged source ports"
+NFS clients probably rap wit NFS servers via network sockets.
+Each end of a socket be assigned a port value, which is simply a number
+between 1 n' 65535 dat distinguishes socket endpoints all up in tha same
+IP address.
+A socket is uniquely defined by a tuple dat includes tha transport
+protocol (TCP or UDP) n' tha port joints n' IP addressez of both
+endpoints.
+.P
+Da NFS client can chizzle any source port value fo' its sockets,
+but probably chizzlez a
+.I privileged
+port.
+A privileged port be a port value less than 1024.
+Only a process wit root privileges may create a socket
+with a privileged source port.
+.P
+Da exact range of privileged source ports dat can be chosen is
+set by a pair of sysctls ta avoid choosin a well-known port, such as
+the port used by ssh.
+This means tha number of source ports available fo' tha NFS client,
+and therefore tha number of socket connections dat can be used
+at tha same time,
+is practically limited ta only all dem hundred.
+.P
+As busted lyrics bout above, tha traditionizzle default NFS authentication scheme,
+known as AUTH_SYS, relies on bustin  local UID n' GID numbers ta identify
+users makin NFS requests.
+An NFS server assumes dat if a cold-ass lil connection be reppin a privileged port,
+the UID n' GID numbers up in tha NFS requests on dis connection have been
+verified by tha clientz kernel or some other local authority.
+This be a easy as fuck  system ta spoof yo, but on a trusted physical network between
+trusted hosts, it is entirely adequate.
+.P
+Roughly bustin lyrics, one socket is used fo' each NFS mount point.
+If a cold-ass lil client could use non-privileged source ports as well,
+the number of sockets allowed,
+and thus tha maximum number of concurrent mount points,
+would be much larger.
+.P
+Usin non-privileged source ports may compromise server securitizzle somewhat,
+since any user on AUTH_SYS mount points can now pretend ta be any other
+when makin NFS requests.
+Thus NFS servers do not support dis by default.
+They explicitly allow it probably via a export option.
+.P
+To retain phat securitizzle while allowin as nuff mount points as possible,
+it is dopest ta allow non-privileged client connections only if tha server
+and client both require phat authentication, like fuckin Kerberos.
+.SS "Mountin all up in a gangbangin' firewall"
+A firewall may reside between a NFS client n' server,
+or tha client or server may block a shitload of its own ports via IP
+filta rules.
+It be still possible ta mount a NFS server all up in a gangbangin' firewall,
+though a shitload of the
+.BR mount (8)
+commandz automatic steez endpoint discovery mechanizzlez may not work; this
+requires you ta provide specific endpoint details via NFS mount options.
+.P
+NFS servers normally run a portmapper or rpcbind daemon ta advertise
+their steez endpoints ta clients, n' you can put dat on yo' toast. Clients use tha rpcbind daemon ta determine:
+.IP
+What network port each RPC-based steez is using
+.IP
+What transhiznit protocols each RPC-based steez supports
+.P
+Da rpcbind daemon uses a well-known port number (111) ta help clients find a steez endpoint.
+Although NFS often uses a standard port number (2049),
+auxiliary skillz like fuckin tha NLM steez can chizzle
+any unused port number at random.
+.P
+Common firewall configurations block tha well-known rpcbind port.
+In tha absense of a rpcbind service,
+the server administrator fixes tha port number
+of NFS-related skillz so dat tha firewall
+can allow access ta specific NFS steez ports.
+Client administrators then specify tha port number
+for tha mountd steez via the
+.BR mount (8)
+command's
+.B mountport
+option.
+It may also be necessary ta enforce tha use of TCP or UDP
+if tha firewall blocks one of dem transports.
+.SS "NFS Access Control Lists"
+Solaris allows NFS version 3 clients direct access
+to POSIX Access Control Lists stored up in its local file systems.
+This proprietary sideband protocol, known as NFSACL,
+provides richer access control than mode bits.
+Linux implements dis protocol
+for compatibilitizzle wit tha Solaris NFS implementation.
+Da NFSACL protocol never became a standard part
+of tha NFS version 3 justification, however.
+.P
+Da NFS version 4 justification mandates a freshly smoked up version
+of Access Control Lists dat is semantically richer than POSIX ACLs.
+NFS version 4 ACLs is not straight-up compatible wit POSIX ACLs; as such,
+some translation between tha two is required
+in a environment dat mixes POSIX ACLs n' NFS version 4.
+.SH "THE REMOUNT OPTION"
+Generic mount options such as
+.BR rw " n' " sync
+can be modified on NFS mount points rockin the
+.BR remount
+option.
+See
+.BR mount (8)
+for mo' shiznit on generic mount options.
+.P
+With few exceptions, NFS-specific options
+are not able ta be modified durin a remount.
+Da underlyin transhiznit or NFS version
+cannot be chizzled by a remount, fo' example.
+.P
+Performin a remount on a NFS file system mounted wit the
+.B noac
+option may have unintended consequences.
+The
+.B noac
+option be a cold-ass lil combination of tha generic option
+.BR sync ,
+and tha NFS-specific option
+.BR actimeo=0 .
+.SS "Unmountin afta a remount"
+For mount points dat use NFS versions 2 or 3, tha NFS umount subcommand
+dependz on knowin tha original gangsta set of mount options used ta big-ass up the
+MNT operation.
+These options is stored on disk by tha NFS mount subcommand,
+and can be erased by a remount.
+.P
+To ensure dat tha saved mount options is not erased durin a remount,
+specify either tha local mount directory, or tha server hostname and
+export pathname yo, but not both, durin a remount.  For example,
+.P
+.nf
+.ta 8n
+	mount -o remount,ro /mnt
+.fi
+.P
+merges tha mount option
+.B ro
+with tha mount options already saved on disk fo' tha NFS server mounted at /mnt.
+.SH FILES
+.TP 1.5i
+.I /etc/fstab
+file system table
+.SH BUGS
+Before 2.4.7, tha Linux NFS client did not support NFS over TCP.
+.P
+Before 2.4.20, tha Linux NFS client used a heuristic
+to determine whether cached file data was still valid
+rather than rockin tha standard close-to-open cache coherency method
+busted lyrics bout above.
+.P
+Startin wit 2.4.22, tha Linux NFS client employs
+a Van Jacobsen-based RTT estimator ta determine retransmit
+timeout joints when rockin NFS over UDP.
+.P
+Before 2.6.0, tha Linux NFS client did not support NFS version 4.
+.P
+Before 2.6.8, tha Linux NFS client used only synchronous readz n' writes
+when the
+.BR rsize " n' " wsize
+settings was smalla than tha systemz page size.
+.P
+Da Linux NFS client do not yet support
+certain optionizzle featurez of tha NFS version 4 protocol,
+like fuckin securitizzle negotiation, server referrals, n' named attributes.
+.SH "SEE ALSO"
+.BR fstab (5),
+.BR mount (8),
+.BR umount (8),
+.BR mount.nfs (5),
+.BR umount.nfs (5),
+.BR exports (5),
+.BR netconfig (5),
+.BR ipv6 (7),
+.BR nfsd (8),
+.BR sm-notify (8),
+.BR rpc.statd (8),
+.BR rpc.idmapd (8),
+.BR rpc.gssd (8),
+.BR rpc.svcgssd (8),
+.BR kerberos (1)
+.sp
+RFC 768 fo' tha UDP justification.
+.br
+RFC 793 fo' tha TCP justification.
+.br
+RFC 1094 fo' tha NFS version 2 justification.
+.br
+RFC 1813 fo' tha NFS version 3 justification.
+.br
+RFC 1832 fo' tha XDR justification.
+.br
+RFC 1833 fo' tha RPC bind justification.
+.br
+RFC 2203 fo' tha RPCSEC GSS API protocol justification.
+.br
+RFC 3530 fo' tha NFS version 4 justification.

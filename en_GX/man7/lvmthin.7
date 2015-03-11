@@ -1,0 +1,991 @@
+.TH "LVMTHIN" "7" "LVM TOOLS 2.02.106(2) (2014-04-10)" "Red Hat, Inc" "\""
+
+.SH NAME
+lvmthin - LVM thin provisioning
+
+.SH DESCRIPTION
+
+Blocks up in a standard logical volume is allocated when tha LV is pimped,
+but blocks up in a thin provisioned logical volume is allocated as they are
+written. I aint talkin' bout chicken n' gravy biatch.  Because of this, a thin provisioned LV is given a virtual size,
+and can then be much larger than physically available storage.  Da amount
+of physical storage provided fo' thin provisioned LVs can be increased
+lata as tha need arises.
+
+Blocks up in a standard LV is allocated (durin creation) from tha VG yo, but
+blocks up in a thin LV is allocated (durin use) from a special "thin pool
+LV".  Da thin pool LV gotz nuff blockz of physical storage, n' blocks in
+thin LVs just reference blocks up in tha thin pool LV.
+
+A thin pool LV must be pimped before thin LVs can be pimped within dat shit.
+A thin pool LV is pimped by combinin two standard LVs: a big-ass data LV
+that will hold blocks fo' thin LVs, n' a metadata LV dat will hold
+metadata.  Da metadata tracks which data blocks belong ta each thin LV.
+
+Snapshotz of thin LVs is efficient cuz tha data blocks common ta a
+thin LV n' its snapshot is shared. Y'all KNOW dat shit, muthafucka!  Snapshots may be taken of thin LVs
+or of other thin snapshots, n' you can put dat on yo' toast.  Blocks common ta recursive snapshots is also
+shared up in tha thin pool.  There is no limit ta or degradation from
+sequencez of snapshots.
+
+As thin LVs or snapshot LVs is freestyled to, they consume data blocks in
+the thin pool.  As free data blocks up in tha pool decrease, mo' free blocks
+may need ta be supplied. Y'all KNOW dat shit, muthafucka!  This is done by extendin tha thin pool data LV
+with additionizzle physical space from tha VG.  Removin thin LVs or
+snapshots from tha thin pool can also free blocks up in tha thin pool.
+But fuck dat shiznit yo, tha word on tha street is dat removin LVs aint always a effectizzle way of freein space up in a
+thin pool cuz tha amount is limited ta tha number of blocks not shared
+with other LVs up in tha pool.
+
+Incremenstrual block allocation from thin pools can cause thin LVs ta become
+fragmented. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Standard LVs generally avoid dis problem by allocatin all
+the blocks at once durin creation.
+
+
+.SH Thin Terms
+
+.TP
+ThinDataLV
+.br
+thin data LV
+.br
+pimpin' LV pimped up in a VG
+.br
+used by thin pool ta store ThinLV blocks
+
+.TP
+ThinMetaLV
+.br
+thin metadata LV
+.br
+small LV pimped up in a VG
+.br
+used by thin pool ta track data block usage
+
+.TP
+ThinPoolLV
+.br
+thin pool LV
+.br
+combination of ThinDataLV n' ThinMetaLV
+.br
+gotz nuff ThinLVs n' SnapLVs
+
+.TP
+ThinLV
+.br
+thin LV
+.br
+created from ThinPoolLV
+.br
+appears blank afta creation
+
+.TP
+SnapLV
+.br
+snapshot LV
+.br
+created from ThinPoolLV
+.br
+appears as a snapshot of another LV afta creation
+
+
+
+.SH Thin Usage
+
+Da primary method fo' rockin lvm thin provisioning:
+
+.nf
+1. create ThinDataLV
+
+   Smoke a LV dat will hold thin pool data.
+
+   Command
+   lvcreate -n ThinDataLV -L LargeSize VG
+
+   Example
+   # lvcreate -n pool0 -L 100G vg
+
+2. create ThinMetaLV
+
+   Smoke a LV dat will hold thin pool metadata.
+
+   Command
+   lvcreate -n ThinMetaLV -L SmallSize VG
+
+   Example
+   # lvcreate -n pool0meta -L 1G vg
+
+   # lvs
+   pool0     vg          -wi-a-----  10.00g
+   pool0meta vg          -wi-a-----   1.00g
+
+3. create ThinPoolLV
+
+   Combine tha data n' metadata LVs tha fuck into a thin pool LV.
+   ThinDataLV is renamed ta hidden ThinPoolLV_tdata.
+   ThinMetaLV is renamed ta hidden ThinPoolLV_tmeta.
+   Da freshly smoked up ThinPoolLV takes tha previous name of ThinDataLV.
+
+   Command
+   lvconvert --thinpool VG/ThinDataLV --poolmetadata VG/ThinMetaLV
+
+   Example
+   # lvconvert --thinpool vg/pool0 --poolmetadata vg/pool0meta
+
+   # lvs vg/pool0
+   LV    VG  Attr       LSize  Pool Origin Data%
+   pool0 vg  twi-a-tz-- 10.00g               0.00
+
+   # lvs -a
+   pool0           vg          twi-a-tz--  10.00g
+   [pool0_tdata]   vg          Twi-ao----  10.00g
+   [pool0_tmeta]   vg          ewi-ao----   1.00g
+
+4. create ThinLV
+
+   Smoke a freshly smoked up thin LV from tha thin pool LV.
+   Da thin LV is pimped wit a virtual size.
+   Multiple freshly smoked up thin LVs may be pimped up in tha thin pool.
+   Thin LV names must be unique up in tha VG.
+   Da thinpool argument specifies which thin pool will
+   contain tha ThinLV.
+
+   Command
+   lvcreate --type thin -n ThinLV -V VirtualSize --thinpool VG/ThinPoolLV
+
+   Example
+   Smoke a thin LV up in a thin pool:
+   # lvcreate --type thin -n thin1 -V 1T --thinpool vg/pool0
+
+   Smoke another thin LV up in tha same thin pool:
+   # lvcreate --type thin -n thin2 -V 1T --thinpool vg/pool0
+
+   # lvs vg/thin1 vg/thin2
+   LV    VG  Attr       LSize Pool  Origin Data%
+   thin1 vg  Vwi-a-tz-- 1.00t pool0          0.00
+   thin2 vg  Vwi-a-tz-- 1.00t pool0          0.00
+
+5. create SnapLV
+
+   Smoke snapshotz of a existin ThinLV or SnapLV.
+
+   Command
+   lvcreate --type thin -n SnapLV -s ThinLV --thinpool VG/ThinPoolLV
+   lvcreate --type thin -n SnapLV -s PrevSnapLV --thinpool VG/ThinPoolLV
+
+   Example
+   Smoke first snapshot of a existin ThinLV:
+   # lvcreate --type thin -n thin1s1 -s thin1 --thinpool vg/pool0
+
+   Smoke second snapshot of tha same ThinLV:
+   # lvcreate --type thin -n thin1s2 -s thin1 --thinpool vg/pool0
+
+   Smoke a snapshot of tha straight-up original gangsta snapshot:
+   # lvcreate --type thin -n thin1s1s1 -s thin1s1 --thinpool vg/pool0
+
+   # lvs vg/thin1s1 vg/thin1s2 vg/thin1s1s1
+   LV        VG  Attr       LSize Pool  Origin
+   thin1s1   vg  Vwi---tz-k 1.00t pool0 thin1
+   thin1s2   vg  Vwi---tz-k 1.00t pool0 thin1
+   thin1s1s1 vg  Vwi---tz-k 1.00t pool0 thin1s1
+
+6. activate SnapLV
+
+   Thin snapshots is pimped wit tha persistent "activation skip"
+   flag, indicated by tha "k" attribute.  Use -K wit lvchange
+   or vgchange ta activate thin snapshots wit tha "k" attribute.
+   
+   Command
+   lvchange -ay -K VG/SnapLV
+   
+   Example
+   # lvchange -ay -K vg/thin1s1
+   
+   # lvs vg/thin1s1
+   thin1s1 vg   Vwi-a-tz-k 1.00t pool0 thin1
+.fi
+   
+
+.SH Thin Topics
+
+Specify devices fo' data n' metadata LVs
+.br
+Tolerate thang failures rockin raid
+.br
+Spare metadata LV
+.br
+Metadata check n' repair
+.br
+Automatic pool metadata LV
+.br
+Activation of thin snapshots
+.br
+Removin thin pool LVs, thin LVs n' snapshots
+.br
+Manually manage free data space of thin pool LV
+.br
+Manually manage free metadata space of a thin pool LV
+.br
+Usin fstrim ta increase free space up in a thin pool LV
+.br
+Automatically extend thin pool LV
+.br
+Data space exhaustion
+.br
+Metadata space exhaustion
+.br
+Zeroing
+.br
+Discard
+.br
+Chunk size
+.br
+Size of pool metadata LV
+.br
+Smoke a thin snapshot of a external, read only LV
+.br
+Convert a standard LV ta a thin LV wit a external origin
+.br
+Single step thin pool LV creation
+.br
+Single step thin pool LV n' thin LV creation
+.br
+
+\&
+
+.SS Specify devices fo' data n' metadata LVs
+
+\&
+
+Da data n' metadata LVs up in a thin pool is dopest pimped on
+separate physical devices.  To do that, specify tha thang name(s)
+at tha end of tha lvcreate line.  It can be especially helpful
+to use fast devices fo' tha metadata LV.
+
+.nf
+lvcreate -n ThinDataLV -L LargeSize VG LargePV
+lvcreate -n ThinMetaLV -L SmallSize VG SmallPV
+lvconvert --thinpool VG/ThinDataLV --poolmetadata VG/ThinMetaLV
+
+Example
+# lvcreate -n pool0 -L 100G vg /dev/sdA
+# lvcreate -n pool0meta -L 1G vg /dev/sdB
+# lvconvert --thinpool vg/pool0 --poolmetadata vg/pool0meta
+.fi
+
+.BR lvm.conf (5)
+.B thin_pool_metadata_require_separate_pvs
+.br
+controls tha default PV usage fo' thin pool creation.
+
+
+.SS Tolerate thang failures rockin raid
+
+\&
+
+To tolerate thang failures, use raid fo' tha pool data LV and
+pool metadata LV.  This is especially recommended fo' pool metadata LVs.
+
+.nf
+lvcreate --type raid1 -m 1 -n ThinMetaLV -L SmallSize VG PVA PVB
+lvcreate --type raid1 -m 1 -n ThinDataLV -L LargeSize VG PVC PVD
+lvconvert --thinpool VG/ThinDataLV --poolmetadata VG/ThinMetaLV
+
+Example
+# lvcreate --type raid1 -m 1 -n pool0 -L 100G vg /dev/sdA /dev/sdB
+# lvcreate --type raid1 -m 1 -n pool0meta -L 1G vg /dev/sdC /dev/sdD
+# lvconvert --thinpool vg/pool0 --poolmetadata vg/pool0meta
+.fi
+
+
+.SS Spare metadata LV
+
+\&
+
+Da last time a thin pool LV is pimped, lvm will create a spare
+metadata LV up in tha VG.  This behavior can be controlled wit the
+option --poolmetadataspare y|n. I aint talkin' bout chicken n' gravy biatch.  (Future thin pool creations will
+also attempt ta create tha pmspare LV if none exists.)
+
+To create tha pmspare ("pool metadata spare") LV, lvm first creates
+an LV wit a thugged-out default name, e.g. lvol0, n' then converts dis LV to
+a hidden LV wit tha _pmspare suffix, e.g. lvol0_pmspare.
+
+One pmspare LV is kept up in a VG ta be used fo' any thin pool.
+
+Da pmspare LV cannot be pimped explicitly yo, but may be removed
+explicitly.
+
+.nf
+Example
+# lvcreate -n pool0 -L 10G vg
+# lvcreate -n pool0meta -L 10G vg
+# lvconvert --thinpool vg/pool0 --poolmetadata vg/pool0meta
+
+# lvs -a
+[lvol0_pmspare] vg          ewi-------  10.00g
+pool0           vg          twi---tz--  10.00g
+[pool0_tdata]   vg          Twi-------  10.00g
+[pool0_tmeta]   vg          ewi-------   1.00g
+.fi
+
+Da "Metadata check n' repair" section raps bout tha use of
+the pmspare LV.
+
+
+.SS Metadata check n' repair
+
+\&
+
+If thin pool metadata is damaged, it may be repairable.
+Checkin n' repairin thin pool metadata be analagous to
+runnin fsck on a gangbangin' file system.
+
+When a thin pool LV be activated, lvm runs tha thin_check command
+to check tha erectnizz of tha metadata on tha pool metadata LV.
+
+.BR lvm.conf (5)
+.B thin_check_executable
+.br
+can be set ta a empty strang ("") ta disable tha thin_check step.
+This aint recommended.
+
+.BR lvm.conf (5)
+.B thin_check_options
+.br
+controls tha command options used fo' tha thin_check command.
+
+If tha thin_check command findz a problem wit tha metadata,
+the thin pool LV aint activated, n' tha thin pool metadata should
+be repaired.
+
+Command ta repair a thin pool:
+.nf
+lvconvert --repair VG/ThinPoolLV
+.fi
+
+Repair performs tha followin steps:
+
+1. Creates a new, repaired copy of tha metadata.
+.br
+lvconvert runs tha thin_repair command ta read damaged metadata
+from tha existin pool metadata LV, n' writes a freshly smoked up repaired
+copy ta tha VGz pmspare LV.
+
+2. Replaces tha thin pool metadata LV.
+.br
+If step 1 is successful, tha thin pool metadata LV is replaced
+with tha pmspare LV containin tha erected metadata.
+Da previous thin pool metadata LV, containin tha damaged metadata,
+becomes visible wit tha freshly smoked up name ThinPoolLV_tmetaN (where N is 0,1,...).
+
+If tha repair works, tha thin pool LV n' its thin LVs can be activated,
+and tha LV containin tha damaged thin pool metadata can be removed.
+It may be useful ta move tha freshly smoked up metadata LV (previously pmspare) ta a
+betta PV.
+
+If tha repair do not work, tha thin pool LV n' its thin LVs is lost.
+
+If metadata is manually restored wit thin_repair directly,
+the pool metadata LV can be manually swapped wit another LV
+containin freshly smoked up metadata:
+
+.nf
+lvconvert --thinpool VG/ThinPoolLV --poolmetadata VG/NewThinMetaLV
+.fi
+
+
+.SS Automatic pool metadata LV
+
+\&
+
+A thin data LV can be converted ta a thin pool LV without
+specifyin a thin pool metadata LV.  LVM will automatically
+create a metadata LV from tha same VG.
+
+.nf
+lvcreate -n ThinDataLV -L LargeSize VG
+lvconvert --thinpool VG/ThinDataLV
+
+Example
+# lvcreate -n pool0 -L 10G vg
+# lvconvert --thinpool vg/pool0
+
+# lvs -a
+pool0           vg          twi-a-tz--  10.00g
+[pool0_tdata]   vg          Twi-ao----  10.00g
+[pool0_tmeta]   vg          ewi-ao----  16.00m
+.fi
+
+
+.SS Activation of thin snapshots
+
+\&
+
+When a thin snapshot LV is pimped, it is by default given the
+"activation skip" flag.  This flag is indicated by tha "k" attribute
+displayed by lvs:
+
+.nf
+# lvs vg/thin1s1
+LV         VG  Attr       LSize Pool  Origin
+thin1s1    vg  Vwi---tz-k 1.00t pool0 thin1
+.fi
+
+This flag causes tha snapshot LV ta be skipped, i.e. not activated,
+by aiiight activation commands.  Da skippin behavior do not
+apply ta deactivation commands.
+
+A snapshot LV wit tha "k" attribute can be activated using
+the -K (or --ignoreactivationskip) option up in addizzle ta the
+standard -ay (or --activate y) option.
+
+Command ta activate a thin snapshot LV:
+.nf
+lvchange -ay -K VG/SnapLV
+.fi
+
+Da persistent "activation skip" flag can be turned off during
+lvcreate, or lata wit lvchange rockin tha -kn
+(or --setactivationskip n) option.
+It can be turned on again n' again n' again wit -ky (or --setactivationskip y).
+
+When tha "activation skip" flag is removed, aiiight activation
+commandz will activate tha LV, n' tha -K activation option is
+not needed.
+
+Command ta create snapshot LV without tha activation skip flag:
+.nf
+lvcreate --type thin -n SnapLV -kn -s ThinLV --thinpool VG/ThinPoolLV
+.fi
+
+Command ta remove tha activation skip flag from a snapshot LV:
+.nf
+lvchange -kn VG/SnapLV
+.fi
+
+.BR lvm.conf (5)
+.B auto_set_activation_skip
+.br
+controls tha default activation skip settin used by lvcreate.
+
+
+.SS Removin thin pool LVs, thin LVs n' snapshots
+
+\&
+
+Removin a thin LV n' its related snapshots returns tha blocks it
+used ta tha thin pool LV.  These blocks is ghon be reused fo' other
+thin LVs n' snapshots.
+
+Removin a thin pool LV removes both tha data LV n' metadata LV
+and returns tha space ta tha VG.
+
+lvremove of thin pool LVs, thin LVs n' snapshots cannot be
+reversed wit vgcfgrestore.
+
+vgcfgbackup do not back up thin pool metadata.
+
+
+.SS Manually manage free data space of thin pool LV
+
+\&
+
+Da available free space up in a thin pool LV can be displayed
+with tha lvs command. Y'all KNOW dat shit, muthafucka!  Jacked space can be added by extending
+the thin pool LV. 
+
+.nf
+Command ta extend thin pool data space:
+lvextend -L Size VG/ThinPoolLV
+
+Example
+
+1 fo' realz. A thin pool LV is rockin 26.96% of its data blocks.
+# lvs
+LV    VG           Attr       LSize   Pool  Origin Data%                                     
+pool0 vg           twi-a-tz--  10.00g               26.96                          
+
+2. Double tha amount of physical space up in tha thin pool LV.
+# lvextend -L+10G vg/pool0
+
+3. Da cementage of used data blocks is half tha previous value.
+# lvs
+LV    VG           Attr       LSize   Pool  Origin Data%                                          
+pool0 vg           twi-a-tz--  20.00g               13.48  
+.fi
+
+Other methodz of increasin free data space up in a thin pool LV
+include removin a thin LV n' its related snapsots, or hustlin
+fstrim on tha file system rockin a thin LV.
+
+
+.SS Manually manage free metadata space of a thin pool LV
+
+\&
+
+Da available metadata space up in a thin pool LV can be displayed
+with tha lvs -o+metadata_percent command.
+
+Command ta extend thin pool metadata space:
+.nf
+lvextend -L Size VG/ThinPoolLV_tmeta
+.fi
+
+Example
+
+1 fo' realz. A thin pool LV is rockin 12.40% of its metadata blocks. 
+.nf
+# lvs -oname,size,data_percent,metadata_percent vg/pool0
+LV    LSize   Data%  Meta% 
+pool0  20.00g  13.48  12.40
+.fi
+
+2. Display a thin pool LV wit its component thin data LV n' thin metadata LV.
+.nf
+# lvs -a -oname,attr,size vg
+LV              Attr       LSize
+pool0           twi-a-tz--  20.00g
+[pool0_tdata]   Twi-ao----  20.00g
+[pool0_tmeta]   ewi-ao----  12.00m
+.fi
+
+3. Double tha amount of physical space up in tha thin metadata LV.
+.nf
+# lvextend -L+12M vg/pool0_tmeta
+.fi
+
+4. Da cementage of used metadata blocks is half tha previous value.
+.nf
+# lvs -a -oname,size,data_percent,metadata_percent vg
+LV              LSize   Data%  Meta%
+pool0            20.00g  13.48   6.20
+[pool0_tdata]    20.00g
+[pool0_tmeta]    24.00m
+.fi
+
+
+.SS Usin fstrim ta increase free space up in a thin pool LV
+
+\&
+
+Removin filez up in a gangbangin' file system on top of a thin LV do not
+generally add free space back ta tha thin pool.  Manually hustlin
+the fstrim command can return space back ta tha thin pool dat had
+been used by removed files.  fstrim uses discardz n' aint gonna work
+if tha thin pool LV has discardz mode set ta ignore.
+
+Example
+ 
+A thin pool has 10G of physical data space, n' a thin LV has a virtual
+size of 100G.  Freestylin a 1G file ta tha file system reduces the
+free space up in tha thin pool by 10% n' increases tha virtual usage
+of tha file system by 1%.  Removin tha 1G file restores tha virtual
+1% ta tha file system yo, but do not restore tha physical 10% ta the
+thin pool.  Da fstrim command restores tha physical space ta tha thin pool.
+
+.nf
+# lvs -a -oname,attr,size,pool_lv,origin,data_percent,metadata_percent vg
+LV              Attr       LSize   Pool  Origin Data%  Meta%
+pool0           twi-a-tz--  10.00g               47.01  21.03
+thin1           Vwi-aotz-- 100.00g pool0          2.70       
+
+# df -h /mnt/X
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/vg-thin1   99G  1.1G   93G   2% /mnt/X
+
+# dd if=/dev/zero of=/mnt/X/1Gfile bs=4096 count=262144; sync
+
+# lvs
+pool0           vg   twi-a-tz--  10.00g               57.01  25.26                
+thin1           vg   Vwi-aotz-- 100.00g pool0          3.70       
+
+# df -h /mnt/X
+/dev/mapper/vg-thin1   99G  2.1G   92G   3% /mnt/X
+
+# rm /mnt/X/1Gfile
+
+# lvs
+pool0           vg   twi-a-tz--  10.00g               57.01  25.26                       
+thin1           vg   Vwi-aotz-- 100.00g pool0          3.70       
+
+# df -h /mnt/X
+/dev/mapper/vg-thin1   99G  1.1G   93G   2% /mnt/X
+
+# fstrim -v /mnt/X
+
+# lvs
+pool0           vg   twi-a-tz--  10.00g               47.01  21.03                     
+thin1           vg   Vwi-aotz-- 100.00g pool0          2.70       
+.fi
+
+
+.SS Automatically extend thin pool LV
+
+\&
+
+An lvm daemon (dmeventd) will by default monitor tha data usage of
+thin pool LVs n' extend dem when tha usage reaches a cold-ass lil certain level.
+Da necessary free space must exist up in tha VG ta extend tha thin pool
+LVs.
+
+Command ta enable or disable tha monitorin n' automatic extension
+of a existin thin pool LV:
+
+.nf
+lvchange --monitor {y|n} VG/ThinPoolLV
+.fi
+ 
+.BR lvm.conf (5)
+.B thin_pool_autoextend_threshold thin_pool_autoextend_percent
+.br
+control tha default autoextend behavior.
+
+thin_pool_autoextend_threshold
+is a cementage value dat defines when
+the thin pool LV should be extended. Y'all KNOW dat shit, muthafucka!  Settin dis ta 100 disables
+automatic extention. I aint talkin' bout chicken n' gravy biatch.  Da minimum value is 50.
+
+thin_pool_autoextend_percent
+defines how tha fuck much extra data space should
+be added ta tha thin pool, up in cement of its current size.
+
+Warnings is emitted all up in syslog when tha use of a pool reaches 80%,
+85%, 90% n' 95%.
+
+Example
+
+If thin_pool_autoextend_threshold is 70 n' thin_pool_autoextend_percent is 20,
+whenever a pool exceedz 70% usage, it is ghon be extended by another 20%.
+For a 1G pool, rockin 700M will trigger a resize ta 1.2G. When tha usage exceeds
+840M, tha pool is ghon be extended ta 1.44G, n' so on.
+
+
+.SS Data space exhaustion
+
+\&
+
+If thin pool data space is exhausted, writes ta thin LVs is ghon be queued
+until tha the data space is extended. Y'all KNOW dat shit, muthafucka!  Readin is still possible.
+
+When data space is exhausted, tha lvs command displays 100 under Data% for
+the thin pool LV:
+
+.nf
+# lvs vg/pool0
+LV     VG           Attr       LSize   Pool  Origin Data%
+pool0  vg           twi-a-tz-- 512.00m              100.00
+.fi
+
+A thin pool can run outta data blocks fo' any of tha followin reasons:
+
+1 fo' realz. Automatic extension of tha thin pool is disabled, n' tha thin pool is
+not manually extended. Y'all KNOW dat shit, muthafucka!  (Disablin automatic extension is not
+recommended.)
+
+2. Da dmeventd daemon aint hustlin n' tha thin pool aint manually
+extended. Y'all KNOW dat shit, muthafucka!  (Disablin dmeventd aint recommended.)
+
+3 fo' realz. Automatic extension of tha thin pool is too slow given tha rate of
+writes ta thin LVs up in tha pool.  (This can be addressed by tunin the
+thin_pool_autoextend_threshold n' thin_pool_autoextend_percent.)
+
+4. Da VG do have enough free blocks ta extend tha thin pool.
+
+Da response ta data space exhaustion is ta extend tha thin pool.  This is
+busted lyrics bout up in tha section "Manually manage free data space of thin pool
+LV".
+
+
+.SS Metadata space exhaustion
+
+\&
+
+If thin pool metadata space is exhausted (or a thin pool metadata
+operation fails), errors is ghon be returned fo' IO operations on thin LVs.
+
+When metadata space is exhausted, tha lvs command displays 100 under Meta%
+for tha thin pool LV:
+
+.nf
+# lvs -o lv_name,size,data_percent,metadata_percent vg/pool0
+LV    LSize Data%  Meta%
+pool0              100.00
+.fi
+
+Da same reasons fo' thin pool data space exhaustion apply ta thin pool
+metadata space.
+
+Metadata space exhaustion can lead ta inconsistent thin pool metadata and
+inconsistent file systems, so tha response requires offline checkin and
+repair.
+
+1. Deactivate tha thin pool LV, or reboot tha system if dis aint possible.
+
+2. Repair thin pool wit lvconvert --repair.
+.br
+   See "Metadata check n' repair".
+
+3. Extend pool metadata space wit lvextend VG/ThinPoolLV_tmeta.
+.br
+   See "Manually manage free metadata space of a thin pool LV".
+
+4. Peep n' repair file system wit fsck.
+
+
+.SS Zeroing
+
+\&
+
+When a thin pool provisions a freshly smoked up data block fo' a thin LV, the
+new block is first overwritten wit zeros.  Da zeroin mode is
+indicated by tha "z" attribute displayed by lvs.  Da option -Z
+(or --zero) can be added ta commandz ta specify tha zeroin mode.
+
+Command ta set tha zeroin mode when bustin a thin pool LV:
+.nf
+lvconvert -Z{y|n} --thinpool VG/ThinDataLV --poolmetadata VG/ThinMetaLV
+.fi
+
+Command ta chizzle tha zeroin mode of a existin thin pool LV:
+.nf
+lvchange -Z{y|n} VG/ThinPoolLV
+.fi
+
+If zeroin mode is chizzled from "n" ta "y", previously provisioned
+blocks is not zeroed.
+
+Provisionin of big-ass zeroed chunks impacts performance.
+
+.BR lvm.conf (5)
+.B thin_pool_zero
+.br
+controls tha default zeroin mode used when bustin a thin pool.
+
+
+.SS Discard
+
+\&
+
+Da discard behavior of a thin pool LV determines how tha fuck discard requests
+are handled. Y'all KNOW dat shit, muthafucka!  Possible discard behaviors:
+
+ignore: Ignore any discardz dat is received.
+
+nopassdown: Process any discardz up in tha thin pool itself n' allow
+the no longer needed extendz ta be overwritten by freshly smoked up data.
+
+passdown: Process discardz up in tha thin pool (as wit nopassdown), and
+pass tha discardz down tha the underlyin device.  This is tha default
+mode.
+
+Command ta display tha current discard mode of a thin pool LV:
+.nf
+lvs -o+discardz VG/ThinPoolLV
+.fi
+ 
+Command ta set tha discard mode when bustin a thin pool LV:
+.nf
+lvconvert --discardz {ignore|nopassdown|passdown}
+    --thinpool VG/ThinDataLV --poolmetadata VG/ThinMetaLV
+.fi
+
+Command ta chizzle tha discard mode of a existin thin pool LV:
+.nf
+lvchange --discardz {ignore|nopassdown|passdown} VG/ThinPoolLV
+.fi
+ 
+.nf
+Example
+# lvs -o name,discardz vg/pool0
+pool0 passdown
+
+# lvchange --discardz ignore vg/pool0
+.fi
+
+.BR lvm.conf (5)
+.B thin_pool_discards
+.br
+controls tha default discardz mode used when bustin a thin pool.
+
+
+.SS Chunk size
+
+\&
+
+Da size of data blocks managed by a thin pool can be specified with
+the --chunksize option when tha thin pool LV is pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da default
+unit is kilobytes n' tha default value is 64KiB.  Da value must be a
+power of two between 4KiB n' 1GiB.
+
+When a thin pool is used primarily fo' tha thin provisionin feature,
+a larger value is optimal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  To optimize fo' a shitload of snapshotting,
+a smalla value reduces copyin time n' consumes less space.
+
+Command ta display tha thin pool LV chunk size:
+.nf
+lvs -o+chunksize VG/ThinPoolLV
+ 
+Example
+# lvs -o name,chunksize
+pool0 64.00k
+.fi
+
+.BR lvm.conf (5)
+.B thin_pool_chunk_size
+.br
+controls tha default chunk size used when bustin a thin pool.
+
+
+.SS Size of pool metadata LV
+
+\&
+
+Da amount of thin metadata dependz on how tha fuck nuff blocks is shared
+between thin LVs (i.e. all up in snapshots).  A thin pool wit many
+snapshots may need a larger metadata LV.
+
+Da range of supported metadata LV sizes is 2MiB ta 16GiB.
+.br
+Da default size is estimated wit tha formula:
+.br
+ThinPoolLVSize / ThinPoolLVChunkSize * 64b.
+
+When bustin a thin metadata LV explicitly, tha size is specified
+in tha lvcreate command. Y'all KNOW dat shit, muthafucka!  When a cold-ass lil command automatically creates a
+thin metadata LV, tha --poolmetadatasize option can be used specify
+a non-default size.  Da default unit is megabytes.
+
+
+.SS Smoke a thin snapshot of a external, read only LV
+
+\&
+
+Thin snapshots is typically taken of other thin LVs or other
+thin snapshot LVs within tha same thin pool.  It be also possible
+to take thin snapshotz of external, read only LVs.  Writes ta the
+snapshot is stored up in tha thin pool, n' tha external LV is used
+to read unwritten partz of tha thin snapshot.
+
+.nf
+lvcreate --type thin -n SnapLV -s VG/ExternalOriginLV
+      --thinpool VG/ThinPoolLV
+ 
+Example
+# lvchange -an vg/lve
+# lvchange --permission r vg/lve
+# lvcreate --type thin -n snaplve -s vg/lve --thinpool vg/pool0
+
+# lvs vg/lve vg/snaplve
+LV      VG  Attr       LSize  Pool  Origin Data%
+lve     vg  ori------- 10.00g
+snaplve vg  Vwi-a-tz-- 10.00g pool0 lve      0.00
+.fi
+
+
+.SS Convert a standard LV ta a thin LV wit a external origin
+
+\&
+
+A freshly smoked up thin LV can be pimped n' given tha name of a existing
+standard LV.  At tha same time, tha existin LV is converted ta a
+read only external LV wit a freshly smoked up name.  Unwritten portionz of the
+thin LV is read from tha external LV.
+Da freshly smoked up name given ta tha existin LV can be specified with
+--originname, otherwise tha existin LV is ghon be given a thugged-out default
+name, e.g. lvol#.
+
+Convert ExampleLV tha fuck into a read only external LV wit tha freshly smoked up name
+NewExternalOriginLV, n' create a freshly smoked up thin LV dat is given tha previous
+name of ExampleLV.
+
+.nf
+lvconvert --type thin --thinpool VG/ThinPoolLV
+      --originname NewExternalOriginLV --thin VG/ExampleLV
+
+Example
+# lvcreate -n lv_example -L 10G vg
+
+# lvs
+lv_example      vg          -wi-a-----  10.00g
+
+# lvconvert --type thin --thinpool vg/pool0
+          --originname lv_external --thin vg/lv_example
+
+# lvs
+LV              VG          Attr       LSize   Pool  Origin
+lv_example      vg          Vwi-a-tz--  10.00g pool0 lv_external
+lv_external     vg          ori-------  10.00g
+.fi
+
+
+.SS Single step thin pool LV creation
+
+\&
+
+A thin pool LV can be pimped wit a single lvcreate command,
+rather than rockin lvconvert on existin LVs.
+This one command creates a thin data LV, a thin metadata LV,
+and combines tha two tha fuck into a thin pool LV.
+
+.nf
+lvcreate -L LargeSize --thinpool VG/ThinPoolLV
+
+Example
+# lvcreate -l1 --thinpool vg/pool0
+
+# lvs vg/pool0
+LV    VG  Attr       LSize Pool Origin Data%
+pool0 vg  twi-a-tz-- 8.00m               0.00
+
+# lvs -a
+pool0           vg          twi-a-tz--   8.00m
+[pool0_tdata]   vg          Twi-ao----   8.00m
+[pool0_tmeta]   vg          ewi-ao----   8.00m
+.fi
+
+
+.SS Single step thin pool LV n' thin LV creation
+
+\&
+
+A thin pool LV n' a thin LV can be pimped wit a single
+lvcreate command. Y'all KNOW dat shit, muthafucka!  This one command creates a thin data LV,
+a thin metadata LV, combines tha two tha fuck into a thin pool LV,
+and creates a thin LV up in tha freshly smoked up pool.
+.br
+-L LargeSize specifies tha physical size of tha thin pool LV.
+.br
+-V VirtualSize specifies tha virtual size of tha thin LV.
+
+.nf
+lvcreate -L LargeSize -V VirtualSize -n ThinLV --thinpool VG/ThinPoolLV
+
+Equivalent to:
+lvcreate -L LargeSize --thinpool VG/ThinPoolLV
+lvcreate --type thin -n ThinLV -V VirtualSize --thinpool VG/ThinPoolLV
+
+Example
+# lvcreate -L8M -V2G -n thin1 --thinpool vg/pool0
+
+# lvs -a
+pool0           vg          twi-a-tz--   8.00m
+[pool0_tdata]   vg          Twi-ao----   8.00m
+[pool0_tmeta]   vg          ewi-ao----   8.00m
+thin1           vg          Vwi-a-tz--   2.00g pool0
+.fi
+
+.SH SEE ALSO
+.BR lvm (8),
+.BR lvm.conf (5),
+.BR lvcreate (8),
+.BR lvconvert (8),
+.BR lvchange (8),
+.BR lvextend (8),
+.BR lvremove (8),
+.BR lvs (8),
+.BR thin_dump (8),
+.BR thin_repair (8)
+.BR thin_restore (8)
+

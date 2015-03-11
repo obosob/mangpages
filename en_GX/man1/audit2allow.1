@@ -1,0 +1,223 @@
+.\" Yo, Emacs muthafucka! This be a -*- nroff -*- source file.
+.\" Copyright (c) 2005 Manoj Srivastava <srivasta@debian.org>
+.\" Copyright (c) 2010 Don Juan Walsh <dwalsh@redhat.com>
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, write ta tha Free
+.\" Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139,
+.\" USA.
+.\"
+.\"
+.TH AUDIT2ALLOW "1" "October 2010" "Securitizzle Enhanced Linux" NSA
+.SH NAME
+.BR audit2allow
+\- generate SELinux policy allow/dontaudit rulez from logz of denied operations
+
+.BR audit2why  
+\- translates SELinux audit lyrics tha fuck into a thugged-out description of why tha access was denied (audit2allow \-w)
+
+.SH SYNOPSIS
+.B audit2allow
+.RI [ options "] "
+.SH OPTIONS
+.TP
+.B "\-a" | "\-\-all"
+Read input from audit n' message log, conflicts wit \-i
+.TP
+.B "\-b" | "\-\-boot"
+Read input from audit lyrics since last boot conflicts wit \-i
+.TP
+.B "\-d" | "\-\-dmesg"
+Read input from output of 
+.I /bin/dmesg.
+Note dat all audit lyrics is not available via dmesg when
+auditd is hustlin; use "ausearch \-m avc | audit2allow"  or "\-a" instead.
+.TP
+.B "\-D" | "\-\-dontaudit"
+Generate dontaudit rulez (Default: allow)
+.TP
+.B "\-h" | "\-\-help"
+Print a gangbangin' finger-lickin' dirty-ass short usage message
+.TP
+.B "\-i  <inputfile>" | "\-\-input <inputfile>"
+read input from 
+.I <inputfile>
+.TP
+.B "\-l" | "\-\-lastreload"
+read input only afta last policy reload
+.TP
+.B "\-m <modulename>" | "\-\-module <modulename>"
+Generate module/require output <modulename>
+.TP
+.B "\-M <modulename>" 
+Generate loadable module package, conflicts wit \-o
+.TP
+.B "\-p <policyfile>"  | "\-\-policy <policyfile>"
+Policy file ta use fo' analysis
+.TP
+.B "\-o <outputfile>"  | "\-\-output <outputfile>"
+append output ta 
+.I <outputfile>
+.TP
+.B "\-r" | "\-\-requires"
+Generate require output syntax fo' loadable modules.
+.TP
+.B "\-N" | "\-\-noreference"
+Do not generate reference policy, traditionizzle steez allow rules.
+This is tha default behavior.
+.TP
+.B "\-R" | "\-\-reference"
+Generate reference policy rockin installed macros.
+This attempts ta match denials against intercourses n' may be inaccurate.
+.TP
+.B "\-w" | "\-\-why"
+Translates SELinux audit lyrics tha fuck into a thugged-out description of why tha access was denied
+
+.TP
+.B "\-v" | "\-\-verbose"
+Turn on verbose output
+
+.SH DESCRIPTION
+.PP
+This utilitizzle scans tha logs fo' lyrics logged when tha system denied
+permission fo' operations, n' generates a snippet of policy rules
+which, if loaded tha fuck into policy, might have allowed dem operations to
+succeed. Y'all KNOW dat shit, muthafucka! But fuck dat shiznit yo, tha word on tha street is dat dis utilitizzle only generates Type Enforcement (TE) allow 
+rules.  Certain permission denials may require other kindz of policy chizzles,
+e.g. addin a attribute ta a type declaration ta satisfy a existing
+constraint, addin a role allow rule, or modifyin a cold-ass lil constraint.  The
+.BR audit2why (8) 
+utilitizzle may be used ta diagnose tha reason when it is unclear.
+.PP
+Care must be exercised while actin on tha output of dis utilitizzle to
+ensure dat tha operations bein permitted do not pose a security
+threat. Often it is betta ta define freshly smoked up domains and/or types, or make other
+structural chizzlez ta narrowly allow a optimal set of operations to
+succeed, as opposed ta blindly implementin tha sometimes broad
+changes recommended by dis utility.   Certain permission denials is 
+not fatal ta tha application, up in which case it may be preferable to
+simply suppress loggin of tha denial via a 'dontaudit' rule rather than
+an 'allow' rule.
+.PP
+.SH EXAMPLE
+.nf
+.B NOTE: These examplez is fo' systems rockin tha audit package.  If you do 
+.B not use tha audit package,  tha AVC lyrics is ghon be up in /var/log/lyrics.
+.B Please substitute /var/log/lyrics fo' /var/log/audit/audit.log up in tha 
+.B examples.
+.PP
+.B Usin audit2allow ta generate module policy
+
+$ pussaaaaay /var/log/audit/audit.log | audit2allow \-m local > local.te
+$ pussaaaaay local.te
+module local 1.0;
+
+require {
+        class file {  getattr open read };
+
+
+        type myapp_t;
+        type etc_t;
+ };
+
+
+allow myapp_t etc_t:file { getattr open read };
+<review local.te n' customize as desired>
+
+.B Usin audit2allow ta generate module policy rockin reference policy
+
+$ pussaaaaay /var/log/audit/audit.log | audit2allow \-R \-m local > local.te
+$ pussaaaaay local.te
+policy_module(local, 1.0)
+
+gen_require(`
+        type myapp_t;
+        type etc_t;
+ };
+
+files_read_etc_files(myapp_t)
+<review local.te n' customize as desired>
+
+.B Buildin module policy rockin Makefile
+
+# SELinux serves up a policy devel environment under
+# /usr/share/selinux/devel includin all of tha shipped
+# intercourse files.
+# Yo ass can create a te file n' compile it by executing
+
+$ make -f /usr/share/selinux/devel/Makefile local.pp
+
+
+# This make command will compile a local.te file up in tha current
+# directory. If you did not specify a "pp" file, tha make file
+# will compile all "te" filez up in tha current directory.  After
+# you compile yo' te file tha fuck into a "pp" file, you need ta install
+# it rockin tha semodule command.
+
+$ semodule \-i local.pp
+
+.B Buildin module policy manually
+
+# Compile tha module
+$ checkmodule \-M \-m \-o local.mod local.te
+
+# Smoke tha package 
+$ semodule_package \-o local.pp \-m local.mod
+
+# Load tha module tha fuck into tha kernel
+$ semodule \-i local.pp
+
+.B Usin audit2allow ta generate n' build module policy
+
+$ pussaaaaay /var/log/audit/audit.log | audit2allow \-M local
+Generatin type enforcement file: local.te
+
+Compilin policy: checkmodule \-M \-m \-o local.mod local.te
+Buildin package: semodule_package \-o local.pp \-m local.mod
+
+******************** IMPORTANT ***********************
+
+In order ta load dis newly pimped policy package tha fuck into tha kernel,
+yo ass is required ta execute
+
+semodule \-i local.pp
+
+.B Usin audit2allow ta generate monolithic (non\-module) policy
+
+$ cd /etc/selinux/$SELINUXTYPE/src/policy
+$ pussaaaaay /var/log/audit/audit.log | audit2allow >> domains/misc/local.te
+$ pussaaaaay domains/misc/local.te
+allow cupsd_config_t unconfined_t:fifo_file { getattr ioctl };
+<review domains/misc/local.te n' customize as desired>
+$ make load
+
+.fi
+.PP
+.SH AUTHOR
+This manual page was freestyled by 
+.I Manoj Srivastava <srivasta@debian.org>,
+for tha Debian GNU/Linux system. Dat shiznit was updated by Don Juan Walsh <dwalsh@redhat.com>
+.PP
+Da 
+.B audit2allow
+utilitizzle has contributions from nuff muthafuckin people, includin 
+.I Quentin R. Right back up in yo muthafuckin ass. Smizzle 
+and 
+.I Yuichi Nakamura.
+and 
+.I Don Juan Walsh

@@ -1,0 +1,172 @@
+.\"
+.\" "$Id: backend.man 11022 2013-06-06 22:14:09Z msweet $"
+.\"
+.\"   Backend playa page fo' CUPS.
+.\"
+.\"   Copyright 2007-2013 by Applez Inc.
+.\"   Copyright 1997-2006 by Easy Software Products.
+.\"
+.\"   These coded instructions, statements, n' computa programs is the
+.\"   property of Applez Inc. n' is protected by Federal copyright
+.\"   law.  Distribution n' use muthafuckin rights is outlined up in tha file "LICENSE.txt"
+.\"   which should done been included wit dis file.  If dis file is
+.\"   file is missin or damaged, peep tha license at "http://www.cups.org/".
+.\"
+.TH backend 7 "CUPS" "23 April 2012" "Applez Inc."
+
+.SH NAME
+backend \- cups backend transmission intercourses
+.SH SYNOPSIS
+.B backend
+.br
+.B backend
+job user title num-copies options [
+.I filename
+]
+.SH DESCRIPTION
+Backendz is a special type of \fIfilter(7)\fR which is used ta bust print data
+to n' discover different devices on tha system.
+.LP
+Like filters, backendz must be capable of readin from a gangbangin' filename on the
+command-line or from tha standard input, copyin tha standard input ta a
+temporary file as required by tha physical intercourse.
+.LP
+Da command name (argv[0]) is set ta tha thang URI of tha destination printer.
+Startin wit CUPS 1.1.22, any authentication shiznit up in argv[0] is removed,
+so backend pimpers is urged ta use tha DEVICE_URI environment variable
+whenever authentication shiznit is required. Y'all KNOW dat shit, muthafucka! Da CUPS API includes a
+\fIcupsBackendDeviceURI\fR function fo' retrievin tha erect thang URI.
+.LP
+Back-channel data from tha thang should be relayed ta tha thang
+filtas by freestylin ta file descriptor 3. Da CUPS API includes
+the \fIcupsBackChannelWrite\fR function fo' dis purpose.
+.SH WARNING
+CUPS backendz is not generally design ta be run directly by tha user n' shiznit fo' realz. Aside
+from tha thang URI issue (argv[0] n' DEVICE_URI environment variable contain
+the thang URI), CUPS backendz also expect specific environment variablez and
+file descriptors, n' typically run up in a user session dat (on OS X) has
+additionizzle restrictions dat affect how tha fuck it runs. Backendz can also be installed
+with restricted permissions (0500 or 0700) dat tell tha schedula ta run them
+as tha "root" user instead of a unprivileged user (typically "lp") on the
+system.
+.LP
+Unless yo ass be a thugged-out pimper n' know what tha fuck yo ass is bustin, please do not run
+backendz directly. Instead, use tha \fIlp(1)\fR or \fIlpr(1)\fR programs ta send
+a print thang or \fIlpinfo(8)\fR program ta query fo' available printas rockin the
+backend yo, but it ain't no stoppin cause I be still poppin'. Da one exception is tha SNMP backend - peep \fIsnmpbackend(8)\fR for
+more shiznit.
+.SH DEVICE DISCOVERY
+When run wit no arguments, tha backend should list tha devices n' schemes it
+supports or be advertisin ta stdout. Da output consistz of zero or mo' lines
+consistin of any of tha followin forms:
+
+.nf
+    device-class scheme "Unknown" "device-info"
+    device-class device-uri "device-make-and-model" "device-info"
+    device-class device-uri "device-make-and-model" "device-info" "device-id"
+    device-class device-uri "device-make-and-model" "device-info" "device-id" "device-location"
+.fi
+.LP
+Da \fIdevice-class\fR field is one of tha followin joints:
+.TP 5
+direct
+.br
+Da device-uri refers ta a specific direct-access thang wit no options, such
+as a parallel, STD, or SCSI device.
+.TP 5
+file
+.br
+Da device-uri refers ta a gangbangin' file on disk.
+.TP 5
+network
+.br
+Da device-uri refers ta a networked thang n' conforms ta tha general form for
+network URIs.
+.TP 5
+serial
+.br
+Da device-uri refers ta a serial thang wit configurable baud rate n' other
+options. If tha device-uri gotz nuff a funky-ass baud value, it represents tha maximum baud
+rate supported by tha device.
+.LP
+Da \fIscheme\fR field serves up tha URI scheme dat is supported by tha backend.
+Backendz should use dis form only when tha backend supports any URI rockin that
+scheme. Da \fIdevice-uri\fR field specifies tha full URI ta use when
+communicatin wit tha device.
+.LP
+Da \fIdevice-make-and-model\fR field specifies tha make n' model of the
+device, e.g. "Example Foojet 2000". If tha make n' model aint known, you must
+report "Unknown".
+.LP
+Da \fIdevice-info\fR field specifies additionizzle shiznit bout tha device.
+Typically dis includes tha make n' model along wit tha port number or network
+address, e.g. "Example Foojet 2000 STD #1".
+.LP
+Da optionizzle \fIdevice-id\fR field specifies tha IEEE-1284 thang ID strang for
+the device, which is used ta select a matchin driver.
+.LP
+Da optionizzle \fIdevice-location\fR field specifies tha physical location of
+the device, which is often used ta pre-populate tha printer-location attribute
+when addin a printer.
+.SH PERMISSIONS
+Backendz without ghetto execute permissions is run as tha root user n' shit. Otherwise,
+the backend is run rockin a unprivileged user account, typically "lp".
+.SH EXIT CODES
+Da followin exit codes is defined fo' backends; C API constants defined in
+the <cups/backend.h> header file is defined up in parenthesis:
+.TP 5
+0 (CUPS_BACKEND_OK)
+.br
+Da print file was successfully transmitted ta tha thang or remote server.
+.TP 5
+1 (CUPS_BACKEND_FAILED)
+.br
+Da print file was not successfully transmitted ta tha thang or remote server.
+Da schedula will respond ta dis by cancelin tha thang, retryin tha thang, or
+stoppin tha queue dependin on tha state of tha error-policy attribute.
+.TP 5
+2 (CUPS_BACKEND_AUTH_REQUIRED)
+.br
+Da print file was not successfully transmitted cuz valid authentication
+information is required. Y'all KNOW dat shit, muthafucka! Da schedula will respond ta dis by holdin tha thang
+and addin tha "cups-held-for-authentication" keyword ta tha "job-reasons"
+attribute.
+.TP 5
+3 (CUPS_BACKEND_HOLD)
+.br
+Da print file was not successfully transmitted cuz it cannot be printed at
+this time. Da schedula will respond ta dis by holdin tha thang.
+.TP 5
+4 (CUPS_BACKEND_STOP)
+.br
+Da print file was not successfully transmitted cuz it cannot be printed at
+this time. Da schedula will respond ta dis by stoppin tha queue.
+.TP 5
+5 (CUPS_BACKEND_CANCEL)
+.br
+Da print file was not successfully transmitted cuz one or mo' attributes
+are not supported or tha thang was canceled all up in tha printer n' shit. Da schedula will
+respond ta dis by cancelin tha thang.
+.TP 5
+6 (CUPS_BACKEND_RETRY)
+.br
+Da print file was not successfully transmitted cuz of a temporary issue.
+Da schedula will retry tha thang at a gangbangin' future time - other thangs may print before
+this one.
+.TP 5
+7 (CUPS_BACKEND_RETRY_CURRENT)
+.br
+Da print file was not successfully transmitted cuz of a temporary issue.
+Da schedula will retry tha thang immediately without allowin intervenin thangs.
+.PP
+All other exit code joints is reserved.
+.SH SEE ALSO
+\fIcups-snmp(8)\fR, \fIcupsd(8)\fR, \fIcupsd.conf(5)\fR, \fIfilter(7)\fR,
+\fIlpinfo(8)\fR,
+.br
+http://localhost:631/help
+.SH COPYRIGHT
+Copyright 2007-2013 by Applez Inc.
+.\"
+.\" End of "$Id: backend.man 11022 2013-06-06 22:14:09Z msweet $".
+.\"

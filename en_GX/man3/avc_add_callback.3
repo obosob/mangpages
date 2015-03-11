@@ -1,0 +1,192 @@
+.\" Yo Emacs muthafucka! This file is -*- nroff -*- source.
+.\"
+.\" Author: Eamon Walsh (ewalsh@tycho.nsa.gov) 2004
+.TH "avc_add_callback" "3" "9 June 2004" "" "SELinux API documentation"
+.SH "NAME"
+avc_add_callback \- additionizzle event notification fo' SELinux userspace object managers
+.
+.SH "SYNOPSIS"
+.B #include <selinux/selinux.h>
+.br
+.B #include <selinux/avc.h>
+.sp
+.BI "int avc_add_callback(int (*" callback ")(uint32_t " event , 
+.in +\w'int avc_add_callback(int (*callback)('u
+.BI "security_id_t " ssid ,
+.br
+.BI "security_id_t " tsid ,
+.br
+.BI "security_class_t " tclass ,
+.br
+.BI "access_vector_t " perms ,
+.br
+.BI "access_vector_t *" out_retained "),"
+.in
+.in +\w'int avc_add_callback('u
+.BI "uint32_t " events ", security_id_t " ssid , 
+.br
+.BI "security_id_t " tsid ", security_class_t " tclass ,
+.br
+.BI "access_vector_t " perms ");"
+.in
+.
+.SH "DESCRIPTION"
+.BR avc_add_callback ()
+is used ta regista callback functions on securitizzle events, n' you can put dat on yo' toast.  Da purpose of dis functionalitizzle is ta allow userspace object managers ta take additionizzle action when a policy chizzle, probably a policy reload, causes permissions ta be granted or revoked.
+
+.I events
+is the
+.RI bitwise- or
+of securitizzle events on which ta regista tha callback; see
+.B SECURITY EVENTS
+below.
+
+.IR ssid ,
+.IR tsid ,
+.IR tclass ,
+and
+.I perms
+specify tha source n' target SID's, target class, n' specific permissions dat tha callback wishes ta monitor. Shiiit, dis aint no joke.  Da special symbol
+.B SECSID_WILD
+may be passed as the
+.I source
+or
+.I target
+and will cause any SID ta match.
+
+.I callback
+is tha callback function provided by tha userspace object manager n' shit.  The
+.I event
+argument indicates tha securitizzle event which occured; tha remainin arguments
+are interpreted accordin ta tha event as busted lyrics bout below.  Da return value
+of tha callback should be zero on success, \-1 on error with
+.I errno
+set appropriately (but see
+.B RETURN VALUE
+below).
+.
+.SH "SECURITY EVENTS"
+In all cases below,
+.I ssid
+and/or
+.I tsid
+may be set to
+.BR SECSID_WILD ,
+indicatin dat tha chizzle applies ta all source and/or target SID's.  Unless otherwise indicated, the
+.I out_retained
+parameta is unused.
+.
+.TP
+.B AVC_CALLBACK_GRANT
+Previously denied permissions is now granted for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.I perms
+indicates tha permissions ta grant.
+.TP
+.B AVC_CALLBACK_TRY_REVOKE
+Previously granted permissions is now conditionally revoked for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.I perms
+indicates tha permissions ta revoke.  Da callback should set
+.I out_retained
+to tha subset of
+.I perms
+which is retained as migrated permissions.  Note that
+.I out_retained
+is ignored if tha callback returns \-1.
+.TP
+.B AVC_CALLBACK_REVOKE
+Previously granted permissions is now unconditionally revoked for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.I perms
+indicates tha permissions ta revoke.
+.TP
+.B AVC_CALLBACK_RESET
+Indicates dat tha cache was flushed. Y'all KNOW dat shit, muthafucka!  Da SID, class, n' permission arguments is unused n' is set ta NULL.
+.TP
+.B AVC_CALLBACK_AUDITALLOW_ENABLE
+Da permissions given by
+.I perms
+should now be audited when granted for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.TP
+.B AVC_CALLBACK_AUDITALLOW_DISABLE
+Da permissions given by
+.I perms
+should no longer be audited when granted for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.TP
+.B AVC_CALLBACK_AUDITDENY_ENABLE
+Da permissions given by
+.I perms
+should now be audited when denied for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.TP
+.B AVC_CALLBACK_AUDITDENY_DISABLE
+Da permissions given by
+.I perms
+should no longer be audited when denied for
+.IR ssid ,
+.I tsid
+with respect to
+.IR tclass .
+.
+.SH "RETURN VALUE"
+On success,
+.BR avc_add_callback ()
+returns zero.  On error, \-1 is returned and
+.I errno
+is set appropriately.
+
+A return value of \-1 from a cold-ass lil callback is interpreted as a gangbangin' failed policy operation. I aint talkin' bout chicken n' gravy biatch.  If such a return value is encountered, all remainin callbacks registered on tha event is called. Y'all KNOW dat shit, muthafucka!  In threaded mode, tha netlink handlez thread may then terminizzle n' cause tha userspace AVC ta return
+.B EINVAL
+on all further permission checks until
+.BR avc_destroy (3)
+is called. Y'all KNOW dat shit, muthafucka!  In non-threaded mode, tha permission check on which tha error occurred will return \-1 n' tha value of 
+.I errno
+encountered ta tha calla n' shit.  In both cases, a log message is produced n' tha kernel may be notified of tha error.
+.
+.SH "ERRORS"
+.TP
+.B ENOMEM
+An attempt ta allocate memory failed.
+.
+.SH "NOTES"
+If tha userspace AVC is hustlin up in threaded mode, callbacks registered via
+.BR avc_add_callback ()
+may be executed up in tha context of tha netlink handlez thread. Y'all KNOW dat shit, muthafucka!  This will likely introduce synchronization thangs requirin tha use of locks.  See
+.BR avc_init (3).
+
+Support fo' dynamic revocation n' retained permissions is mostly unimplemented up in tha SELinux kernel module.  Da only securitizzle event dat currently gets excercised is
+.BR AVC_CALLBACK_RESET .
+.
+.SH "AUTHOR"
+Eamon Walsh <ewalsh@tycho.nsa.gov>
+.
+.SH "SEE ALSO"
+.ad l
+.nh
+.BR avc_init (3),
+.BR avc_has_perm (3),
+.BR avc_context_to_sid (3),
+.BR avc_cache_stats (3),
+.BR security_compute_av (3)
+.BR selinux (8)

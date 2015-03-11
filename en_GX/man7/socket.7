@@ -1,0 +1,932 @@
+'\" t
+.\" This playa page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\" n' copyright (c) 1999 Matthew Wilcox.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" 2002-10-30, Mike Kerrisk, <mtk.manpages@gmail.com>
+.\"	Added description of SO_ACCEPTCONN
+.\" 2004-05-20, aeb, added SO_RCVTIMEO/SO_SNDTIMEO text.
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\"	A few lil' small-ass grammar fixes
+.\" 2010-06-13 Jan Engelhardt <jengelh@medozas.de>
+.\"	Documented SO_DOMAIN n' SO_PROTOCOL.
+.\" FIXME
+.\" Da followin is not yet documented:
+.\"	SO_PEERNAME (2.4?)
+.\"		get only
+.\"		Seems ta do suttin' similar ta getpeernam() yo, but then
+.\"		why is it necessary / how tha fuck do it differ?
+.\"	SO_TIMESTAMPNS (2.6.22)
+.\"		Documentation/networking/timestamping.txt
+.\"		commit 92f37fd2ee805aa77925c1e64fd56088b46094fc
+.\"		Author: Eric Dumazet <dada1@cosmosbay.com>
+.\"	SO_TIMESTAMPING (2.6.30)
+.\"		Documentation/networking/timestamping.txt
+.\"		commit cb9eff097831007afb30d64373f29d99825d0068
+.\"		Author: Patrick Ohly <patrick.ohly@intel.com>
+.\"	SO_RXQ_OVFL (2.6.33)
+.\"		commit 3b885787ea4112eaa80945999ea0901bf742707f
+.\"		Author: Neil Horman <nhorman@tuxdriver.com>
+.\" 	SO_WIFI_STATUS (3.3)
+.\"		commit 6e3e939f3b1bf8534b32ad09ff199d88800835a0
+.\"		Author: Johannes Berg <johannes.berg@intel.com>
+.\"		Also: SCM_WIFI_STATUS
+.\"	SO_NOFCS (3.4)
+.\"		commit 3bdc0eba0b8b47797f4a76e377dd8360f317450f
+.\"		Author: Lil' Bow Wow Greear <greearb@candelatech.com>
+.\"
+.TH SOCKET 7 2013-06-21 Linux "Linux Programmerz Manual"
+.SH NAME
+socket \- Linux socket intercourse
+.SH SYNOPSIS
+.B #include <sys/socket.h>
+.sp
+.IB sockfd " = socket(int " socket_family ", int " socket_type ", int " protocol );
+.SH DESCRIPTION
+This manual page raps bout tha Linux networkin socket layer user
+interface.
+Da BSD compatible sockets
+are tha uniform intercourse
+between tha user process n' tha network protocol stacks up in tha kernel.
+Da protocol modulez is grouped into
+.I protocol crews
+like
+.BR AF_INET ", " AF_IPX ", " AF_PACKET
+and
+.I socket types
+like
+.B SOCK_STREAM
+or
+.BR SOCK_DGRAM .
+See
+.BR socket (2)
+for mo' shiznit on crews n' types.
+.SS Socket-layer functions
+These functions is used by tha user process ta bust or receive packets
+and ta do other socket operations.
+For mo' shiznit peep they respectizzle manual pages.
+
+.BR socket (2)
+creates a socket,
+.BR connect (2)
+connects a socket ta a remote socket address,
+the
+.BR bind (2)
+function bindz a socket ta a local socket address,
+.BR listen (2)
+ drops some lyrics ta tha socket dat freshly smoked up connections shall be accepted, and
+.BR accept (2)
+is used ta git a freshly smoked up socket wit a freshly smoked up incomin connection.
+.BR socketpair (2)
+returns two connected anonymous sockets (implemented only fo' a gangbangin' few
+local crews like
+.BR AF_UNIX )
+.PP
+.BR bust (2),
+.BR sendto (2),
+and
+.BR sendmsg (2)
+send data over a socket, and
+.BR recv (2),
+.BR recvfrom (2),
+.BR recvmsg (2)
+receive data from a socket.
+.BR poll (2)
+and
+.BR select (2)
+wait fo' arrivin data or a readinizz ta bust data.
+In addition, tha standard I/O operations like
+.BR write (2),
+.BR writev (2),
+.BR sendfile (2),
+.BR read (2),
+and
+.BR readv (2)
+can be used ta read n' write data.
+.PP
+.BR getsockname (2)
+returns tha local socket address and
+.BR getpeername (2)
+returns tha remote socket address.
+.BR getsockopt (2)
+and
+.BR setsockopt (2)
+are used ta set or git socket layer or protocol options.
+.BR ioctl (2)
+can be used ta set or read some other options.
+.PP
+.BR close (2)
+is used ta close a socket.
+.BR shutdown (2)
+closes partz of a gangbangin' full-duplex socket connection.
+.PP
+Seeking, or calling
+.BR pread (2)
+or
+.BR pwrite (2)
+with a nonzero posizzle aint supported on sockets.
+.PP
+It be possible ta do nonblockin I/O on sockets by settin the
+.B O_NONBLOCK
+flag on a socket file descriptor using
+.BR fcntl (2).
+Then all operations dat would block will (usually)
+return with
+.B EAGAIN
+(operation should be retried later);
+.BR connect (2)
+will return
+.B EINPROGRESS
+error.
+Da user can then wait fo' various events via
+.BR poll (2)
+or
+.BR select (2).
+.TS
+tab(:) allbox;
+c s s
+l l l.
+I/O events
+Event:Poll flag:Occurrence
+Read:POLLIN:T{
+New data arrived.
+T}
+Read:POLLIN:T{
+A connection setup has been completed
+(for connection-oriented sockets)
+T}
+Read:POLLHUP:T{
+A disconnection request has been initiated by tha other end.
+T}
+Read:POLLHUP:T{
+A connection is fucked up (only fo' connection-oriented protocols).
+When tha socket is written
+.B SIGPIPE
+is also sent.
+T}
+Write:POLLOUT:T{
+Socket has enough bust buffer space fo' freestylin freshly smoked up data.
+T}
+Read/Write:T{
+POLLIN|
+.br
+POLLOUT
+T}:T{
+An outgoing
+.BR connect (2)
+finished.
+T}
+Read/Write:POLLERR:An asynchronous error occurred.
+Read/Write:POLLHUP:Da other end has shut down one erection.
+Exception:POLLPRI:T{
+Urgent data arrived.
+.B SIGURG
+is busted then.
+T}
+.\" FIXME . Da followin aint legit currently:
+.\" It be no I/O event when tha connection
+.\" is fucked up from tha local end using
+.\" .BR shutdown (2)
+.\" or
+.\" .BR close (2).
+.TE
+.PP
+An alternatizzle to
+.BR poll (2)
+and
+.BR select (2)
+is ta let tha kernel inform tha application bout events
+via a
+.B SIGIO
+signal.
+For dat the
+.B O_ASYNC
+flag must be set on a socket file descriptor via
+.BR fcntl (2)
+and a valid signal handlez for
+.B SIGIO
+must be installed via
+.BR sigaction (2).
+See the
+.I Signals
+rap below.
+.SS Socket address structures
+Each socket domain has its own format fo' socket addresses,
+with a thugged-out domain-specific address structure.
+Each of these structures begins wit an
+integer "family" field (typed as
+.IR sa_family_t )
+that indicates tha type of tha address structure.
+This allows
+the various system calls (e.g.,
+.BR connect (2),
+.BR bind (2),
+.BR accept (2),
+.BR getsockname (2),
+.BR getpeername (2)),
+which is generic ta all socket domains,
+to determine tha domain of a particular socket address.
+
+To allow any type of socket address ta be passed to
+interfaces up in tha sockets API,
+the type
+.IR "struct sockaddr"
+is defined.
+Da purpose of dis type is purely ta allow castin of
+domain-specific socket address types ta a "generic" type,
+so as ta avoid compila warnings bout type mismatches in
+calls ta tha sockets API.
+
+In addition, tha sockets API serves up tha data type
+.IR "struct sockaddr_storage".
+This type
+is suitable ta accommodate all supported domain-specific socket
+address structures; it is big-ass enough n' be aligned properly.
+(In particular, it is big-ass enough ta hold
+IPv6 socket addresses.)
+Da structure includes tha followin field, which can be used ta identify
+the type of socket address straight-up stored up in tha structure:
+
+.in +4n
+.nf
+    sa_family_t ss_family;
+.fi
+.in
+
+The
+.I sockaddr_storage
+structure is useful up in programs dat must handle socket addresses
+in a generic way
+(e.g., programs dat must deal wit both IPv4 n' IPv6 socket addresses).
+.SS Socket options
+Da socket options listed below can be set by using
+.BR setsockopt (2)
+and read with
+.BR getsockopt (2)
+with tha socket level set to
+.B SOL_SOCKET
+for all sockets.
+Unless otherwise noted,
+.I optval
+is a pointa ta an
+.IR int .
+.\" FIXME
+.\" In tha list below, tha text used ta describe argument types
+.\" fo' each socket option should be mo' consistent
+.\"
+.\" SO_ACCEPTCONN is up in POSIX.1-2001, n' its origin is explained in
+.\" W R Stevens, UNPv1
+.TP
+.B SO_ACCEPTCONN
+Returns a value indicatin whether or not dis socket has been marked
+to accept connections with
+.BR listen (2).
+Da value 0 indicates dat dis aint a listenin socket,
+the value 1 indicates dat dis be a listenin socket.
+This socket option is read-only.
+.TP
+.B SO_BINDTODEVICE
+Bind dis socket ta a particular thang like \(lqeth0\(rq,
+as specified up in tha passed intercourse name.
+If the
+name be a empty strang or tha option length is zero, tha socket device
+bindin is removed.
+Da passed option be a variable-length null-terminated
+interface name strang wit tha maximum size of
+.BR IFNAMSIZ .
+If a socket is bound ta a intercourse,
+only packets received from dat particular intercourse is processed by the
+socket.
+Note dat dis works only fo' some socket types, particularly
+.B AF_INET
+sockets.
+It aint supported fo' packet sockets (use normal
+.BR bind (2)
+there).
+
+Before Linux 3.8,
+this socket option could be set yo, but could not retrieved with
+.BR getsockopt (2).
+Since Linux 3.8, it is readable.
+The
+.I optlen
+argument should contain tha buffer size available
+to receive tha thang name n' is recommended ta be
+.BR IFNAMSZ
+bytes.
+Da real thang name length is reported back up in the
+.I optlen
+argument.
+.TP
+.B SO_BROADCAST
+Set or git tha broadcast flag.
+When enabled, datagram sockets is allowed ta send
+packets ta a funky-ass broadcast address.
+This option has no effect on stream-oriented sockets.
+.TP
+.B SO_BSDCOMPAT
+Enable BSD bug-to-bug compatibility.
+This is used by tha UDP protocol module up in Linux 2.0 n' 2.2.
+If enabled ICMP errors received fo' a UDP socket aint gonna be passed
+to tha user program.
+In lata kernel versions, support fo' dis option has been phased out:
+Linux 2.4 silently ignores it, n' Linux 2.6 generates a kernel warning
+(printk()) if a program uses dis option.
+Linux 2.0 also enabled BSD bug-to-bug compatibility
+options (random header changing, skippin of tha broadcast flag) fo' raw
+sockets wit dis option yo, but dat was removed up in Linux 2.2.
+.TP
+.B SO_DEBUG
+Enable socket debugging.
+Only allowed fo' processes wit the
+.B CAP_NET_ADMIN
+capabilitizzle or a effectizzle user ID of 0.
+.TP
+.BR SO_DOMAIN " (since Linux 2.6.32)"
+Retrieves tha socket domain as a integer, returnin a value such as
+.BR AF_INET6 .
+See
+.BR socket (2)
+for details.
+This socket option is read-only.
+.TP
+.B SO_ERROR
+Git n' clear tha pendin socket error.
+This socket option is read-only.
+Expects a integer.
+.TP
+.B SO_DONTROUTE
+Don't bust via a gateway, bust only ta directly connected hosts.
+Da same effect can be  bigged up  by settin the
+.B MSG_DONTROUTE
+flag on a socket
+.BR bust (2)
+operation.
+Expects a integer boolean flag.
+.TP
+.B SO_KEEPALIVE
+Enable bustin  of keep-kickin it lyrics on connection-oriented sockets.
+Expects a integer boolean flag.
+.TP
+.B SO_LINGER
+Sets or gets the
+.B SO_LINGER
+option.
+Da argument be a
+.I linger
+structure.
+.sp
+.in +4n
+.nf
+struct linger {
+    int l_onoff;    /* linger actizzle */
+    int l_linger;   /* how tha fuck nuff secondz ta linger fo' */
+};
+.fi
+.in
+.IP
+When enabled, a
+.BR close (2)
+or
+.BR shutdown (2)
+will not return until all queued lyrics fo' tha socket have been
+successfully busted or tha linger timeout has been reached.
+Otherwise,
+the call returns immediately n' tha closin is done up in tha background.
+When tha socket is closed as part of
+.BR exit (2),
+it always lingers up in tha background.
+.TP
+.BR SO_MARK " (since Linux 2.6.25)"
+.\" commit 4a19ec5800fc3bb64e2d87c4d9fdd9e636086fe0
+.\" n'    914a9ab386a288d0f22252fc268ecbc048cdcbd5
+Set tha mark fo' each packet busted all up in dis socket
+(similar ta tha netfilta MARK target but socket-based).
+Changin tha mark can be used fo' mark-based
+routin without netfilta or fo' packet filtering.
+Settin dis option requires the
+.B CAP_NET_ADMIN
+capability.
+.TP
+.B SO_OOBINLINE
+If dis option is enabled,
+out-of-band data is directly placed tha fuck into tha receive data stream.
+Otherwise out-of-band data is passed only when the
+.B MSG_OOB
+flag is set durin receiving.
+.\" don't document it cuz it can do too much harm.
+.\".B SO_NO_CHECK
+.TP
+.B SO_PASSCRED
+Enable or disable tha receivin of the
+.B SCM_CREDENTIALS
+control message.
+For mo' shiznit see
+.BR unix (7).
+.\" FIXME Document SO_PASSSEC, added up in 2.6.18; there is some info
+.\" up in tha 2.6.18 ChizzleLog
+.TP
+.BR SO_PEEK_OFF " (since Linux 3.4)"
+.\" commit ef64a54f6e558155b4f149bb10666b9e914b6c54
+This option, which is currently supported only for
+.BR unix (7)
+sockets, sets tha value of tha "peek offset" fo' the
+.BR recv(2)
+system call when used with
+.BR MSG_PEEK
+flag.
+
+When dis option is set ta a wack value
+(it is set ta \-1 fo' all freshly smoked up sockets),
+traditionizzle behavior is provided:
+.BR recv(2)
+with the
+.BR MSG_PEEK
+flag will peek data from tha front of tha queue.
+
+When tha option is set ta a value pimped outa than or equal ta zero,
+then tha next peek at data queued up in tha socket will occur at
+the byte offset specified by tha option value.
+At tha same time, tha "peek offset" will be
+incremented by tha number of bytes dat was peeked from tha queue,
+so dat a subsequent peek will return tha next data up in tha queue.i
+
+If data is removed from tha front of tha queue via a cold-ass lil call to
+.BR recv (2)
+(or similar) without the
+.BR MSG_PEEK
+flag, tha "peek offset" is ghon be decreased by tha number of bytes removed.
+In other lyrics, receivin data without the
+.B MSG_PEEK
+flag will cause tha "peek offset" ta be adjusted ta maintain
+the erect relatizzle posizzle up in tha queued data,
+so dat a subsequent peek will retrieve tha data dat would have been
+retrieved had tha data not been removed.
+
+For datagram sockets, if tha "peek offset" points ta tha middle of a packet,
+the data returned is ghon be marked wit the
+.BR MSG_TRUNC
+flag.
+
+Da followin example serves ta illustrate tha use of
+.BR SO_PEEK_OFF .
+Suppose a stream socket has tha followin queued input data:
+
+    aabbccddeeff
+
+.IP
+Da followin sequence of
+.BR recv (2)
+calls would have tha effect noted up in tha comments:
+
+.in +4n
+.nf
+int ov = 4;                  // Set peek offset ta 4
+setsockopt(fd, SOL_SOCKET, SO_PEEK_OFF, &ov, sizeof(ov));
+
+recv(fd, buf, 2, MSG_PEEK);  // Peeks "cc"; offset set ta 6
+recv(fd, buf, 2, MSG_PEEK);  // Peeks "dd"; offset set ta 8
+recv(fd, buf, 2, 0);         // Readz "aa"; offset set ta 6
+recv(fd, buf, 2, MSG_PEEK);  // Peeks "ee"; offset set ta 8
+.fi
+.in
+.TP
+.B SO_PEERCRED
+Return tha credentialz of tha foreign process connected ta dis socket.
+This is possible only fo' connected
+.B AF_UNIX
+stream sockets and
+.B AF_UNIX
+stream n' datagram socket pairs pimped using
+.BR socketpair (2);
+see
+.BR unix (7).
+Da returned credentials is dem dat was up in effect all up in tha time
+of tha call to
+.BR connect (2)
+or
+.BR socketpair (2).
+Da argument be a
+.I ucred
+structure; define the
+.B GNU_SOURCE
+feature test macro ta obtain tha definizzle of dat structure from
+.IR <sys/socket.h> .
+This socket option is read-only.
+.TP
+.B SO_PRIORITY
+Set tha protocol-defined prioritizzle fo' all packets ta be busted on
+this socket.
+Linux uses dis value ta order tha networkin queues:
+packets wit a higher prioritizzle may be processed first depending
+on tha selected thang queuein discipline.
+For
+.BR ip (7),
+this also sets tha IP type-of-service (TOS) field fo' outgoin packets.
+Settin a prioritizzle outside tha range 0 ta 6 requires the
+.B CAP_NET_ADMIN
+capability.
+.TP
+.BR SO_PROTOCOL " (since Linux 2.6.32)"
+Retrieves tha socket protocol as a integer, returnin a value such as
+.BR IPPROTO_SCTP .
+See
+.BR socket (2)
+for details.
+This socket option is read-only.
+.TP
+.B SO_RCVBUF
+Sets or gets tha maximum socket receive buffer up in bytes.
+Da kernel doublez dis value (to allow space fo' bookkeepin overhead)
+when it is set using
+.\" Most (all?) other implementations do not do dis -- MTK, Dec 05
+.BR setsockopt (2),
+and dis doubled value is returned by
+.BR getsockopt (2).
+.\" Da followin thread on LMKL is like informative:
+.\" getsockopt/setsockopt wit SO_RCVBUF n' SO_SNDBUF "non-standard" behaviour
+.\" 17 July 2012
+.\" http://thread.gmane.org/gmane.linux.kernel/1328935
+Da default value is set by the
+.I /proc/sys/net/core/rmem_default
+file, n' tha maximum allowed value is set by the
+.I /proc/sys/net/core/rmem_max
+file.
+Da minimum (doubled) value fo' dis option is 256.
+.TP
+.BR SO_RCVBUFFORCE " (since Linux 2.6.14)"
+Usin dis socket option, a privileged
+.RB ( CAP_NET_ADMIN )
+process can big-ass up tha same task as
+.BR SO_RCVBUF ,
+but the
+.I rmem_max
+limit can be overridden.
+.TP
+.BR SO_RCVLOWAT " n' " SO_SNDLOWAT
+Specify tha minimum number of bytes up in tha buffer until tha socket layer
+will pass tha data ta tha protocol
+.RB ( SO_SNDLOWAT )
+or tha user on receiving
+.RB ( SO_RCVLOWAT ).
+These two joints is initialized ta 1.
+.B SO_SNDLOWAT
+is not chizzleable on Linux
+.RB ( setsockopt (2)
+fails wit tha error
+.BR ENOPROTOOPT ).
+.B SO_RCVLOWAT
+is chizzleable
+only since Linux 2.4.
+The
+.BR select (2)
+and
+.BR poll (2)
+system calls currently do not respect the
+.B SO_RCVLOWAT
+settin on Linux,
+and mark a socket readable when even a single byte of data be available.
+A subsequent read from tha socket will block until
+.B SO_RCVLOWAT
+bytes is available.
+.\" See http://marc.theaimsgroup.com/?l=linux-kernel&m=111049368106984&w=2
+.\" Tested on kernel 2.6.14 -- mtk, 30 Nov 05
+.TP
+.BR SO_RCVTIMEO " n' " SO_SNDTIMEO
+.\" Not implemented up in 2.0.
+.\" Implemented up in 2.1.11 fo' getsockopt: always return a zero struct.
+.\" Implemented up in 2.3.41 fo' setsockopt, n' straight-up used.
+Specify tha receivin or bustin  timeouts until reportin a error.
+Da argument be a
+.IR "struct timeval" .
+If a input or output function blocks fo' dis period of time, and
+data has been busted or received, tha return value of dat function
+will be tha amount of data transferred; if no data has been transferred
+and tha timeout has been reached then \-1 is returned with
+.I errno
+set to
+.BR EAGAIN
+or
+.BR EWOULDBLOCK ,
+.\" up in fact ta EAGAIN
+or
+.B EINPROGRESS
+(for
+.BR connect (2))
+just as if tha socket was specified ta be nonblocking.
+If tha timeout is set ta zero (the default)
+then tha operation aint NEVER gonna timeout.
+Timeouts only have effect fo' system calls dat big-ass up socket I/O (e.g.,
+.BR read (2),
+.BR recvmsg (2),
+.BR bust (2),
+.BR sendmsg (2));
+timeouts have no effect for
+.BR select (2),
+.BR poll (2),
+.BR epoll_wait (2),
+and so on.
+.TP
+.B SO_REUSEADDR
+Indicates dat tha rulez used up in valipimpin addresses supplied up in a
+.BR bind (2)
+call should allow reuse of local addresses.
+For
+.B AF_INET
+sockets this
+means dat a socket may bind, except when there
+is a actizzle listenin socket bound ta tha address.
+When tha listenin socket is bound to
+.B INADDR_ANY
+with a specific port then it aint possible
+to bind ta dis port fo' any local address.
+Argument be a integer boolean flag.
+.TP
+.B SO_SNDBUF
+Sets or gets tha maximum socket bust buffer up in bytes.
+Da kernel doublez dis value (to allow space fo' bookkeepin overhead)
+when it is set using
+.\" Most (all?) other implementations do not do dis -- MTK, Dec 05
+.\" See also tha comment ta SO_RCVBUF (17 Jul 2012 LKML mail)
+.BR setsockopt (2),
+and dis doubled value is returned by
+.BR getsockopt (2).
+Da default value is set by the
+.I /proc/sys/net/core/wmem_default
+file n' tha maximum allowed value is set by the
+.I /proc/sys/net/core/wmem_max
+file.
+Da minimum (doubled) value fo' dis option is 2048.
+.TP
+.BR SO_SNDBUFFORCE " (since Linux 2.6.14)"
+Usin dis socket option, a privileged
+.RB ( CAP_NET_ADMIN )
+process can big-ass up tha same task as
+.BR SO_SNDBUF ,
+but the
+.I wmem_max
+limit can be overridden.
+.TP
+.B SO_TIMESTAMP
+Enable or disable tha receivin of the
+.B SO_TIMESTAMP
+control message.
+Da timestamp control message is busted wit level
+.B SOL_SOCKET
+and the
+.I cmsg_data
+field be a
+.I "struct timeval"
+indicatin the
+reception time of tha last packet passed ta tha user up in dis call.
+See
+.BR cmsg (3)
+for details on control lyrics.
+.TP
+.B SO_TYPE
+Gets tha socket type as a integer (e.g.,
+.BR SOCK_STREAM ).
+This socket option is read-only.
+.SS Signals
+When freestylin onto a cold-ass lil connection-oriented socket dat has been shut down
+(by tha local or tha remote end)
+.B SIGPIPE
+is busted ta tha freestylin process and
+.B EPIPE
+is returned.
+Da signal aint busted when tha write call
+specified the
+.B MSG_NOSIGNAL
+flag.
+.PP
+When axed wit the
+.B FIOSETOWN
+.BR fcntl (2)
+or
+.B SIOCSPGRP
+.BR ioctl (2),
+.B SIGIO
+is busted when a I/O event occurs.
+It be possible ta use
+.BR poll (2)
+or
+.BR select (2)
+in tha signal handlez ta smoke up which socket tha event occurred on.
+An alternatizzle (in Linux 2.2) is ta set a real-time signal rockin the
+.B F_SETSIG
+.BR fcntl (2);
+the handlez of tha real time signal is ghon be called with
+the file descriptor up in the
+.I si_fd
+field of its
+.IR siginfo_t .
+See
+.BR fcntl (2)
+for mo' shiznit.
+.PP
+Under some circumstances (e.g., multiple processes accessin a
+single socket), tha condizzle dat caused the
+.B SIGIO
+may have already disappeared when tha process reacts ta tha signal.
+If dis happens, tha process should wait again n' again n' again cuz Linux
+will resend tha signal later.
+.\" .SS Ancillary lyrics
+.SS /proc intercourses
+Da core socket networkin parametas can be accessed
+via filez up in tha directory
+.IR /proc/sys/net/core/ .
+.TP
+.I rmem_default
+gotz nuff tha default settin up in bytez of tha socket receive buffer.
+.TP
+.I rmem_max
+gotz nuff tha maximum socket receive buffer size up in bytes which a user may
+set by rockin the
+.B SO_RCVBUF
+socket option.
+.TP
+.I wmem_default
+gotz nuff tha default settin up in bytez of tha socket bust buffer.
+.TP
+.I wmem_max
+gotz nuff tha maximum socket bust buffer size up in bytes which a user may
+set by rockin the
+.B SO_SNDBUF
+socket option.
+.TP
+.IR message_cost " n' " message_burst
+configure tha token bucket filta used ta load limit warnin lyrics
+caused by external network events.
+.TP
+.I netdev_max_backlog
+Maximum number of packets up in tha global input queue.
+.TP
+.I optmem_max
+Maximum length of ancillary data n' user control data like tha iovecs
+per socket.
+.\" netdev_fastroute aint documented cuz it is experimental
+.SS Ioctls
+These operations can be accessed using
+.BR ioctl (2):
+
+.in +4n
+.nf
+.IB error " = ioctl(" ip_socket ", " ioctl_type ", " &value_result ");"
+.fi
+.in
+.TP
+.B SIOCGSTAMP
+Return a
+.I struct timeval
+with tha receive timestamp of tha last packet passed ta tha user.
+This is useful fo' accurate round trip time measurements.
+See
+.BR setitimer (2)
+for a thugged-out description of
+.IR "struct timeval" .
+.\"
+This ioctl should be used only if tha socket option
+.B SO_TIMESTAMP
+is not set on tha socket.
+Otherwise, it returns tha timestamp of the
+last packet dat was received while
+.B SO_TIMESTAMP
+was not set, or it fails if no such packet has been received,
+(i.e.,
+.BR ioctl (2)
+returns \-1 with
+.I errno
+set to
+.BR ENOENT ).
+.TP
+.B SIOCSPGRP
+Set tha process or process crew ta send
+.B SIGIO
+or
+.B SIGURG
+signals
+to when an
+asynchronous I/O operation has finished or urgent data be available.
+Da argument be a pointa ta a
+.IR pid_t .
+If tha argument is positive, bust tha signals ta dat process.
+If the
+argument is negative, bust tha signals ta tha process crew wit tha ID
+of tha absolute value of tha argument.
+Da process may only chizzle itself or its own process crew ta receive
+signals unless it has the
+.B CAP_KILL
+capabilitizzle or a effectizzle UID of 0.
+.TP
+.B FIOASYNC
+Change the
+.B O_ASYNC
+flag ta enable or disable asynchronous I/O mode of tha socket.
+Asynchronous I/O mode means dat the
+.B SIGIO
+signal or tha signal set with
+.B F_SETSIG
+is raised when a freshly smoked up I/O event occurs.
+.IP
+Argument be a integer boolean flag.
+(This operation is synonymous wit tha use of
+.BR fcntl (2)
+to set the
+.B O_ASYNC
+flag.)
+.\"
+.TP
+.B SIOCGPGRP
+Git tha current process or process crew dat receives
+.B SIGIO
+or
+.B SIGURG
+signals,
+or 0
+when none is set.
+.PP
+Valid
+.BR fcntl (2)
+operations:
+.TP
+.B FIOGETOWN
+Da same as the
+.B SIOCGPGRP
+.BR ioctl (2).
+.TP
+.B FIOSETOWN
+Da same as the
+.B SIOCSPGRP
+.BR ioctl (2).
+.SH VERSIONS
+.B SO_BINDTODEVICE
+was introduced up in Linux 2.0.30.
+.B SO_PASSCRED
+is freshly smoked up in Linux 2.2.
+The
+.I /proc
+interfaces was introduced up in Linux 2.2.
+.B SO_RCVTIMEO
+and
+.B SO_SNDTIMEO
+are supported since Linux 2.3.41.
+Earlier, timeouts was fixed to
+a protocol-specific setting, n' could not be read or written.
+.SH NOTES
+Linux assumes dat half of tha send/receive buffer is used fo' internal
+kernel structures; thus tha joints up in tha corresponding
+.I /proc
+filez is twice what tha fuck can be observed on tha wire.
+
+Linux will only allow port reuse wit the
+.B SO_REUSEADDR
+option
+when dis option was set both up in tha previous program dat performed a
+.BR bind (2)
+to tha port n' up in tha program dat wants ta reuse tha port.
+This differs from some implementations (e.g., FreeBSD)
+where only tha lata program need ta set the
+.B SO_REUSEADDR
+option.
+Typically dis difference is invisible, since, fo' example, a server
+program is designed ta always set dis option.
+.SH BUGS
+The
+.B CONFIG_FILTER
+socket options
+.B SO_ATTACH_FILTER
+and
+.B SO_DETACH_FILTER
+.\" FIXME Document SO_ATTACH_FILTER n' SO_DETACH_FILTER
+are not documented.
+Da suggested intercourse ta use dem is via tha libpcap
+library.
+.\" .SH AUTHORS
+.\" This playa page was freestyled by Andi Kleen.
+.SH SEE ALSO
+.BR getsockopt (2),
+.BR connect (2),
+.BR setsockopt (2),
+.BR socket (2),
+.BR capabilitizzles (7),
+.BR ddp (7),
+.BR ip (7),
+.BR packet (7),
+.BR tcp (7),
+.BR udp (7),
+.BR unix (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

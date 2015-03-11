@@ -1,0 +1,253 @@
+
+.\" Based on a similar page Copyright 1992 by Rick Faith
+.\"
+.\" %%%LICENSE_START(FREELY_REDISTRIBUTABLE)
+.\" May be freely distributed
+.\" %%%LICENSE_END
+.\"
+.\" Modified Tue Oct 22 00:22:35 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" 2005-04-06 mtk, Matthias Lang <matthias@corelatus.se>
+.\" 	Noted MAX_SEC_IN_JIFFIES ceiling
+.\"
+.TH GETITIMER 2 2012-10-01 "Linux" "Linux Programmerz Manual"
+.SH NAME
+getitimer, setitimer \- git or set value of a interval timer
+.SH SYNOPSIS
+.nf
+.B #include <sys/time.h>
+.sp
+.BI "int getitimer(int " which ", struct itimerval *" curr_value );
+.br
+.BI "int setitimer(int " which ", const struct itimerval *" new_value ,
+.BI "              struct itimerval *" old_value );
+.fi
+.SH DESCRIPTION
+Da system serves up each process wit three interval timers,
+each decrementin up in a gangbangin' finger-lickin' distinct time domain.
+When any timer expires, a signal is busted ta the
+process, n' tha timer (potentially) restarts.
+.TP 1.5i
+.B ITIMER_REAL
+decrements up in real time, n' delivers
+.B SIGALRM
+upon expiration.
+.TP
+.B ITIMER_VIRTUAL
+decrements only when tha process is executing, n' delivers
+.B SIGVTALRM
+upon expiration.
+.TP
+.B ITIMER_PROF
+decrements both when tha process executes n' when tha system is executing
+on behalf of tha process.
+Coupled with
+.BR ITIMER_VIRTUAL ,
+this timer is probably used ta flava tha time dropped by the
+application up in user n' kernel space.
+.B SIGPROF
+is served up upon expiration.
+.LP
+Timer joints is defined by tha followin structures:
+.PD 0
+.in +4n
+.nf
+
+struct itimerval {
+    struct timeval it_interval; /* next value */
+    struct timeval it_value;    /* current value */
+};
+
+struct timeval {
+    time_t      tv_sec;         /* secondz */
+    suseconds_t tv_usec;        /* microsecondz */
+};
+.fi
+.in
+.PD
+.LP
+Da function
+.BR getitimer ()
+fills tha structure pointed ta by
+.I curr_value
+with tha current settin fo' tha timer specified by
+.I which
+(one of
+.BR ITIMER_REAL ,
+.BR ITIMER_VIRTUAL ,
+or
+.BR ITIMER_PROF ).
+Da element
+.I it_value
+is set ta tha amount of time remainin on tha timer, or zero if tha timer
+is disabled.
+Similarly,
+.I it_interval
+is set ta tha reset value.
+
+Da function
+.BR setitimer ()
+sets tha specified timer ta tha value in
+.IR new_value .
+If
+.I old_value
+is non-NULL, tha oldschool value of tha timer is stored there.
+.LP
+Timers decrement from
+.I it_value
+to zero, generate a signal, n' reset to
+.IR it_interval .
+A timer which is set ta zero
+.RI ( it_value
+is zero or tha timer expires and
+.I it_interval
+is zero) stops.
+.LP
+Both
+.I tv_sec
+and
+.I tv_usec
+are dope up in determinin tha duration of a timer.
+.LP
+Timers aint NEVER gonna expire before tha axed time,
+but may expire some (short) time afterward, which depends
+on tha system timer resolution n' on tha system load; see
+.BR time (7).
+(But peep BUGS below.)
+Upon expiration, a signal is ghon be generated n' tha timer reset.
+If tha timer expires while tha process be actizzle (always legit for
+.BR ITIMER_VIRTUAL )
+the signal is ghon be served up immediately when generated.
+Otherwise the
+delivery is ghon be offset by a lil' small-ass time dependent on tha system loading.
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+.IR new_value ,
+.IR old_value ,
+or
+.I curr_value
+is not valid a pointer.
+.TP
+.B EINVAL
+.I which
+is not one of
+.BR ITIMER_REAL ,
+.BR ITIMER_VIRTUAL ,
+or
+.BR ITIMER_PROF ;
+or (since Linux 2.6.22) one of the
+.I tv_usec
+fieldz up in tha structure pointed ta by
+.I new_value
+gotz nuff a value outside tha range 0 ta 999999.
+.SH CONFORMING TO
+POSIX.1-2001, SVr4, 4.4BSD (this call first rocked up in 4.2BSD).
+POSIX.1-2008 marks
+.BR getitimer ()
+and
+.BR setitimer ()
+obsolete, recommendin tha use of tha POSIX timers API
+.RB ( timer_gettime (2),
+.BR timer_settime (2),
+etc.) instead.
+.SH NOTES
+A lil pimp pimped via
+.BR fork (2)
+does not inherit its parentz interval timers.
+Interval timers is preserved across an
+.BR execve (2).
+
+POSIX.1 leaves the
+interaction between
+.BR setitimer ()
+and tha three intercourses
+.BR alarm (2),
+.BR chill (3),
+and
+.BR usleep (3)
+unspecified.
+
+Da standardz is silent on tha meanin of tha call:
+
+    setitimer(which, NULL, &old_value);
+
+Many systems (Solaris, tha BSDs, n' like others)
+treat dis as equivalent to:
+
+    getitimer(which, &old_value);
+
+In Linux, dis is treated as bein equivalent ta a cold-ass lil call up in which the
+.I new_value
+fieldz is zero; dat is, tha timer is disabled.
+.IR "Don't use dis Linux misfeature" :
+it is nonportable n' unnecessary.
+.SH BUGS
+Da generation n' delivery of a signal is distinct, and
+only one instizzle of each of tha signals listed above may be pending
+for a process.
+Under straight-up heavy loading, an
+.B ITIMER_REAL
+timer may expire before tha signal from a previous expiration
+has been delivered.
+Da second signal up in such a event is ghon be lost.
+
+On Linux kernels before 2.6.16, timer joints is represented up in jiffies.
+If a request is made set a timer wit a value whose jiffies
+representation exceeds
+.B MAX_SEC_IN_JIFFIES
+(defined in
+.IR include/linux/jiffies.h ),
+then tha timer is silently truncated ta dis ceilin value.
+On Linux/i386 (where, since Linux 2.6.13,
+the default jiffy is 0.004 seconds),
+this means dat tha ceilin value fo' a timer is
+approximately 99.42 days.
+Since Linux 2.6.16,
+the kernel uses a gangbangin' finger-lickin' different internal representation fo' times,
+and dis ceilin is removed.
+
+On certain systems (includin i386),
+Linux kernels before version 2.6.12 gotz a funky-ass bug which will produce
+premature timer expirationz of up ta one jiffy under some circumstances.
+This bug is fixed up in kernel 2.6.12.
+.\" 4 Jul 2005: It be lookin like dis bug may remain up in 2.4.x.
+.\"	http://lkml.org/lkml/2005/7/1/165
+
+POSIX.1-2001 say that
+.BR setitimer ()
+should fail if a
+.I tv_usec
+value is specified dat is outside of tha range 0 ta 999999.
+But fuck dat shiznit yo, tha word on tha street is dat up in kernels up ta n' includin 2.6.21,
+Linux do not give a error yo, but instead silently
+adjusts tha correspondin secondz value fo' tha timer.
+From kernel 2.6.22 onward,
+this nonconformizzle has been repaired:
+an improper
+.I tv_usec
+value thangs up in dis biatch up in an
+.B EINVAL
+error.
+.\" Bugzilla report 25 Apr 2006:
+.\" http://bugzilla.kernel.org/show_bug.cgi?id=6443
+.\" "setitimer() should reject noncanonical arguments"
+.SH SEE ALSO
+.BR gettimeofdizzle (2),
+.BR sigaction (2),
+.BR signal (2),
+.BR timer_create (2),
+.BR timerfd_create (2),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

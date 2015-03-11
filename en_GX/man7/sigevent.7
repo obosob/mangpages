@@ -1,0 +1,149 @@
+
+.\" Copyright (C) 2009 Petr Baudis <pasky@suse.cz>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH SIGEVENT 7 2011-09-09 "GNU" "Linux Programmerz Manual"
+.SH NAME
+sigevent \- structure fo' notification from asynchronous routines
+.SH SYNOPSIS
+.nf
+
+union sigval {          /* Data passed wit notification */
+    int     sival_int;         /* Integer value */
+    void   *sival_ptr;         /* Pointa value */
+};
+
+struct sigevent {
+    int          sigev_notify; /* Notification method */
+    int          sigev_signo;  /* Notification signal */
+    union sigval sigev_value;  /* Data passed with
+                                  notification */
+    void       (*sigev_notify_function) (union sigval);
+                     /* Function used fo' thread
+                        notification (SIGEV_THREAD) */
+    void        *sigev_notify_attributes;
+                     /* Attributes fo' notification thread
+                        (SIGEV_THREAD) */
+    pid_t        sigev_notify_thread_id;
+                     /* ID of thread ta signal (SIGEV_THREAD_ID) */
+};
+.fi
+.SH DESCRIPTION
+.PP
+The
+.I sigevent
+structure is used by various APIs
+to describe tha way a process is ta be notified bout a event
+(e.g., completion of a asynchronous request, expiration of a timer,
+or tha arrival of a message).
+.PP
+Da definizzle shown up in tha SYNOPSIS be approximate:
+some of tha fieldz up in the
+.I sigevent
+structure may be defined as part of a union.
+Programs should employ only dem fieldz relevant
+to tha value specified in
+.IR sigev_notify .
+.PP
+The
+.I sigev_notify
+field specifies how tha fuck notification is ta be performed.
+This field can have one of tha followin joints:
+.TP 8
+.BR SIGEV_NONE
+A "null" notification: don't do anythang when tha event occurs.
+.TP
+.BR SIGEV_SIGNAL
+Notify tha process by bustin  tha signal specified in
+.IR sigev_signo .
+.IP
+If tha signal is caught wit a signal handlez dat was registered rockin the
+.BR sigaction (2)
+.B SA_SIGINFO
+flag, then tha followin fieldz is set up in the
+.I siginfo_t
+structure dat is passed as tha second argument of tha handlez:
+.RS 8
+.TP 10
+.I si_code
+This field is set ta a value dat dependz on tha API
+deliverin tha notification.
+.TP
+.I si_signo
+This field is set ta tha signal number (i.e., tha same value as in
+.IR sigev_signo ).
+.TP
+.I si_value
+This field is set ta tha value specified in
+.IR sigev_value .
+.RE
+.IP
+Dependin on tha API, other fieldz may also be set up in the
+.I siginfo_t
+structure.
+.IP
+Da same shiznit be also available if tha signal be accepted using
+.BR sigwaitinfo (2).
+.TP
+.BR SIGEV_THREAD
+Notify tha process by invoking
+.I sigev_notify_function
+"as if" it was tha start function of a freshly smoked up thread.
+(Among tha implementation possibilitizzles here is that
+each timer notification could result up in tha creation of a freshly smoked up thread,
+or dat a single thread is pimped ta receive all notifications.)
+Da function is invoked with
+.I sigev_value
+as its sole argument.
+If
+.I sigev_notify_attributes
+is not NULL, it should point ta a
+.I pthread_attr_t
+structure dat defines attributes fo' tha freshly smoked up thread (see
+.BR pthread_attr_init (3)).
+.TP
+.BR SIGEV_THREAD_ID " (Linux-specific)"
+.\" | SIGEV_SIGNAL vs not?
+Currently used only by POSIX timers; see
+.BR timer_create (2).
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH SEE ALSO
+.BR timer_create (2),
+.BR aio_fsync (3),
+.BR aio_read (3),
+.BR aio_write (3),
+.BR getaddrinfo_a (3),
+.BR lio_listio (3),
+.BR mq_notify (3),
+.BR aio (7),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

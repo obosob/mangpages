@@ -1,0 +1,432 @@
+.\"@(#)rpc.statd.8"
+.\"
+.\" Copyright (C) 1999 Olaf Kirch <okir@monad.swb.de>
+.\" Modified by Jeffrey A. Uphoff, 1999, 2002, 2005.
+.\" Modified by Lon Hohberger, 2000.
+.\" Modified by Pizzle Clements, 2004.
+.\"
+.\" Rewritten by Chuck Lever <chuck.lever@oracle.com>, 2009.
+.\" Copyright 2009 Oracle.  All muthafuckin rights reserved.
+.\"
+.TH RPC.STATD 8 "1 November 2009
+.SH NAME
+rpc.statd \- NSM steez daemon
+.SH SYNOPSIS
+.BI "rpc.statd [-dh?FLNvV] [-H " prog "] [-n " my-name "] [-o " outgoing-port ]
+.ti +10
+.BI "[-p " listener-port "] [-P " path ]
+.ti +10
+.BI "[--nlm-port " port "] [--nlm-udp-port " port ]
+.SH DESCRIPTION
+File locks is not part of persistent file system state.
+Lock state is thus lost when a host reboots.
+.PP
+Network file systems must also detect when lock state is lost
+because a remote host has rebooted.
+Afta a NFS client reboots, a NFS server must release all file locks
+held by applications dat was hustlin on dat client.
+Afta a server reboots, a cold-ass lil client must remind the
+server of file locks held by applications hustlin on dat client.
+.PP
+For NFS version 2 [RFC1094] n' NFS version 3 [RFC1813], the
+.I Network Status Monitor
+protocol (or NSM fo' short)
+is used ta notify NFS peerz of reboots.
+On Linux, two separate user-space components constitute tha NSM service:
+.TP
+.B rpc.statd
+A daemon dat listens fo' reboot notifications from other hosts, and
+manages tha list of hosts ta be notified when tha local system reboots
+.TP
+.B sm-notify
+A helper program dat notifies NFS peers afta tha local system reboots
+.PP
+Da local NFS lock manager alerts its local
+.B rpc.statd
+of each remote peer dat should be monitored.
+When tha local system reboots, the
+.B sm-notify
+command notifies tha NSM steez on monitored peerz of tha reboot.
+When a remote reboots, dat peer notifies tha local
+.BR rpc.statd ,
+which up in turn passes tha reboot notification
+back ta tha local NFS lock manager.
+.SH NSM OPERATION IN DETAIL
+Da first file lockin interaction between a NFS client n' server causes
+the NFS lock managers on both peers ta contact they local NSM steez to
+store shiznit bout tha opposite peer.
+On Linux, tha local lock manager contacts
+.BR rpc.statd .
+.PP
+.B rpc.statd
+recordz shiznit bout each monitored NFS peer on persistent storage.
+This shiznit raps bout how tha fuck ta contact a remote peer
+in case tha local system reboots,
+how ta recognize which monitored peer is reportin a reboot,
+and how tha fuck ta notify tha local lock manager when a monitored peer
+indicates it has rebooted.
+.PP
+An NFS client sendz a hostname, known as tha client's
+.IR caller_name ,
+in each file lock request.
+An NFS server can use dis hostname ta bust asynchronous GRANT
+calls ta a cold-ass lil client, or ta notify tha client it has rebooted.
+.PP
+Da Linux NFS server can provide tha client's
+.I caller_name
+or tha clientz network address to
+.BR rpc.statd .
+For tha purposez of tha NSM protocol,
+this name or address is known as tha monitored peer's
+.IR mon_name .
+In addition, tha local lock manager tells
+.B rpc.statd
+what it be thinkin its own hostname is.
+For tha purposez of tha NSM protocol,
+this hostname is known as
+.IR my_name .
+.PP
+There is no equivalent interaction between a NFS server n' a cold-ass lil client
+to inform tha client of tha server's
+.IR caller_name .
+Therefore NFS clients do not straight-up know what
+.I mon_name
+an NFS server might use up in a SM_NOTIFY request.
+Da Linux NFS client uses tha server hostname from tha mount command
+to identify rebootin NFS servers.
+.SS Reboot notification
+When tha local system reboots, the
+.B sm-notify
+command readz tha list of monitored peers from persistent storage and
+sendz a SM_NOTIFY request ta tha NSM steez on each listed remote peer.
+It uses the
+.I mon_name
+strin as tha destination.
+To identify which host has rebooted, the
+.B sm-notify
+command sendz the
+.I my_name
+strin recorded when dat remote was monitored.
+Da remote
+.B rpc.statd
+matches incomin SM_NOTIFY requests rockin dis string,
+or tha callerz network address,
+to one or mo' peers on its own monitor list.
+.PP
+If
+.B rpc.statd
+does not find a peer on its monitor list dat matches
+an incomin SM_NOTIFY request,
+the notification aint forwarded ta tha local lock manager.
+In addition, each peer has its own
+.IR "NSM state number" ,
+a 32-bit integer dat is bumped afta each reboot by the
+.B sm-notify
+command.
+.B rpc.statd
+uses dis number ta distinguish between actual reboots
+and replayed notifications.
+.PP
+Part of NFS lock recovery is rediscovering
+which peers need ta be monitored again.
+The
+.B sm-notify
+command clears tha monitor list on persistent storage afta each reboot.
+.SH OPTIONS
+.TP
+.BR -d , " --no-syslog
+Causes
+.B rpc.statd
+to write log lyrics on
+.I stderr
+instead of ta tha system log,
+if the
+.B -F
+option was also specified.
+.TP
+.BR -F , " --foreground
+Keeps
+.B rpc.statd
+attached ta its controllin terminal so dat NSM
+operation can be monitored directly or run under a thugged-out debugger.
+If dis option aint specified,
+.B rpc.statd
+backgroundz itself soon afta it starts.
+.TP
+.BR -h , " -?" , " --help
+Causes
+.B rpc.statd
+to display usage shiznit on
+.I stderr
+and then exit.
+.TP
+.BI "\-H," "" " \-\-ha-callout " prog
+Specifies a high availabilitizzle callout program.
+If dis option aint specified, no callouts is performed.
+See the
+.B High-availabilitizzle callouts
+section below fo' details.
+.TP
+.BR -L , " --no-notify
+Prevents
+.B rpc.statd
+from hustlin the
+.B sm-notify
+command when it starts up,
+preservin tha existin NSM state number n' monitor list.
+.IP
+Note: the
+.B sm-notify
+command gotz nuff a cold-ass lil check ta ensure it runs only once afta each system reboot.
+This prevents spurious reboot notification if
+.B rpc.statd
+restarts without the
+.B -L
+option.
+.TP
+.BI "\-n, " "" "\-\-name " ipaddr " | " hostname
+Specifies tha bind address used fo' RPC listener sockets.
+The
+.I ipaddr
+form can be expressed as either a IPv4 or a IPv6 presentation address.
+If dis option aint specified,
+.B rpc.statd
+uses a wildcard address as tha transhiznit bind address.
+.IP
+This strang be also passed ta the
+.B sm-notify
+command ta be used as tha source address from which
+to bust reboot notification requests.
+See
+.BR sm-notify (8)
+for details.
+.TP
+.BR -N
+Causes
+.B rpc.statd
+to run the
+.B sm-notify
+command, n' then exit.
+Since the
+.B sm-notify
+command can also be run directly, dis option is deprecated.
+.TP
+.BI "\-o," "" " \-\-outgoing\-port "  port
+Specifies tha source port number the
+.B sm-notify
+command should use when bustin  reboot notifications.
+See
+.BR sm-notify (8)
+for details.
+.TP
+.BI "\-p," "" " \-\-port " port
+Specifies tha port number used fo' RPC listener sockets.
+If dis option aint specified,
+.B rpc.statd
+will try ta consult
+.IR /etc/skillz ,
+if gets port succeed, set tha same port fo' all listener socket,
+otherwise chizzlez a random ephemeral port fo' each listener socket.
+.IP
+This option can be used ta fix tha port value of its listeners when
+SM_NOTIFY requests must traverse a gangbangin' firewall between clients and
+servers.
+.TP
+.BI "\-T," "" " \-\-nlm\-port " port
+Specifies tha port number that
+.I lockd
+should listen on for
+.B NLM
+requests, n' you can put dat on yo' toast.  This sets both tha TCP n' UDP ports unless tha UDP port is
+set separately.
+.TP
+.BI "\-U," "" " \-\-nlm\-udp\-port " port
+Specifies tha UDP port number that
+.I lockd
+should listen on for
+.B NLM
+requests.
+.TP
+.BI "\-P, " "" \-\-state\-directory\-path " pathname
+Specifies tha pathname of tha parent directory
+where NSM state shiznit resides.
+If dis option aint specified,
+.B rpc.statd
+uses
+.I /var/lib/nfs/statd
+by default.
+.IP
+Afta starting,
+.B rpc.statd
+attempts ta set its effectizzle UID n' GID ta tha baller
+and crew of dis directory.
+.TP
+.BR -v ", " -V ", " --version
+Causes
+.B rpc.statd
+to display version shiznit on
+.I stderr
+and then exit.
+.SH SECURITY
+The
+.B rpc.statd
+daemon must be started as root ta acquire privileges needed
+to create sockets wit privileged source ports, n' ta access the
+state shiznit database.
+Because
+.B rpc.statd
+maintains a long-runnin network service, however, it drops root privileges
+as soon as it starts up ta reduce tha risk of a privilege escalation attack.
+.PP
+Durin aiiight operation,
+the effectizzle user ID it chizzlez is tha balla of tha state directory.
+This allows it ta continue ta access filez up in dat directory afta it
+has dropped its root privileges.
+To control which user ID
+.B rpc.statd
+chooses, simply use
+.BR chown (1)
+to set tha balla of
+the state directory.
+.PP
+Yo ass can also protect your
+.B rpc.statd
+listeners rockin the
+.B tcp_wrapper
+library or
+.BR iptablez (8).
+To use the
+.B tcp_wrapper
+library, add tha hostnamez of peers dat should be allowed access to
+.IR /etc/hosts.allow .
+Use tha daemon name
+.B statd
+even if the
+.B rpc.statd
+binary has a gangbangin' finger-lickin' different filename.
+.P
+For further shiznit peep the
+.BR tcpd (8)
+and
+.BR hosts_access (5)
+man pages.
+.SH ADDITIONAL NOTES
+Lock recovery afta a reboot is critical ta maintainin data integrity
+and preventin unnecessary application hangs.
+To help
+.B rpc.statd
+match SM_NOTIFY requests ta NLM requests, a fuckin shitload of dopest practices
+should be observed, including:
+.IP
+Da UTS nodename of yo' systems should match tha DNS names dat NFS
+peers use ta contact them
+.IP
+Da UTS nodenamez of yo' systems should always be straight-up qualified domain names
+.IP
+Da forward n' reverse DNS mappin of tha UTS nodenames should be
+consistent
+.IP
+Da hostname tha client uses ta mount tha server should match tha server's
+.I mon_name
+in SM_NOTIFY requests it sends
+.PP
+Unmountin a NFS file system do not necessarily stop
+either tha NFS client or server from monitorin each other.
+Both may continue monitorin each other fo' a time up in case subsequent
+NFS traffic between tha two thangs up in dis biatch up in fresh mounts n' additional
+file locking.
+.PP
+On Linux, if the
+.B lockd
+kernel module is unloaded durin aiiight operation,
+all remote NFS peers is unmonitored.
+This can happen on a NFS client, fo' example,
+if a automounta removes all NFS mount
+points cuz of inactivity.
+.SS High-availabilitizzle callouts
+.B rpc.statd
+can exec a special callout program durin processin of
+successful SM_MON, SM_UNMON, n' SM_UNMON_ALL requests,
+or when it receives SM_NOTIFY.
+Such a program may be used up in High Availabilitizzle NFS (HA-NFS)
+environments ta track lock state dat may need ta be migrated after
+a system reboot.
+.PP
+Da name of tha callout program is specified wit the
+.B -H
+option.
+Da program is run wit 3 arguments:
+Da first is either
+.B add-client
+.B del-client
+or
+.B sm-notify
+dependin on tha reason fo' tha callout.
+Da second is the
+.I mon_name
+of tha monitored peer.
+Da third is the
+.I caller_name 
+of tha requestin lock manager for
+.B add-client
+or
+.B del-client
+, otherwise it is
+.I IP_address 
+of tha calla bustin  SM_NOTIFY.
+Da forth is the
+.I state_value
+in tha SM_NOTIFY request.
+
+.SS IPv6 n' TI-RPC support
+TI-RPC be a pre-requisite fo' supportin NFS on IPv6.
+If TI-RPC support is built into
+.BR rpc.statd ,
+it attempts ta start listeners on network transports marked 'visible' in
+.IR /etc/netconfig .
+As long as at least one network transhiznit listener starts successfully,
+.B rpc.statd
+will operate.
+.SH FILES
+.TP 2.5i
+.I /var/lib/nfs/statd/sm
+directory containin monitor list
+.TP 2.5i
+.I /var/lib/nfs/statd/sm.bak
+directory containin notify list
+.TP 2.5i
+.I /var/lib/nfs/statd/state
+NSM state number fo' dis host
+.TP 2.5i
+.I /var/run/run.statd.pid
+pid file
+.TP 2.5i
+.I /etc/netconfig
+network transhiznit capabilitizzle database
+.SH SEE ALSO
+.BR sm-notify (8),
+.BR nfs (5),
+.BR rpc.nfsd (8),
+.BR rpcbind (8),
+.BR tcpd (8),
+.BR hosts_access (5),
+.BR iptablez (8),
+.BR netconfig (5)
+.sp
+RFC 1094 - "NFS: Network File System Protocol Justification"
+.br
+RFC 1813 - "NFS Version 3 Protocol Justification"
+.br
+OpenGroup Protocols fo' Interworking: XNFS, Version 3W - Chapta 11
+.SH AUTHORS
+Jeff Uphoff <juphoff@users.sourceforge.net>
+.br
+Olaf Kirch <okir@monad.swb.de>
+.br
+H.J. Lu <hjl@gnu.org>
+.br
+Lon Hohberger <hohberger@missioncriticallinux.com>
+.br
+Pizzle Clements <paul.clements@steeleye.com>
+.br
+Chuck Lever <chuck.lever@oracle.com>

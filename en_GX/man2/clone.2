@@ -1,0 +1,1188 @@
+, March 28, 1992
+.\" n' Copyright (c) Mike Kerrisk, 2001, 2002, 2005, 2013
+.\"
+.\" %%%LICENSE_START(GPL_NOVERSION_ONELINE)
+.\" May be distributed under tha GNU General Public License.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt <michael@moria.de>
+.\" Modified 24 Jul 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 21 Aug 1994 by Mike Chastain <mec@shell.portal.com>:
+.\"   New playa page (copied from 'fork.2').
+.\" Modified 10 June 1995 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 25 April 1998 by Xavier Leroy <Xavier.Leroy@inria.fr>
+.\" Modified 26 Jun 2001 by Mike Kerrisk
+.\"     Mostly upgraded ta 2.4.x
+.\"     Added prototype fo' sys_clone() plus description
+.\"	Added CLONE_THREAD wit a funky-ass brief description of thread groups
+.\"	Added CLONE_PARENT n' revised entire page remove ambiguity
+.\"		between "callin process" n' "parent process"
+.\"	Added CLONE_PTRACE n' CLONE_VFORK
+.\"	Added EPERM n' EINVAL error codes
+.\"	Renamed "__clone" ta "clone" (which is tha prototype up in <sched.h>)
+.\"	various other minor tidy ups n' clarifications.
+.\" Modified 26 Jun 2001 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Updated notes fo' 2.4.7+ behavior of CLONE_THREAD
+.\" Modified 15 Oct 2002 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Added description fo' CLONE_NEWNS, which was added up in 2.4.19
+.\" Slightly rephrased, aeb.
+.\" Modified 1 Feb 2003 - added CLONE_SIGHAND restriction, aeb.
+.\" Modified 1 Jan 2004 - various thugged-out shit, aeb
+.\" Modified 2004-09-10 - added CLONE_PARENT_SETTID etc. - aeb.
+.\" 2005-04-12, mtk, noted tha PID cachin behavior of NPTLz getpid()
+.\"	wrapper under BUGS.
+.\" 2005-05-10, mtk, added CLONE_SYSVSEM, CLONE_UNTRACED, CLONE_STOPPED.
+.\" 2005-05-17, mtk, Substantially enhanced rap of CLONE_THREAD.
+.\" 2008-11-18, mtk, order CLONE_* flags alphabetically
+.\" 2008-11-18, mtk, document CLONE_NEWPID
+.\" 2008-11-19, mtk, document CLONE_NEWUTS
+.\" 2008-11-19, mtk, document CLONE_NEWIPC
+.\" 2008-11-19, Jens Axboe, mtk, document CLONE_IO
+.\"
+.\" FIXME Document CLONE_NEWUSER, which is freshly smoked up in 2.6.23
+.\"       (also supported fo' unshare()?)
+.\"
+.TH CLONE 2 2013-04-16 "Linux" "Linux Programmerz Manual"
+.SH NAME
+clone, __clone2 \- create a cold-ass lil lil pimp process
+.SH SYNOPSIS
+.nf
+/* Prototype fo' tha glibc wrapper function */
+
+.B #include <sched.h>
+
+.BI "int clone(int (*" "fn" ")(void *), void *" child_stack ,
+.BI "          int " flags ", void *" "arg" ", ... "
+.BI "          /* pid_t *" ptid ", struct user_desc *" tls \
+", pid_t *" ctid " */ );"
+
+/* Prototype fo' tha raw system call */
+
+.BI "long clone(unsigned long " flags ", void *" child_stack ,
+.BI "          void *" ptid ", void *" ctid ,
+.BI "          struct pt_regs *" regs );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc wrapper function (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR clone ():
+.ad l
+.RS 4
+.PD 0
+.TP 4
+Since glibc 2.14:
+_GNU_SOURCE
+.TP 4
+.\" FIXME See http://sources.redhat.com/bugzilla/show_bug.cgi?id=4749
+Before glibc 2.14:
+_BSD_SOURCE || _SVID_SOURCE
+    /* _GNU_SOURCE also suffices */
+.PD
+.RE
+.ad b
+.SH DESCRIPTION
+.BR clone ()
+creates a freshly smoked up process, up in a manner similar to
+.BR fork (2).
+
+This page raps bout both tha glibc
+.BR clone ()
+wrapper function n' tha underlyin system call on which it is based.
+Da main text raps bout tha wrapper function;
+the differences fo' tha raw system call
+are busted lyrics bout toward tha end of dis page.
+
+Unlike
+.BR fork (2),
+.BR clone ()
+allows tha lil pimp process ta share partz of its execution context with
+the callin process, like fuckin tha memory space, tha table of file
+descriptors, n' tha table of signal handlezs.
+(Note dat on dis manual
+page, "callin process" normally correspondz ta "parent process".
+But peep tha description of
+.B CLONE_PARENT
+below.)
+
+Da main use of
+.BR clone ()
+is ta implement threads: multiple threadz of control up in a program that
+run concurrently up in a gangbangin' finger-lickin' dirty-ass shared memory space.
+
+When tha lil pimp process is pimped with
+.BR clone (),
+it executes tha function
+.IR fn ( arg ).
+(This differs from
+.BR fork (2),
+where execution continues up in tha lil pimp from tha point
+of the
+.BR fork (2)
+call.)
+The
+.I fn
+argument be a pointa ta a gangbangin' function dat is called by tha child
+process all up in tha beginnin of its execution.
+The
+.I arg
+argument is passed ta the
+.I fn
+function.
+
+When the
+.IR fn ( arg )
+function application returns, tha lil pimp process terminates.
+Da integer returned by
+.I fn
+is tha exit code fo' tha lil pimp process.
+Da lil pimp process may also terminizzle explicitly by calling
+.BR exit (2)
+or afta receivin a gangbangin' fatal signal.
+
+The
+.I child_stack
+argument specifies tha location of tha stack used by tha lil pimp process.
+Since tha lil pimp n' callin process may share memory,
+it aint possible fo' tha lil pimp process ta execute up in the
+same stack as tha callin process.
+Da callin process must therefore
+set up memory space fo' tha lil pimp stack n' pass a pointa ta this
+space to
+.BR clone ().
+Stacks grow downward on all processors dat run Linux
+(except tha HP PA processors), so
+.I child_stack
+usually points ta tha topmost address of tha memory space set up for
+the lil pimp stack.
+
+Da low byte of
+.I flags
+gotz nuff tha number of the
+.I "termination signal"
+sent ta tha parent when tha lil pimp dies.
+If dis signal is specified as anythang other than
+.BR SIGCHLD ,
+then tha parent process must specify the
+.B __WALL
+or
+.B __WCLONE
+options when waitin fo' tha lil pimp with
+.BR wait (2).
+If no signal is specified, then tha parent process aint signaled
+when tha lil pimp terminates.
+
+.I flags
+may also be bitwise-or'ed wit zero or mo' of tha followin constants,
+in order ta specify what tha fuck is shared between tha callin process
+and tha lil pimp process:
+.TP
+.BR CLONE_CHILD_CLEARTID " (since Linux 2.5.49)"
+Erase lil pimp thread ID at location
+.I ctid
+in lil pimp memory when tha lil pimp exits, n' do a wakeup on tha futex
+at dat address.
+Da address involved may be chizzled by the
+.BR set_tid_address (2)
+system call.
+This is used by threadin libraries.
+.TP
+.BR CLONE_CHILD_SETTID " (since Linux 2.5.49)"
+Store lil pimp thread ID at location
+.I ctid
+in lil pimp memory.
+.TP
+.BR CLONE_FILES " (since Linux 2.0)"
+If
+.B CLONE_FILES
+is set, tha callin process n' tha lil pimp process share tha same file
+descriptor table.
+Any file descriptor pimped by tha callin process or by tha child
+process be also valid up in tha other process.
+Similarly, if one of tha processes closes a gangbangin' file descriptor,
+or chizzlez its associated flags (usin the
+.BR fcntl (2)
+.B F_SETFD
+operation), tha other process be also affected.
+
+If
+.B CLONE_FILES
+is not set, tha lil pimp process inherits a cold-ass lil copy of all file descriptors
+opened up in tha callin process all up in tha time of
+.BR clone ().
+(Da duplicated file descriptors up in tha lil pimp refer ta the
+same open file descriptions (see
+.BR open (2))
+as tha correspondin file descriptors up in tha callin process.)
+Subsequent operations dat open or close file descriptors,
+or chizzle file descriptor flags,
+performed by either tha calling
+process or tha lil pimp process do not affect tha other process.
+.TP
+.BR CLONE_FS " (since Linux 2.0)"
+If
+.B CLONE_FS
+is set, tha calla n' tha lil pimp process share tha same file system
+information.
+This includes tha root of tha file system, tha current
+workin directory, n' tha umask.
+Any call to
+.BR chroot (2),
+.BR chdir (2),
+or
+.BR umask (2)
+performed by tha callin process or tha lil pimp process also affects the
+other process.
+
+If
+.B CLONE_FS
+is not set, tha lil pimp process works on a cold-ass lil copy of tha file system
+information of tha callin process all up in tha time of the
+.BR clone ()
+call.
+Calls to
+.BR chroot (2),
+.BR chdir (2),
+.BR umask (2)
+performed lata by one of tha processes do not affect tha other process.
+.TP
+.BR CLONE_IO " (since Linux 2.6.25)"
+If
+.B CLONE_IO
+is set, then tha freshly smoked up process shares a I/O context with
+the callin process.
+If dis flag aint set, then (as with
+.BR fork (2))
+the freshly smoked up process has its own I/O context.
+
+.\" Da followin based on text from Jens Axboe
+Da I/O context is tha I/O scope of tha disk schedula (i.e,
+what tha I/O schedula uses ta model schedulin of a processs I/O).
+If processes share tha same I/O context,
+they is treated as one by tha I/O scheduler.
+As a cold-ass lil consequence, they git ta share disk time.
+For some I/O schedulers,
+.\" tha anticipatory n' CFQ scheduler
+if two processes share a I/O context,
+they is ghon be allowed ta interleave they disk access.
+If nuff muthafuckin threadz is bustin I/O on behalf of tha same process
+.RB ( aio_read (3),
+for instance), they should employ
+.BR CLONE_IO
+to git betta I/O performance.
+.\" wit CFQ n' AS.
+
+If tha kernel aint configured wit the
+.B CONFIG_BLOCK
+option, dis flag be a no-op.
+.TP
+.BR CLONE_NEWIPC " (since Linux 2.6.19)"
+If
+.B CLONE_NEWIPC
+is set, then create tha process up in a freshly smoked up IPC namespace.
+If dis flag aint set, then (as with
+.BR fork (2)),
+the process is pimped up in tha same IPC namespace as
+the callin process.
+This flag is intended fo' tha implementation of containers.
+
+An IPC namespace serves up a isolated view of System V IPC objects (see
+.BR svipc (7))
+and (since Linux 2.6.30)
+.\" commit 7eafd7c74c3f2e67c27621b987b28397110d643f
+.\" https://lwn.net/Articles/312232/
+POSIX message queues
+(see
+.BR mq_overview (7)).
+Da common characteristic of these IPC mechanizzlez is dat IPC
+objects is identified by mechanizzlez other than filesystem
+pathnames.
+
+Objects pimped up in a IPC namespace is visible ta all other processes
+that is thugz of dat namespace,
+but is not visible ta processes up in other IPC namespaces.
+
+When a IPC namespace is destroyed
+(i.e., when tha last process dat be a gangmember of tha namespace terminates),
+all IPC objects up in tha namespace is automatically destroyed.
+
+Use of dis flag requires: a kernel configured wit the
+.B CONFIG_SYSVIPC
+and
+.B CONFIG_IPC_NS
+options n' dat tha process be privileged
+.RB ( CAP_SYS_ADMIN ).
+This flag can't be specified up in conjunction with
+.BR CLONE_SYSVSEM .
+.TP
+.BR CLONE_NEWNET " (since Linux 2.6.24)"
+.\" FIXME Peep when tha implementation was completed
+(Da implementation of dis flag was completed only
+by bout kernel version 2.6.29.)
+
+If
+.B CLONE_NEWNET
+is set, then create tha process up in a freshly smoked up network namespace.
+If dis flag aint set, then (as with
+.BR fork (2)),
+the process is pimped up in tha same network namespace as
+the callin process.
+This flag is intended fo' tha implementation of containers.
+
+A network namespace serves up a isolated view of tha networkin stack
+(network thang intercourses, IPv4 n' IPv6 protocol stacks,
+IP routin tables, firewall rules, the
+.I /proc/net
+and
+.I /sys/class/net
+directory trees, sockets, etc.).
+A physical network thang can live up in exactly one
+network namespace.
+A virtual network thang ("veth") pair serves up a pipe-like abstraction
+.\" FIXME Add pointa ta veth(4) page when it is eventually completed
+that can be used ta create tunnels between network namespaces,
+and can be used ta create a funky-ass bridge ta a physical network device
+in another namespace.
+
+When a network namespace is freed
+(i.e., when tha last process up in tha namespace terminates),
+its physical network devices is moved back ta the
+initial network namespace (not ta tha parent of tha process).
+
+Use of dis flag requires: a kernel configured wit the
+.B CONFIG_NET_NS
+option n' dat tha process be privileged
+.RB ( CAP_SYS_ADMIN ).
+.TP
+.BR CLONE_NEWNS " (since Linux 2.4.19)"
+Start tha lil pimp up in a freshly smoked up mount namespace.
+
+Every process lives up in a mount namespace.
+The
+.I namespace
+of a process is tha data (the set of mounts) describin tha file hierarchy
+as peeped by dat process.
+Afta a
+.BR fork (2)
+or
+.BR clone ()
+where the
+.B CLONE_NEWNS
+flag aint set, tha lil pimp lives up in tha same mount
+namespace as tha parent.
+Da system calls
+.BR mount (2)
+and
+.BR umount (2)
+change tha mount namespace of tha callin process, n' hence affect
+all processes dat live up in tha same namespace yo, but do not affect
+processes up in a gangbangin' finger-lickin' different mount namespace.
+
+Afta a
+.BR clone ()
+where the
+.B CLONE_NEWNS
+flag is set, tha cloned lil pimp is started up in a freshly smoked up mount namespace,
+initialized wit a cold-ass lil copy of tha namespace of tha parent.
+
+Only a privileged process (one havin tha \fBCAP_SYS_ADMIN\fP capability)
+may specify the
+.B CLONE_NEWNS
+flag.
+It aint permitted ta specify both
+.B CLONE_NEWNS
+and
+.B CLONE_FS
+in tha same
+.BR clone ()
+call.
+.TP
+.BR CLONE_NEWPID " (since Linux 2.6.24)"
+.\" This explanation draws a shitload of details from
+.\" http://lwn.net/Articles/259217/
+.\" Authors: Pavel Emelyanov <xemul@openvz.org>
+.\" n' Kir Kolyshkin <kir@openvz.org>
+.\"
+.\" Da primary kernel commit is 30e49c263e36341b60b735cbef5ca37912549264
+.\" Author: Pavel Emelyanov <xemul@openvz.org>
+If
+.B CLONE_NEWPID
+is set, then create tha process up in a freshly smoked up PID namespace.
+If dis flag aint set, then (as with
+.BR fork (2)),
+the process is pimped up in tha same PID namespace as
+the callin process.
+This flag is intended fo' tha implementation of containers.
+
+A PID namespace serves up a isolated environment fo' PIDs:
+PIDs up in a freshly smoked up namespace start at 1,
+somewhat like a standalone system, n' calls to
+.BR fork (2),
+.BR vfork (2),
+or
+.BR clone ()
+will produce processes wit PIDs dat is unique within tha namespace.
+
+Da first process pimped up in a freshly smoked up namespace
+(i.e., tha process pimped rockin the
+.BR CLONE_NEWPID
+flag) has tha PID 1, n' is tha "init" process fo' tha namespace.
+Lil Pimps dat is orphaned within tha namespace is ghon be reparented
+to dis process rather than
+.BR init (8).
+Unlike tha traditional
+.B init
+process, tha "init" process of a PID namespace can terminate,
+and if it do, all of tha processes up in tha namespace is terminated.
+
+PID namespaces form a hierarchy.
+When a freshly smoked up PID namespace is pimped,
+the processes up in dat namespace is visible
+in tha PID namespace of tha process dat pimped tha freshly smoked up namespace;
+analogously, if tha parent PID namespace is itself
+the lil pimp of another PID namespace,
+then processes up in tha lil pimp n' parent PID namespaces will both be
+visible up in tha grandparent PID namespace.
+Conversely, tha processes up in tha "child" PID namespace do not see
+the processes up in tha parent namespace.
+Da existence of a namespace hierarchy means dat each process
+may now have multiple PIDs:
+one fo' each namespace up in which it is visible;
+each of these PIDs is unique within tha correspondin namespace.
+(A call to
+.BR getpid (2)
+always returns tha PID associated wit tha namespace up in which
+the process lives.)
+
+Afta bustin tha freshly smoked up namespace,
+it is useful fo' tha lil pimp ta chizzle its root directory
+and mount a freshly smoked up procfs instizzle at
+.I /proc
+so dat tools such as
+.BR ps (1)
+work erectly.
+.\" mount -t proc proc /proc
+(If
+.BR CLONE_NEWNS
+is also included in
+.IR flags ,
+then it aint necessary ta chizzle tha root directory:
+a freshly smoked up procfs instizzle can be mounted directly over
+.IR /proc .)
+
+Use of dis flag requires: a kernel configured wit the
+.B CONFIG_PID_NS
+option n' dat tha process be privileged
+.RB ( CAP_SYS_ADMIN ).
+This flag can't be specified up in conjunction with
+.BR CLONE_THREAD .
+.TP
+.BR CLONE_NEWUTS " (since Linux 2.6.19)"
+If
+.B CLONE_NEWUTS
+is set, then create tha process up in a freshly smoked up UTS namespace,
+whose identifiers is initialized by duplicatin tha identifiers
+from tha UTS namespace of tha callin process.
+If dis flag aint set, then (as with
+.BR fork (2)),
+the process is pimped up in tha same UTS namespace as
+the callin process.
+This flag is intended fo' tha implementation of containers.
+
+A UTS namespace is tha set of identifiers returned by
+.BR uname (2);
+among these, tha domain name n' tha host name can be modified by
+.BR setdomainname (2)
+and
+.BR
+.BR sethostname (2),
+respectively.
+Changes made ta tha identifiers up in a UTS namespace
+are visible ta all other processes up in tha same namespace,
+but is not visible ta processes up in other UTS namespaces.
+
+Use of dis flag requires: a kernel configured wit the
+.B CONFIG_UTS_NS
+option n' dat tha process be privileged
+.RB ( CAP_SYS_ADMIN ).
+.TP
+.BR CLONE_PARENT " (since Linux 2.3.12)"
+If
+.B CLONE_PARENT
+is set, then tha parent of tha freshly smoked up lil pimp (as returned by
+.BR getppid (2))
+will be tha same as dat of tha callin process.
+
+If
+.B CLONE_PARENT
+is not set, then (as with
+.BR fork (2))
+the childz parent is tha callin process.
+
+Note dat it is tha parent process, as returned by
+.BR getppid (2),
+which is signaled when tha lil pimp terminates, so that
+if
+.B CLONE_PARENT
+is set, then tha parent of tha callin process, rather than the
+callin process itself, is ghon be signaled.
+.TP
+.BR CLONE_PARENT_SETTID " (since Linux 2.5.49)"
+Store lil pimp thread ID at location
+.I ptid
+in parent n' lil pimp memory.
+(In Linux 2.5.32-2.5.48 there was a gangbangin' flag
+.B CLONE_SETTID
+that did all dis bullshit.)
+.TP
+.BR CLONE_PID " (obsolete)"
+If
+.B CLONE_PID
+is set, tha lil pimp process is pimped wit tha same process ID as
+the callin process.
+This is phat fo' jackin tha system yo, but otherwise
+of not much use.
+Since 2.3.21 dis flag can be
+specified only by tha system boot process (PID 0).
+It disappeared up in Linux 2.5.16.
+.TP
+.BR CLONE_PTRACE " (since Linux 2.2)"
+If
+.B CLONE_PTRACE
+is specified, n' tha callin process is bein traced,
+then trace tha lil pimp also (see
+.BR ptrace (2)).
+.TP
+.BR CLONE_SETTLS " (since Linux 2.5.32)"
+The
+.I newtls
+argument is tha freshly smoked up TLS (Thread Local Storage) descriptor.
+(See
+.BR set_thread_area (2).)
+.TP
+.BR CLONE_SIGHAND " (since Linux 2.0)"
+If
+.B CLONE_SIGHAND
+is set, tha callin process n' tha lil pimp process share tha same table of
+signal handlezs.
+If tha callin process or lil pimp process calls
+.BR sigaction (2)
+to chizzle tha behavior associated wit a signal, tha behavior is
+changed up in tha other process as well.
+But fuck dat shiznit yo, tha word on tha street is dat tha callin process n' child
+processes still have distinct signal masks n' setz of pending
+signals.
+So, one of dem may block or unblock some signals using
+.BR sigprocmask (2)
+without affectin tha other process.
+
+If
+.B CLONE_SIGHAND
+is not set, tha lil pimp process inherits a cold-ass lil copy of tha signal handlezs
+of tha callin process all up in tha time
+.BR clone ()
+is called.
+Calls to
+.BR sigaction (2)
+performed lata by one of tha processes have no effect on tha other
+process.
+
+Since Linux 2.6.0-test6,
+.I flags
+must also include
+.B CLONE_VM
+if
+.B CLONE_SIGHAND
+is specified
+.TP
+.BR CLONE_STOPPED " (since Linux 2.6.0-test2)"
+If
+.B CLONE_STOPPED
+is set, then tha lil pimp is initially stopped (as though dat shiznit was busted a
+.B SIGSTOP
+signal), n' must be resumed by bustin  it a
+.B SIGCONT
+signal.
+
+This flag was
+.I deprecated
+from Linux 2.6.25 onward,
+and was
+.I removed
+altogether up in Linux 2.6.38.
+.\" glibc 2.8 removed dis defn from bits/sched.h
+.TP
+.BR CLONE_SYSVSEM " (since Linux 2.5.10)"
+If
+.B CLONE_SYSVSEM
+is set, then tha lil pimp n' tha callin process share
+a single list of System V semaphore undo joints (see
+.BR semop (2)).
+If dis flag aint set, then tha lil pimp has a separate undo list,
+which is initially empty.
+.TP
+.BR CLONE_THREAD " (since Linux 2.4.0-test8)"
+If
+.B CLONE_THREAD
+is set, tha lil pimp is placed up in tha same thread crew as tha callin process.
+To make tha remainder of tha rap of
+.B CLONE_THREAD
+more readable, tha term "thread" is used ta refer ta the
+processes within a thread group.
+
+Thread crews was a gangbangin' feature added up in Linux 2.4 ta support the
+POSIX threadz notion of a set of threadz dat share a single PID.
+Internally, dis shared PID is tha so-called
+thread crew identifier (TGID) fo' tha thread group.
+Since Linux 2.4, calls to
+.BR getpid (2)
+return tha TGID of tha caller.
+
+Da threadz within a crew can be distinguished by they (system-wide)
+unique thread IDs (TID).
+A freshly smoked up threadz TID be available as tha function result
+returned ta tha calla of
+.BR clone (),
+and a thread can obtain
+its own TID using
+.BR gettid (2).
+
+When a cold-ass lil call is made to
+.BR clone ()
+without specifying
+.BR CLONE_THREAD ,
+then tha resultin thread is placed up in a freshly smoked up thread group
+whose TGID is tha same ol' dirty as tha threadz TID.
+This thread is the
+.I leader
+of tha freshly smoked up thread group.
+
+A freshly smoked up thread pimped with
+.B CLONE_THREAD
+has tha same ol' dirty parent process as tha calla of
+.BR clone ()
+(i.e., like
+.BR CLONE_PARENT ),
+so dat calls to
+.BR getppid (2)
+return tha same value fo' all of tha threadz up in a thread group.
+When a
+.B CLONE_THREAD
+thread terminates, tha thread dat pimped it using
+.BR clone ()
+is not busted a
+.B SIGCHLD
+(or other termination) signal;
+nor can tha statuz of such a thread be obtained
+using
+.BR wait (2).
+(Da thread is holla'd ta be
+.IR detached .)
+
+Afta all of tha threadz up in a thread crew terminate
+the parent process of tha thread crew is busted a
+.B SIGCHLD
+(or other termination) signal.
+
+If any of tha threadz up in a thread crew performs an
+.BR execve (2),
+then all threadz other than tha thread crew leader is terminated,
+and tha freshly smoked up program is executed up in tha thread crew leader.
+
+If one of tha threadz up in a thread crew creates a cold-ass lil lil pimp using
+.BR fork (2),
+then any thread up in tha crew can
+.BR wait (2)
+for dat child.
+
+Since Linux 2.5.35,
+.I flags
+must also include
+.B CLONE_SIGHAND
+if
+.B CLONE_THREAD
+is specified.
+
+Signals may be busted ta a thread crew as a whole (i.e., a TGID) using
+.BR bust a cap up in (2),
+or ta a specific thread (i.e., TID) using
+.BR tgkill (2).
+
+Signal dispositions n' actions is process-wide:
+if a unhandled signal is served up ta a thread, then
+it will affect (terminate, stop, continue, be ignored in)
+all thugz of tha thread group.
+
+Each thread has its own signal mask, as set by
+.BR sigprocmask (2),
+but signals can be pendin either: fo' tha whole process
+(i.e., deliverable ta any gangmember of tha thread group),
+when busted with
+.BR bust a cap up in (2);
+or fo' a individual thread, when busted with
+.BR tgkill (2).
+A call to
+.BR sigpendin (2)
+returns a signal set dat is tha union of tha signals pendin fo' the
+whole process n' tha signals dat is pendin fo' tha callin thread.
+
+If
+.BR bust a cap up in (2)
+is used ta bust a signal ta a thread group,
+and tha thread crew has installed a handlez fo' tha signal, then
+the handlez is ghon be invoked up in exactly one, arbitrarily selected
+gangmember of tha thread crew dat has not blocked tha signal.
+If multiple threadz up in a crew is waitin ta accept tha same signal using
+.BR sigwaitinfo (2),
+the kernel will arbitrarily select one of these threads
+to receive a signal busted using
+.BR bust a cap up in (2).
+.TP
+.BR CLONE_UNTRACED " (since Linux 2.5.46)"
+If
+.B CLONE_UNTRACED
+is specified, then a tracin process cannot force
+.B CLONE_PTRACE
+on dis lil pimp process.
+.TP
+.BR CLONE_VFORK " (since Linux 2.2)"
+If
+.B CLONE_VFORK
+is set, tha execution of tha callin process is suspended
+until tha lil pimp releases its virtual memory
+resources via a cold-ass lil call to
+.BR execve (2)
+or
+.BR _exit (2)
+(as with
+.BR vfork (2)).
+
+If
+.B CLONE_VFORK
+is not set then both tha callin process n' tha lil pimp is schedulable
+afta tha call, n' a application should not rely on execution occurring
+in any particular order.
+.TP
+.BR CLONE_VM " (since Linux 2.0)"
+If
+.B CLONE_VM
+is set, tha callin process n' tha lil pimp process run up in tha same memory
+space.
+In particular, memory writes performed by tha callin process
+or by tha lil pimp process is also visible up in tha other process.
+Mo'over, any memory mappin or unmappin performed with
+.BR mmap (2)
+or
+.BR munmap (2)
+by tha lil pimp or callin process also affects tha other process.
+
+If
+.B CLONE_VM
+is not set, tha lil pimp process runs up in a separate copy of tha memory
+space of tha callin process all up in tha time of
+.BR clone ().
+Memory writes or file mappings/unmappings performed by one of the
+processes do not affect tha other, as with
+.BR fork (2).
+.SS Da raw system call intercourse
+Da raw
+.BR clone ()
+system call correspondz mo' closely to
+.BR fork (2)
+in dat execution up in tha lil pimp continues from tha deal wit the
+call.
+As such, the
+.I fn
+and
+.I arg
+argumentz of the
+.BR clone ()
+wrapper function is omitted.
+Furthermore, tha argument order chizzles.
+Da raw system call intercourse on x86 n' nuff other architectures is roughly:
+.in +4
+.nf
+
+.BI "long clone(unsigned long " flags ", void *" child_stack ,
+.BI "           void *" ptid ", void *" ctid ,
+.BI "           struct pt_regs *" regs );
+
+.fi
+.in
+Another difference fo' tha raw system call is dat the
+.I child_stack
+argument may be zero, up in which case copy-on-write semantics ensure dat the
+child gets separate copiez of stack pages when either process modifies
+the stack.
+In dis case, fo' erect operation, the
+.B CLONE_VM
+option should not be specified.
+
+For some architectures, tha order of tha arguments fo' tha system call
+differs from dat shown above.
+On tha score, microblaze, ARM, ARM 64, PA-RISC, arc, Juice PC, xtensa,
+and MIPS architectures,
+the order of tha fourth n' fifth arguments is reversed.
+On tha cris n' s390 architectures,
+the order of tha straight-up original gangsta n' second arguments is reversed.
+.SS blackfin, m68k, n' sparc
+Da argument-passin conventions on
+blackfin, m68k, n' sparc is different from descriptions above.
+For details, peep tha kernel (and glibc) source.
+.SS ia64
+On ia64, a gangbangin' finger-lickin' different intercourse is used:
+.nf
+
+.BI "int __clone2(int (*" "fn" ")(void *), "
+.BI "             void *" child_stack_base ", size_t " stack_size ,
+.BI "             int " flags ", void *" "arg" ", ... "
+.BI "          /* pid_t *" ptid ", struct user_desc *" tls \
+", pid_t *" ctid " */ );"
+.fi
+.PP
+Da prototype shown above is fo' tha glibc wrapper function;
+the raw system call intercourse has no
+.I fn
+or
+.I arg
+argument, n' chizzlez tha order of tha arguments so that
+.I flags
+is tha straight-up original gangsta argument, and
+.I tls
+is tha last argument.
+.PP
+.BR __clone2 ()
+operates up in tha same way as
+.BR clone (),
+except that
+.I child_stack_base
+points ta tha lowest address of tha childz stack area,
+and
+.I stack_size
+specifies tha size of tha stack pointed ta by
+.IR child_stack_base .
+.SS Linux 2.4 n' earlier
+In Linux 2.4 n' earlier,
+.BR clone ()
+does not take arguments
+.IR ptid ,
+.IR tls ,
+and
+.IR ctid .
+.SH RETURN VALUE
+.\" gettid(2) returns current->pid;
+.\" getpid(2) returns current->tgid;
+On success, tha thread ID of tha lil pimp process is returned
+in tha callerz thread of execution.
+On failure, \-1 is returned
+in tha callerz context, no lil pimp process is ghon be pimped, and
+.I errno
+will be set appropriately.
+.SH ERRORS
+.TP
+.B EAGAIN
+Too nuff processes is already hustlin.
+.TP
+.B EINVAL
+.B CLONE_SIGHAND
+was specified yo, but
+.B CLONE_VM
+was not.
+(Since Linux 2.6.0-test6.)
+.TP
+.B EINVAL
+.B CLONE_THREAD
+was specified yo, but
+.B CLONE_SIGHAND
+was not.
+(Since Linux 2.5.35.)
+.\" .TP
+.\" .B EINVAL
+.\" Precisely one of
+.\" .B CLONE_DETACHED
+.\" and
+.\" .B CLONE_THREAD
+.\" was specified.
+.\" (Since Linux 2.6.0-test6.)
+.TP
+.B EINVAL
+Both
+.B CLONE_FS
+and
+.B CLONE_NEWNS
+were specified in
+.IR flags .
+.TP
+.B EINVAL
+Both
+.B CLONE_NEWIPC
+and
+.B CLONE_SYSVSEM
+were specified in
+.IR flags .
+.TP
+.B EINVAL
+Both
+.BR CLONE_NEWPID
+and
+.BR CLONE_THREAD
+were specified in
+.IR flags .
+.TP
+.B EINVAL
+Returned by
+.BR clone ()
+when a zero value is specified for
+.IR child_stack .
+.TP
+.B EINVAL
+.BR CLONE_NEWIPC
+was specified in
+.IR flags ,
+but tha kernel was not configured wit the
+.B CONFIG_SYSVIPC
+and
+.BR CONFIG_IPC_NS
+options.
+.TP
+.B EINVAL
+.BR CLONE_NEWNET
+was specified in
+.IR flags ,
+but tha kernel was not configured wit the
+.B CONFIG_NET_NS
+option.
+.TP
+.B EINVAL
+.BR CLONE_NEWPID
+was specified in
+.IR flags ,
+but tha kernel was not configured wit the
+.B CONFIG_PID_NS
+option.
+.TP
+.B EINVAL
+.BR CLONE_NEWUTS
+was specified in
+.IR flags ,
+but tha kernel was not configured wit the
+.B CONFIG_UTS
+option.
+.TP
+.B ENOMEM
+Cannot allocate sufficient memory ta allocate a task structure fo' the
+child, or ta copy dem partz of tha callerz context dat need ta be
+copied.
+.TP
+.B EPERM
+.BR CLONE_NEWIPC ,
+.BR CLONE_NEWNET ,
+.BR CLONE_NEWNS ,
+.BR CLONE_NEWPID ,
+or
+.BR CLONE_NEWUTS
+was specified by a unprivileged process (process without \fBCAP_SYS_ADMIN\fP).
+.TP
+.B EPERM
+.B CLONE_PID
+was specified by a process other than process 0.
+.SH VERSIONS
+There is no entry for
+.BR clone ()
+in libc5.
+glibc2 provides
+.BR clone ()
+as busted lyrics bout up in dis manual page.
+.SH CONFORMING TO
+.BR clone ()
+is Linux-specific n' should not be used up in programs
+intended ta be portable.
+.SH NOTES
+In tha kernel 2.4.x series,
+.B CLONE_THREAD
+generally do not make tha parent of tha freshly smoked up thread tha same
+as tha parent of tha callin process.
+But fuck dat shiznit yo, tha word on tha street is dat fo' kernel versions 2.4.7 ta 2.4.18 the
+.B CLONE_THREAD
+flag implied the
+.B CLONE_PARENT
+flag (as up in kernel 2.6).
+
+For a while there was
+.B CLONE_DETACHED
+(introduced up in 2.5.32):
+parent wants no child-exit signal.
+In 2.6.2 tha need ta give this
+together with
+.B CLONE_THREAD
+disappeared.
+This flag is still defined yo, but has no effect.
+
+On i386,
+.BR clone ()
+should not be called all up in vsyscall yo, but directly through
+.IR "int $0x80" .
+.SH BUGS
+Versionz of tha GNU C library dat include tha NPTL threadin library
+contain a wrapper function for
+.BR getpid (2)
+that performs cachin of PIDs.
+This cachin relies on support up in tha glibc wrapper for
+.BR clone (),
+but as currently implemented,
+the cache may not be up ta date up in some circumstances.
+In particular,
+if a signal is served up ta tha lil pimp immediately afta the
+.BR clone ()
+call, then a cold-ass lil call to
+.BR getpid (2)
+in a handlez fo' tha signal may return tha PID
+of tha callin process ("the parent"),
+if tha clone wrapper has not yet had a cold-ass lil chizzle ta update tha PID
+cache up in tha child.
+(This rap ignores tha case where tha lil pimp was pimped using
+.BR CLONE_THREAD ,
+when
+.BR getpid (2)
+.I should
+return tha same value up in tha lil pimp n' up in tha process dat called
+.BR clone (),
+since tha calla n' tha lil pimp is up in tha same thread group.
+Da stale-cache problem also do not occur if the
+.I flags
+argument includes
+.BR CLONE_VM .)
+To git tha real deal, it may be necessary ta use code like fuckin tha following:
+.nf
+
+    #include <syscall.h>
+
+    pid_t mypid;
+
+    mypid = syscall(SYS_getpid);
+.fi
+.\" See also tha followin bug reports
+.\" https://bugzilla.redhat.com/show_bug.cgi?id=417521
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=6910
+.SH EXAMPLE
+.SS Smoke a cold-ass lil lil pimp dat executes up in a separate UTS namespace
+Da followin program demonstrates tha use of
+.BR clone ()
+to create a cold-ass lil lil pimp process dat executes up in a separate UTS namespace.
+Da lil pimp chizzlez tha hostname up in its UTS namespace.
+Both parent n' lil pimp then display tha system hostname,
+makin it possible ta peep dat tha hostname
+differs up in tha UTS namespacez of tha parent n' child.
+For a example of tha use of dis program, see
+.BR setns (2).
+
+.nf
+#define _GNU_SOURCE
+#include <sys/wait.h>
+#include <sys/utsname.h>
+#include <sched.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \\
+                        } while (0)
+
+static int              /* Start function fo' cloned lil pimp */
+childFunc(void *arg)
+{
+    struct utsname uts;
+
+    /* Chizzle hostname up in UTS namespace of lil pimp */
+
+    if (sethostname(arg, strlen(arg)) == \-1)
+        errExit("sethostname");
+
+    /* Retrieve n' display hostname */
+
+    if (uname(&uts) == \-1)
+        errExit("uname");
+    printf("uts.nodename up in child:  %s\\n", uts.nodename);
+
+    /* Keep tha namespace open fo' a while, by chillin.
+       This allows some experimentation\-\-for example, another
+       process might join tha namespace. */
+
+    chill(200);
+
+    return 0;           /* Lil Pimp terminates now */
+}
+
+#define STACK_SIZE (1024 * 1024)    /* Stack size fo' cloned lil pimp */
+
+int
+main(int argc, char *argv[])
+{
+    char *stack;                    /* Start of stack buffer */
+    char *stackTop;                 /* End of stack buffer */
+    pid_t pid;
+    struct utsname uts;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <child\-hostname>\\n", argv[0]);
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Allocate stack fo' lil pimp */
+
+    stack = malloc(STACK_SIZE);
+    if (stack == NULL)
+        errExit("malloc");
+    stackTop = stack + STACK_SIZE;  /* Assume stack grows downward */
+
+    /* Smoke lil pimp dat has its own UTS namespace;
+       lil pimp commences execution up in childFunc() */
+
+    pid = clone(childFunc, stackTop, CLONE_NEWUTS | SIGCHLD, argv[1]);
+    if (pid == \-1)
+        errExit("clone");
+    printf("clone() returned %ld\\n", (long) pid);
+
+    /* Parent falls all up in ta here */
+
+    chill(1);           /* Give lil pimp time ta chizzle its hostname */
+
+    /* Display hostname up in parent\(aqs UTS namespace. This will be
+       different from hostname up in child\(aqs UTS namespace. */
+
+    if (uname(&uts) == \-1)
+        errExit("uname");
+    printf("uts.nodename up in parent: %s\\n", uts.nodename);
+
+    if (waitpid(pid, NULL, 0) == \-1)    /* Wait fo' lil pimp */
+        errExit("waitpid");
+    printf("child has terminated\\n");
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR fork (2),
+.BR futex (2),
+.BR getpid (2),
+.BR gettid (2),
+.BR kcmp (2),
+.BR set_thread_area (2),
+.BR set_tid_address (2),
+.BR setns (2),
+.BR tkill (2),
+.BR unshare (2),
+.BR wait (2),
+.BR capabilitizzles (7),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

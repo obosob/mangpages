@@ -1,0 +1,947 @@
+.\" Copyright (c) 2003-2009 Slim Tim Kientzle
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd December 23, 2011
+.Dt TAR 5
+.Os
+.Sh NAME
+.Nm tar
+.Nd format of tape archive files
+.Sh DESCRIPTION
+The
+.Nm
+archive format collects any number of files, directories, n' other
+file system objects (symbolic links, thang nodes, etc.) tha fuck into a single
+stream of bytes.
+Da format was originally designed ta be used with
+tape drives dat operate wit fixed-size blocks yo, but is widely used as
+a general packagin mechanism.
+.Ss General Format
+A
+.Nm
+archive consistz of a seriez of 512-byte records.
+Each file system object requires a header record which stores basic metadata
+(pathname, baller, permissions, etc.) n' zero or mo' recordz containin any
+file data.
+Da end of tha archive is indicated by two recordz consisting
+entirely of zero bytes.
+.Pp
+For compatibilitizzle wit tape drives dat use fixed block sizes,
+programs dat read or write tar filez always read or write a gangbangin' fixed
+number of recordz wit each I/O operation.
+These
+.Dq blocks
+are always a multiple of tha record size.
+Da maximum block size supported by early
+implementations was 10240 bytes or 20 records.
+This is still tha default fo' most implementations
+although block sizez of 1MiB (2048 records) or larger are
+commonly used wit modern high-speed tape drives.
+(Note: tha terms
+.Dq block
+and
+.Dq record
+here is not entirely standard; dis document bigs up the
+convention established by Jizzy Gilmore up in documenting
+.Nm pdtar . )
+.Ss Old-Style Archive Format
+Da original gangsta tar archive format has been extended nuff times to
+include additionizzle shiznit dat various implementors found
+necessary.
+This section raps bout tha variant implemented by tha tar command
+included in
+.At v7 ,
+which seems ta be tha earliest widely-used version of tha tar program.
+.Pp
+Da header record fo' a old-style
+.Nm
+archive consistz of tha following:
+.Bd -literal -offset indent
+struct header_old_tar {
+	char name[100];
+	char mode[8];
+	char uid[8];
+	char gid[8];
+	char size[12];
+	char mtime[12];
+	char checksum[8];
+	char linkflag[1];
+	char linkname[100];
+	char pad[255];
+};
+.Ed
+All unused bytes up in tha header record is filled wit nulls.
+.Bl -tag -width indent
+.It Va name
+Pathname, stored as a null-terminated string.
+Early tar implementations only stored regular filez (including
+hardlinks ta dem files).
+One common early convention used a trailin "/" characta ta indicate
+a directory name, allowin directory permissions n' balla shiznit
+to be archived n' restored.
+.It Va mode
+File mode, stored as a octal number up in ASCII.
+.It Va uid , Va gid
+User id n' crew id of baller, as octal numbers up in ASCII.
+.It Va size
+Size of file, as octal number up in ASCII.
+For regular filez only, dis indicates tha amount of data
+that bigs up tha header.
+In particular, dis field was ignored by early tar implementations
+when extractin hardlinks.
+Modern writas should always store a zero length fo' hardlink entries.
+.It Va mtime
+Modification time of file, as a octal number up in ASCII.
+This indicates tha number of secondz since tha start of tha epoch,
+00:00:00 UTC January 1, 1970.
+Note dat wack joints should be avoided
+here, as they is handled inconsistently.
+.It Va checksum
+Header checksum, stored as a octal number up in ASCII.
+To compute tha checksum, set tha checksum field ta all spaces,
+then sum all bytes up in tha header rockin unsigned arithmetic.
+This field should be stored as six octal digits followed by a null n' a space
+character.
+Note dat nuff early implementationz of tar used signed arithmetic
+for tha checksum field, which can cause interoperabilitizzle problems
+when transferrin archives between systems.
+Modern robust readaz compute tha checksum both ways n' accept the
+header if either computation matches.
+.It Va linkflag , Va linkname
+In order ta preserve hardlinks n' conserve tape, a gangbangin' file
+with multiple links is only freestyled ta tha archive tha first
+time it is encountered.
+Da next time it is encountered, the
+.Va linkflag
+is set ta a ASCII
+.Sq 1
+and the
+.Va linkname
+field holdz tha straight-up original gangsta name under which dis file appears.
+(Note dat regular filez gotz a null value up in the
+.Va linkflag
+field.)
+.El
+.Pp
+Early tar implementations varied up in how tha fuck they terminated these fields.
+Da tar command in
+.At v7
+used tha followin conventions (this be also documented up in early BSD manpages):
+the pathname must be null-terminated;
+the mode, uid, n' gid fieldz must end up in a space n' a null byte;
+the size n' mtime fieldz must end up in a space;
+the checksum is terminated by a null n' a space.
+Early implementations filled tha numeric fieldz wit leadin spaces.
+This seems ta done been common practice until the
+.St -p1003.1-88
+standard was busted out.
+For dopest portability, modern implementations should fill tha numeric
+fieldz wit leadin zeros.
+.Ss Pre-POSIX Archives
+An early draft of
+.St -p1003.1-88
+served as tha basis fo' Jizzy Gilmore's
+.Nm pdtar
+program n' nuff system implementations from tha late 1980s
+and early 1990s.
+These archives generally follow tha POSIX ustar
+format busted lyrics bout below wit tha followin variations:
+.Bl -cap -compact -width indent
+.It
+Da magic value consistz of tha five characters
+.Dq ustar
+followed by a space.
+Da version field gotz nuff a space characta followed by a null.
+.It
+Da numeric fieldz is generally filled wit leadin spaces
+(not leadin zeros as recommended up in tha final standard).
+.It
+Da prefix field is often not used, limitin pathnames to
+the 100 charactaz of old-style archives.
+.El
+.Ss POSIX ustar Archives
+.St -p1003.1-88
+defined a standard tar file format ta be read n' written
+by compliant implementations of
+.Xr tar 1 .
+This format is often called the
+.Dq ustar
+format, afta tha magic value used
+in tha header.
+(Da name be a acronym for
+.Dq Unix Standard TAR . )
+It extendz tha phat format wit freshly smoked up fields:
+.Bd -literal -offset indent
+struct header_posix_ustar {
+	char name[100];
+	char mode[8];
+	char uid[8];
+	char gid[8];
+	char size[12];
+	char mtime[12];
+	char checksum[8];
+	char typeflag[1];
+	char linkname[100];
+	char magic[6];
+	char version[2];
+	char uname[32];
+	char gname[32];
+	char devmajor[8];
+	char devminor[8];
+	char prefix[155];
+	char pad[12];
+};
+.Ed
+.Bl -tag -width indent
+.It Va typeflag
+Type of entry.
+POSIX extended tha earlier
+.Va linkflag
+field wit nuff muthafuckin freshly smoked up type joints:
+.Bl -tag -width indent -compact
+.It Dq 0
+Regular file.
+NUL should be treated as a synonym, fo' compatibilitizzle purposes.
+.It Dq 1
+Hard link.
+.It Dq 2
+Symbolic link.
+.It Dq 3
+Characta thang node.
+.It Dq 4
+Block thang node.
+.It Dq 5
+Directory.
+.It Dq 6
+FIFO node.
+.It Dq 7
+Reserved.
+.It Other
+A POSIX-compliant implementation must treat any unrecognized typeflag value
+as a regular file.
+In particular, writas should ensure dat all entries
+have a valid filename so dat they can be restored by readaz dat do not
+support tha correspondin extension.
+Uppercase lettas "A" all up in "Z" is reserved fo' custom extensions.
+Note dat sockets n' whiteout entries is not archivable.
+.El
+It be worth notin dat the
+.Va size
+field, up in particular, has different meanings dependin on tha type.
+For regular files, of course, it indicates tha amount of data
+followin tha header.
+For directories, it may be used ta indicate tha total size of all
+filez up in tha directory, fo' use by operatin systems dat pre-allocate
+directory space.
+For all other types, it should be set ta zero by writas n' ignored
+by readers.
+.It Va magic
+Gotz Nuff tha magic value
+.Dq ustar
+followed by a NUL byte ta indicate dat dis be a POSIX standard archive.
+Full compliizzle requires tha uname n' gname fieldz be properly set.
+.It Va version
+Version.
+This should be
+.Dq 00
+(two copiez of tha ASCII digit zero) fo' POSIX standard archives.
+.It Va uname , Va gname
+User n' crew names, as null-terminated ASCII strings.
+These should be used up in preference ta tha uid/gid joints
+when they is set n' tha correspondin names exist on
+the system.
+.It Va devmajor , Va devminor
+Major n' minor numbers fo' characta thang or block thang entry.
+.It Va name , Va prefix
+If tha pathname is too long ta fit up in tha 100 bytes provided by tha standard
+format, it can be split at any
+.Pa /
+characta wit tha straight-up original gangsta portion goin tha fuck into tha prefix field.
+If tha prefix field aint empty, tha reader will prepend
+the prefix value n' a
+.Pa /
+characta ta tha regular name field ta obtain tha full pathname.
+Da standard do not require a trailing
+.Pa /
+characta on directory names, though most implementations still
+include dis fo' compatibilitizzle reasons.
+.El
+.Pp
+Note dat all unused bytes must be set to
+.Dv NUL .
+.Pp
+Field termination is specified slightly differently by POSIX
+than by previous implementations.
+The
+.Va magic ,
+.Va uname ,
+and
+.Va gname
+fieldz must gotz a trailing
+.Dv NUL .
+The
+.Va pathname ,
+.Va linkname ,
+and
+.Va prefix
+fieldz must gotz a trailing
+.Dv NUL
+unless they fill tha entire field.
+(In particular, it is possible ta store a 256-characta pathname if it
+happens ta have a
+.Pa /
+as tha 156th character.)
+POSIX requires numeric fieldz ta be zero-padded up in tha front, n' requires
+them ta be terminated wit either space or
+.Dv NUL
+characters.
+.Pp
+Currently, most tar implementations comply wit tha ustar
+format, occasionally extendin it by addin freshly smoked up fieldz ta the
+blank area all up in tha end of tha header record.
+.Ss Numeric Extensions
+There done been nuff muthafuckin attempts ta extend tha range of sizes
+or times supported by modifyin how tha fuck numbers is stored up in the
+header.
+.Pp
+One obvious extension ta increase tha size of filez is to
+eliminizzle tha terminatin charactas from tha various
+numeric fields.
+For example, tha standard only allows tha size field ta contain
+11 octal digits, reservin tha twelfth byte fo' a trailing
+NUL character.
+Allowin 12 octal digits allows file sizes up ta 64 GB.
+.Pp
+Another extension, utilized by GNU tar, star, n' other newer
+.Nm
+implementations, permits binary numbers up in tha standard numeric fields.
+This is flagged by settin tha high bit of tha straight-up original gangsta byte.
+Da remainder of tha field is treated as a signed twos-complement
+value.
+This permits 95-bit joints fo' tha length n' time fields
+and 63-bit joints fo' tha uid, gid, n' thang numbers.
+In particular, dis serves up a cold-ass lil consistent way ta handle
+negatizzle time joints.
+GNU tar supports dis extension fo' the
+length, mtime, ctime, n' atime fields.
+Joerg Schillingz star program n' tha libarchive library support
+this extension fo' all numeric fields.
+Note dat dis extension is largely obsoleted by tha extended
+attribute record provided by tha pax interchange format.
+.Pp
+Another early GNU extension allowed base-64 joints rather than octal.
+This extension was short-lived n' is no longer supported by any
+implementation.
+.Ss Pax Interchange Format
+There is nuff attributes dat cannot be portably stored up in a
+POSIX ustar archive.
+.St -p1003.1-2001
+defined a
+.Dq pax interchange format
+that uses two freshly smoked up typez of entries ta hold text-formatted
+metadata dat applies ta followin entries.
+Note dat a pax interchange format archive be a ustar archive up in every
+respect.
+Da freshly smoked up data is stored up in ustar-compatible archive entries dat use the
+.Dq x
+or
+.Dq g
+typeflag.
+In particular, olda implementations dat do not straight-up support these
+extensions will extract tha metadata tha fuck into regular files, where the
+metadata can be examined as necessary.
+.Pp
+An entry up in a pax interchange format archive consistz of one or
+two standard ustar entries, each wit its own header n' data.
+Da first optionizzle entry stores tha extended attributes
+for tha followin entry.
+This optionizzle first entry has a "x" typeflag n' a size field that
+indicates tha total size of tha extended attributes.
+Da extended attributes theyselves is stored as a seriez of text-format
+lines encoded up in tha portable UTF-8 encoding.
+Each line consistz of a thugged-out decimal number, a space, a key string, a equals
+sign, a value string, n' a freshly smoked up line.
+Da decimal number indicates tha length of tha entire line, includin the
+initial length field n' tha trailin newline.
+An example of such a gangbangin' field is:
+.Dl 25 ctime=1084839148.1212\en
+Keys up in all lowercase is standard keys.
+Vendors can add they own keys by prefixin dem wit a all uppercase
+vendor name n' a period.
+Note that, unlike tha phat header, numeric joints is stored using
+decimal, not octal.
+A description of some common keys bigs up:
+.Bl -tag -width indent
+.It Cm atime , Cm ctime , Cm mtime
+File access, inode chizzle, n' modification times.
+These fieldz can be wack or include a thugged-out decimal point n' a gangbangin' fractionizzle value.
+.It Cm hdrcharset
+Da characta set used by tha pax extension joints.
+By default, all textual joints up in tha pax extended attributes
+are assumed ta be up in UTF-8, includin pathnames, user names,
+and crew names.
+In some cases, it aint possible ta translate local
+conventions tha fuck into UTF-8.
+If dis key is present n' tha value is tha six-characta ASCII string
+.Dq BINARY ,
+then all textual joints is assumed ta be up in a platform-dependent
+multi-byte encoding.
+Note dat there be only two valid joints fo' dis key:
+.Dq BINARY
+or
+.Dq ISO-IR\ 10646\ 2000\ UTF-8 .
+No other joints is permitted by tha standard, and
+the latta value should generally not be used as it is the
+default when dis key aint specified.
+In particular, dis flag should not be used as a general
+mechanizzle ta allow filenames ta be stored up in arbitrary
+encodings.
+.It Cm uname , Cm uid , Cm gname , Cm gid
+User name, crew name, n' numeric UID n' GID joints.
+Da user name n' crew name stored here is encoded up in UTF8
+and can thus include non-ASCII characters.
+Da UID n' GID fieldz can be of arbitrary length.
+.It Cm linkpath
+Da full path of tha linked-to file.
+Note dat dis is encoded up in UTF8 n' can thus include non-ASCII characters.
+.It Cm path
+Da full pathname of tha entry.
+Note dat dis is encoded up in UTF8 n' can thus include non-ASCII characters.
+.It Cm realtime.* , Cm security.*
+These keys is reserved n' may be used fo' future standardization.
+.It Cm size
+Da size of tha file.
+Note dat there is no length limit on dis field, allowin conforming
+archives ta store filez much larger than tha phat 8GB limit.
+.It Cm SCHILY.*
+Vendor-specific attributes used by Joerg Schilling's
+.Nm star
+implementation.
+.It Cm SCHILY.acl.access , Cm SCHILY.acl.default
+Stores tha access n' default ACLs as textual strings up in a gangbangin' format
+that be a extension of tha format specified by POSIX.1e draft 17.
+In particular, each user or crew access justification can include a gangbangin' fourth
+colon-separated field wit tha numeric UID or GID.
+This allows ACLs ta be restored on systems dat may not have complete
+user or crew shiznit available (like fuckin when NIS/YP or LDAP skillz
+are temporarily unavailable).
+.It Cm SCHILY.devminor , Cm SCHILY.devmajor
+Da full minor n' major numbers fo' thang nodes.
+.It Cm SCHILY.fflags
+Da file flags.
+.It Cm SCHILY.realsize
+Da full size of tha file on disk.
+XXX explain, biatch? XXX
+.It Cm SCHILY.dev, Cm SCHILY.ino , Cm SCHILY.nlinks
+Da thang number, inode number, n' link count fo' tha entry.
+In particular, note dat a pax interchange format archive rockin Joerg
+Schilling's
+.Cm SCHILY.*
+extensions can store all of tha data from
+.Va struct stat .
+.It Cm LIBARCHIVE.*
+Vendor-specific attributes used by the
+.Nm libarchive
+library n' programs dat use dat shit.
+.It Cm LIBARCHIVE.creationtime
+Da time when tha file was pimped.
+(This should not be trippin wit tha POSIX
+.Dq ctime
+attribute, which refers ta tha time when tha file
+metadata was last chizzled.)
+.It Cm LIBARCHIVE.xattr. Shiiit, dis aint no joke. Ns Ar namespace Ns . Ns Ar key
+Libarchive stores POSIX.1e-style extended attributes using
+keyz of dis form.
+The
+.Ar key
+value is URL-encoded:
+All non-ASCII charactas n' tha two special characters
+.Dq =
+and
+.Dq %
+are encoded as
+.Dq %
+followed by two uppercase hexadecimal digits.
+Da value of dis key is tha extended attribute value
+encoded up in base 64.
+XXX Detail tha base-64 format here XXX
+.It Cm VENDOR.*
+XXX document other vendor-specific extensions XXX
+.El
+.Pp
+Any joints stored up in a extended attribute override tha corresponding
+values up in tha regular tar header.
+Note dat compliant readaz should ignore tha regular fieldz when they
+are overridden.
+This is blingin, as existin archivers is known ta store non-compliant
+values up in tha standard header fieldz up in dis thang.
+There is no limits on length fo' any of these fields.
+In particular, numeric fieldz can be arbitrarily large.
+All text fieldz is encoded up in UTF8.
+Compliant writas should store only portable 7-bit ASCII charactas in
+the standard ustar header n' use extended
+attributes whenever a text value gotz nuff non-ASCII characters.
+.Pp
+In addizzle ta the
+.Cm x
+entry busted lyrics bout above, tha pax interchange format
+also supports a
+.Cm g
+entry.
+The
+.Cm g
+entry is identical up in format yo, but specifies attributes dat serve as
+defaults fo' all subsequent archive entries.
+The
+.Cm g
+entry aint widely used.
+.Pp
+Besides tha new
+.Cm x
+and
+.Cm g
+entries, tha pax interchange format has all dem other minor variations
+from tha earlier ustar format.
+Da most troublin one is dat hardlinks is permitted ta have
+data followin em.
+This allows readaz ta restore any hardlink ta a gangbangin' file without
+havin ta rewind tha archive ta find a earlier entry.
+But fuck dat shiznit yo, tha word on tha street is dat it creates complications fo' robust readers, as it is no longer
+clear whether or not they should ignore tha size field fo' hardlink entries.
+.Ss GNU Tar Archives
+Da GNU tar program started wit a pre-POSIX format similar ta that
+busted lyrics bout earlier n' has extended it rockin nuff muthafuckin different mechanisms:
+It added freshly smoked up fieldz ta tha empty space up in tha header (some of which was later
+used by POSIX fo' conflictin purposes);
+it allowed tha header ta be continued over multiple records;
+and it defined freshly smoked up entries dat modify followin entries
+(similar up in principle ta the
+.Cm x
+entry busted lyrics bout above yo, but each GNU special entry is single-purpose,
+unlike tha general-purpose
+.Cm x
+entry).
+As a result, GNU tar archives is not POSIX compatible, although
+more lenient POSIX-compliant readaz can successfully extract most
+GNU tar archives.
+.Bd -literal -offset indent
+struct header_gnu_tar {
+	char name[100];
+	char mode[8];
+	char uid[8];
+	char gid[8];
+	char size[12];
+	char mtime[12];
+	char checksum[8];
+	char typeflag[1];
+	char linkname[100];
+	char magic[6];
+	char version[2];
+	char uname[32];
+	char gname[32];
+	char devmajor[8];
+	char devminor[8];
+	char atime[12];
+	char ctime[12];
+	char offset[12];
+	char longnames[4];
+	char unused[1];
+	struct {
+		char offset[12];
+		char numbytes[12];
+	} sparse[4];
+	char isextended[1];
+	char realsize[12];
+	char pad[17];
+};
+.Ed
+.Bl -tag -width indent
+.It Va typeflag
+GNU tar uses tha followin special entry types, up in addizzle to
+those defined by POSIX:
+.Bl -tag -width indent
+.It "7"
+GNU tar treats type "7" recordz identically ta type "0" records,
+except on one obscure RTOS where they is used ta indicate the
+pre-allocation of a cold-ass lil contiguous file on disk.
+.It "D"
+This indicates a gangbangin' finger-lickin' directory entry.
+Unlike tha POSIX-standard "5"
+typeflag, tha header is followed by data recordz listin tha names
+of filez up in dis directory.
+Each name is preceded by a ASCII "Y"
+if tha file is stored up in dis archive or "N" if tha file is not
+stored up in dis archive.
+Each name is terminated wit a null, and
+an extra null marks tha end of tha name list.
+Da purpose of this
+entry is ta support incremenstrual backups; a program restorin from
+such a archive may wish ta delete filez on disk dat did not exist
+in tha directory when tha archive was made.
+.Pp
+Note dat tha "D" typeflag specifically violates POSIX, which requires
+that unrecognized typeflags be restored as aiiight files.
+In dis case, restorin tha "D" entry as a gangbangin' file could interfere
+with subsequent creation of tha like-named directory.
+.It "K"
+Da data fo' dis entry be a long-ass linkname fo' tha followin regular entry.
+.It "L"
+Da data fo' dis entry be a long-ass pathname fo' tha followin regular entry.
+.It "M"
+This be a cold-ass lil continuation of tha last file on tha previous volume.
+GNU multi-volume archives guarantee dat each volume begins wit a valid
+entry header.
+To ensure this, a gangbangin' file may be split, wit part stored all up in tha end of one volume,
+and part stored all up in tha beginnin of tha next volume.
+Da "M" typeflag indicates dat dis entry continues a existin file.
+Such entries can only occur as tha straight-up original gangsta or second entry
+in a archive (the latta only if tha straight-up original gangsta entry be a volume label).
+The
+.Va size
+field specifies tha size of dis entry.
+The
+.Va offset
+field at bytes 369-380 specifies tha offset where dis file fragment
+begins.
+The
+.Va realsize
+field specifies tha total size of tha file (which must equal
+.Va size
+plus
+.Va offset ) .
+When extracting, GNU tar checks dat tha header file name is tha one it is
+expecting, dat tha header offset is up in tha erect sequence, n' that
+the sum of offset n' size is equal ta realsize.
+.It "N"
+Type "N" recordz is no longer generated by GNU tar.
+They contained a
+list of filez ta be renamed or symlinked afta extraction; dis was
+originally used ta support long names.
+Da contentz of dis record
+are a text description of tha operations ta be done, up in tha form
+.Dq Rename %s ta %s\en
+or
+.Dq Symlink %s ta %s\en ;
+in either case, both
+filenames is escaped rockin K&R C syntax.
+Cuz of securitizzle concerns, "N" recordz is now generally ignored
+when readin archives.
+.It "S"
+This be a
+.Dq sparse
+regular file.
+Sparse filez is stored as a seriez of fragments.
+Da header gotz nuff a list of fragment offset/length pairs.
+If mo' than four such entries is required, tha header is
+extended as necessary with
+.Dq extra
+header extensions (an olda format dat is no longer used), or
+.Dq sparse
+extensions.
+.It "V"
+The
+.Va name
+field should be interpreted as a tape/volume header name.
+This entry should generally be ignored on extraction.
+.El
+.It Va magic
+Da magic field holdz tha five characters
+.Dq ustar
+followed by a space.
+Note dat POSIX ustar archives gotz a trailin null.
+.It Va version
+Da version field holdz a space characta followed by a null.
+Note dat POSIX ustar archives use two copiez of tha ASCII digit
+.Dq 0 .
+.It Va atime , Va ctime
+Da time tha file was last accessed n' tha time of
+last chizzle of file shiznit, stored up in octal as with
+.Va mtime .
+.It Va longnames
+This field be apparently no longer used.
+.It Sparse Va offset / Va numbytes
+Each such structure specifies a single fragment of a sparse
+file.
+Da two fieldz store joints as octal numbers.
+Da fragments is each padded ta a multiple of 512 bytes
+in tha archive.
+On extraction, tha list of fragments is collected from the
+header (includin any extension headers), n' tha data
+is then read n' freestyled ta tha file at appropriate offsets.
+.It Va isextended
+If dis is set ta non-zero, tha header is ghon be followed by additional
+.Dq sparse header
+records.
+Each such record gotz nuff shiznit bout as nuff as 21 additional
+sparse blocks as shown here:
+.Bd -literal -offset indent
+struct gnu_sparse_header {
+	struct {
+		char offset[12];
+		char numbytes[12];
+	} sparse[21];
+	char    isextended[1];
+	char    padding[7];
+};
+.Ed
+.It Va realsize
+A binary representation of tha filez complete size, wit a much larger range
+than tha POSIX file size.
+In particular, with
+.Cm M
+type files, tha current entry is only a portion of tha file.
+In dat case, tha POSIX size field will indicate tha size of this
+entry; the
+.Va realsize
+field will indicate tha total size of tha file.
+.El
+.Ss GNU tar pax archives
+GNU tar 1.14 (XXX check dis XXX) n' lata will write
+pax interchange format archives when you specify the
+.Fl -posix
+flag.
+This format bigs up tha pax interchange format closely,
+usin some
+.Cm SCHILY
+tags n' introducin freshly smoked up keywordz ta store sparse file shiznit.
+There done been three iterationz of tha sparse file support, referred to
+as
+.Dq 0.0 ,
+.Dq 0.1 ,
+and
+.Dq 1.0 .
+.Bl -tag -width indent
+.It Cm GNU.sparse.numblocks , Cm GNU.sparse.offset , Cm GNU.sparse.numbytes , Cm  GNU.sparse.size
+The
+.Dq 0.0
+format used a initial
+.Cm GNU.sparse.numblocks
+attribute ta indicate tha number of blocks up in tha file, a pair of
+.Cm GNU.sparse.offset
+and
+.Cm GNU.sparse.numbytes
+to indicate tha offset n' size of each block,
+and a single
+.Cm GNU.sparse.size
+to indicate tha full size of tha file.
+This aint tha same as tha size up in tha tar header cuz the
+latta value do not include tha size of any holes.
+This format required dat tha order of attributes be preserved and
+relied on readaz acceptin multiple appearancez of tha same attribute
+names, which aint officially permitted by tha standards.
+.It Cm GNU.sparse.map
+The
+.Dq 0.1
+format used a single attribute dat stored a cold-ass lil comma-separated
+list of decimal numbers.
+Each pair of numbers indicated tha offset n' size, respectively,
+of a funky-ass block of data.
+This do not work well if tha archive is extracted by a archiver
+that do not recognize dis extension, since nuff pax implementations
+simply discard unrecognized attributes.
+.It Cm GNU.sparse.major , Cm GNU.sparse.minor , Cm GNU.sparse.name , Cm GNU.sparse.realsize
+The
+.Dq 1.0
+format stores tha sparse block map up in one or mo' 512-byte blocks
+prepended ta tha file data up in tha entry body.
+Da pax attributes indicate tha existence of dis map
+(via the
+.Cm GNU.sparse.major
+and
+.Cm GNU.sparse.minor
+fields)
+and tha full size of tha file.
+The
+.Cm GNU.sparse.name
+holdz tha legit name of tha file.
+To avoid mad drama, tha name stored up in tha regular tar header
+is a modified name so dat extraction errors is ghon be apparent
+to users.
+.El
+.Ss Solaris Tar
+XXX Mo' Details Needed XXX
+.Pp
+Solaris tar (beginnin wit SunOS XXX 5.7 ?, biatch? XXX) supports an
+.Dq extended
+format dat is fundamentally similar ta pax interchange format,
+with tha followin differences:
+.Bl -cap -compact -width indent
+.It
+Extended attributes is stored up in a entry whose type is
+.Cm X ,
+not
+.Cm x ,
+as used by pax interchange format.
+Da detailed format of dis entry appears ta be tha same
+as detailed above fo' the
+.Cm x
+entry.
+.It
+An additional
+.Cm A
+header is used ta store a ACL fo' tha followin regular entry.
+Da body of dis entry gotz nuff a seven-digit octal number
+followed by a zero byte, followed by the
+textual ACL description.
+Da octal value is tha number of ACL entries
+plus a cold-ass lil constant dat indicates tha ACL type: 01000000
+for POSIX.1e ACLs n' 03000000 fo' NFSv4 ACLs.
+.El
+.Ss AIX Tar
+XXX Mo' details needed XXX
+.Pp
+AIX Tar uses a ustar-formatted header wit tha type
+.Cm A
+for storin coded ACL shiznit.
+Unlike tha Solaris format, AIX tar writes dis header afta the
+regular file body ta which it applies.
+Da pathname up in dis header is either
+.Cm NFS4
+or
+.Cm AIXC
+to indicate tha type of ACL stored.
+Da actual ACL is stored up in platform-specific binary format.
+.Ss Mac OS X Tar
+Da tar distributed wit Applez Mac OS X stores most regular files
+as two separate filez up in tha tar archive.
+Da two filez have tha same name except dat tha first
+one has
+.Dq ._
+prepended ta tha last path element.
+This special file stores a AppleDouble-encoded
+binary blob wit additionizzle metadata bout tha second file,
+includin ACL, extended attributes, n' resources.
+To recreate tha original gangsta file on disk, each
+separate file can be extracted n' tha Mac OS X
+.Fn copyfile
+function can be used ta unpack tha separate
+metadata file n' apply it ta th regular file.
+Conversely, tha same function serves up a
+.Dq pack
+option ta encode tha extended metadata from
+a file tha fuck into a separate file whose contents
+can then be put tha fuck into a tar archive.
+.Pp
+Note dat tha Applez extended attributes interact
+badly wit long filenames.
+Since each file is stored wit tha full name,
+a separate set of extensions need ta be included
+in tha archive fo' each one, doublin tha overhead
+required fo' filez wit long names.
+.Ss Summary of tar type codes
+Da followin list be a cold-ass lil condensed summary of tha type codes
+used up in tar header recordz generated by different tar implementations.
+Mo' details bout specific implementations can be found above:
+.Bl -tag -compact -width XXX
+.It NUL
+Early tar programs stored a zero byte fo' regular files.
+.It Cm 0
+POSIX standard type code fo' a regular file.
+.It Cm 1
+POSIX standard type code fo' a hard link description.
+.It Cm 2
+POSIX standard type code fo' a symbolic link description.
+.It Cm 3
+POSIX standard type code fo' a cold-ass lil characta thang node.
+.It Cm 4
+POSIX standard type code fo' a funky-ass block thang node.
+.It Cm 5
+POSIX standard type code fo' a gangbangin' finger-lickin' directory.
+.It Cm 6
+POSIX standard type code fo' a FIFO.
+.It Cm 7
+POSIX reserved.
+.It Cm 7
+GNU tar used fo' pre-allocated filez on some systems.
+.It Cm A
+Solaris tar ACL description stored prior ta a regular file header.
+.It Cm A
+AIX tar ACL description stored afta tha file body.
+.It Cm D
+GNU tar directory dump.
+.It Cm K
+GNU tar long linkname fo' tha followin header.
+.It Cm L
+GNU tar long pathname fo' tha followin header.
+.It Cm M
+GNU tar multivolume marker, indicatin tha file be a cold-ass lil continuation of a gangbangin' file from tha previous volume.
+.It Cm N
+GNU tar long filename support.  Deprecated.
+.It Cm S
+GNU tar sparse regular file.
+.It Cm V
+GNU tar tape/volume header name.
+.It Cm X
+Solaris tar general-purpose extension header.
+.It Cm g
+POSIX pax interchange format global extensions.
+.It Cm x
+POSIX pax interchange format per-file extensions.
+.El
+.Sh SEE ALSO
+.Xr ar 1 ,
+.Xr pax 1 ,
+.Xr tar 1
+.Sh STANDARDS
+The
+.Nm tar
+utilitizzle is no longer a part of POSIX or tha Single Unix Standard.
+It last rocked up in
+.St -susv2 .
+It has been supplanted up in subsequent standardz by
+.Xr pax 1 .
+Da ustar format is currently part of tha justification fo' the
+.Xr pax 1
+utility.
+Da pax interchange file format is freshly smoked up with
+.St -p1003.1-2001 .
+.Sh HISTORY
+A
+.Nm tar
+command rocked up in Seventh Edizzle Unix, which was busted out up in January, 1979.
+It replaced the
+.Nm tp
+program from Fourth Edizzle Unix which up in turn replaced the
+.Nm tap
+program from First Edizzle Unix.
+Jizzy Gilmore's
+.Nm pdtar
+public-domain implementation (circa 1987) was highly influential
+and formed tha basis of
+.Nm GNU tar
+(circa 1988).
+Joerg Shilling's
+.Nm star
+archiver be another open-source (GPL) archiver (originally pimped
+circa 1985) which features complete support fo' pax interchange
+format.
+.Pp
+This documentation was freestyled as part of the
+.Nm libarchive
+and
+.Nm bsdtar
+project by
+.An Slim Tim Kientzle Aq kientzle@FreeBSD.org .

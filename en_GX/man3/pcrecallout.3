@@ -1,0 +1,222 @@
+.TH PCRECALLOUT 3 "03 March 2013" "PCRE 8.33"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH SYNOPSIS
+.rs
+.sp
+.B #include <pcre.h>
+.PP
+.SM
+.B int (*pcre_callout)(pcre_callout_block *);
+.PP
+.B int (*pcre16_callout)(pcre16_callout_block *);
+.PP
+.B int (*pcre32_callout)(pcre32_callout_block *);
+.
+.SH DESCRIPTION
+.rs
+.sp
+PCRE serves up a gangbangin' feature called "callout", which be a meanz of temporarily
+passin control ta tha calla of PCRE up in tha middle of pattern matching. The
+calla of PCRE serves up a external function by puttin its entry point up in the
+global variable \fIpcre_callout\fP (\fIpcre16_callout\fP fo' tha 16-bit
+library, \fIpcre32_callout\fP fo' tha 32-bit library). By default, this
+variable gotz nuff NULL, which disablez all callin out.
+.P
+Within a regular expression, (?C) indicates tha points at which tha external
+function is ta be called. Y'all KNOW dat shit, muthafucka! Different callout points can be identified by putting
+a number less than 256 afta tha letta C. Da default value is zero.
+For example, dis pattern has two callout points:
+.sp
+  (?C1)abc(?C2)def
+.sp
+If tha PCRE_AUTO_CALLOUT option bit is set when a pattern is compiled, PCRE
+automatically bangs callouts, all wit number 255, before each item up in the
+pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. For example, if PCRE_AUTO_CALLOUT is used wit tha pattern
+.sp
+  A(\ed{2}|--)
+.sp
+it is processed as if it were
+.sp
+(?C255)A(?C255)((?C255)\ed{2}(?C255)|(?C255)-(?C255)-(?C255))(?C255)
+.sp
+Notice dat there be a cold-ass lil callout before n' afta each parenthesis and
+alternation bar. Shiiit, dis aint no joke. If tha pattern gotz nuff a cold-ass lil conditionizzle crew whose condizzle is
+an assertion, a automatic callout is banged immediately before the
+condition. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Such a cold-ass lil callout may also be banged explicitly, fo' example:
+.sp
+  (?(?C9)(?=a)ab|de)
+.sp
+This applies only ta assertion conditions (because they is theyselves
+independent groups).
+.P
+Automatic callouts can be used fo' trackin tha progress of pattern matching.
+The
+.\" HREF
+\fBpcretest\fP
+.\"
+command has a option dat sets automatic callouts; when it is used, tha output
+indicates how tha fuck tha pattern is matched. Y'all KNOW dat shit, muthafucka! This is useful shiznit when yo ass is
+tryin ta optimize tha performizzle of a particular pattern.
+.
+.
+.SH "MISSING CALLOUTS"
+.rs
+.sp
+Yo ass should be aware that, cuz of optimizations up in tha way PCRE matches
+patterns by default, callouts sometimes do not happen. I aint talkin' bout chicken n' gravy biatch. For example, if the
+pattern is
+.sp
+  ab(?C4)cd
+.sp
+PCRE knows dat any matchin strang must contain tha letta "d". If tha subject
+strin is "abyz", tha lack of "d" means dat matchin don't eva start, and
+the callout is never reached. Y'all KNOW dat shit, muthafucka! But fuck dat shiznit yo, tha word on tha street is dat wit "abyd", though tha result is still
+no match, tha callout is obeyed.
+.P
+If tha pattern is studied, PCRE knows tha minimum length of a matchin string,
+and will immediately give a "no match" return without straight-up hustlin a match
+if tha subject aint long enough, or, fo' unanchored patterns, if it has
+been scanned far enough.
+.P
+Yo ass can disable these optimizations by passin tha PCRE_NO_START_OPTIMIZE
+option ta tha matchin function, or by startin tha pattern with
+(*NO_START_OPT). This slows down tha matchin process yo, but do ensure that
+callouts like fuckin tha example above is obeyed.
+.
+.
+.SH "THE CALLOUT INTERFACE"
+.rs
+.sp
+Durin matching, when PCRE reaches a cold-ass lil callout point, tha external function
+defined by \fIpcre_callout\fP or \fIpcre[16|32]_callout\fP is called
+(if it is set). This applies ta both aiiight n' DFA matching. Da only
+argument ta tha callout function be a pointa ta a \fBpcre_callout\fP
+or \fBpcre[16|32]_callout\fP block.
+These structures gotz nuff tha followin fields:
+.sp
+  int           \fIversion\fP;
+  int           \fIcallout_number\fP;
+  int          *\fIoffset_vector\fP;
+  const char   *\fIsubject\fP;           (8-bit version)
+  PCRE_SPTR16   \fIsubject\fP;           (16-bit version)
+  PCRE_SPTR32   \fIsubject\fP;           (32-bit version)
+  int           \fIsubject_length\fP;
+  int           \fIstart_match\fP;
+  int           \fIcurrent_position\fP;
+  int           \fIcapture_top\fP;
+  int           \fIcapture_last\fP;
+  void         *\fIcallout_data\fP;
+  int           \fIpattern_position\fP;
+  int           \fInext_item_length\fP;
+  const unsigned char *\fImark\fP;       (8-bit version)
+  const PCRE_UCHAR16  *\fImark\fP;       (16-bit version)
+  const PCRE_UCHAR32  *\fImark\fP;       (32-bit version)
+.sp
+Da \fIversion\fP field be a integer containin tha version number of the
+block format. Da initial version was 0; tha current version is 2. Da version
+number will chizzle again n' again n' again up in future if additionizzle fieldz is added yo, but the
+intention is never ta remove any of tha existin fields.
+.P
+Da \fIcallout_number\fP field gotz nuff tha number of tha callout, as compiled
+into tha pattern (that is, tha number afta ?C fo' manual callouts, n' 255 for
+automatically generated callouts).
+.P
+Da \fIoffset_vector\fP field be a pointa ta tha vector of offsets dat was
+passed by tha calla ta tha matchin function. I aint talkin' bout chicken n' gravy biatch. When \fBpcre_exec()\fP or
+\fBpcre[16|32]_exec()\fP is used, tha contents can be inspected, up in order to
+extract substrings dat done been matched so far, up in tha same way as for
+extractin substrings afta a match has completed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. For tha DFA matching
+functions, dis field aint useful.
+.P
+Da \fIsubject\fP n' \fIsubject_length\fP fieldz contain copiez of tha joints
+that was passed ta tha matchin function.
+.P
+Da \fIstart_match\fP field normally gotz nuff tha offset within tha subject at
+which tha current match attempt started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. But fuck dat shiznit yo, tha word on tha street is dat if tha escape sequence \eK
+has been encountered, dis value is chizzled ta reflect tha modified starting
+point. If tha pattern aint anchored, tha callout function may be called
+several times from tha same point up in tha pattern fo' different startin points
+in tha subject.
+.P
+Da \fIcurrent_position\fP field gotz nuff tha offset within tha subject of the
+current match pointer.
+.P
+When tha \fBpcre_exec()\fP or \fBpcre[16|32]_exec()\fP is used, the
+\fIcapture_top\fP field gotz nuff one mo' than tha number of tha highest
+numbered captured substrin so far. Shiiit, dis aint no joke. If no substrings done been captured, the
+value of \fIcapture_top\fP is one. This be always tha case when tha DFA
+functions is used, cuz they do not support captured substrings.
+.P
+Da \fIcapture_last\fP field gotz nuff tha number of da most thugged-out recently captured
+substring. But fuck dat shiznit yo, tha word on tha street is dat when a recursion exits, tha value reverts ta what tha fuck it was
+outside tha recursion, as do tha jointz of all captured substrings. If no
+substrings done been captured, tha value of \fIcapture_last\fP is -1. This is
+always tha case fo' tha DFA matchin functions.
+.P
+Da \fIcallout_data\fP field gotz nuff a value dat is passed ta a matching
+function specifically so dat it can be passed back up in callouts, n' you can put dat on yo' toast. Well shiiiit, it is passed
+in tha \fIcallout_data\fP field of a \fBpcre_extra\fP or \fBpcre[16|32]_extra\fP
+data structure. If no such data was passed, tha value of \fIcallout_data\fP in
+a callout block is NULL. There be a thugged-out description of tha \fBpcre_extra\fP
+structure up in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation.
+.P
+Da \fIpattern_position\fP field is present from version 1 of tha callout
+structure. Well shiiiit, it gotz nuff tha offset ta tha next item ta be matched up in tha pattern
+string.
+.P
+Da \fInext_item_length\fP field is present from version 1 of tha callout
+structure. Well shiiiit, it gotz nuff tha length of tha next item ta be matched up in tha pattern
+string. When tha callout immediately precedes a alternation bar, a cold-ass lil closing
+parenthesis, or tha end of tha pattern, tha length is zero. When tha callout
+precedes a openin parenthesis, tha length is dat of tha entire subpattern.
+.P
+Da \fIpattern_position\fP n' \fInext_item_length\fP fieldz is intended to
+help up in distinguishin between different automatic callouts, which all have the
+same callout number n' shit. But fuck dat shiznit yo, tha word on tha street is dat they is set fo' all callouts.
+.P
+Da \fImark\fP field is present from version 2 of tha callout structure. In
+callouts from \fBpcre_exec()\fP or \fBpcre[16|32]_exec()\fP it gotz nuff a
+pointa ta tha zero-terminated name of da most thugged-out recently passed (*MARK),
+(*PRUNE), or (*THEN) item up in tha match, or NULL if no such shit have been
+passed. Y'all KNOW dat shit, muthafucka! Instancez of (*PRUNE) or (*THEN) without a name do not obliterate a
+previous (*MARK). In callouts from tha DFA matchin functions dis field always
+gotz nuff NULL.
+.
+.
+.SH "RETURN VALUES"
+.rs
+.sp
+Da external callout function returns a integer ta PCRE. If tha value is zero,
+matchin proceedz as normal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. If tha value is pimped outa than zero, matchin fails
+at tha current point yo, but tha testin of other matchin possibilitizzles goes
+ahead, just as if a lookahead assertion had failed. Y'all KNOW dat shit, muthafucka! If tha value is less than
+zero, tha match be abandoned, tha matchin function returns tha wack value.
+.P
+Negatizzle joints should normally be chosen from tha set of PCRE_ERROR_xxx
+values. In particular, PCRE_ERROR_NOMATCH forces a standard "no match" failure.
+Da error number PCRE_ERROR_CALLOUT is reserved fo' use by callout functions;
+it aint NEVER gonna be used by PCRE itself.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 03 March 2013
+Copyright (c) 1997-2013 Universitizzle of Cambridge.
+.fi

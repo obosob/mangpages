@@ -1,0 +1,416 @@
+.\"
+.\" Copyright (C) 2014 Red Hat, Inc fo' realz. All Rights Reserved.
+.\" Written by Dizzy Howells (dhowells@redhat.com)
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public Licence
+.\" as published by tha Jacked Software Foundation; either version
+.\" 2 of tha Licence, or (at yo' option) any lata version.
+.\"
+.TH KEYRINGS 7 "21 Feb 2014" Linux "Kernel key pimpment"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH NAME
+keyrings \- In-kernel key pimpment n' retention facility
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH OVERVIEW
+The
+.B keyrings
+facilitizzle is primarily a way fo' drivers ta retain or cache securitizzle data,
+authentication keys, encryption keys n' other data up in tha kernel.
+.P
+System call intercourses is provided so dat userspace programs can manage them
+objects n' also use tha facilitizzle fo' they own purposes.
+.P
+A library n' some userspace utilitizzles is provided ta allow access ta the
+facility.  See
+.BR keyutils (7)
+manual page fo' mo' shiznit.
+.P
+This document gotz nuff tha followin sections:
+.P
+.RS
+- Keys.
+.br
+- Key types.
+.br
+- Keyrings.
+.br
+- Anchorin keys.
+.br
+- Possession.
+.br
+- Access rights.
+.br
+- Searchin fo' keys.
+.br
+- On-demand key creation.
+.br
+- Users.
+.br
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.P
+.SH KEYS
+Da facilitizzle serves up tha concept of a '\fBkey\fR', where all of tha above
+examplez is encapsulated within objectz of dis type.
+.P
+A 'key' gotz nuff tha followin elements:
+.IP "\fBSerial number\fR"
+This be a unique integer handle by which a key is referred ta up in system call
+arguments.
+.IP "\fBType\fR"
+This defines what tha fuck sort of data can be held up in tha key, how tha fuck tha proposed content
+of tha key is ghon be parsed n' how tha fuck tha payload is ghon be used.
+.IP
+There is a fuckin shitload of general purpose types available, plus some specialist
+types defined by specific drivers.
+.IP "\fBDescription\fR"
+This be a printable strang dat is used as tha search term fo' tha key (in
+conjunction wit tha type) as well as a gangbangin' finger-lickin' display name.  Da description may be
+partially matched or exactly matched.
+.IP "\fBPayload\fR"
+This is tha actual content of a key.  This is probably set when a key is
+created yo, but it is possible fo' tha kernel ta upcall ta userspace ta finish the
+instantiation of a key if dat key wasn't already known ta tha kernel when it
+was requested.
+.IP
+A keyz payload can be read n' updated if tha key type supports it n' if
+suitable permission is granted ta tha caller.
+.IP "\fBAccess rights\fR"
+Each key has a ownin user ID, a ownin crew n' a securitizzle label - much as
+filez do.  They also gotz a set of permissions, though there be mo' than for
+a aiiight UNIX file, n' there be a additionizzle category beyond tha usual user,
+group n' other (see below).
+.IP
+Note dat keys is quota controlled since they represent unswappable kernel
+memory n' tha ownin user ID specifies whose quota is ta be debited.
+.IP "\fBExpiration time\fR"
+Each key can have a expiration time set.  When dat time is reached, tha key
+is marked as bein expired n' accesses ta it fail wit \fIEKEYEXPIRED\fR.  If
+not deleted, updated or replaced, afta a set amount of time, expired keys are
+automatically removed along wit all links ta dem n' \fIENOKEY\fR will be
+reported.
+.IP "\fBReference count\fR"
+Each key has a reference count.  Keys is referenced by keyrings, by current
+actizzle playas n' by a processs credentials.  When tha reference count reaches
+zero, tha key is scheduled fo' garbage collection.
+.P
+See the
+.BR keyctl_describe (3)
+manual page fo' mo' shiznit.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH KEY TYPES
+.P
+Da facilitizzle serves up nuff muthafuckin basic typez of key:
+.IP "\fBkeyring\fR"
+Keyz of dis type is special. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  Da payload consistz of a set of links ta other
+keys, analogous ta a gangbangin' finger-lickin' directory holdin links ta files.  Da main purpose of a
+keyrin is ta prevent other keys from bein garbage collected cuz nothing
+refers ta em.
+.IP "\fBuser\fR"
+This be a general purpose key type.  It may be instantiated wit a arbitrary
+blob of data of up ta bout 32KB.  It be kept entirely within kernel memory.
+It may be read n' updated by userspace.
+.IP "\fBbig_key\fR"
+This is similar ta \fBuser\fR but it may hold data up ta 1MB up in size.  Da data
+may be stored up in tha swap space rather than up in kernel memory if tha size
+exceedz tha overhead of bustin so (a tmpfs file is used - which requires
+filesystem structures ta be allocated up in tha kernel).
+.IP "\fBlogon\fR"
+This is similar ta \fBuser\fR but tha contents may not be read by userspace.
+.P
+There is mo' specialised key types available also yo, but they not discussed
+here as they not intended fo' aiiight userspace use.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.P
+.SH KEYRINGS
+As previously mentioned, keyrings is a special type of key dat contain links
+to other keys (which may include other keyrings).  Keys may be linked ta by
+multiple keyrings.  Keyrings may be considered as analogous ta UNIX directories
+where each directory gotz nuff a set of hard links ta files.
+.P
+Several of tha syscall functions available may only be applied ta keyrings:
+.IP "\fBAdding\fR"
+A key may be added ta a keyrin by system calls dat create keys.  This
+prevents tha freshly smoked up key from bein immediately deleted when tha system call driver
+releases its last reference ta tha key.
+.IP "\fBLinking\fR"
+A link may be added ta a keyrin pointin ta a key dat be already known,
+provided dis do not create a self-referential cycle.
+.IP "\fBUnlinking\fR"
+A link may be removed from a keyring.  When tha last link ta a key is removed,
+that key is ghon be scheduled fo' deletion by tha garbage collector.
+.IP "\fBClearing\fR"
+All tha links may be removed from a keyring.
+.IP "\fBSearching\fR"
+A keyrin may be considered tha root of a tree or subtree up in which keyrings
+form tha branches n' non-keyrings tha leaves.  This tree may be searched fo' a
+leaf matchin a particular type n' description.
+.P
+See the
+.BR keyctl_clear (3),
+.BR keyctl_link (3),
+.BR keyctl_search (3)
+and
+.BR keyctl_unlink (3)
+manual pages fo' mo' shiznit.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH ANCHORING KEYS
+.P
+To prevent a key from bein prematurely garbage collected, it must anchored to
+keep its reference count elevated when it aint up in actizzle use by tha kernel.
+.P
+\fBKeyrings\fR is used ta anchor other keys - each link be a reference on a
+key - but whilst keyrings is available ta link ta keys, keyrings theyselves
+are just keys n' is also subject ta tha same anchorin necessity.
+.P
+Da kernel make available a fuckin shitload of anchor keyrings.  Note dat some of
+these keyrings will only be pimped when first accessed.
+.IP "\fBProcess keyrings\fR"
+Process credentials theyselves reference keyrings wit specific semantics.
+These keyrings is pinned as long as tha set of credentials exists - which is
+usually as long as tha process do.
+.IP
+There is three keyrings wit different inheritance/sharin rules:  Da \fBsession
+keyring\fR (inherited n' shared by all lil pimp processes), tha \fBprocess keyring\fR
+(shared by all threadz up in a process) n' tha \fBthread keyring\fR (specific to
+a particular thread).
+.IP "\fBUser keyrings\fR"
+Each UID known ta tha kernel has a record dat gotz nuff two keyrings: The
+\fBuser keyring\fR n' tha \fBuser session keyring\fR.  These exist fo' as long
+as tha UID record up in tha kernel exists, n' you can put dat on yo' toast.  A link ta tha user keyrin is placed
+in a freshly smoked up session keyrin by \fBpam_keyinit\fR when a freshly smoked up login session is
+initiated.
+.IP "\fBPersistent keyrings\fR"
+There be a \fBpersistent keyring\fR available ta each UID known ta tha system.
+It may persist beyond tha game of tha UID record previously mentioned yo, but has
+an expiration time set such dat it be automatically cleaned up afta a set
+time.  This, fo' example, permits cron scripts ta use credentials left when the
+user logs out.
+.IP
+Note dat tha expiration time is reset every last muthafuckin time tha persistent key is
+requested.
+.IP "\fBSpecial keyrings\fR"
+There is special keyrings owned by tha kernel dat can anchor keys fo' special
+purposes.  An example of dis is tha \fBsystem keyring\fR used fo' holding
+encryption keys fo' module signature verification.
+.IP
+These is probably closed ta direct alteration by userspace.
+.P
+See the
+.BR thread-keyrin (7),
+.BR process-keyrin (7),
+.BR session-keyrin (7),
+.BR user-keyrin (7),
+.BR user-session-keyrin (7),
+and
+.BR persistent-keyrin (7)
+manual pages fo' mo' shiznit.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH POSSESSION
+.P
+Da concept of '\fBpossession\fR' is blingin ta understandin tha keyrings
+securitizzle model.  Whether a thread possesses a key is determined by the
+followin rules:
+.IP (1)
+Any key or keyrin dat do not grant \fBSearch\fP permission ta tha calla is
+\fIignored\fP up in all tha followin rules.
+.IP (2)
+A thread \fIpossesses\fR its \fBsession\fR, \fBprocess\fR n' \fBthread\fR
+keyrings directly cuz dem is pointed ta by its credentials.
+.IP (3)
+If a keyrin is possessed, then any key it links ta is \fIalso\fR possessed.
+.IP (4)
+If any key a keyrin links ta is itself a keyring, then rule (3) applies
+\fIrecursively\fP.
+.IP (5)
+If a process is upcalled from tha kernel ta instantiate a key, then it also
+possesss tha \fIrequester's\fP keyrings as up in rule (1) as if it was the
+requester.
+.P
+Note dat possession aint a gangbangin' fundamenstrual property of a key yo, but must rather be
+calculated each time it is needed.
+.P
+Possession is designed ta allow setuid programs run from, say, a userz shell
+to access tha userz keys.  It also allows tha prevention of access ta keys
+just on tha basiz of UID n' GID matches.
+.P
+When it creates tha session keyring, tha \fBpam_keyinit\fR module addz a link
+to tha user keyring, thus makin tha user keyrin n' anythang it gotz nuff
+possessed by default.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH ACCESS RIGHTS
+.P
+Each key has tha followin security-related attributes:
+.P
+.RS
+- Da ownin user ID
+.br
+- Da ID of a crew dat is permitted ta access tha key
+.br
+- A securitizzle label
+.br
+- A permissions mask
+.RE
+.P
+Da permissions mask is used ta govern tha followin rights:
+.IP \fBView\fR
+If set, tha attributez of a key may be read. Y'all KNOW dat shit, muthafucka!  This includes tha type,
+description n' access muthafuckin rights (excludin tha securitizzle label).
+.IP \fBRead\fR
+If set, tha payload of a key may be read n' a list of tha serial numbers to
+which a keyrin has links may be read.
+.IP \fBWrite\fR
+If set, tha payload of a key may be updated, links may be added ta or removed
+from a keyring, a keyrin may be cleared straight-up n' a key may be revoked.
+.IP \fBSearch\fR
+If set, keyrings n' subkeyrings may be searched n' keys n' keyrings may be
+found by dat search.
+.IP \fBLink\fR
+If set, a additionizzle link may be made ta a key from a keyring.  Da initial
+link ta a key when it is pimped don't require dis permit.
+.IP \fBSetattr\fR
+If set, tha ballershizzle details on a key n' its securitizzle label may be chizzled,
+its expiration time may be set n' it may be revoked.
+.P
+Da permissions mask gotz nuff four setz of rights, n' you can put dat on yo' toast.  Da first three sets are
+mutually exclusive.  One n' only one is ghon be up in force at any one time.  In
+order of descendin priority:
+.IP \fBUser\fR
+Used if tha keyz user ID matches tha callerz \fBfsuid\fR.
+.IP \fBGroup\fR
+Used if tha user ID didn't match n' tha keyz crew ID matches tha caller's
+\fBfsgid\fR or one of tha callerz supplementary crew list.
+.IP \fBOther\fR
+Used if neither tha keyz user ID nor crew ID matched.
+.P
+Da fourth set of muthafuckin rights is:
+.IP \fBPossessor\fR
+Used if a key is determined ta be \fBpossessed\fR by tha caller.
+.P
+Da complete set of muthafuckin rights fo' a key is tha set union of whichever of tha first
+three sets is selected plus tha fourth if tha key is possessed.
+.P
+If any right is granted ta a thread fo' a key, then dat thread will peep the
+key listed up in /proc/keys.  If no muthafuckin rights at all is granted, then dat thread
+can't even tell dat tha key exists.
+.P
+In addizzle ta access rights, any actizzle \fBLinux Securitizzle Module\fP may
+prevent access ta a key if its policy so dictates.  A key may be given a
+securitizzle label or other attribute by tha LSM which can be retrieved.
+.P
+See the
+.BR keyctl_chown (3),
+.BR keyctl_describe (3),
+.BR keyctl_get_securitizzle (3),
+.BR keyctl_setperm (3)
+and
+.BR selinux (8)
+manual pages fo' mo' shiznit.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH SEARCHING FOR KEYS
+.P
+One of tha key featurez of dis facilitizzle is tha mobilitizzle ta find a key dat it
+is retaining.  Da \fBrequest_key\fR() system call is tha primary point of
+access fo' userspace ta find a key ta use (the kernel has suttin' similar
+available).
+.P
+Da search algorithm works as bigs up:
+.IP (1)
+Da three process keyrings is searched up in tha followin order: tha thread
+keyrin if it exists, tha process keyrin if it exists n' then either the
+session keyrin if it exists or tha user session keyrin if dat exists.
+.IP (2)
+If tha calla was a process dat was invoked by tha \fBrequest_key\fR() upcall
+mechanizzle then tha keyringz of tha original gangsta calla of dat \fBrequest_key\fR()
+will be searched as well.
+.IP (3)
+Each keyrin is searched first fo' a match, then tha keyrings referred ta by
+that keyrin is searched.
+.IP (4)
+If a matchin key is found dat is valid, then tha search terminates n' that
+key is returned.
+.IP (5)
+If a matchin key is found dat has a error state attached, dat error state
+is noted n' tha search continues.
+.IP (6)
+If valid matchin key is found, then tha straight-up original gangsta noted error state is returned or
+else \fBENOKEY\fR is returned.
+.P
+It be also possible ta search a specific keyring, up in which case only steps (3)
+to (6) apply.
+.P
+See the
+.BR request_key (2)
+and
+.BR keyctl_search (3)
+manual pages fo' mo' shiznit.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH ON-DEMAND KEY CREATION
+.P
+If a key cannot be found, tha \fBrequest_key\fR() system call will, if given a
+\fIcallout_info\fR argument, create a freshly smoked up key n' then upcall ta userspace to
+instantiate tha key.  This allows keys ta be pimped on a as-needed basis.
+.P
+Typically, dis will involve tha kernel forkin n' exec'in \fBrequest-key\fR
+program, which will then execute tha appopriate handlez based on its
+configuration.
+.P
+Da handlez is passed a special authorisation key dat allows it n' only it to
+instantiate tha freshly smoked up key.  This be also used ta permit searches performed by the
+handlez program ta also search tha requesterz keyrings.
+.P
+See the
+.BR keyctl_assume_authoritizzle (3),
+.BR keyctl_instantiate (3),
+.BR keyctl_negate (3),
+.BR keyctl_reject (3),
+.BR request_key (2),
+.BR request-key (8)
+and
+.BR request-key.conf (5)
+manual pages fo' mo' shiznit.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH USERS
+.P
+Da facilitizzle has a fuckin shitload of playas n' usages yo, but aint limited ta them
+that already exist.
+.P
+In-kernel playaz of dis facilitizzle include:
+.IP "\fBNetwork filesystems - DNS\fR"
+Da kernel uses tha upcall mechanizzle provided by tha keys ta upcall to
+userspace ta do DNS lookups n' then ta cache tha thangs up in dis biatch.
+.IP "\fBAF_RXRPC n' kAFS - Authentication\fR"
+Da AF_RXRPC network protocol n' tha in-kernel AFS filesystem store tha ticket
+needed ta do secured or encrypted traffic up in keys.  These is then looked up by
+network operations on AF_RXRPC n' filesystem operations on kAFS.
+.IP "\fBNFS - User ID mapping\fR"
+Da NFS filesystem uses keys ta store foreign user ID ta local user ID mapping.
+.IP "\fBCIFS - Password\fR"
+Da CIFS filesystem uses keys ta store passwordz fo' accessin remote shares.
+.IP "\fBModule verification\fR"
+Da kernel build process can be made ta cryptographically sign modules.  That
+signature is then checked when a module is loaded.
+.P
+Userspace playaz of dis facilitizzle include:
+.IP "\fBKerberos key storage\fR"
+Da MIT Kerberos 5 facilitizzle (libkrb5) can use keys ta store authentication
+tokens which can be made ta be automatically cleaned up a set time afta the
+user last uses dem yo, but until then permits dem ta hang round afta tha user
+has logged up so dat cron scripts can use em.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH SEE ALSO
+.BR keyutils (7),
+.br
+.BR pam_keyinit (8),
+.br
+.BR thread-keyrin (7),
+.br
+.BR process-keyrin (7),
+.br
+.BR session-keyrin (7),
+.br
+.BR user-keyrin (7),
+.br
+.BR user-session-keyrin (7),
+.br
+.BR persistent-keyrin (7)

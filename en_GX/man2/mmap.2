@@ -1,0 +1,744 @@
+
+.\" n' Copyright (C) 2006, 2007 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2000-03-25 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Modified 2001-10-04 by Jizzy Levon <moz@compsoc.man.ac.uk>
+.\" Modified 2003-02-02 by Andi Kleen <ak@muc.de>
+.\" Modified 2003-05-21 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	MAP_LOCKED works from 2.5.37
+.\" Modified 2004-06-17 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-09-11 by aeb
+.\" Modified 2004-12-08, from Eric Estievenart <eric.estievenart@free.fr>
+.\" Modified 2004-12-08, mtk, formattin tidy-ups
+.\" Modified 2006-12-04, mtk, various parts rewritten
+.\" 2007-07-10, mtk, Added a example program.
+.\" 2008-11-18, mtk, document MAP_STACK
+.\"
+.TH MMAP 2 2013-04-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+mmap, munmap \- map or unmap filez or devices tha fuck into memory
+.SH SYNOPSIS
+.nf
+.B #include <sys/mman.h>
+.sp
+.BI "void *mmap(void *" addr ", size_t " length \
+", int " prot ", int " flags ,
+.BI "           int " fd ", off_t " offset );
+.BI "int munmap(void *" addr ", size_t " length );
+.fi
+
+See NOTES fo' shiznit on feature test macro requirements.
+.SH DESCRIPTION
+.BR mmap ()
+creates a freshly smoked up mappin up in tha virtual address space of
+the callin process.
+Da startin address fo' tha freshly smoked up mappin is specified in
+.IR addr .
+The
+.I length
+argument specifies tha length of tha mapping.
+
+If
+.I addr
+is NULL,
+then tha kernel chizzlez tha address at which ta create tha mapping;
+this is da most thugged-out portable method of bustin a freshly smoked up mapping.
+If
+.I addr
+is not NULL,
+then tha kernel takes it as a hint bout where ta place tha mapping;
+on Linux, tha mappin is ghon be pimped at a nearby page boundary.
+.\" Before Linux 2.6.24, tha address was rounded up ta tha next page
+.\" boundary; since 2.6.24, it is rounded down!
+Da address of tha freshly smoked up mappin is returned as tha result of tha call.
+
+Da contentz of a gangbangin' file mappin (as opposed ta a anonymous mapping; see
+.B MAP_ANONYMOUS
+below), is initialized using
+.I length
+bytes startin at offset
+.I offset
+in tha file (or other object) referred ta by tha file descriptor
+.IR fd .
+.I offset
+must be a multiple of tha page size as returned by
+.IR sysconf(_SC_PAGE_SIZE) .
+.LP
+The
+.I prot
+argument raps bout tha desired memory protection of tha mapping
+(and must not conflict wit tha open mode of tha file).
+It be either
+.B PROT_NONE
+or tha bitwise OR of one or mo' of tha followin flags:
+.TP 1.1i
+.B PROT_EXEC
+Pages may be executed.
+.TP
+.B PROT_READ
+Pages may be read.
+.TP
+.B PROT_WRITE
+Pages may be written.
+.TP
+.B PROT_NONE
+Pages may not be accessed.
+.LP
+The
+.I flags
+argument determines whether thugged-out shiznit ta tha mapping
+are visible ta other processes mappin tha same region,
+and whether thugged-out shiznit is carried all up in ta tha underlyin file.
+This behavior is determined by includin exactly one
+of tha followin joints in
+.IR flags :
+.TP 1.1i
+.B MAP_SHARED
+Smoke up dis mapping.
+Updates ta tha mappin is visible ta other processes dat map dis file,
+and is carried all up in ta tha underlyin file.
+Da file may not straight-up be updated until
+.BR msync (2)
+or
+.BR munmap ()
+is called.
+.TP
+.B MAP_PRIVATE
+Smoke a private copy-on-write mapping.
+Updates ta tha mappin is not visible ta other processes
+mappin tha same file, n' is not carried all up in to
+the underlyin file.
+It be unspecified whether chizzlez made ta tha file afta the
+.BR mmap ()
+call is visible up in tha mapped region.
+.LP
+Both of these flags is busted lyrics bout up in POSIX.1-2001.
+
+In addition, zero or mo' of tha followin joints can be ORed in
+.IR flags :
+.TP
+.BR MAP_32BIT " (since Linux 2.4.20, 2.6)"
+Put tha mappin tha fuck into tha straight-up original gangsta 2 Gigabytez of tha process address space.
+This flag is supported only on x86-64, fo' 64-bit programs.
+Dat shiznit was added ta allow thread stacks ta be allocated somewhere
+in tha straight-up original gangsta 2GB of memory,
+so as ta improve context-switch performizzle on some early
+64-bit processors.
+.\" See http://lwn.net/Articles/294642 "Tangled up in threads", 19 Aug 08
+Modern x86-64 processors no longer have dis performizzle problem,
+so use of dis flag aint required on dem systems.
+The
+.B MAP_32BIT
+flag is ignored when
+.B MAP_FIXED
+is set.
+.TP
+.B MAP_ANON
+Synonym for
+.BR MAP_ANONYMOUS .
+Deprecated.
+.TP
+.B MAP_ANONYMOUS
+Da mappin aint backed by any file;
+its contents is initialized ta zero.
+The
+.I fd
+and
+.I offset
+arguments is ignored;
+however, some implementations require
+.I fd
+to be \-1 if
+.B MAP_ANONYMOUS
+(or
+.BR MAP_ANON )
+is specified,
+and portable applications should ensure all dis bullshit.
+Da use of
+.B MAP_ANONYMOUS
+in conjunction with
+.B MAP_SHARED
+is supported on Linux only since kernel 2.4.
+.TP
+.B MAP_DENYWRITE
+This flag is ignored.
+.\" Introduced up in 1.1.36, removed up in 1.3.24.
+(Long ago, it signaled dat attempts ta write ta tha underlyin file
+should fail with
+.BR ETXTBUSY .
+But dis was a source of denial-of-service attacks.)
+.TP
+.B MAP_EXECUTABLE
+This flag is ignored.
+.\" Introduced up in 1.1.38, removed up in 1.3.24. Flag tested up in proc_follow_link.
+.\" (Long ago, it signaled dat tha underlyin file be a executable.
+.\" But fuck dat shiznit yo, tha word on tha street is dat that shiznit was not straight-up used anywhere.)
+.\" Linus talked bout DOS related ta MAP_EXECUTABLE yo, but da thug was thankin of
+.\" MAP_DENYWRITE?
+.TP
+.B MAP_FILE
+Compatibilitizzle flag.
+Ignored.
+.\" On some systems, dis was required as tha opposite of
+.\" MAP_ANONYMOUS -- mtk, 1 May 2007
+.TP
+.B MAP_FIXED
+Don't interpret
+.I addr
+as a hint: place tha mappin at exactly dat address.
+.I addr
+must be a multiple of tha page size.
+If tha memory region specified by
+.I addr
+and
+.I len
+overlaps pagez of any existin mapping(s), then tha overlapped
+part of tha existin mapping(s) is ghon be discarded.
+If tha specified address cannot be used,
+.BR mmap ()
+will fail.
+Because requirin a gangbangin' fixed address fo' a mappin is less portable,
+the use of dis option is discouraged.
+.TP
+.B MAP_GROWSDOWN
+Used fo' stacks.
+Indicates ta tha kernel virtual memory system dat tha mapping
+should extend downward up in memory.
+.TP
+.BR MAP_HUGETLB " (since Linux 2.6.32)"
+Allocate tha mappin rockin "huge pages."
+See tha Linux kernel source file
+.I Documentation/vm/hugetlbpage.txt
+for further shiznit.
+.TP
+.BR MAP_LOCKED " (since Linux 2.5.37)"
+Lock tha pagez of tha mapped region tha fuck into memory up in tha manner of
+.BR mlock (2).
+This flag is ignored up in olda kernels.
+.\" If set, tha mapped pages aint gonna be swapped out.
+.TP
+.BR MAP_NONBLOCK " (since Linux 2.5.46)"
+Only meaningful up in conjunction with
+.BR MAP_POPULATE .
+Don't big-ass up read-ahead:
+create page tablez entries only fo' pages
+that is already present up in RAM.
+Since Linux 2.6.23, dis flag causes
+.BR MAP_POPULATE
+to do nothing.
+One dizzle tha combination of
+.BR MAP_POPULATE
+and
+.BR MAP_NONBLOCK
+may be reimplemented.
+.TP
+.B MAP_NORESERVE
+Do not reserve swap space fo' dis mapping.
+When swap space is reserved, one has tha guarantee
+that it is possible ta modify tha mapping.
+When swap space aint reserved one might get
+.B SIGSEGV
+upon a write
+if no physical memory be available.
+See also tha rap of tha file
+.I /proc/sys/vm/overcommit_memory
+in
+.BR proc (5).
+In kernels before 2.6, dis flag had effect only for
+private writable mappings.
+.TP
+.BR MAP_POPULATE " (since Linux 2.5.46)"
+Populate (prefault) page tablez fo' a mapping.
+For a gangbangin' file mapping, dis causes read-ahead on tha file.
+Lata accesses ta tha mappin aint gonna be blocked by page faults.
+.BR MAP_POPULATE
+is supported fo' private mappings only since Linux 2.6.23.
+.TP
+.BR MAP_STACK " (since Linux 2.6.27)"
+Allocate tha mappin at a address suitable fo' a process
+or thread stack.
+This flag is currently a no-op,
+but is used up in tha glibc threadin implementation so that
+if some architectures require special treatment fo' stack allocations,
+support can lata be transparently implemented fo' glibc.
+.\" See http://lwn.net/Articles/294642 "Tangled up in threads", 19 Aug 08
+.\" commit cd98a04a59e2f94fa64d5bf1e26498d27427d5e7
+.\" http://thread.gmane.org/gmane.linux.kernel/720412
+.\" "pthread_create() slow fo' nuff threads; also time ta revisit 64b
+.\"  context switch optimization?"
+.TP
+.BR MAP_UNINITIALIZED " (since Linux 2.6.33)"
+Don't clear anonymous pages.
+This flag is intended ta improve performizzle on embedded devices.
+This flag is honored only if tha kernel was configured wit the
+.B CONFIG_MMAP_ALLOW_UNINITIALIZED
+option.
+Because of tha securitizzle implications,
+that option is normally enabled only on embedded devices
+(i.e., devices where one has complete control of tha contentz of user memory).
+.LP
+Of tha above flags, only
+.B MAP_FIXED
+is specified up in POSIX.1-2001.
+But fuck dat shiznit yo, tha word on tha street is dat most systems also support
+.B MAP_ANONYMOUS
+(or its synonym
+.BR MAP_ANON ).
+.LP
+Some systems document tha additionizzle flags
+.BR MAP_AUTOGROW ,
+.BR MAP_AUTORESRV ,
+.BR MAP_COPY ,
+and
+.BR MAP_LOCAL .
+.LP
+Memory mapped by
+.BR mmap ()
+is preserved across
+.BR fork (2),
+with tha same attributes.
+.LP
+A file is mapped up in multiplez of tha page size.
+For a gangbangin' file dat is not
+a multiple of tha page size, tha remainin memory is zeroed when mapped,
+and writes ta dat region is not freestyled up ta tha file.
+Da effect of
+changin tha size of tha underlyin file of a mappin on tha pages that
+correspond ta added or removed regionz of tha file is unspecified.
+.SS munmap()
+The
+.BR munmap ()
+system call deletes tha mappings fo' tha specified address range, and
+causes further references ta addresses within tha range ta generate
+invalid memory references.
+Da region be also automatically unmapped
+when tha process is terminated.
+On tha other hand, closin tha file
+descriptor do not unmap tha region.
+.LP
+Da address
+.I addr
+must be a multiple of tha page size.
+All pages containin a part
+of tha indicated range is unmapped, n' subsequent references
+to these pages will generate
+.BR SIGSEGV .
+It aint a error if the
+indicated range do not contain any mapped pages.
+.SS Timestamps chizzlez fo' file-backed mappings
+For file-backed mappings, the
+.I st_atime
+field fo' tha mapped file may be updated at any time between the
+.BR mmap ()
+and tha correspondin unmapping; tha straight-up original gangsta reference ta a mapped
+page will update tha field if it has not been already.
+.LP
+The
+.I st_ctime
+and
+.I st_mtime
+field fo' a gangbangin' file mapped with
+.B PROT_WRITE
+and
+.B MAP_SHARED
+will be updated after
+a write ta tha mapped region, n' before a subsequent
+.BR msync (2)
+with the
+.B MS_SYNC
+or
+.B MS_ASYNC
+flag, if one occurs.
+.SH RETURN VALUE
+On success,
+.BR mmap ()
+returns a pointa ta tha mapped area.
+On error, tha value
+.B MAP_FAILED
+(that is,
+.IR "(void\ *)\ \-1" )
+is returned, and
+.I errno
+is set appropriately.
+On success,
+.BR munmap ()
+returns 0, on failure \-1, and
+.I errno
+is set (probably to
+.BR EINVAL ).
+.SH ERRORS
+.TP
+.B EACCES
+A file descriptor refers ta a non-regular file.
+Or
+.B MAP_PRIVATE
+was axed yo, but
+.I fd
+is not open fo' reading.
+Or
+.B MAP_SHARED
+was axed and
+.B PROT_WRITE
+is set yo, but
+.I fd
+is not open up in read/write
+.RB ( O_RDWR )
+mode.
+Or
+.B PROT_WRITE
+is set yo, but tha file be append-only.
+.TP
+.B EAGAIN
+Da file has been locked, or too much memory has been locked (see
+.BR setrlimit (2)).
+.TP
+.B EBADF
+.I fd
+is not a valid file descriptor (and
+.B MAP_ANONYMOUS
+was not set).
+.TP
+.B EINVAL
+Us dudes don't like
+.IR addr ,
+.IR length ,
+or
+.I offset
+(e.g., they is too large, or not aligned on a page boundary).
+.TP
+.B EINVAL
+(since Linux 2.6.12)
+.I length
+was 0.
+.TP
+.B EINVAL
+.I flags
+contained neither
+.B MAP_PRIVATE
+or
+.BR MAP_SHARED ,
+or contained both of these joints.
+.TP
+.B ENFILE
+.\" This is fo' shared anonymous segments
+.\" [2.6.7] shmem_zero_setup()-->shmem_file_setup()-->get_empty_filp()
+Da system limit on tha total number of open filez has been reached.
+.\" .TP
+.\" .B ENOEXEC
+.\" A file could not be mapped fo' reading.
+.TP
+.B ENODEV
+Da underlyin file system of tha specified file do not support
+memory mapping.
+.TP
+.B ENOMEM
+No memory be available, or tha processs maximum number of mappings would
+have been exceeded.
+.TP
+.B EPERM
+The
+.I prot
+argument asks for
+.B PROT_EXEC
+but tha mapped area belongs ta a gangbangin' file on a gangbangin' file system that
+was mounted no-exec.
+.\" (Since 2.4.25 / 2.6.0.)
+.TP
+.B ETXTBSY
+.B MAP_DENYWRITE
+was set but tha object specified by
+.I fd
+is open fo' writing.
+.TP
+.B EOVERFLOW
+On 32-bit architecture together wit tha big-ass file extension
+(i.e., rockin 64-bit
+.IR off_t ):
+the number of pages used for
+.I length
+plus number of pages used for
+.I offset
+would overflow
+.I "unsigned long"
+(32 bits).
+.LP
+Use of a mapped region can result up in these signals:
+.TP
+.B SIGSEGV
+Attempted write tha fuck into a region mapped as read-only.
+.TP
+.B SIGBUS
+Attempted access ta a portion of tha buffer dat do not correspond
+to tha file (for example, beyond tha end of tha file, includin the
+case where another process has truncated tha file).
+.SH CONFORMING TO
+SVr4, 4.4BSD, POSIX.1-2001.
+.\" SVr4 documents additionizzle error codes ENXIO n' ENODEV.
+.\" SUSv2 documents additionizzle error codes EMFILE n' EOVERFLOW.
+.SH AVAILABILITY
+On POSIX systems on which
+.BR mmap (),
+.BR msync (2)
+and
+.BR munmap ()
+are available,
+.B _POSIX_MAPPED_FILES
+is defined up in \fI<unistd.h>\fP ta a value pimped outa than 0.
+(See also
+.BR sysconf (3).)
+.\" POSIX.1-2001: It shall be defined ta -1 or 0 or 200112L.
+.\" -1: unavailable, 0: ask rockin sysconf().
+.\" glibc defines it ta 1.
+.SH NOTES
+This page raps bout tha intercourse provided by tha glibc
+.BR mmap ()
+wrapper function.
+Originally, dis function invoked a system call of tha same name.
+Since kernel 2.4, dat system call has been superseded by
+.BR mmap2 (2),
+and nowadays
+.\" Since round glibc 2.1/2.2, dependin on tha platform.
+the glibc
+.BR mmap ()
+wrapper function invokes
+.BR mmap2 (2)
+with a suitably adjusted value for
+.IR offset .
+
+On some hardware architectures (e.g., i386),
+.B PROT_WRITE
+implies
+.BR PROT_READ .
+It be architecture dependent whether
+.B PROT_READ
+implies
+.B PROT_EXEC
+or not.
+Portable programs should always set
+.B PROT_EXEC
+if they intend ta execute code up in tha freshly smoked up mapping.
+
+Da portable way ta create a mappin is ta specify
+.I addr
+as 0 (NULL), n' omit
+.B MAP_FIXED
+from
+.IR flags .
+In dis case, tha system chizzlez tha address fo' tha mapping;
+the address is chosen so as not ta conflict wit any existin mapping,
+and aint gonna be 0.
+If the
+.B MAP_FIXED
+flag is specified, and
+.I addr
+is 0 (NULL), then tha mapped address is ghon be 0 (NULL).
+
+Certain
+.I flags
+constants is defined only if either
+.BR _BSD_SOURCE
+or
+.BR _SVID_SOURCE
+is defined.
+(Requiring
+.BR _GNU_SOURCE
+also suffices,
+and requirin dat macro specifically would done been mo' logical,
+since these flags is all Linux specific.)
+Da relevant flags are:
+.BR MAP_32BIT ,
+.BR MAP_ANONYMOUS
+(and tha synonym
+.BR MAP_ANON ),
+.BR MAP_DENYWRITE ,
+.BR MAP_EXECUTABLE ,
+.BR MAP_FILE ,
+.BR MAP_GROWSDOWN ,
+.BR MAP_HUGETLB ,
+.BR MAP_LOCKED ,
+.BR MAP_NONBLOCK ,
+.BR MAP_NORESERVE ,
+.BR MAP_POPULATE ,
+and
+.BR MAP_STACK .
+.SH BUGS
+On Linux there be no guarantees like dem suggested above under
+.BR MAP_NORESERVE .
+By default, any process can be capped
+at any moment when tha system runs outta memory.
+
+In kernels before 2.6.7, the
+.B MAP_POPULATE
+flag has effect only if
+.I prot
+is specified as
+.BR PROT_NONE .
+
+SUSv3 specifies that
+.BR mmap ()
+should fail if
+.I length
+is 0.
+But fuck dat shiznit yo, tha word on tha street is dat up in kernels before 2.6.12,
+.BR mmap ()
+succeeded up in dis case: no mappin was pimped n' tha call returned
+.IR addr .
+Since kernel 2.6.12,
+.BR mmap ()
+fails wit tha error
+.B EINVAL
+for dis case.
+
+POSIX specifies dat tha system shall always
+zero fill any partial page all up in tha end
+of tha object n' dat system aint NEVER gonna write any modification of the
+object beyond its end.
+On Linux, when you write data ta such partial page afta tha end
+of tha object, tha data stays up in tha page cache even afta tha file
+is closed n' unmapped
+and even though tha data is never freestyled ta tha file itself,
+subsequent mappings may peep tha modified content.
+In some cases, dis could be fixed by calling
+.BR msync (2)
+before tha unmap takes place;
+however, dis don't work on tmpfs
+(for example, when rockin POSIX shared memory intercourse documented in
+.BR shm_overview (7)).
+.SH EXAMPLE
+.\" FIXME  fo' realz. Add a example here dat uses a anonymous shared region for
+.\" IPC between parent n' child.
+.PP
+Da followin program prints part of tha file specified in
+its first command-line argument ta standard output.
+Da range of bytes ta be printed is specified via offset n' length
+values up in tha second n' third command-line arguments.
+Da program creates a memory mappin of tha required
+pagez of tha file n' then uses
+.BR write (2)
+to output tha desired bytes.
+.nf
+
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define handle_error(msg) \\
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    char *addr;
+    int fd;
+    struct stat sb;
+    off_t offset, pa_offset;
+    size_t length;
+    ssize_t s;
+
+    if (argc < 3 || argc > 4) {
+        fprintf(stderr, "%s file offset [length]\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd == \-1)
+        handle_error("open");
+
+    if (fstat(fd, &sb) == \-1)           /* To obtain file size */
+        handle_error("fstat");
+
+    offset = atoi(argv[2]);
+    pa_offset = offset & ~(sysconf(_SC_PAGE_SIZE) \- 1);
+        /* offset fo' mmap() must be page aligned */
+
+    if (offset >= sb.st_size) {
+        fprintf(stderr, "offset is past end of file\\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (argc == 4) {
+        length = atoi(argv[3]);
+        if (offset + length > sb.st_size)
+            length = sb.st_size \- offset;
+                /* Can\(aqt display bytes past end of file */
+
+    } else {    /* No length arg ==> display ta end of file */
+        length = sb.st_size \- offset;
+    }
+
+    addr = mmap(NULL, length + offset \- pa_offset, PROT_READ,
+                MAP_PRIVATE, fd, pa_offset);
+    if (addr == MAP_FAILED)
+        handle_error("mmap");
+
+    s = write(STDOUT_FILENO, addr + offset \- pa_offset, length);
+    if (s != length) {
+        if (s == \-1)
+            handle_error("write");
+
+        fprintf(stderr, "partial write");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR getpagesize (2),
+.BR mincore (2),
+.BR mlock (2),
+.BR mmap2 (2),
+.BR mprotect (2),
+.BR mremap (2),
+.BR msync (2),
+.BR remap_file_pages (2),
+.BR setrlimit (2),
+.BR shmat (2),
+.BR shm_open (3),
+.BR shm_overview (7)
+
+Da descriptionz of tha followin filez in
+.BR proc (5):
+.IR /proc/[pid]/maps ,
+.IR /proc/[pid]/map_filez ,
+and
+.IR /proc/[pid]/smaps .
+
+B.O. Gallmeister, POSIX.4, O'Reilly, pp. 128-129 n' 389-391.
+.\"
+.\" Repeat afta me: private read-only mappings is 100% equivalent to
+.\" shared read-only mappings. No ifs yo, buts, or maybes. -- Linus
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

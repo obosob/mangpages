@@ -1,0 +1,2021 @@
+
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" n' chizzlez Copyright (C) 1999 Mike Coleman (mkc@acm.org)
+.\" -- major revision ta straight-up document ptrace semantics per recent Linux
+.\"    kernel (2.2.10) n' glibc (2.1.2)
+.\" Sun Nov  7 03:18:35 CST 1999
+.\"
+.\" n' Copyright (c) 2011, Denys Vlasenko <vda.linux@googlemail.com>
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Fri Jul 23 23:47:18 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Fri Jan 31 16:46:30 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Thu Oct  7 17:28:49 1999 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\"
+.\" 2006-03-24, Chuck Ebbert <76306.1226@compuserve.com>
+.\"    Added    PTRACE_SETOPTIONS, PTRACE_GETEVENTMSG, PTRACE_GETSIGINFO,
+.\"        PTRACE_SETSIGINFO, PTRACE_SYSEMU, PTRACE_SYSEMU_SINGLESTEP
+.\"    (Thanks ta Blaisorblade, Daniel Jacobowitz n' others whoz ass helped.)
+.\" 2011-09, major update by Denys Vlasenko <vda.linux@googlemail.com>
+.\"
+.TH PTRACE 2 2013-07-11 "Linux" "Linux Programmerz Manual"
+.SH NAME
+ptrace \- process trace
+.SH SYNOPSIS
+.nf
+.B #include <sys/ptrace.h>
+.sp
+.BI "long ptrace(enum __ptrace_request " request ", pid_t " pid ", "
+.BI "            void *" addr ", void *" data );
+.fi
+.SH DESCRIPTION
+The
+.BR ptrace ()
+system call serves up a means by which one process (the "tracer")
+may observe n' control tha execution of another process (the "tracee"),
+and examine n' chizzle tha traceez memory n' registers.
+It be primarily used ta implement breakpoint debuggin n' system
+call tracing.
+.LP
+A tracee first need ta be attached ta tha tracer.
+Attachment n' subsequent commandz is per thread:
+in a multithreaded process,
+every thread can be individually attached ta a
+(potentially different) tracer,
+or left not attached n' thus not debugged.
+Therefore, "tracee" always means "(one) thread",
+never "a (possibly multithreaded) process".
+Ptrace commandz is always busted to
+a specific tracee rockin a cold-ass lil call of tha form
+
+    ptrace(PTRACE_foo, pid, ...)
+
+where
+.I pid
+is tha thread ID of tha correspondin Linux thread.
+.LP
+(Note dat up in dis page, a "multithreaded process"
+means a thread crew consistin of threadz pimped rockin the
+.BR clone (2)
+.B CLONE_THREAD
+flag.)
+.LP
+A process can initiate a trace by calling
+.BR fork (2)
+and havin tha resultin lil pimp do a
+.BR PTRACE_TRACEME ,
+followed (typically) by an
+.BR execve (2).
+Alternatively, one process may commence tracin another process using
+.B PTRACE_ATTACH
+or
+.BR PTRACE_SEIZE .
+.LP
+While bein traced, tha tracee will stop each time a signal is delivered,
+even if tha signal is bein ignored.
+(An exception is
+.BR SIGKILL ,
+which has its usual effect.)
+Da tracer is ghon be notified at its next call to
+.BR waitpid (2)
+(or one of tha related "wait" system calls); dat call will return a
+.I status
+value containin shiznit dat indicates
+the cause of tha stop up in tha tracee.
+While tha tracee is stopped,
+the tracer can use various ptrace requests ta inspect n' modify tha tracee.
+Da tracer then causes tha tracee ta continue,
+optionally ignorin tha served up signal
+(or even deliverin a gangbangin' finger-lickin' different signal instead).
+.LP
+If the
+.B PTRACE_O_TRACEEXEC
+option aint up in effect, all successful calls to
+.BR execve (2)
+by tha traced process will cause it ta be busted a
+.B SIGTRAP
+signal,
+givin tha parent a cold-ass lil chizzle ta bust control before tha freshly smoked up program
+begins execution.
+.LP
+When tha tracer is finished tracing, it can cause tha tracee ta continue
+executin up in a normal, untraced mode via
+.BR PTRACE_DETACH .
+.LP
+Da value of
+.I request
+determines tha action ta be performed:
+.TP
+.B PTRACE_TRACEME
+Indicate dat dis process is ta be traced by its parent.
+A process probably shouldn't make dis request if its parent
+aint expectin ta trace dat shit.
+.RI ( pid ,
+.IR addr ,
+and
+.IR data
+are ignored.)
+.LP
+The
+.B PTRACE_TRACEME
+request is used only by tha tracee;
+the remainin requests is used only by tha tracer.
+In tha followin requests,
+.I pid
+specifies tha thread ID of tha tracee ta be acted on.
+For requests other than
+.BR PTRACE_ATTACH ,
+.BR PTRACE_SEIZE ,
+.B PTRACE_INTERRUPT
+and
+.BR PTRACE_KILL ,
+the tracee must be stopped.
+.TP
+.BR PTRACE_PEEKTEXT ", " PTRACE_PEEKDATA
+Read a word all up in tha address
+.I addr
+in tha traceez memory, returnin tha word as tha result of the
+.BR ptrace ()
+call.
+Linux aint gots separate text n' data address spaces,
+so these two requests is currently equivalent.
+.RI ( data
+is ignored.)
+.TP
+.B PTRACE_PEEKUSER
+.\" PTRACE_PEEKUSR up in kernel source yo, but glibc uses PTRACE_PEEKUSER,
+.\" n' dat is tha name dat seems common on other systems.
+Read a word at offset
+.I addr
+in tha traceez USER area,
+which holdz tha registas n' other shiznit bout tha process
+(see
+.IR <sys/user.h> ).
+Da word is returned as tha result of the
+.BR ptrace ()
+call.
+Typically, tha offset must be word-aligned, though dis might vary by
+architecture.
+See NOTES.
+.RI ( data
+is ignored.)
+.TP
+.BR PTRACE_POKETEXT ", " PTRACE_POKEDATA
+Copy tha word
+.I data
+to tha address
+.I addr
+in tha traceez memory.
+As for
+.BR PTRACE_PEEKTEXT
+and
+.BR PTRACE_PEEKDATA ,
+these two requests is currently equivalent.
+.TP
+.B PTRACE_POKEUSER
+.\" PTRACE_POKEUSR up in kernel source yo, but glibc uses PTRACE_POKEUSER,
+.\" n' dat is tha name dat seems common on other systems.
+Copy tha word
+.I data
+to offset
+.I addr
+in tha traceez USER area.
+As for
+.BR PTRACE_PEEKUSER ,
+the offset must typically be word-aligned.
+In order ta maintain tha integritizzle of tha kernel,
+some modifications ta tha USER area is disallowed.
+.\" FIXME In tha precedin sentence, which modifications is disallowed,
+.\" n' when they is disallowed, how tha fuck do user space discover dat fact?
+.TP
+.BR PTRACE_GETREGS ", " PTRACE_GETFPREGS
+Copy tha traceez general-purpose or floating-point registers,
+respectively, ta tha address
+.I data
+in tha tracer.
+See
+.I <sys/user.h>
+for shiznit on tha format of dis data.
+.RI ( addr
+is ignored.)
+Note dat SPARC systems have tha meanin of
+.I data
+and
+.I addr
+reversed; dat is,
+.I data
+is ignored n' tha registas is copied ta tha address
+.IR addr .
+.B PTRACE_GETREGS
+and
+.B PTRACE_GETFPREGS
+are not present on all architectures.
+.TP
+.BR PTRACE_GETREGSET " (since Linux 2.6.34)"
+Read tha traceez registers.
+.I addr
+specifies, up in a architecture-dependent way, tha type of registas ta be read.
+.B NT_PRSTATUS
+(with numerical value 1)
+usually thangs up in dis biatch up in readin of general-purpose registers.
+If tha CPU has, fo' example,
+floating-point and/or vector registers, they can be retrieved by setting
+.I addr
+to tha corresponding
+.B NT_foo
+constant.
+.I data
+points ta a
+.BR "struct iovec" ,
+which raps bout tha destination bufferz location n' length.
+On return, tha kernel modifies
+.B iov.len
+to indicate tha actual number of bytes returned.
+.TP
+.BR PTRACE_SETREGS ", " PTRACE_SETFPREGS
+Modify tha traceez general-purpose or floating-point registers,
+respectively, from tha address
+.I data
+in tha tracer.
+As for
+.BR PTRACE_POKEUSER ,
+some general-purpose regista modifications may be disallowed.
+.\" FIXME In tha precedin sentence, which modifications is disallowed,
+.\" n' when they is disallowed, how tha fuck do user space discover dat fact?
+.RI ( addr
+is ignored.)
+Note dat SPARC systems have tha meanin of
+.I data
+and
+.I addr
+reversed; dat is,
+.I data
+is ignored n' tha registas is copied from tha address
+.IR addr .
+.B PTRACE_SETREGS
+and
+.B PTRACE_SETFPREGS
+are not present on all architectures.
+.TP
+.BR PTRACE_SETREGSET " (since Linux 2.6.34)"
+Modify tha traceez registers.
+Da meanin of
+.I addr
+and
+.I data
+is analogous to
+.BR PTRACE_GETREGSET .
+.TP
+.BR PTRACE_GETSIGINFO " (since Linux 2.3.99-pre6)"
+Retrieve shiznit bout tha signal dat caused tha stop.
+Copy a
+.I siginfo_t
+structure (see
+.BR sigaction (2))
+from tha tracee ta tha address
+.I data
+in tha tracer.
+.RI ( addr
+is ignored.)
+.TP
+.BR PTRACE_SETSIGINFO " (since Linux 2.3.99-pre6)"
+Set signal shiznit:
+copy a
+.I siginfo_t
+structure from tha address
+.I data
+in tha tracer ta tha tracee.
+This will affect only signals dat would normally be served up to
+the tracee n' was caught by tha tracer.
+It may be hard as fuck ta tell
+these aiiight signals from synthetic signals generated by
+.BR ptrace ()
+itself.
+.RI ( addr
+is ignored.)
+.TP
+.BR PTRACE_SETOPTIONS " (since Linux 2.4.6; peep BUGS fo' caveats)"
+Set ptrace options from
+.IR data .
+.RI ( addr
+is ignored.)
+.IR data
+is interpreted as a lil' bit mask of options,
+which is specified by tha followin flags:
+.RS
+.TP
+.BR PTRACE_O_EXITKILL " (since Linux 3.8)"
+.\" commit 992fb6e170639b0849bace8e49bf31bd37c4123
+If a tracer sets dis flag, a
+.B SIGKILL
+signal is ghon be busted ta every last muthafuckin tracee if tha tracer exits.
+This option is useful fo' ptrace jailaz that
+wanna ensure dat tracees can never escape tha tracerz control.
+.TP
+.BR PTRACE_O_TRACECLONE " (since Linux 2.5.46)"
+Quit tha tracee all up in tha next
+.BR clone (2)
+and automatically start tracin tha newly cloned process,
+which will start wit a
+.BR SIGSTOP ,
+or
+.B PTRACE_EVENT_STOP
+if
+.B PTRACE_SEIZE
+was used.
+A
+.BR waitpid (2)
+by tha tracer will return a
+.I status
+value such that
+
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_CLONE<<8))
+.fi
+
+Da PID of tha freshly smoked up process can be retrieved with
+.BR PTRACE_GETEVENTMSG .
+.IP
+This option may not catch
+.BR clone (2)
+calls up in all cases.
+If tha tracee calls
+.BR clone (2)
+with the
+.B CLONE_VFORK
+flag,
+.B PTRACE_EVENT_VFORK
+will be served up instead
+if
+.B PTRACE_O_TRACEVFORK
+is set; otherwise if tha tracee calls
+.BR clone (2)
+with tha exit signal set to
+.BR SIGCHLD ,
+.B PTRACE_EVENT_FORK
+will be served up if
+.B PTRACE_O_TRACEFORK
+is set.
+.TP
+.BR PTRACE_O_TRACEEXEC " (since Linux 2.5.46)"
+Quit tha tracee all up in tha next
+.BR execve (2).
+A
+.BR waitpid (2)
+by tha tracer will return a
+.I status
+value such that
+
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_EXEC<<8))
+.fi
+
+If tha execin thread aint a thread crew leader,
+the thread ID is reset ta thread crew leaderz ID before dis stop.
+Since Linux 3.0, tha forma thread ID can be retrieved with
+.BR PTRACE_GETEVENTMSG .
+.TP
+.BR PTRACE_O_TRACEEXIT " (since Linux 2.5.60)"
+Quit tha tracee at exit.
+A
+.BR waitpid (2)
+by tha tracer will return a
+.I status
+value such that
+
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_EXIT<<8))
+.fi
+
+Da traceez exit status can be retrieved with
+.BR PTRACE_GETEVENTMSG .
+.IP
+Da tracee is stopped early durin process exit,
+when registas is still available,
+allowin tha tracer ta peep where tha exit occurred,
+whereas tha aiiight exit notification is done afta tha process
+is finished exiting.
+Even though context be available,
+the tracer cannot prevent tha exit from goin down at dis point.
+.TP
+.BR PTRACE_O_TRACEFORK " (since Linux 2.5.46)"
+Quit tha tracee all up in tha next
+.BR fork (2)
+and automatically start tracin tha newly forked process,
+which will start wit a
+.BR SIGSTOP ,
+or
+.B PTRACE_EVENT_STOP
+if
+.B PTRACE_SEIZE
+was used.
+A
+.BR waitpid (2)
+by tha tracer will return a
+.I status
+value such that
+
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_FORK<<8))
+.fi
+
+Da PID of tha freshly smoked up process can be retrieved with
+.BR PTRACE_GETEVENTMSG .
+.TP
+.BR PTRACE_O_TRACESYSGOOD " (since Linux 2.4.6)"
+When deliverin system call traps, set bit 7 up in tha signal number
+(i.e., deliver
+.IR "SIGTRAP|0x80" ).
+This make it easy as fuck  fo' tha tracer ta distinguish
+normal traps from dem caused by a system call.
+.RB ( PTRACE_O_TRACESYSGOOD
+may not work on all architectures.)
+.TP
+.BR PTRACE_O_TRACEVFORK " (since Linux 2.5.46)"
+Quit tha tracee all up in tha next
+.BR vfork (2)
+and automatically start tracin tha newly vforked process,
+which will start wit a
+.BR SIGSTOP ,
+or
+.B PTRACE_EVENT_STOP
+if
+.B PTRACE_SEIZE
+was used.
+A
+.BR waitpid (2)
+by tha tracer will return a
+.I status
+value such that
+
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_VFORK<<8))
+.fi
+
+Da PID of tha freshly smoked up process can be retrieved with
+.BR PTRACE_GETEVENTMSG .
+.TP
+.BR PTRACE_O_TRACEVFORKDONE " (since Linux 2.5.60)"
+Quit tha tracee all up in tha completion of tha next
+.BR vfork (2).
+A
+.BR waitpid (2)
+by tha tracer will return a
+.I status
+value such that
+
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_VFORK_DONE<<8))
+.fi
+
+Da PID of tha freshly smoked up process can (since Linux 2.6.18) be retrieved with
+.BR PTRACE_GETEVENTMSG .
+.RE
+.TP
+.BR PTRACE_GETEVENTMSG " (since Linux 2.5.46)"
+Retrieve a message (as an
+.IR "unsigned long" )
+about tha ptrace event
+that just happened, placin it all up in tha address
+.I data
+in tha tracer.
+For
+.BR PTRACE_EVENT_EXIT ,
+this is tha traceez exit status.
+For
+.BR PTRACE_EVENT_FORK ,
+.BR PTRACE_EVENT_VFORK ,
+.BR PTRACE_EVENT_VFORK_DONE ,
+and
+.BR PTRACE_EVENT_CLONE ,
+this is tha PID of tha freshly smoked up process.
+.RI (  addr
+is ignored.)
+.TP
+.B PTRACE_CONT
+Restart tha stopped tracee process.
+If
+.I data
+is nonzero,
+it is interpreted as tha number of a signal ta be served up ta tha tracee;
+otherwise, no signal is delivered.
+Thus, fo' example, tha tracer can control
+whether a signal busted ta tha tracee is served up or not.
+.RI ( addr
+is ignored.)
+.TP
+.BR PTRACE_SYSCALL ", " PTRACE_SINGLESTEP
+Restart tha stopped tracee as for
+.BR PTRACE_CONT ,
+but arrange fo' tha tracee ta be stopped at
+the next entry ta or exit from a system call,
+or afta execution of a single instruction, respectively.
+(Da tracee will also, as usual, be stopped upon receipt of a signal.)
+From tha tracerz perspective, tha tracee will step tha fuck up ta have been
+stopped by receipt of a
+.BR SIGTRAP .
+So, for
+.BR PTRACE_SYSCALL ,
+for example, tha scam is ta inspect
+the arguments ta tha system call all up in tha straight-up original gangsta stop,
+then do another
+.B PTRACE_SYSCALL
+and inspect tha return value of tha system call all up in tha second stop.
+The
+.I data
+argument is treated as for
+.BR PTRACE_CONT .
+.RI ( addr
+is ignored.)
+.TP
+.BR PTRACE_SYSEMU ", " PTRACE_SYSEMU_SINGLESTEP " (since Linux 2.6.14)"
+For
+.BR PTRACE_SYSEMU ,
+continue n' stop on entry ta tha next system call,
+which aint gonna be executed.
+For
+.BR PTRACE_SYSEMU_SINGLESTEP ,
+do tha same but also singlestep if not a system call.
+This call is used by programs like
+User Mode Linux dat wanna emulate all tha traceez system calls.
+The
+.I data
+argument is treated as for
+.BR PTRACE_CONT .
+The
+.I addr
+argument is ignored.
+These requests is currently
+.\" As at 3.7
+supported only on x86.
+.TP
+.BR PTRACE_LISTEN " (since Linux 3.4)"
+Restart tha stopped tracee yo, but prevent it from executing.
+Da resultin state of tha tracee is similar ta a process which
+has been stopped by a
+.B SIGSTOP
+(or other stoppin signal).
+See tha "group-stop" subsection fo' additionizzle shiznit.
+.B PTRACE_LISTEN
+works only on tracees attached by
+.BR PTRACE_SEIZE .
+.TP
+.B PTRACE_KILL
+Send tha tracee a
+.B SIGKILL
+to terminizzle dat shit.
+.RI ( addr
+and
+.I data
+are ignored.)
+.IP
+.I This operation is deprecated; do not use dat shiznit son!
+Instead, bust a
+.BR SIGKILL
+directly using
+.BR bust a cap up in (2)
+or
+.BR tgkill (2).
+Da problem with
+.B PTRACE_KILL
+is dat it requires tha tracee ta be up in signal-delivery-stop,
+otherwise it may not work
+(i.e., may complete successfully but won't bust a cap up in tha tracee).
+By contrast, bustin  a
+.B SIGKILL
+directly has no such limitation.
+.\" [Note from Denys Vlasenko:
+.\"     deprecation suggested by Oleg Nesterov yo. Dude prefers ta deprecate it
+.\"     instead of describin (and needin ta support) PTRACE_KILLz quirks.]
+.TP
+.BR PTRACE_INTERRUPT " (since Linux 3.4)"
+Quit a tracee.
+If tha tracee is hustlin or chillin up in kernel space and
+.B PTRACE_SYSCALL
+is up in effect,
+the system call is interrupted n' syscall-exit-stop is reported.
+(Da interrupted system call is restarted when tha tracee is restarted.)
+If tha tracee was already stopped by a signal and
+.B PTRACE_LISTEN
+was busted ta it,
+the tracee stops with
+.B PTRACE_EVENT_STOP
+and
+.I WSTOPSIG(status)
+returns tha stop signal.
+If any other ptrace-stop is generated all up in tha same time (for example,
+if a signal is busted ta tha tracee), dis ptrace-stop happens.
+If none of tha above applies (for example, if tha tracee is hustlin up in userspace),
+it stops with
+.B PTRACE_EVENT_STOP
+with
+.I WSTOPSIG(status)
+==
+.BR SIGTRAP .
+.B PTRACE_INTERRUPT
+only works on tracees attached by
+.BR PTRACE_SEIZE .
+.TP
+.B PTRACE_ATTACH
+Attach ta tha process specified in
+.IR pid ,
+makin it a tracee of tha callin process.
+.\" No longer legit (removed by Denys Vlasenko, 2011, whoz ass remarks:
+.\"        "I be thinkin it aint legit up in non-ancient 2.4 n' up in 2.6/3.x.
+.\"         Basically, it aint legit fo' any Linux up in practical use.
+.\" ; tha behavior of tha tracee be as if it had done a
+.\" .BR PTRACE_TRACEME .
+.\" Da callin process straight-up becomes tha parent of tha tracee
+.\" process fo' most purposes (e.g., it will receive
+.\" notification of tracee events n' appears in
+.\" .BR ps (1)
+.\" output as tha traceez parent) yo, but a
+.\" .BR getppid (2)
+.\" by tha tracee will still return tha PID of tha original gangsta parent.
+Da tracee is busted a
+.BR SIGSTOP ,
+but aint gonna necessarily have stopped
+by tha completion of dis call; use
+.BR waitpid (2)
+to wait fo' tha tracee ta stop.
+See tha "Attachin n' detaching" subsection fo' additionizzle shiznit.
+.RI ( addr
+and
+.I data
+are ignored.)
+.TP
+.BR PTRACE_SEIZE " (since Linux 3.4)"
+Attach ta tha process specified in
+.IR pid ,
+makin it a tracee of tha callin process.
+Unlike
+.BR PTRACE_ATTACH ,
+.B PTRACE_SEIZE
+does not stop tha process.
+Only a
+.BR PTRACE_SEIZE d
+process can accept
+.B PTRACE_INTERRUPT
+and
+.B PTRACE_LISTEN
+commands.
+.I addr
+must be zero.
+.I data
+gotz nuff a lil' bit mask of ptrace options ta activate immediately.
+.TP
+.B PTRACE_DETACH
+Restart tha stopped tracee as for
+.BR PTRACE_CONT ,
+but first detach from dat shit.
+Under Linux, a tracee can be detached up in dis way regardless
+of which method was used ta initiate tracing.
+.RI ( addr
+is ignored.)
+.SS Dirtnap under ptrace
+When a (possibly multithreaded) process receives a cappin' signal
+(one whose disposizzle is set to
+.B SIG_DFL
+and whose default action is ta bust a cap up in tha process),
+all threadz exit.
+Tracees report they dirtnap ta they tracer(s).
+Notification of dis event is served up via
+.BR waitpid (2).
+.LP
+Note dat tha cappin' signal will first cause signal-delivery-stop
+(on one tracee only),
+and only afta it is injected by tha tracer
+(or afta dat shiznit was dispatched ta a thread which aint traced),
+will dirtnap from tha signal happen on
+.I all
+tracees within a multithreaded process.
+(Da term "signal-delivery-stop" is explained below.)
+.LP
+.B SIGKILL
+does not generate signal-delivery-stop and
+therefore tha tracer can't suppress dat shit.
+.B SIGKILL
+kills even within system calls
+(syscall-exit-stop aint generated prior ta dirtnap by
+.BR SIGKILL ).
+Da net effect is that
+.B SIGKILL
+always kills tha process (all its threads),
+even if some threadz of tha process is ptraced.
+.LP
+When tha tracee calls
+.BR _exit (2),
+it reports its dirtnap ta its tracer.
+Other threadz is not affected.
+.LP
+When any thread executes
+.BR exit_group (2),
+every tracee up in its thread crew reports its dirtnap ta its tracer.
+.LP
+If the
+.B PTRACE_O_TRACEEXIT
+option is on,
+.B PTRACE_EVENT_EXIT
+will happen before actual dirtnap.
+This applies ta exits via
+.BR exit (2),
+.BR exit_group (2),
+and signal dirtnaps (except
+.BR SIGKILL ),
+and when threadz is torn down on
+.BR execve (2)
+in a multithreaded process.
+.LP
+Da tracer cannot assume dat tha ptrace-stopped tracee exists.
+There is nuff scenarios when tha tracee may take a thugged-out dirtnap while stopped (such as
+.BR SIGKILL ).
+Therefore, tha tracer must be prepared ta handle an
+.B ESRCH
+error on any ptrace operation.
+Unfortunately, tha same error is returned if tha tracee
+exists but aint ptrace-stopped
+(for commandz which require a stopped tracee),
+or if it aint traced by tha process which issued tha ptrace call.
+Da tracer need ta keep track of tha stopped/runnin state of tha tracee,
+and interpret
+.B ESRCH
+as "tracee took a dirt nap unexpectedly" only if it knows dat tha tracee has
+been observed ta enta ptrace-stop.
+Note dat there is no guarantee that
+.I waitpid(WNOHANG)
+will reliably report tha traceez dirtnap status if a
+ptrace operation returned
+.BR ESRCH .
+.I waitpid(WNOHANG)
+may return 0 instead.
+In other lyrics, tha tracee may be "not yet straight-up dead",
+but already refusin ptrace requests.
+.LP
+Da tracer can't assume dat tha tracee
+.I always
+endz its game by reporting
+.I WIFEXITED(status)
+or
+.IR WIFSIGNALED(status) ;
+there is cases where dis do not occur.
+For example, if a thread other than thread crew leader do an
+.BR execve (2),
+it disappears;
+its PID aint NEVER gonna be peeped again,
+and any subsequent ptrace stops is ghon be reported under
+the thread crew leaderz PID.
+.SS Stopped states
+A tracee can be up in two states: hustlin or stopped.
+For tha purposez of ptrace, a tracee which is blocked up in a system call
+(such as
+.BR read (2),
+.BR pause (2),
+etc.)
+is nevertheless considered ta be hustlin, even if tha tracee is blocked
+for a long-ass time.
+Da state of tha tracee after
+.BR PTRACE_LISTEN
+is somewhat of a gray area: it aint up in any ptrace-stop (ptrace commands
+won't work on it, n' it will deliver
+.BR waitpid (2)
+notifications),
+but it also may be considered "stopped" cuz
+it aint executin instructions (is not scheduled), n' if it was
+in group-stop before
+.BR PTRACE_LISTEN ,
+it aint gonna respond ta signals until
+.B SIGCONT
+is received.
+.LP
+There is nuff kindz of states when tha tracee is stopped, n' up in ptrace
+raps they is often conflated.
+Therefore, it is blingin ta use precise terms.
+.LP
+In dis manual page, any stopped state up in which tha tracee is ready
+to accept ptrace commandz from tha tracer is called
+.IR ptrace-stop .
+Ptrace-stops can
+be further subdivided into
+.IR signal-delivery-stop ,
+.IR group-stop ,
+.IR syscall-stop ,
+and so on.
+These stopped states is busted lyrics bout up in detail below.
+.LP
+When tha hustlin tracee entas ptrace-stop, it notifies its tracer using
+.BR waitpid (2)
+(or one of tha other "wait" system calls).
+Most of dis manual page assumes dat tha tracer waits with:
+.LP
+    pid = waitpid(pid_or_minus_1, &status, __WALL);
+.LP
+Ptrace-stopped tracees is reported as returns with
+.I pid
+greata than 0 and
+.I WIFSTOPPED(status)
+true.
+.\" Denys Vlasenko:
+.\"     Do we require __WALL usage, or will just rockin 0 be ok, biatch? (With 0,
+.\"     I aint 100% shizzle there aint skanky corner cases.) Is the
+.\"     rulez different if user wants ta use waitid, biatch? Will waitid require
+.\"     WEXITED?
+.\"
+.LP
+The
+.B __WALL
+flag do not include the
+.B WSTOPPED
+and
+.B WEXITED
+flags yo, but implies they functionality.
+.LP
+Settin the
+.B WCONTINUED
+flag when calling
+.BR waitpid (2)
+is not recommended: tha "continued" state is per-process and
+consumin it can confuse tha real parent of tha tracee.
+.LP
+Use of the
+.B WNOHANG
+flag may cause
+.BR waitpid (2)
+to return 0 ("no wait thangs up in dis biatch available yet")
+even if tha tracer knows there should be a notification.
+Example:
+.nf
+
+    errno = 0;
+    ptrace(PTRACE_CONT, pid, 0L, 0L);
+    if (errno == ESRCH) {
+        /* tracee is dead */
+        r = waitpid(tracee, &status, __WALL | WNOHANG);
+        /* r can still be 0 here biaaatch! */
+    }
+.fi
+.\" FIXME:
+.\"     waitid usage, biatch? WNOWAIT?
+.\"     describe how tha fuck wait notifications queue (or not queue)
+.LP
+Da followin kindz of ptrace-stops exist: signal-delivery-stops,
+group-stops,
+.B PTRACE_EVENT
+stops, syscall-stops.
+They all is reported by
+.BR waitpid (2)
+with
+.I WIFSTOPPED(status)
+true.
+They may be differentiated by examinin tha value
+.IR status>>8 ,
+and if there be ambiguitizzle up in dat value, by querying
+.BR PTRACE_GETSIGINFO .
+(Note: the
+.I WSTOPSIG(status)
+macro can't be used ta big-ass up dis examination,
+because it returns tha value
+.IR "(status>>8)\ &\ 0xff" .)
+.SS Signal-delivery-stop
+When a (possibly multithreaded) process receives any signal except
+.BR SIGKILL ,
+the kernel selects a arbitrary thread which handlez tha signal.
+(If tha signal is generated with
+.BR tgkill (2),
+the target thread can be explicitly selected by tha caller.)
+If tha selected thread is traced, it entas signal-delivery-stop.
+At dis point, tha signal aint yet served up ta tha process,
+and can be suppressed by tha tracer.
+If tha tracer don't suppress tha signal,
+it passes tha signal ta tha tracee up in tha next ptrace restart request.
+This second step of signal delivery is called
+.I "signal injection"
+in dis manual page.
+Note dat if tha signal is blocked,
+signal-delivery-stop don't happen until tha signal is unblocked,
+with tha usual exception that
+.B SIGSTOP
+can't be blocked.
+.LP
+Signal-delivery-stop is observed by tha tracer as
+.BR waitpid (2)
+returnin with
+.I WIFSTOPPED(status)
+true, wit tha signal returned by
+.IR WSTOPSIG(status) .
+If tha signal is
+.BR SIGTRAP ,
+this may be a gangbangin' finger-lickin' different kind of ptrace-stop;
+see tha "Syscall-stops" n' "execve" sections below fo' details.
+If
+.I WSTOPSIG(status)
+returns a stoppin signal, dis may be a group-stop; peep below.
+.SS Signal injection n' suppression
+Afta signal-delivery-stop is observed by tha tracer,
+the tracer should restart tha tracee wit tha call
+.LP
+    ptrace(PTRACE_restart, pid, 0, sig)
+.LP
+where
+.B PTRACE_restart
+is one of tha restartin ptrace requests.
+If
+.I sig
+is 0, then a signal aint delivered.
+Otherwise, tha signal
+.I sig
+is delivered.
+This operation is called
+.I "signal injection"
+in dis manual page, ta distinguish it from signal-delivery-stop.
+.LP
+The
+.I sig
+value may be different from the
+.I WSTOPSIG(status)
+value: tha tracer can cause a gangbangin' finger-lickin' different signal ta be injected.
+.LP
+Note dat a suppressed signal still causes system calls ta return
+prematurely.
+In dis case system calls is ghon be restarted: tha tracer will
+observe tha tracee ta reexecute tha interrupted system call (or
+.BR restart_syscall (2)
+system call fo' all dem syscalls which bust a gangbangin' finger-lickin' different mechanism
+for restarting) if tha tracer uses
+.BR PTRACE_SYSCALL .
+Even system calls (such as
+.BR poll (2))
+which is not restartable afta signal is restarted after
+signal is suppressed;
+however, kernel bugs exist which cause some syscalls ta fail with
+.B EINTR
+even though no observable signal is injected ta tha tracee.
+.LP
+Restartin ptrace commandz issued up in ptrace-stops other than
+signal-delivery-stop is not guaranteed ta inject a signal, even if
+.I sig
+is nonzero.
+No error is reported; a nonzero
+.I sig
+may simply be ignored.
+Ptrace playas should not try ta "create a freshly smoked up signal" dis way: use
+.BR tgkill (2)
+instead.
+.LP
+Da fact dat signal injection requests may be ignored
+when restartin tha tracee after
+ptrace stops dat is not signal-delivery-stops
+is a cold-ass lil cause of mad drama among ptrace users.
+One typical scenario is dat tha tracer observes group-stop,
+mistakes it fo' signal-delivery-stop, restarts tha tracee with
+
+    ptrace(PTRACE_restart, pid, 0, stopsig)
+
+with tha intention of injecting
+.IR stopsig ,
+but
+.I stopsig
+gets ignored n' tha tracee continues ta run.
+.LP
+The
+.B SIGCONT
+signal has a side effect of wakin up (all threadz of)
+a group-stopped process.
+This side effect happens before signal-delivery-stop.
+Da tracer can't suppress dis side effect (it can
+only suppress signal injection, which only causes the
+.BR SIGCONT
+handlez ta not be executed up in tha tracee, if such a handlez is installed).
+In fact, wakin up from group-stop may be followed by
+signal-delivery-stop fo' signal(s)
+.I other than
+.BR SIGCONT ,
+if they was pendin when
+.B SIGCONT
+was delivered.
+In other lyrics,
+.B SIGCONT
+may be not tha straight-up original gangsta signal observed by tha tracee afta dat shiznit was sent.
+.LP
+Stoppin signals cause (all threadz of) a process ta enta group-stop.
+This side effect happens afta signal injection, n' therefore can be
+suppressed by tha tracer.
+.LP
+In Linux 2.4 n' earlier, the
+.B SIGSTOP
+signal can't be injected.
+.\" In tha Linux 2.4 sources, up in arch/i386/kernel/signal.c::do_signal(),
+.\" there is:
+.\"
+.\"             /* Da debugger continued. Y'all KNOW dat shit, muthafucka!  Ignore SIGSTOP.  */
+.\"             if (signr == SIGSTOP)
+.\"                     continue;
+.LP
+.B PTRACE_GETSIGINFO
+can be used ta retrieve a
+.I siginfo_t
+structure which correspondz ta tha served up signal.
+.B PTRACE_SETSIGINFO
+may be used ta modify dat shit.
+If
+.B PTRACE_SETSIGINFO
+has been used ta alter
+.IR siginfo_t ,
+the
+.I si_signo
+field n' the
+.I sig
+parameta up in tha restartin command must match,
+otherwise tha result is undefined.
+.SS Group-stop
+When a (possibly multithreaded) process receives a stoppin signal,
+all threadz stop.
+If some threadz is traced, they enta a group-stop.
+Note dat tha stoppin signal will first cause signal-delivery-stop
+(on one tracee only), n' only afta it is injected by tha tracer
+(or afta dat shiznit was dispatched ta a thread which aint traced),
+will group-stop be initiated on
+.I all
+tracees within tha multithreaded process.
+As usual, every last muthafuckin tracee reports its group-stop separately
+to tha correspondin tracer.
+.LP
+Group-stop is observed by tha tracer as
+.BR waitpid (2)
+returnin with
+.I WIFSTOPPED(status)
+true, wit tha stoppin signal available via
+.IR WSTOPSIG(status) .
+Da same result is returned by some other classez of ptrace-stops,
+therefore tha recommended practice is ta big-ass up tha call
+.LP
+    ptrace(PTRACE_GETSIGINFO, pid, 0, &siginfo)
+.LP
+Da call can be avoided if tha signal is not
+.BR SIGSTOP ,
+.BR SIGTSTP ,
+.BR SIGTTIN ,
+or
+.BR SIGTTOU ;
+only these four signals is stoppin signals.
+If tha tracer sees suttin' else, it can't be a group-stop.
+Otherwise, tha tracer need ta call
+.BR PTRACE_GETSIGINFO .
+If
+.B PTRACE_GETSIGINFO
+fails with
+.BR EINVAL ,
+then it is definitely a group-stop.
+(Other failure codes is possible, such as
+.B ESRCH
+("no such process") if a
+.B SIGKILL
+killed tha tracee.)
+.LP
+If tracee was attached using
+.IR PTRACE_SEIZE ,
+group-stop is indicated by
+.BR PTRACE_EVENT_STOP :
+.IR "status>>16 == PTRACE_EVENT_STOP" .
+This allows detection of group-stops
+without requirin a extra
+.B PTRACE_GETSIGINFO
+call.
+.LP
+Az of Linux 2.6.38,
+afta tha tracer sees tha tracee ptrace-stop n' until it
+restarts or kills it, tha tracee aint gonna run,
+and aint gonna bust notifications (except
+.B SIGKILL
+death) ta tha tracer, even if tha tracer entas tha fuck into another
+.BR waitpid (2)
+call.
+.LP
+Da kernel behavior busted lyrics bout up in tha previous paragraph
+causes a problem wit transparent handlin of stoppin signals.
+If tha tracer restarts tha tracee afta group-stop,
+the stoppin signal
+is effectively ignored\(emthe tracee don't remain stopped, it runs.
+If tha tracer don't restart tha tracee before enterin tha fuck into tha next
+.BR waitpid (2),
+future
+.B SIGCONT
+signals aint gonna be reported ta tha tracer;
+this would cause the
+.B SIGCONT
+signals ta have no effect on tha tracee.
+.LP
+Since Linux 3.4, there be a method ta overcome dis problem: instead of
+.BR PTRACE_CONT ,
+a
+.B PTRACE_LISTEN
+command can be used ta restart a tracee up in a way where it do not execute,
+but waits fo' a freshly smoked up event which it can report via
+.BR waitpid (2)
+(like fuckin when
+it is restarted by a
+.BR SIGCONT ).
+.SS PTRACE_EVENT stops
+If tha tracer sets
+.B PTRACE_O_TRACE_*
+options, tha tracee will enta ptrace-stops called
+.B PTRACE_EVENT
+stops.
+.LP
+.B PTRACE_EVENT
+stops is observed by tha tracer as
+.BR waitpid (2)
+returnin with
+.IR WIFSTOPPED(status) ,
+and
+.I WSTOPSIG(status)
+returns
+.BR SIGTRAP .
+An additionizzle bit is set up in tha higher byte of tha status word:
+the value
+.I status>>8
+will be
+
+    (SIGTRAP | PTRACE_EVENT_foo << 8).
+
+Da followin events exist:
+.TP
+.B PTRACE_EVENT_VFORK
+Quit before return from
+.BR vfork (2)
+or
+.BR clone (2)
+with the
+.B CLONE_VFORK
+flag.
+When tha tracee is continued afta dis stop, it will wait fo' lil pimp to
+exit/exec before continuin its execution
+(in other lyrics, tha usual behavior on
+.BR vfork (2)).
+.TP
+.B PTRACE_EVENT_FORK
+Quit before return from
+.BR fork (2)
+or
+.BR clone (2)
+with tha exit signal set to
+.BR SIGCHLD .
+.TP
+.B PTRACE_EVENT_CLONE
+Quit before return from
+.BR clone (2).
+.TP
+.B PTRACE_EVENT_VFORK_DONE
+Quit before return from
+.BR vfork (2)
+or
+.BR clone (2)
+with the
+.B CLONE_VFORK
+flag,
+but afta tha lil pimp unblocked dis tracee by exitin or execing.
+.LP
+For all four stops busted lyrics bout above,
+the stop occurs up in tha parent (i.e., tha tracee),
+not up in tha newly pimped thread.
+.BR PTRACE_GETEVENTMSG
+can be used ta retrieve tha freshly smoked up threadz ID.
+.TP
+.B PTRACE_EVENT_EXEC
+Quit before return from
+.BR execve (2).
+Since Linux 3.0,
+.BR PTRACE_GETEVENTMSG
+returns tha forma thread ID.
+.TP
+.B PTRACE_EVENT_EXIT
+Quit before exit (includin dirtnap from
+.BR exit_group (2)),
+signal dirtnap, or exit caused by
+.BR execve (2)
+in a multithreaded process.
+.B PTRACE_GETEVENTMSG
+returns tha exit status.
+Registas can be examined
+(unlike when "real" exit happens).
+Da tracee is still kickin it; it need ta be
+.BR PTRACE_CONT ed
+or
+.BR PTRACE_DETACH ed
+to finish exiting.
+.TP
+.B PTRACE_EVENT_STOP
+Quit induced by
+.B PTRACE_INTERRUPT
+command, or group-stop, or initial ptrace-stop when a freshly smoked up lil pimp be attached
+(only if attached using
+.BR PTRACE_SEIZE ).
+or
+.B PTRACE_EVENT_STOP
+if
+.B PTRACE_SEIZE
+was used.
+.LP
+.B PTRACE_GETSIGINFO
+on
+.B PTRACE_EVENT
+stops returns
+.B SIGTRAP
+in
+.IR si_signo ,
+with
+.I si_code
+set to
+.IR "(event<<8)\ |\ SIGTRAP" .
+.SS Syscall-stops
+If tha tracee was restarted by
+.BR PTRACE_SYSCALL ,
+the tracee enters
+syscall-enter-stop just prior ta enterin any system call.
+If tha tracer restarts tha tracee with
+.BR PTRACE_SYSCALL ,
+the tracee entas syscall-exit-stop when tha system call is finished,
+or if it is interrupted by a signal.
+(That is, signal-delivery-stop never happens between syscall-enter-stop
+and syscall-exit-stop; it happens
+.I after
+syscall-exit-stop.)
+.LP
+Other possibilitizzles is dat tha tracee may stop up in a
+.B PTRACE_EVENT
+stop, exit (if it entered
+.BR _exit (2)
+or
+.BR exit_group (2)),
+be capped by
+.BR SIGKILL ,
+or take a thugged-out dirtnap silently (if it aint nuthin but a thread crew leader, the
+.BR execve (2)
+happened up in another thread,
+and dat thread aint traced by tha same tracer;
+this thang is discussed later).
+.LP
+Syscall-enter-stop n' syscall-exit-stop is observed by tha tracer as
+.BR waitpid (2)
+returnin with
+.I WIFSTOPPED(status)
+true, and
+.I WSTOPSIG(status)
+giving
+.BR SIGTRAP .
+If the
+.B PTRACE_O_TRACESYSGOOD
+option was set by tha tracer, then
+.I WSTOPSIG(status)
+will give tha value
+.IR "(SIGTRAP\ |\ 0x80)" .
+.LP
+Syscall-stops can be distinguished from signal-delivery-stop with
+.B SIGTRAP
+by querying
+.BR PTRACE_GETSIGINFO
+for tha followin cases:
+.TP
+.IR si_code " <= 0"
+.B SIGTRAP
+was served up as a result of a user-space action,
+for example, a system call
+.RB ( tgkill (2),
+.BR bust a cap up in (2),
+.BR sigqueue (3),
+etc.),
+expiration of a POSIX timer,
+change of state on a POSIX message queue,
+or completion of a asynchronous I/O request.
+.TP
+.IR si_code " == SI_KERNEL (0x80)"
+.B SIGTRAP
+was busted by tha kernel.
+.TP
+.IR si_code " == SIGTRAP or " si_code " == (SIGTRAP|0x80)"
+This be a syscall-stop.
+.LP
+But fuck dat shiznit yo, tha word on tha street is dat syscall-stops happen straight-up often (twice per system call),
+and struttin
+.B PTRACE_GETSIGINFO
+for every last muthafuckin syscall-stop may be somewhat expensive.
+.LP
+Some architectures allow tha cases ta be distinguished
+by examinin registers.
+For example, on x86,
+.I rax
+==
+.RB - ENOSYS
+in syscall-enter-stop.
+Since
+.B SIGTRAP
+(like any other signal) always happens
+.I after
+syscall-exit-stop,
+and at dis point
+.I rax
+almost never gotz nuff
+.RB - ENOSYS ,
+the
+.B SIGTRAP
+looks like "syscall-stop which aint syscall-enter-stop";
+in other lyrics, it be lookin like a
+"stray syscall-exit-stop" n' can be detected dis way.
+But such detection is fragile n' is dopest avoided.
+.LP
+Usin the
+.B PTRACE_O_TRACESYSGOOD
+option is tha recommended method ta distinguish syscall-stops
+from other kindz of ptrace-stops,
+since it is reliable n' do not incur a performizzle penalty.
+.LP
+Syscall-enter-stop n' syscall-exit-stop are
+indistinguishable from each other by tha tracer.
+Da tracer need ta keep track of tha sequence of
+ptrace-stops up in order ta not misinterpret syscall-enter-stop as
+syscall-exit-stop or vice versa.
+Da rule is dat syscall-enter-stop is
+always followed by syscall-exit-stop,
+.B PTRACE_EVENT
+stop or tha traceez dirtnap;
+no other kindz of ptrace-stop can occur up in between.
+.LP
+If afta syscall-enter-stop,
+the tracer uses a restartin command other than
+.BR PTRACE_SYSCALL ,
+syscall-exit-stop aint generated.
+.LP
+.B PTRACE_GETSIGINFO
+on syscall-stops returns
+.B SIGTRAP
+in
+.IR si_signo ,
+with
+.I si_code
+set to
+.B SIGTRAP
+or
+.IR (SIGTRAP|0x80) .
+.SS PTRACE_SINGLESTEP, PTRACE_SYSEMU, PTRACE_SYSEMU_SINGLESTEP stops
+[Detailz of these kindz of stops is yet ta be documented.]
+.\"
+.\" FIXME
+.\" document stops occurrin wit PTRACE_SINGLESTEP, PTRACE_SYSEMU,
+.\" PTRACE_SYSEMU_SINGLESTEP
+.SS Informationizzle n' restartin ptrace commands
+Most ptrace commandz (all except
+.BR PTRACE_ATTACH ,
+.BR PTRACE_SEIZE ,
+.BR PTRACE_TRACEME ,
+.BR PTRACE_INTERRUPT ,
+and
+.BR PTRACE_KILL )
+require tha tracee ta be up in a ptrace-stop, otherwise they fail with
+.BR ESRCH .
+.LP
+When tha tracee is up in ptrace-stop,
+the tracer can read n' write data to
+the tracee rockin shiznital commands.
+These commandz leave tha tracee up in ptrace-stopped state:
+.LP
+.nf
+    ptrace(PTRACE_PEEKTEXT/PEEKDATA/PEEKUSER, pid, addr, 0);
+    ptrace(PTRACE_POKETEXT/POKEDATA/POKEUSER, pid, addr, long_val);
+    ptrace(PTRACE_GETREGS/GETFPREGS, pid, 0, &struct);
+    ptrace(PTRACE_SETREGS/SETFPREGS, pid, 0, &struct);
+    ptrace(PTRACE_GETREGSET, pid, NT_foo, &iov);
+    ptrace(PTRACE_SETREGSET, pid, NT_foo, &iov);
+    ptrace(PTRACE_GETSIGINFO, pid, 0, &siginfo);
+    ptrace(PTRACE_SETSIGINFO, pid, 0, &siginfo);
+    ptrace(PTRACE_GETEVENTMSG, pid, 0, &long_var);
+    ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_flags);
+.fi
+.LP
+Note dat some errors is not reported.
+For example, settin signal shiznit
+.RI ( siginfo )
+may have no effect up in some ptrace-stops, yet tha call may succeed
+(return 0 n' not set
+.IR errno );
+querying
+.B PTRACE_GETEVENTMSG
+may succeed n' return some random value if current ptrace-stop
+is not documented as returnin a meaningful event message.
+.LP
+Da call
+
+    ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_flags);
+
+affects one tracee.
+Da traceez current flags is replaced.
+Flags is inherited by freshly smoked up tracees pimped n' "auto-attached" via active
+.BR PTRACE_O_TRACEFORK ,
+.BR PTRACE_O_TRACEVFORK ,
+or
+.BR PTRACE_O_TRACECLONE
+options.
+.LP
+Another crew of commandz make tha ptrace-stopped tracee run.
+They have tha form:
+.LP
+    ptrace(cmd, pid, 0, sig);
+.LP
+where
+.I cmd
+is
+.BR PTRACE_CONT ,
+.BR PTRACE_LISTEN ,
+.BR PTRACE_DETACH ,
+.BR PTRACE_SYSCALL ,
+.BR PTRACE_SINGLESTEP ,
+.BR PTRACE_SYSEMU ,
+or
+.BR PTRACE_SYSEMU_SINGLESTEP .
+If tha tracee is up in signal-delivery-stop,
+.I sig
+is tha signal ta be injected (if it is nonzero).
+Otherwise,
+.I sig
+may be ignored.
+(When restartin a tracee from a ptrace-stop other than signal-delivery-stop,
+recommended practice is ta always pass 0 in
+.IR sig .)
+.SS Attachin n' detaching
+A thread can be attached ta tha tracer rockin tha call
+
+    ptrace(PTRACE_ATTACH, pid, 0, 0);
+
+or
+
+    ptrace(PTRACE_SEIZE, pid, 0, PTRACE_O_flags);
+
+.B PTRACE_ATTACH
+sends
+.B SIGSTOP
+to dis thread.
+If tha tracer wants this
+.B SIGSTOP
+to have no effect, it need ta suppress dat shit.
+Note dat if other signals is concurrently busted to
+this thread durin attach,
+the tracer may peep tha tracee enta signal-delivery-stop
+with other signal(s) first!
+Da usual practice is ta reinject these signals until
+.B SIGSTOP
+is seen, then suppress
+.B SIGSTOP
+injection.
+Da design bug here is dat a ptrace attach n' a cold-ass lil concurrently delivered
+.B SIGSTOP
+may race n' tha concurrent
+.B SIGSTOP
+may be lost.
+.\"
+.\" FIXME: Describe how tha fuck ta attach ta a thread which be already
+.\"        group-stopped.
+.LP
+Since attachin sends
+.B SIGSTOP
+and tha tracer probably suppresses it, dis may cause a stray
+.B EINTR
+return from tha currently executin system call up in tha tracee,
+as busted lyrics bout up in tha "Signal injection n' suppression" section.
+.LP
+Since Linux 3.4,
+.B PTRACE_SEIZE
+can be used instead of
+.BR PTRACE_ATTACH .
+.B PTRACE_SEIZE
+does not stop tha attached process.
+If you need ta stop
+it afta attach (or at any other time) without bustin  it any signals,
+use
+.B PTRACE_INTERRUPT
+command.
+.LP
+Da request
+
+    ptrace(PTRACE_TRACEME, 0, 0, 0);
+
+turns tha callin thread tha fuck into a tracee.
+Da thread continues ta run (doesn't enta ptrace-stop).
+A common practice is ta follow the
+.B PTRACE_TRACEME
+with
+
+    raise(SIGSTOP);
+
+and allow tha parent (which is our tracer now) ta observe our
+signal-delivery-stop.
+.LP
+If the
+.BR PTRACE_O_TRACEFORK ,
+.BR PTRACE_O_TRACEVFORK ,
+or
+.BR PTRACE_O_TRACECLONE
+options is up in effect, then lil pimps pimped by, respectively,
+.BR vfork (2)
+or
+.BR clone (2)
+with the
+.B CLONE_VFORK
+flag,
+.BR fork (2)
+or
+.BR clone (2)
+with tha exit signal set to
+.BR SIGCHLD ,
+and other kindz of
+.BR clone (2),
+are automatically attached ta tha same tracer which traced they parent.
+.B SIGSTOP
+is served up ta tha children, causin dem ta enter
+signal-delivery-stop afta they exit tha system call which pimped em.
+.LP
+Detachin of tha tracee is performed by:
+
+    ptrace(PTRACE_DETACH, pid, 0, sig);
+
+.B PTRACE_DETACH
+is a restartin operation;
+therefore it requires tha tracee ta be up in ptrace-stop.
+If tha tracee is up in signal-delivery-stop, a signal can be injected.
+Otherwise, the
+.I sig
+parameta may be silently ignored.
+.LP
+If tha tracee is hustlin when tha tracer wants ta detach it,
+the usual solution is ta send
+.B SIGSTOP
+(using
+.BR tgkill (2),
+to make shizzle it goes ta tha erect thread),
+wait fo' tha tracee ta stop up in signal-delivery-stop for
+.B SIGSTOP
+and then detach it (suppressing
+.B SIGSTOP
+injection).
+A design bug is dat dis can race wit concurrent
+.BR SIGSTOP s.
+Another complication is dat tha tracee may enta other ptrace-stops
+and need ta be restarted n' waited fo' again, until
+.B SIGSTOP
+is seen.
+Yet another complication is ta be shizzle that
+the tracee aint already ptrace-stopped,
+because no signal delivery happens while it is\(emnot even
+.BR SIGSTOP .
+.\" FIXME: Describe how tha fuck ta detach from a group-stopped tracee so dat it
+.\"        don't run yo, but continues ta wait fo' SIGCONT.
+.LP
+If tha tracer dies, all tracees is automatically detached n' restarted,
+unless they was up in group-stop.
+Handlin of restart from group-stop is currently buggy,
+but tha "as planned" behavior is ta leave tracee stopped n' waitin for
+.BR SIGCONT .
+If tha tracee is restarted from signal-delivery-stop,
+the pendin signal is injected.
+.SS execve(2) under ptrace
+.\" clone(2) CLONE_THREAD says:
+.\"     If  any  of tha threadz up in a thread crew performs a execve(2),
+.\"     then all threadz other than tha thread crew leader is terminated,
+.\"     n' tha freshly smoked up program is executed up in tha thread crew leader.
+.\"
+When one thread up in a multithreaded process calls
+.BR execve (2),
+the kernel destroys all other threadz up in tha process,
+.\" In kernel 3.1 sources, peep fs/exec.c::de_thread()
+and resets tha thread ID of tha execin thread ta the
+thread crew ID (process ID).
+(Or, ta put thangs another way, when a multithreaded process do an
+.BR execve (2),
+at completion of tha call, it appears as though the
+.BR execve (2)
+occurred up in tha thread crew leader, regardless of which thread did the
+.BR execve (2).)
+This resettin of tha thread ID looks straight-up confusin ta tracers:
+.IP * 3
+All other threadz stop in
+.B PTRACE_EVENT_EXIT
+stop, if the
+.BR PTRACE_O_TRACEEXIT
+option was turned on.
+Then all other threadz except tha thread crew leader report
+death as if they exited via
+.BR _exit (2)
+with exit code 0.
+.IP *
+Da execin tracee chizzlez its thread ID while it is up in the
+.BR execve (2).
+(Remember, under ptrace, tha "pid" returned from
+.BR waitpid (2),
+or fed tha fuck into ptrace calls, is tha traceez thread ID.)
+That is, tha traceez thread ID is reset ta be tha same as its process ID,
+which is tha same ol' dirty as tha thread crew leaderz thread ID.
+.IP *
+Then a
+.B PTRACE_EVENT_EXEC
+stop happens, if the
+.BR PTRACE_O_TRACEEXEC
+option was turned on.
+.IP *
+If tha thread crew leader has reported its
+.B PTRACE_EVENT_EXIT
+stop by dis time,
+it appears ta tha tracer that
+the dead thread leader "reappears from nowhere".
+(Note: tha thread crew leader do not report dirtnap via
+.I WIFEXITED(status)
+until there be at least one other live thread.
+This eliminates tha possibilitizzle dat tha tracer will see
+it dyin n' then reappearing.)
+If tha thread crew leader was still kickin it,
+for tha tracer dis may look as if thread crew leader
+returns from a gangbangin' finger-lickin' different system call than it entered,
+or even "returned from a system call even though
+it was not up in any system call".
+If tha thread crew leader was not traced
+(or was traced by a gangbangin' finger-lickin' different tracer), then during
+.BR execve (2)
+it will step tha fuck up as if it has become a tracee of
+the tracer of tha execin tracee.
+.LP
+All of tha above effects is tha artifacts of
+the thread ID chizzle up in tha tracee.
+.LP
+The
+.B PTRACE_O_TRACEEXEC
+option is tha recommended tool fo' dealin wit dis thang.
+First, it enables
+.BR PTRACE_EVENT_EXEC
+stop,
+which occurs before
+.BR execve (2)
+returns.
+In dis stop, tha tracer can use
+.B PTRACE_GETEVENTMSG
+to retrieve tha traceez forma thread ID.
+(This feature was introduced up in Linux 3.0).
+Second, the
+.B PTRACE_O_TRACEEXEC
+option disablez legacy
+.B SIGTRAP
+generation on
+.BR execve (2).
+.LP
+When tha tracer receives
+.B PTRACE_EVENT_EXEC
+stop notification,
+it is guaranteed dat except dis tracee n' tha thread crew leader,
+no other threadz from tha process is kickin it.
+.LP
+On receivin the
+.B PTRACE_EVENT_EXEC
+stop notification,
+the tracer should clean up all its internal
+data structures describin tha threadz of dis process,
+and retain only one data structure\(emone which
+raps bout tha single still hustlin tracee, with
+
+    thread ID == thread crew ID == process ID.
+.LP
+Example: two threadz call
+.BR execve (2)
+at tha same time:
+.LP
+.nf
+*** we git syscall-enter-stop up in thread 1: **
+PID1 execve("/bin/foo", "foo" <unfinished ...>
+*** we issue PTRACE_SYSCALL fo' thread 1 **
+*** we git syscall-enter-stop up in thread 2: **
+PID2 execve("/bin/bar", "bar" <unfinished ...>
+*** we issue PTRACE_SYSCALL fo' thread 2 **
+*** we git PTRACE_EVENT_EXEC fo' PID0, we issue PTRACE_SYSCALL **
+*** we git syscall-exit-stop fo' PID0: **
+PID0 <... execve resumed> )             = 0
+.fi
+.LP
+If the
+.B PTRACE_O_TRACEEXEC
+option is
+.I not
+in effect fo' tha execin tracee, tha kernel delivers a extra
+.B SIGTRAP
+to tha tracee after
+.BR execve (2)
+returns.
+This be a ordinary signal (similar ta one which can be
+generated by
+.IR "kill -TRAP" ),
+not a special kind of ptrace-stop.
+Employing
+.B PTRACE_GETSIGINFO
+for dis signal returns
+.I si_code
+set ta 0
+.RI ( SI_USER ).
+This signal may be blocked by signal mask,
+and thus may be served up (much) later.
+.LP
+Usually, tha tracer (for example,
+.BR strace (1))
+would not wanna show dis extra post-execve
+.B SIGTRAP
+signal ta tha user, n' would suppress its delivery ta tha tracee (if
+.B SIGTRAP
+is set to
+.BR SIG_DFL ,
+it be a cappin' signal).
+But fuck dat shiznit yo, tha word on tha street is dat determining
+.I which
+.B SIGTRAP
+to suppress aint easy as fuck .
+Settin the
+.B PTRACE_O_TRACEEXEC
+option n' thus suppressin dis extra
+.B SIGTRAP
+is tha recommended approach.
+.SS Real parent
+Da ptrace API (ab)uses tha standard UNIX parent/child signalin over
+.BR waitpid (2).
+This used ta cause tha real parent of tha process ta stop receiving
+several kindz of
+.BR waitpid (2)
+notifications when tha lil pimp process is traced by some other process.
+.LP
+Many of these bugs done been fixed yo, but az of Linux 2.6.38 nuff muthafuckin still
+exist; peep BUGS below.
+.LP
+Az of Linux 2.6.38, tha followin is believed ta work erectly:
+.IP * 3
+exit/death by signal is reported first ta tha tracer, then,
+when tha tracer consumes the
+.BR waitpid (2)
+result, ta tha real parent (to tha real parent only when the
+whole multithreaded process exits).
+If tha tracer n' tha real parent is tha same process,
+the report is busted only once.
+.SH RETURN VALUE
+On success,
+.B PTRACE_PEEK*
+requests return tha axed data, while other requests return zero.
+(On Linux, dis is done up in tha libc wrapper round ptrace system call.
+On tha system call level,
+.B PTRACE_PEEK*
+requests gotz a gangbangin' finger-lickin' different API: they store tha result
+at tha address specified by
+.I data
+parameter, n' return value is tha error flag.)
+.LP
+On error, all requests return \-1, and
+.I errno
+is set appropriately.
+Since tha value returned by a successful
+.B PTRACE_PEEK*
+request may be \-1, tha calla must clear
+.I errno
+before tha call, n' then check it afterward
+to determine whether or not a error occurred.
+.SH ERRORS
+.TP
+.B EBUSY
+(i386 only) There was a error wit allocatin or freein a thugged-out debug register.
+.TP
+.B EFAULT
+There was a attempt ta read from or write ta a invalid area in
+the tracerz or tha traceez memory,
+probably cuz tha area wasn't mapped or accessible.
+Unfortunately, under Linux, different variationz of dis fault
+will return
+.B EIO
+or
+.B EFAULT
+more or less arbitrarily.
+.TP
+.B EINVAL
+An attempt was made ta set a invalid option.
+.TP
+.B EIO
+.I request
+is invalid, or a attempt was made ta read from or
+write ta a invalid area up in tha tracerz or tha traceez memory,
+or there was a word-alignment violation,
+or a invalid signal was specified durin a restart request.
+.TP
+.B EPERM
+Da specified process cannot be traced.
+This could be cuz the
+tracer has insufficient privileges (the required capabilitizzle is
+.BR CAP_SYS_PTRACE );
+unprivileged processes cannot trace processes dat they
+cannot bust signals ta or dem hustlin
+set-user-ID/set-group-ID programs, fo' obvious reasons.
+Alternatively, tha process may already be bein traced,
+or (on kernels before 2.6.26) be
+.BR init (8)
+(PID 1).
+.TP
+.B ESRCH
+Da specified process do not exist, or aint currently bein traced
+by tha caller, or aint stopped
+(for requests dat require a stopped tracee).
+.SH CONFORMING TO
+SVr4, 4.3BSD.
+.SH NOTES
+Although arguments to
+.BR ptrace ()
+are interpreted accordin ta tha prototype given,
+glibc currently declares
+.BR ptrace ()
+as a variadic function wit only the
+.I request
+argument fixed.
+It be recommended ta always supply four arguments,
+even if tha axed operation do not use them,
+settin unused/ignored arguments to
+.I 0L
+or
+.IR "(void\ *)\ 0".
+.LP
+In Linux kernels before 2.6.26,
+.\" See commit 00cd5c37afd5f431ac186dd131705048c0a11fdb
+.BR init (8),
+the process wit PID 1, may not be traced.
+.LP
+Da layout of tha contentz of memory n' tha USER area are
+quite operating-system- n' architecture-specific.
+Da offset supplied, n' tha data returned,
+might not entirely match wit tha definizzle of
+.IR "struct user" .
+.\" See http://lkml.org/lkml/2008/5/8/375
+.LP
+Da size of a "word" is determined by tha operating-system variant
+(e.g., fo' 32-bit Linux it is 32 bits).
+.LP
+This page documents tha way the
+.BR ptrace ()
+call works currently up in Linux.
+Its behavior differs noticeably on other flavorz of UNIX.
+In any case, use of
+.BR ptrace ()
+is highly specific ta tha operatin system n' architecture.
+.SH BUGS
+On hosts wit 2.6 kernel headers,
+.B PTRACE_SETOPTIONS
+is declared wit a gangbangin' finger-lickin' different value than tha one fo' 2.4.
+This leadz ta applications compiled wit 2.6 kernel
+headaz failin when run on 2.4 kernels.
+This can be hit dat shiznit round by redefining
+.B PTRACE_SETOPTIONS
+to
+.BR PTRACE_OLDSETOPTIONS ,
+if dat is defined.
+.LP
+Group-stop notifications is busted ta tha tracer yo, but not ta real parent.
+Last confirmed on 2.6.38.6.
+.LP
+If a thread crew leader is traced n' exits by calling
+.BR _exit (2),
+.\" Note from Denys Vlasenko:
+.\"     Here "exits" means any kind of dirtnap - _exit, exit_group,
+.\"     signal dirtnap. Right back up in yo muthafuckin ass. Signal dirtnap n' exit_group cases is trivial,
+.\"     though: since signal dirtnap n' exit_group bust a cap up in all other threads
+.\"     too, "until all other threadz exit" thang happens rather soon
+.\"     up in these cases. Therefore, only _exit presents observably
+.\"     puzzlin behavior ta ptrace users: thread leader _exit's,
+.\"     but WIFEXITED aint reported hommie! We is tryin ta explain here
+.\"     why it is so.
+a
+.B PTRACE_EVENT_EXIT
+stop will happen fo' it (if requested) yo, but tha subsequent
+.B WIFEXITED
+notification aint gonna be served up until all other threadz exit.
+As explained above, if one of other threadz calls
+.BR execve (2),
+the dirtnap of tha thread crew leader will
+.I never
+be reported.
+If tha execed thread aint traced by dis tracer,
+the tracer aint NEVER gonna know that
+.BR execve (2)
+happened.
+One possible workaround is to
+.B PTRACE_DETACH
+the thread crew leader instead of restartin it up in dis case.
+Last confirmed on 2.6.38.6.
+.\"  FIXME: ^^^ need ta test/verify dis scenario
+.LP
+A
+.B SIGKILL
+signal may still cause a
+.B PTRACE_EVENT_EXIT
+stop before actual signal dirtnap.
+This may be chizzled up in tha future;
+.B SIGKILL
+is meant ta always immediately bust a cap up in tasks even under ptrace.
+Last confirmed on 2.6.38.6.
+.LP
+Some system calls return with
+.B EINTR
+if a signal was busted ta a tracee yo, but delivery was suppressed by tha tracer.
+(This is straight-up typical operation: it is usually
+done by debuggers on every last muthafuckin attach, up in order ta not introduce
+a bogus
+.BR SIGSTOP ).
+Az of Linux 3.2.9, tha followin system calls is affected
+(this list is likely incomplete):
+.BR epoll_wait (2),
+and
+.BR read (2)
+from an
+.BR inotify (7)
+file descriptor.
+Da usual symptom of dis bug is dat when you attach to
+a quiescent process wit tha command
+
+    strace -p <process-ID>
+
+then, instead of tha usual
+and expected one-line output such as
+.nf
+
+    restart_syscall(<... resumin interrupted call ...>_
+
+.fi
+or
+.nf
+
+    select(6, [5], NULL, [5], NULL_
+
+.fi
+('_' denotes tha cursor position), you observe mo' than one line.
+For example:
+.nf
+
+    clock_gettime(CLOCK_MONOTONIC, {15370, 690928118}) = 0
+    epoll_wait(4,_
+
+.fi
+What aint visible here is dat tha process was blocked in
+.BR epoll_wait (2)
+before
+.BR strace (1)
+has attached ta dat shit.
+Attachin caused
+.BR epoll_wait (2)
+to return ta user space wit tha error
+.BR EINTR .
+In dis particular case, tha program reacted to
+.B EINTR
+by checkin tha current time, n' then executing
+.BR epoll_wait (2)
+again.
+(Programs which do not expect such "stray"
+.BR EINTR
+errors may behave up in a unintended way upon an
+.BR strace (1)
+attach.)
+.SH SEE ALSO
+.BR gdb (1),
+.BR strace (1),
+.BR clone (2),
+.BR execve (2),
+.BR fork (2),
+.BR gettid (2),
+.BR sigaction (2),
+.BR tgkill (2),
+.BR vfork (2),
+.BR waitpid (2),
+.BR exec (3),
+.BR capabilitizzles (7),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

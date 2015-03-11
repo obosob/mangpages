@@ -1,0 +1,449 @@
+.\" Copyright (c) 2008, Linux Foundation, freestyled by Mike Kerrisk
+.\"      <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH FOPENCOOKIE 3 2013-03-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+fopencookie \- openin a cold-ass lil custom stream
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <stdio.h>
+
+.BI "FILE *fopencookie(void *" cookie ", const char *" mode ,
+.BI "                  cookie_io_functions_t " io_funcs );
+.fi
+.SH DESCRIPTION
+The
+.BR fopencookie ()
+function allows tha programmer ta create a cold-ass lil custom implementation
+for a standard I/O stream.
+This implementation can store tha streamz data at a location of
+its own choosing; fo' example,
+.BR fopencookie ()
+is used ta implement
+.BR fmemopen (3),
+which serves up a stream intercourse ta data dat is stored up in a
+buffer up in memory.
+
+In order ta create a cold-ass lil custom stream tha programmer must:
+.IP * 3
+Implement four "hook" functions dat is used internally by the
+standard I/O library when struttin I/O on tha stream.
+.IP *
+Define a "cookie" data type,
+a structure dat serves up bookkeepin shiznit
+(e.g., where ta store data) used by tha aforementioned hook functions.
+Da standard I/O package knows not a god damn thang bout tha contentz of dis cookie
+(thus it is typed as
+.IR "void\ *"
+when passed to
+.BR fopencookie ()),
+but automatically supplies tha cookie
+as tha straight-up original gangsta argument when callin tha hook functions.
+.IP *
+Call
+.BR fopencookie ()
+to open a freshly smoked up stream n' associate tha cookie n' hook functions
+with dat stream.
+.PP
+The
+.BR fopencookie ()
+function serves a purpose similar to
+.BR fopen (3):
+it opens a freshly smoked up stream n' returns a pointa ta a
+.I FILE
+object dat is used ta operate on dat stream.
+
+The
+.I cookie
+argument be a pointa ta tha callerz cookie structure
+that is ta be associated wit tha freshly smoked up stream.
+This pointa is supplied as tha straight-up original gangsta argument when tha standard I/O
+library invokes any of tha hook functions busted lyrics bout below.
+
+The
+.I mode
+argument serves tha same ol' dirty purpose as for
+.BR fopen (3).
+Da followin modes is supported:
+.IR r ,
+.IR w ,
+.IR a ,
+.IR r+ ,
+.IR w+ ,
+and
+.IR a+ .
+See
+.BR fopen (3)
+for details.
+
+The
+.I io_funcs
+argument be a structure dat gotz nuff four fieldz pointin ta the
+programmer-defined hook functions dat is used ta implement dis stream.
+Da structure is defined as bigs up
+.in +4n
+.nf
+
+typedef struct {
+    cookie_read_function_t  *read;
+    cookie_write_function_t *write;
+    cookie_seek_function_t  *seek;
+    cookie_close_function_t *close;
+} cookie_io_functions_t;
+
+.fi
+.in
+Da four fieldz is as bigs up:
+.TP
+.I cookie_read_function_t *read
+This function implements read operations fo' tha stream.
+When called, it receives three arguments:
+
+    ssize_t read(void *cookie, char *buf, size_t size);
+
+The
+.I buf
+and
+.I size
+arguments are, respectively,
+a buffer tha fuck into which input data can be placed n' tha size of dat buffer.
+As its function result, the
+.I read
+function should return tha number of bytes copied into
+.IR buf ,
+0 on end of file, or \-1 on error.
+The
+.I read
+function should update tha stream offset appropriately.
+
+If
+.I *read
+is a NULL pointer,
+then readz from tha custom stream always return end of file.
+.TP
+.I cookie_write_function_t *write
+This function implements write operations fo' tha stream.
+When called, it receives three arguments:
+
+    ssize_t write(void *cookie, const char *buf, size_t size);
+
+The
+.I buf
+and
+.I size
+arguments are, respectively,
+a buffer of data ta be output ta tha stream n' tha size of dat buffer.
+As its function result, the
+.I write
+function should return tha number of bytes copied from
+.IR buf ,
+or 0 on error.
+(Da function must not return a wack value.)
+The
+.I write
+function should update tha stream offset appropriately.
+
+If
+.I *write
+is a NULL pointer,
+then output ta tha stream is discarded.
+.TP
+.I cookie_seek_function_t *seek
+This function implements seek operations on tha stream.
+When called, it receives three arguments:
+
+    int seek(void *cookie, off64_t *offset, int whence);
+
+The
+.I *offset
+argument specifies tha freshly smoked up file offset dependin on which
+of tha followin three joints is supplied in
+.IR whence :
+.RS
+.TP 10
+.B SEEK_SET
+Da stream offset should be set
+.I *offset
+bytes from tha start of tha stream.
+.TP
+.B SEEK_CUR
+.I *offset
+should be added ta tha current stream offset.
+.TP
+.B SEEK_END
+Da stream offset should be set ta tha size of tha stream plus
+.IR *offset .
+.RE
+.IP
+Before returning, the
+.I seek
+function should update
+.I *offset
+to indicate tha freshly smoked up stream offset.
+
+As its function result, the
+.I seek
+function should return 0 on success, n' \-1 on error.
+
+If
+.I *seek
+is a NULL pointer,
+then it aint possible ta big-ass up seek operations on tha stream.
+.TP
+.I cookie_close_function_t *close
+This function closes tha stream.
+Da hook function can do thangs like fuckin freein buffers allocated
+for tha stream.
+When called, it receives one argument:
+
+    int close(void *cookie);
+
+The
+.I cookie
+argument is tha cookie dat tha programmer supplied when calling
+.BR fopencookie ().
+
+As its function result, the
+.I close
+function should return 0 on success, and
+.B EOF
+on error.
+
+If
+.I *close
+is NULL, then no special action is performed when tha stream is closed.
+.SH RETURN VALUE
+On success
+.BR fopencookie ()
+returns a pointa ta tha freshly smoked up stream.
+On error, NULL is returned.
+.\" .SH ERRORS
+.\" It aint nuthin but not clear if errno eva gets set...
+.SH CONFORMING TO
+This function be a nonstandard GNU extension.
+.SH EXAMPLE
+Da program below implements a cold-ass lil custom stream whose functionality
+is similar (but not identical) ta dat available via
+.BR fmemopen (3).
+It implements a stream whose data is stored up in a memory buffer.
+Da program writes its command-line arguments ta tha stream,
+and then seeks all up in tha stream readin two outta every
+five charactas n' freestylin dem ta standard output.
+Da followin shell session demonstrates tha use of tha program:
+.in +4n
+.nf
+
+.RB "$" " ./a.out \(aqwassup ghetto\(aq"
+/he/
+/ w/
+/d/
+Reached end of file
+
+.fi
+.in
+Note dat a mo' general version of tha program below
+could be improved ta mo' robustly handle various error thangs
+(e.g., openin a stream wit a cold-ass lil cookie dat already has a open stream;
+closin a stream dat has already been closed).
+.SS Program source
+\&
+.nf
+#define _GNU_SOURCE
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#define INIT_BUF_SIZE 4
+
+struct memfile_cookie {
+    char   *buf;        /* Dynamically sized buffer fo' data */
+    size_t  allocated;  /* Size of buf */
+    size_t  endpos;     /* Number of charactas up in buf */
+    off_t   offset;     /* Current file offset up in buf */
+};
+
+ssize_t
+memfile_write(void *c, const char *buf, size_t size)
+{
+    char *new_buff;
+    struct memfile_cookie *cookie = c;
+
+    /* Buffer too small, biatch? Keep doublin size until big-ass enough */
+
+    while (size + cookie\->offset > cookie\->allocated) {
+        new_buff = realloc(cookie\->buf, cookie\->allocated * 2);
+        if (new_buff == NULL) {
+            return \-1;
+        } else {
+            cookie\->allocated *= 2;
+            cookie\->buf = new_buff;
+        }
+    }
+
+    memcpy(cookie\->buf + cookie\->offset, buf, size);
+
+    cookie\->offset += size;
+    if (cookie\->offset > cookie\->endpos)
+        cookie\->endpos = cookie\->offset;
+
+    return size;
+}
+
+ssize_t
+memfile_read(void *c, char *buf, size_t size)
+{
+    ssize_t xbytes;
+    struct memfile_cookie *cookie = c;
+
+    /* Fetch minimum of bytes axed n' bytes available */
+
+    xbytes = size;
+    if (cookie\->offset + size > cookie\->endpos)
+        xbytes = cookie\->endpos \- cookie\->offset;
+    if (xbytes < 0)     /* offset may be past endpos */
+       xbytes = 0;
+
+    memcpy(buf, cookie\->buf + cookie\->offset, xbytes);
+
+    cookie\->offset += xbytes;
+    return xbytes;
+}
+
+int
+memfile_seek(void *c, off64_t *offset, int whence)
+{
+    off64_t new_offset;
+    struct memfile_cookie *cookie = c;
+
+    if (whence == SEEK_SET)
+        new_offset = *offset;
+    else if (whence == SEEK_END)
+        new_offset = cookie\->endpos + *offset;
+    else if (whence == SEEK_CUR)
+        new_offset = cookie\->offset + *offset;
+    else
+        return \-1;
+
+    if (new_offset < 0)
+        return \-1;
+
+    cookie\->offset = new_offset;
+    *offset = new_offset;
+    return 0;
+}
+
+int
+memfile_close(void *c)
+{
+    struct memfile_cookie *cookie = c;
+
+    free(cookie\->buf);
+    cookie\->allocated = 0;
+    cookie\->buf = NULL;
+
+    return 0;
+}
+
+int
+main(int argc, char *argv[])
+{
+    cookie_io_functions_t  memfile_func = {
+        .read  = memfile_read,
+        .write = memfile_write,
+        .seek  = memfile_seek,
+        .close = memfile_close
+    };
+    FILE *fp;
+    struct memfile_cookie mycookie;
+    ssize_t nread;
+    long p;
+    int j;
+    char buf[1000];
+
+    /* Set up tha cookie before callin fopencookie() */
+
+    mycookie.buf = malloc(INIT_BUF_SIZE);
+    if (mycookie.buf == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    mycookie.allocated = INIT_BUF_SIZE;
+    mycookie.offset = 0;
+    mycookie.endpos = 0;
+
+    fp = fopencookie(&mycookie,"w+", memfile_func);
+    if (fp == NULL) {
+        perror("fopencookie");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Write command\-line arguments ta our file */
+
+    fo' (j = 1; j < argc; j++)
+        if (fputs(argv[j], fp) == EOF) {
+            perror("fputs");
+            exit(EXIT_FAILURE);
+        }
+
+    /* Read two bytes outta every last muthafuckin five, until EOF */
+
+    fo' (p = 0; ; p += 5) {
+        if (fseek(fp, p, SEEK_SET) == \-1) {
+            perror("fseek");
+            exit(EXIT_FAILURE);
+        }
+        nread = fread(buf, 1, 2, fp);
+        if (nread == \-1) {
+            perror("fread");
+            exit(EXIT_FAILURE);
+        }
+        if (nread == 0) {
+            printf("Reached end of file\\n");
+            break;
+        }
+
+        printf("/%.*s/\\n", nread, buf);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR fclose (3),
+.BR fmemopen (3),
+.BR fopen (3),
+.BR fseek (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

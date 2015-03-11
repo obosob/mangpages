@@ -1,0 +1,192 @@
+.TH acpid 8 ""
+.\" Portions Copyright (c) 2001 Sun Microsystems
+.\" Portions Copyright (c) Slim Tim Hockin (thockin@hockin.org)
+.SH NAME
+acpid \- Advanced Configuration n' Juice Interface event daemon
+.SH SYNOPSIS
+\fBacpid\fP [\fIoptions\fP]
+
+.SH DESCRIPTION
+\fBacpid\fP is designed ta notify user-space programz of ACPI events.
+\fBacpid\fP should be started durin tha system boot, n' will run as a
+background process, by default.  It will open a events file
+(\fI/proc/acpi/event\fP by default) n' attempt ta read whole lines which
+represent ACPI events, n' you can put dat on yo' toast.  If tha events file do not exist, \fBacpid\fP will
+attempt ta connect ta tha Linux kernel via tha input layer n' netlink.  When an
+ACPI event is received from one of these sources, \fBacpid\fP will examine a
+list of rules, n' execute tha rulez dat match tha event. \fBacpid\fP will
+ignore all incomin ACPI events if a lock file exists (\fI/var/lock/acpid\fP by
+default).
+.PP
+\fIRules\fP is defined by simple configuration files.  \fBacpid\fP
+will look up in a cold-ass lil configuration directory (\fI/etc/acpi/events\fP by default),
+and parse all regular filez wit names dat consist entirely of upper and
+lower case letters, digits, underscores, n' hyphens (similar ta 
+run-parts(8)).
+.\" dat do not begin wit a period ('.') or end wit a tilde (~).  
+Each file must define two thangs: a \fIevent\fP n' an
+\fIaction\fP.  Any blank lines, or lines where tha straight-up original gangsta characta be a
+hash ('#') is ignored. Y'all KNOW dat shit, muthafucka!  Extraneous lines is flagged as warnings yo, but
+are not fatal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  Each line has three tokens: tha key, a literal equal sign,
+and tha value.  Da key can be up ta 63 characters, n' is case-insensitive
+(but whitespace matters).  Da value can be up ta 511 characters, n' is
+case n' whitespace sensitive.
+.PP
+Da event value be a regular expression (see regcomp(3)), against which events is matched.
+.PP
+Da action value be a cold-ass lil commandline, which is ghon be invoked via \fI/bin/sh\fP
+whenever a event matchin tha rule up in question occurs.  Da commandline may
+include shell-special characters, n' they is ghon be preserved. Y'all KNOW dat shit, muthafucka!  Da only special
+charactas up in a action value is "%" escaped. Y'all KNOW dat shit, muthafucka!  Da strang "%e" will be
+replaced by tha literal text of tha event fo' which tha action was invoked.
+This strang may contain spaces, so tha commandline must take care ta quote tha "%e" if it wants a single token. I aint talkin' bout chicken n' gravy biatch.  Da strang "%%" is ghon be replaced by a
+literal "%".  All other "%" escapes is reserved, n' will cause a rule to
+not load.
+.PP
+This feature allows multiple rulez ta be defined fo' tha same event (though no
+orderin is guaranteed), as well as one rule ta be defined fo' multiple events.
+To force \fBacpid\fP ta reload tha rule configuration, bust it a SIGHUP.
+.PP
+Da pseudo-action \fI<drop>\fP causes tha event ta be dropped
+completely n' no further processin undertaken; clients connecting
+via tha UNIX domain socket (see below) aint gonna be notified of the
+event. This may be useful on some machines, like fuckin certain laptops which
+generate spurious battery events at frequent intervals. Da name of
+this pseudo-action may be redefined wit a cold-ass lil commandline option.
+.PP
+In addizzle ta rule files, \fBacpid\fP also accepts connections on a UNIX
+domain socket (\fI/var/run/acpid.socket\fP by default).  Any application may
+connect ta dis socket.  Once connected, \fBacpid\fP will bust tha text of
+all ACPI events ta tha client.  Da client has tha responsibilitizzle of filtering
+for lyrics bout which it cares.  \fBacpid\fP aint gonna close tha client
+socket except up in tha case of a SIGHUP or \fBacpid\fP exiting.
+.PP
+For fasta startup, dis socket can be passed up in as stdin so dat \fBacpid\fP
+need not create tha socket.  In addition, if a socket is passed up in as stdin, 
+\fBacpid\fP aint gonna daemonize.  It is ghon be run up in foreground. Y'all KNOW dat shit, muthafucka!  This behavior 
+is provided ta support systemd(1).
+.PP
+.B acpid
+will log all of its activities, as well as tha stdout n' stderr of any
+actions, ta syslog.
+.PP
+All tha default filez n' directories can be chizzled wit commandline options.
+.PP
+When shitshootin \fBacpid\fP, it is blingin ta be aware dat other parts 
+of a system might be handlin ACPI events.
+\fBsystemd\fP(1) is capable of handlin tha juice switch n' various other
+events dat is commonly handled by \fBacpid\fP.  See tha description of 
+HandlePowerKey up in \fBlogind.conf\fP(5) fo' mo' n' mo' n' mo'.  Some window managers also 
+take over \fBacpid\fPz aiiight handlin of tha juice button n' other events.
+.SH OPTIONS
+.TP 12
+.BI \-c "\fR, \fP" \-\-confdir " directory"
+This option chizzlez tha directory up in which \fBacpid\fP looks fo' rule
+configuration files.  Default is \fI/etc/acpi/events\fP.
+.TP 12
+.BI \-C "\fR, \fP" \-\-clientmax " number"
+This option chizzlez tha maximum number of non-root socket connections which
+can be made ta tha \fBacpid\fP socket.  Default is \fI256\fP.
+.TP 12
+.BI \-d "\fR, \fP" \-\-debug
+This option increases tha \fBacpid\fP debug level by one.  If tha debug level
+is non-zero, \fBacpid\fP will run up in tha foreground, n' will log to
+stderr, up in addizzle ta tha regular syslog.
+.TP
+.BI \-e "\fR, \fP" \-\-eventfile " filename"
+This option chizzlez tha event file from which \fBacpid\fP readz events.
+Default is \fI/proc/acpi/event\fP.
+.TP
+.BI \-n "\fR, \fP" \-\-netlink
+This option forces \fBacpid\fP ta use tha Linux kernel input layer n' netlink intercourse fo' ACPI events.
+.TP
+.BI \-f "\fR, \fP" \-\-foreground
+This option keeps \fBacpid\fP up in tha foreground by not forkin at startup.
+.TP
+.BI \-l "\fR, \fP" \-\-logevents
+This option  drops some lyrics ta \fBacpid\fP ta log shiznit bout all events n' actions.
+.TP
+.BI \-L "\fR, \fP" \-\-lockfile " filename"
+This option chizzlez tha lock file used ta stop event processing.
+Default is \fI/var/lock/acpid\fP.
+.TP
+.BI \-g "\fR, \fP" \-\-socketgroup " groupname"
+This option chizzlez tha crew ballershizzle of tha UNIX domain socket ta which
+\fBacpid\fP publishes events.
+.TP
+.BI \-m "\fR, \fP" \-\-socketmode " mode"
+This option chizzlez tha permissionz of tha UNIX domain socket ta which
+\fBacpid\fP publishes events, n' you can put dat on yo' toast.  Default is \fI0666\fP.
+.TP
+.BI \-s "\fR, \fP" \-\-socketfile " filename"
+This option chizzlez tha name of tha UNIX domain socket which \fBacpid\fP opens.
+Default is \fI/var/run/acpid.socket\fP.
+.TP
+.BI \-S "\fR, \fP" \-\-nosocket " filename"
+This option  drops some lyrics ta \fBacpid\fP not ta open a UNIX domain socket.  This
+overrides tha \fI-s\fP option, n' negates all other socket options.
+.TP
+.BI \-p "\fR, \fP" \-\-pidfile " filename"
+This option  drops some lyrics ta \fBacpid\fP ta use tha specified file as its pidfile.  If
+the file exists, it is ghon be removed n' over-written.
+Default is \fI/var/run/acpid.pid\fP.
+.TP
+.BI \-r "\fR, \fP" \-\-dropaction " action"
+This option defines tha pseudo-action which  drops some lyrics ta \fBacpid\fP ta abort
+all processin of a event, includin client notifications.
+Default is \fI<drop>\fP.
+.TP
+.BI \-v "\fR, \fP" \-\-version
+Print version shiznit n' exit.
+.TP
+.BI \-h "\fR, \fP" \-\-help
+Show help n' exit.
+.SH EXAMPLE
+This example will shut down yo' system if you press tha juice button.
+.PP
+Smoke a gangbangin' file named /etc/acpi/events/power dat gotz nuff tha following:
+.IP
+.br
+event=button/power
+.br
+action=/etc/acpi/power.sh "%e"
+.PP
+Then create a gangbangin' file named /etc/acpi/power.sh dat gotz nuff tha following:
+.IP
+/sbin/shutdown \-h now "Juice button pressed"
+.PP
+Now, when \fBacpid\fP is hustlin, a press of tha juice button will cause the
+rule up in /etc/acpi/events/power ta trigger tha script up in /etc/acpi/power.sh.
+Da script will then shut down tha system.
+.SH DEPENDENCIES
+\fBacpid\fP should work on any linux kernel busted out since 2003.
+.SH FILES
+.PD 0
+.B /proc/acpi/event
+.br
+.B /dev/input/event*
+.br
+.B /etc/acpi/
+.br
+.B /var/run/acpid.socket
+.br
+.B /var/run/acpid.pid
+.br
+.B /var/lock/acpid
+.br
+.PD
+.SH BUGS
+There is no known bugs.  To file bug reports, peep \fBPROJECT WEBSITE\fP 
+below.
+.SH SEE ALSO
+regcomp(3), sh(1), socket(2), connect(2), init(1), systemd(1), 
+acpi_listen(8), kacpimon(8)
+.SH PROJECT WEBSITE
+http://sourceforge.net/projects/acpid2/
+.SH AUTHORS
+Ted Felix (ted -at- tedfelix -dot- com)
+.br
+Slim Tim Hockin <thockin@hockin.org>
+.br
+Andrew Henroid
+

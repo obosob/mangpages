@@ -1,0 +1,187 @@
+.TH xfs_fsr 8
+.SH NAME
+xfs_fsr \- filesystem reorganizer fo' XFS
+.SH SYNOPSIS
+.nf
+\f3xfs_fsr\f1 [\f3\-vdg\f1] \c
+[\f3\-t\f1 seconds] [\f3\-p\f1 passes] [\f3\-f\f1 leftoff] [\f3\-m\f1 mtab]
+\f3xfs_fsr\f1 [\f3\-vdg\f1] \c
+[xfsdev | file] ...
+.br
+.B xfs_fsr \-V
+.fi
+.SH DESCRIPTION
+.I xfs_fsr
+is applicable only ta XFS filesystems.
+.PP
+.I xfs_fsr
+improves tha organization of mounted filesystems.
+Da reorganization algorithm operates on one file at a time,
+compactin or otherwise pimpin-out tha layout of
+the file extents (contiguous blockz of file data).
+.PP
+Da followin options is accepted by
+.IR xfs_fsr .
+The
+.BR \-m ,
+.BR \-t ,
+and
+.B \-f
+options have no meanin if any filesystems
+or filez is specified on tha command line.
+.TP 13 
+.BI \-m " mtab"
+Use dis file fo' tha list of filesystems ta reorganize.
+Da default is ta use
+.IR /etc/mtab .
+.TP
+.BI \-t " seconds"
+How tha fuck long ta reorganize.
+Da default is 7200 secondz (2 hours).
+.TP
+.BI \-p " passes"
+Number of passes before terminatin global re-org.
+Da default is 10 passes.
+.TP
+.BI \-f " leftoff"
+Use dis file instead of
+.I /var/tmp/.fsrlast
+to read tha state of where ta start n' as tha file
+to store tha state of where reorganization left off.
+.TP
+.B \-v
+Verbose.
+Print cryptic shiznit about
+each file bein reorganized.
+.TP
+.B \-d
+Debug.  Print even mo' cryptic shiznit.
+.TP
+.B \-g
+Print ta syslog (default if stdout not a tty).
+.TP
+.B \-V
+Prints tha version number n' exits.
+
+.PP
+When invoked wit no arguments
+.I xfs_fsr
+reorganizes all regular filez up in all mounted filesystems.
+.I xfs_fsr
+makes nuff cyclez over
+.I /etc/mtab
+each time bustin a single pass over each XFS filesystem.
+Each pass goes all up in n' selects files
+that have tha phattest number of extents, n' you can put dat on yo' toast.  It attempts
+to defragment tha top 10% of these filez on each pass.
+.PP
+It runs fo' up ta two minutes afta which it recordz tha filesystem
+where it left off, so it can start there tha next time.
+This shiznit is stored up in tha file
+.I /var/tmp/.fsrlast_xfs.
+If tha shiznit found here
+is somehow inconsistent or outta date
+it is ignored
+and reorganization starts all up in tha beginnin of tha first
+filesystem found in
+.IR /etc/mtab .
+.PP
+.I xfs_fsr
+can be called wit one or mo' arguments
+namin filesystems (block thang name),
+and filez ta reorganize.
+In dis mode
+.I xfs_fsr
+does not read or write
+.I /var/tmp/.fsrlast_xfs
+nor do it run fo' a gangbangin' fixed time interval.
+It make one pass all up in each specified regular file and
+all regular filez up in each specified filesystem.
+A command line name referrin ta a symbolic link
+(except ta a gangbangin' file system device),
+FIFO, or UNIX domain socket
+generates a warnin message yo, but is otherwise ignored.
+While traversin tha filesystem these types
+of filez is silently skipped.
+.SH FILES
+.PD 0
+.TP 21
+/etc/mtab
+gotz nuff default list of filesystems ta reorganize.
+.TP 21
+/var/tmp/.fsrlast_xfs
+recordz tha state where reorganization left off.
+.PD
+.SH "SEE ALSO"
+xfs_fsr(8),
+mkfs.xfs(8),
+xfs_ncheck(8),
+xfs(5).
+.SH "NOTES"
+.I xfs_fsr
+improves tha layout of extents fo' each file by copyin tha entire
+file ta a temporary location n' then interchangin tha data extents 
+of tha target n' temporary filez up in a atomic manner n' shit.  
+This method requires dat enough free disk space be available ta copy 
+any given file n' dat tha space be less fragmented than tha original
+file.
+It also requires tha balla of tha file ta have enough remaining
+filespace quota ta do tha copy on systems hustlin quotas.
+.I xfs_fsr
+generates a warnin message if space aint sufficient ta improve
+the target file.
+.PP
+A temporary file used up in pimpin-out a gangbangin' file given on tha command line
+is pimped up in tha same parent directory of tha target file and
+is prefixed by tha strang '\f3.fsr\f1'.   
+Da temporary filez used up in pimpin-out a entire XFS thang is stored
+in a gangbangin' finger-lickin' directory all up in tha root of tha target thang n' use tha same
+namin scheme.
+Da temporary filez is unlinked upon creation so data aint gonna be
+readable by any other process.
+.PP
+.I xfs_fsr
+does not operate on filez dat is currently mapped up in memory.
+A 'file busy' error can be peeped fo' these filez if tha verbose
+flag (\f3-v\f1) is set.
+.PP
+Filez marked as no\-defrag is ghon be skipped. Y'all KNOW dat shit, muthafucka! The
+.IR xfs_io (8)
+chattr command wit tha f attribute can be used ta set or clear 
+this flag. Filez n' directories pimped up in a gangbangin' finger-lickin' directory wit tha 
+no\-defrag flag will inherit tha attribute.
+.PP
+An entry in
+.I /etc/mtab
+or tha file specified rockin the
+.B \-m
+option must have the
+.B rw
+option specified fo' read n' write access.
+If dis option aint present, then
+.I xfs_fsr
+skips the
+filesystem busted lyrics bout by dat line.
+See the
+.IR fstab (5)
+reference page for
+more details.
+.PP
+In general our phat asses do not foresee tha need ta run
+.I xfs_fsr
+on system partitions such as
+.IR / ,
+.I /boot
+and
+.I /usr
+as up in general these aint gonna suffer from fragmentation.
+There is also thangs wit defragmentin files
+.IR lilo (8)
+uses ta boot yo' system. Well shiiiit, it is recommended dat these files
+should be flagged as no\-defrag wit the
+.IR xfs_io (8)
+chattr command. Y'all KNOW dat shit, muthafucka! Should these filez be moved by
+.I xfs_fsr
+then you must rerun
+.I lilo
+before you reboot or you may have a unbootable system.

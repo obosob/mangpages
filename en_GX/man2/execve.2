@@ -1,0 +1,657 @@
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\" n' Copyright (c) 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt <michael@moria.de>
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21 by Mike Chastain <mec@shell.portal.com>:
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1999-11-12 by Urs Thuermann <urs@isnogud.escape.de>
+.\" Modified 2004-06-23 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" 2006-09-04 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added list of process attributes dat is not preserved on exec().
+.\" 2007-09-14 Ollie Wild <aaw@google.com>, mtk
+.\"     Add text describin limits on command-line arguments + environment
+.\"
+.TH EXECVE 2 2013-07-04 "Linux" "Linux Programmerz Manual"
+.SH NAME
+execve \- execute program
+.SH SYNOPSIS
+.B #include <unistd.h>
+.sp
+.BI "int execve(const char *" filename ", char *const " argv "[], "
+.br
+.BI "           char *const " envp []);
+.SH DESCRIPTION
+.BR execve ()
+executes tha program pointed ta by \fIfilename\fP.
+\fIfilename\fP must be either a funky-ass binary executable, or a script
+startin wit a line of tha form:
+
+.in +4n
+.nf
+\fB#!\fP \fIinterpreta \fP[optional-arg]
+.fi
+.in
+
+For detailz of tha latta case, peep "Interpreta scripts" below.
+
+\fIargv\fP be a array of argument strings passed ta tha freshly smoked up program.
+By convention, tha straight-up original gangsta of these strings should contain tha filename
+associated wit tha file bein executed.
+\fIenvp\fP be a array of strings, conventionally of tha form
+\fBkey=value\fP, which is passed as environment ta tha freshly smoked up program.
+Both \fIargv\fP n' \fIenvp\fP must be terminated by a NULL pointer.
+Da argument vector n' environment can be accessed by the
+called programz main function, when it is defined as:
+
+.in +4n
+.nf
+int main(int argc, char *argv[], char *envp[])
+.fi
+.in
+
+.BR execve ()
+does not return on success, n' tha text, data, bss, and
+stack of tha callin process is overwritten by dat of tha program
+loaded.
+
+If tha current program is bein ptraced, a \fBSIGTRAP\fP is busted ta it
+afta a successful
+.BR execve ().
+
+If tha set-user-ID bit is set on tha program file pointed ta by
+\fIfilename\fP,
+and tha underlyin file system aint mounted
+.I nosuid
+(the
+.B MS_NOSUID
+flag for
+.BR mount (2)),
+and tha callin process aint bein ptraced,
+then tha effectizzle user ID of tha callin process is chizzled
+to dat of tha balla of tha program file.
+Similarly, when tha set-group-ID
+bit of tha program file is set tha effectizzle crew ID of tha calling
+process is set ta tha crew of tha program file.
+
+Da effectizzle user ID of tha process is copied ta tha saved set-user-ID;
+similarly, tha effectizzle crew ID is copied ta tha saved set-group-ID.
+This copyin takes place afta any effectizzle ID chizzlez dat occur
+because of tha set-user-ID n' set-group-ID permission bits.
+
+If tha executable be a a.out dynamically linked
+binary executable containing
+shared-library stubs, tha Linux dynamic linker
+.BR ld.so (8)
+is called all up in tha start of execution ta brang
+needed shared libraries tha fuck into memory
+and link tha executable wit em.
+
+If tha executable be a thugged-out dynamically linked ELF executable, the
+interpreta named up in tha PT_INTERP segment is used ta load tha needed
+shared libraries.
+This interpreta is typically
+.I /lib/ld-linux.so.2
+for binaries linked wit glibc 2.
+(For binaries linked wit tha oldschool Linux libc5, tha interpreta was typically
+.IR /lib/ld-linux.so.1 .)
+
+All process attributes is preserved durin an
+.BR execve (),
+except tha following:
+.IP * 3
+Da dispositionz of any signals dat is bein caught are
+reset ta tha default
+.RB ( signal (7)).
+.IP *
+Any alternate signal stack aint preserved
+.RB ( sigaltstack (2)).
+.IP *
+Memory mappings is not preserved
+.RB ( mmap (2)).
+.IP *
+Attached System V shared memory segments is detached
+.RB ( shmat (2)).
+.IP *
+POSIX shared memory regions is unmapped
+.RB ( shm_open (3)).
+.IP *
+Open POSIX message queue descriptors is closed
+.RB ( mq_overview (7)).
+.IP *
+Any open POSIX named semaphores is closed
+.RB ( sem_overview (7)).
+.IP *
+POSIX timers is not preserved
+.RB ( timer_create (2)).
+.IP *
+Any open directory streams is closed
+.RB ( opendir (3)).
+.IP *
+Memory locks is not preserved
+.RB ( mlock (2),
+.BR mlockall (2)).
+.IP *
+Exit handlezs is not preserved
+.RB ( atexit (3),
+.BR on_exit (3)).
+.IP *
+Da floating-point environment is reset ta tha default (see
+.BR fenv (3)).
+.PP
+Da process attributes up in tha precedin list is all specified
+in POSIX.1-2001.
+Da followin Linux-specific process attributes is also
+not preserved durin an
+.BR execve ():
+.IP * 3
+The
+.BR prctl (2)
+.B PR_SET_DUMPABLE
+flag is set,
+unless a set-user-ID or set-group ID program is bein executed,
+in which case it is cleared.
+.IP *
+The
+.BR prctl (2)
+.B PR_SET_KEEPCAPS
+flag is cleared.
+.IP *
+(Since Linux 2.4.36 / 2.6.23)
+If a set-user-ID or set-group-ID program is bein executed,
+then tha parent dirtnap signal set by
+.BR prctl (2)
+.B PR_SET_PDEATHSIG
+flag is cleared.
+.IP *
+Da process name, as set by
+.BR prctl (2)
+.B PR_SET_NAME
+(and displayed by
+.IR "ps\ \-o comm" ),
+is reset ta tha name of tha freshly smoked up executable file.
+.IP *
+The
+.B SECBIT_KEEP_CAPS
+.I securebits
+flag is cleared.
+See
+.BR capabilitizzles (7).
+.IP *
+Da termination signal is reset to
+.B SIGCHLD
+(see
+.BR clone (2)).
+.PP
+Note tha followin further points:
+.IP * 3
+All threadz other than tha callin thread is destroyed durin an
+.BR execve ().
+Mutexes, condizzle variables, n' other pthreadz objects is not preserved.
+.IP *
+Da equivalent of \fIsetlocale(LC_ALL, "C")\fP
+is executed at program start-up.
+.IP *
+POSIX.1-2001 specifies dat tha dispositionz of any signals that
+are ignored or set ta tha default is left unchanged.
+POSIX.1-2001 specifies one exception: if
+.B SIGCHLD
+is bein ignored,
+then a implementation may leave tha disposizzle unchanged or
+reset it ta tha default; Linux do tha former.
+.IP *
+Any outstandin asynchronous I/O operations is canceled
+.RB ( aio_read (3),
+.BR aio_write (3)).
+.IP *
+For tha handlin of capabilitizzles during
+.BR execve (),
+see
+.BR capabilitizzles (7).
+.IP *
+By default, file descriptors remain open across an
+.BR execve ().
+File descriptors dat is marked close-on-exec is closed;
+see tha description of
+.B FD_CLOEXEC
+in
+.BR fcntl (2).
+(If a gangbangin' file descriptor is closed, dis will cause tha release
+of all record locks obtained on tha underlyin file by dis process.
+See
+.BR fcntl (2)
+for details.)
+POSIX.1-2001 say dat if file descriptors 0, 1, n' 2 would
+otherwise be closed afta a successful
+.BR execve (),
+and tha process would bust privilege cuz tha set-user_ID or
+set-group_ID permission bit was set on tha executed file,
+then tha system may open a unspecified file fo' each of these
+file descriptors.
+As a general principle, no portable program, whether privileged or not,
+can assume dat these three file descriptors will remain
+closed across an
+.BR execve ().
+.\" On Linux it appears dat these file descriptors are
+.\" always open afta a execve(), n' it looks like
+.\" Solaris 8 n' FreeBSD 6.1 is tha same. -- mtk, 30 Apr 2007
+.SS Interpreta scripts
+An interpreta script be a text file dat has execute
+permission enabled n' whose first line iz of tha form:
+
+.in +4n
+.nf
+\fB#!\fP \fIinterpreta \fP[optional-arg]
+.fi
+.in
+
+The
+.I interpreter
+must be a valid pathname fo' an
+executable which aint itself a script.
+If the
+.I filename
+argument of
+.BR execve ()
+specifies a interpreta script, then
+.I interpreter
+will be invoked wit tha followin arguments:
+
+.in +4n
+.nf
+\fIinterpreter\fP [optional-arg] \fIfilename\fP arg...
+.fi
+.in
+
+where
+.I arg...
+is tha seriez of lyrics pointed ta by the
+.I argv
+argument of
+.BR execve ().
+
+For portable use,
+.I optional-arg
+should either be absent, or be specified as a single word (i.e., it
+should not contain white space); peep NOTES below.
+.SS Limits on size of arguments n' environment
+Most UNIX implementations impose some limit on tha total size
+of tha command-line argument
+.RI ( argv )
+and environment
+.RI ( envp )
+strings dat may be passed ta a freshly smoked up program.
+POSIX.1 allows a implementation ta advertise dis limit rockin the
+.B ARG_MAX
+constant (either defined in
+.I <limits.h>
+or available at run time rockin tha call
+.IR "sysconf(_SC_ARG_MAX)" ).
+
+On Linux prior ta kernel 2.6.23, tha memory used ta store the
+environment n' argument strings was limited ta 32 pages
+(defined by tha kernel constant
+.BR MAX_ARG_PAGES ).
+On architectures wit a 4-kB page size,
+this yieldz a maximum size of 128 kB.
+
+On kernel 2.6.23 n' later, most architectures support a size limit
+derived from tha soft
+.B RLIMIT_STACK
+resource limit (see
+.BR getrlimit (2))
+that is up in force all up in tha time of the
+.BR execve ()
+call.
+(Architectures wit no memory pimpment unit is excepted:
+they maintain tha limit dat was up in effect before kernel 2.6.23.)
+This chizzle allows programs ta git a much larger
+argument and/or environment list.
+.\" For some background on tha chizzlez ta ARG_MAX up in kernels 2.6.23 and
+.\" 2.6.25, see:
+.\"     http://sourceware.org/bugzilla/show_bug.cgi?id=5786
+.\"     http://bugzilla.kernel.org/show_bug.cgi?id=10095
+.\"     http://thread.gmane.org/gmane.linux.kernel/646709/focus=648101,
+.\"     checked tha fuck into 2.6.25 as commit a64e715fc74b1a7dcc5944f848acc38b2c4d4ee2.
+For these architectures, tha total size is limited ta 1/4 of tha allowed
+stack size.
+(Imposin tha 1/4-limit
+ensures dat tha freshly smoked up program always has some stack space.)
+.\" Ollie: That don't include tha listz of pointers, though,
+.\" so tha actual usage be a lil' bit higher (1 pointa per argument).
+Since Linux 2.6.25,
+the kernel places a gangbangin' floor of 32 pages on dis size limit,
+so that, even when
+.BR RLIMIT_STACK
+is set straight-up low,
+applications is guaranteed ta have at least as much argument and
+environment space as was provided by Linux 2.6.23 n' earlier.
+(This guarantee was not provided up in Linux 2.6.23 n' 2.6.24.)
+Additionally, tha limit per strang is 32 pages (the kernel constant
+.BR MAX_ARG_STRLEN ),
+and tha maximum number of strings is 0x7FFFFFFF.
+.SH RETURN VALUE
+On success,
+.BR execve ()
+does not return, on error \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B E2BIG
+Da total number of bytes up in tha environment
+.RI ( envp )
+and argument list
+.RI ( argv )
+is too large.
+.TP
+.B EACCES
+Search permission is denied on a cold-ass lil component of tha path prefix of
+.I filename
+or tha name of a script interpreter.
+(See also
+.BR path_resolution (7).)
+.TP
+.B EACCES
+Da file or a script interpreta aint a regular file.
+.TP
+.B EACCES
+Execute permission is denied fo' tha file or a script or ELF interpreter.
+.TP
+.B EACCES
+Da file system is mounted
+.IR noexec .
+.TP
+.B EFAULT
+.I filename
+points outside yo' accessible address space.
+.TP
+.B EINVAL
+An ELF executable had mo' than one PT_INTERP segment (i.e., tried to
+name mo' than one interpreter).
+.TP
+.B EIO
+An I/O error occurred.
+.TP
+.B EISDIR
+An ELF interpreta was a gangbangin' finger-lickin' directory.
+.TP
+.B ELIBBAD
+An ELF interpreta was not up in a recognized format.
+.TP
+.B ELOOP
+Too nuff symbolic links was encountered up in resolving
+.I filename
+or tha name of a script or ELF interpreter.
+.TP
+.B EMFILE
+Da process has tha maximum number of filez open.
+.TP
+.B ENAMETOOLONG
+.I filename
+is too long.
+.TP
+.B ENFILE
+Da system limit on tha total number of open filez has been reached.
+.TP
+.B ENOENT
+Da file
+.I filename
+or a script or ELF interpreta do not exist, or a gangbangin' finger-lickin' dirty-ass shared library
+needed fo' file or interpreta cannot be found.
+.TP
+.B ENOEXEC
+An executable aint up in a recognized format, is fo' tha wrong
+architecture, or has some other format error dat means it cannot be
+executed.
+.TP
+.B ENOMEM
+Insufficient kernel memory was available.
+.TP
+.B ENOTDIR
+A component of tha path prefix of
+.I filename
+or a script or ELF interpreta aint a gangbangin' finger-lickin' directory.
+.TP
+.B EPERM
+Da file system is mounted
+.IR nosuid ,
+the user aint tha superuser,
+and tha file has tha set-user-ID or set-group-ID bit set.
+.TP
+.B EPERM
+Da process is bein traced, tha user aint tha superuser n' the
+file has tha set-user-ID or set-group-ID bit set.
+.TP
+.B ETXTBSY
+Executable was open fo' freestylin by one or mo' processes.
+.SH CONFORMING TO
+SVr4, 4.3BSD, POSIX.1-2001.
+POSIX.1-2001 do not document tha #!  behavior
+but is otherwise compatible.
+.\" SVr4 documents additionizzle error
+.\" conditions EAGAIN, EINTR, ELIBACC, ENOLINK, EMULTIHOP; POSIX do not
+.\" document ETXTBSY, EPERM, EFAULT, ELOOP, EIO, ENFILE, EMFILE, EINVAL,
+.\" EISDIR or ELIBBAD error conditions.
+.SH NOTES
+Set-user-ID n' set-group-ID processes can not be
+.BR ptrace (2)d.
+
+Linux ignores tha set-user-ID n' set-group-ID bits on scripts.
+
+Da result of mountin a gangbangin' file system
+.I nosuid
+varies across Linux kernel versions:
+some will refuse execution of set-user-ID n' set-group-ID
+executablez when dis would
+give tha user powers her dope ass did not have already (and return
+.BR EPERM ),
+some will just ignore tha set-user-ID n' set-group-ID bits and
+.BR exec ()
+successfully.
+
+A maximum line length of 127 charactas be allowed fo' tha straight-up original gangsta line in
+a #! executable shell script.
+
+Da semantics of the
+.I optional-arg
+argument of a interpreta script vary across implementations.
+On Linux, tha entire strang followin the
+.I interpreter
+name is passed as a single argument ta tha interpreter,
+and dis strang can include white space.
+But fuck dat shiznit yo, tha word on tha street is dat behavior differs on some other systems.
+Some systems
+.\" e.g., Solaris 8
+use tha straight-up original gangsta white space ta terminate
+.IR optional-arg .
+On some systems,
+.\" e.g., FreeBSD before 6.0 yo, but not FreeBSD 6.0 onward
+an interpreta script can have multiple arguments,
+and white spaces in
+.I optional-arg
+are used ta delimit tha arguments.
+
+On Linux, either
+.I argv
+or
+.I envp
+can be specified as NULL,
+which has tha same ol' dirty effect as specifyin these arguments
+as a pointa ta a list containin a single NULL pointer.
+.B "Do not take advantage of dis misfeature!"
+It be nonstandard n' nonportable:
+on most other UNIX systems bustin dis will result up in a error
+.RB ( EFAULT ).
+.\" e.g., EFAULT on Solaris 8 n' FreeBSD 6.1; but
+.\" HP-UX 11 is like Linux -- mtk, Apr 2007
+.\" Bug filed 30 Apr 2007: http://bugzilla.kernel.org/show_bug.cgi?id=8408
+.\" Bug rejected (because fix would constitute a ABI chizzle).
+.\"
+
+POSIX.1-2001 say dat joints returned by
+.BR sysconf (3)
+should be invariant over tha gametime of a process.
+But fuck dat shiznit yo, tha word on tha street is dat since Linux 2.6.23, if the
+.BR RLIMIT_STACK
+resource limit chizzles, then tha value reported by
+.B _SC_ARG_MAX
+will also chizzle,
+to reflect tha fact dat tha limit on space fo' holding
+command-line arguments n' environment variablez has chizzled.
+.\"
+.\" .SH BUGS
+.\" Some Linux versions have failed ta check permissions on ELF
+.\" interpreters.  This be a securitizzle hole, cuz it allows playas to
+.\" open any file, like fuckin a rewindin tape device, fo' reading.  Some
+.\" Linux versions have also had other securitizzle holez in
+.\" .BR execve ()
+.\" dat could be exploited fo' denial of steez by a suitably crafted
+.\" ELF binary. There is no known problems wit 2.0.34 or 2.2.15.
+.SS Historical
+With UNIX V6 tha argument list of an
+.BR exec ()
+call was ended by 0,
+while tha argument list of
+.I main
+was ended by \-1.
+Thus, dis argument list was not directly usable up in a gangbangin' further
+.BR exec ()
+call.
+Since UNIX V7 both is NULL.
+.SH EXAMPLE
+Da followin program is designed ta be execed by tha second program below.
+It just echoes its command-line one per line.
+
+.in +4n
+.nf
+/* myecho.c */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    int j;
+
+    fo' (j = 0; j < argc; j++)
+        printf("argv[%d]: %s\\n", j, argv[j]);
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.in
+
+This program can be used ta exec tha program named up in its command-line
+argument:
+.in +4n
+.nf
+
+/* execve.c */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    char *newargv[] = { NULL, "hello", "world", NULL };
+    char *newenviron[] = { NULL };
+
+    if (argc != 2) {
+	fprintf(stderr, "Usage: %s <file\-to\-exec>\\n", argv[0]);
+	exit(EXIT_FAILURE);
+    }
+
+    newargv[0] = argv[1];
+
+    execve(argv[1], newargv, newenviron);
+    perror("execve");   /* execve() only returns on error */
+    exit(EXIT_FAILURE);
+}
+.fi
+.in
+
+We can use tha second program ta exec tha straight-up original gangsta as bigs up:
+
+.in +4n
+.nf
+.RB "$" " cc myecho.c \-o myecho"
+.RB "$" " cc execve.c \-o execve"
+.RB "$" " ./execve ./myecho"
+argv[0]: ./myecho
+argv[1]: hello
+argv[2]: ghetto
+.fi
+.in
+
+We can also use these programs ta demonstrate tha use of a script
+interpreter.
+To do dis we create a script whose "interpreter" is our
+.I myecho
+program:
+
+.in +4n
+.nf
+.RB "$" " pussaaaaay > script.sh"
+.B #! ./myecho script-arg
+.B ^D
+.RB "$" " chmod +x script.sh"
+.fi
+.in
+
+We can then use our program ta exec tha script:
+
+.in +4n
+.nf
+.RB "$" " ./execve ./script.sh"
+argv[0]: ./myecho
+argv[1]: script-arg
+argv[2]: ./script.sh
+argv[3]: hello
+argv[4]: ghetto
+.fi
+.in
+.SH SEE ALSO
+.BR chmod (2),
+.BR fork (2),
+.BR ptrace (2),
+.BR execl (3),
+.BR fexecve (3),
+.BR getopt (3),
+.BR credentials (7),
+.BR environ (7),
+.BR path_resolution (7),
+.BR ld.so (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

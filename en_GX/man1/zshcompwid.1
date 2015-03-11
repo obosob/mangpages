@@ -1,0 +1,1211 @@
+.TH "ZSHCOMPWID" "1" "October 7, 2014" "zsh 5\&.0\&.7"
+.SH "NAME"
+zshcompwid \- zsh completion widgets
+.\" Yodl file: Zsh/compwid.yo
+.SH "DESCRIPTION"
+Da shell\&z programmable completion mechanizzle can be manipulated up in two
+ways; here tha low\-level features supportin tha newer, function\-based
+mechanizzle is defined\&.  A complete set of shell functions based on these
+features is busted lyrics bout in
+\fIzshcompsys\fP(1),
+and playas wit no interest up in addin ta dat system (or, potentially,
+writin they own \-\- peep doggtionary entry fo' `hubris\&') should skip
+the current section\&.  Da olda system based on tha \fBcompctl\fP builtin
+command is busted lyrics bout in
+\fIzshcompctl\fP(1)\&.
+.PP
+Completion widgets is defined by tha \fB\-C\fP option ta tha \fBzle\fP
+builtin command provided by tha \fBzsh/zle\fP module (see
+\fIzshzle\fP(1))\&. For example,
+.PP
+.RS
+.nf
+\fBzle \-C complete expand\-or\-complete completer\fP
+.fi
+.RE
+.PP
+defines a widget named `\fBcomplete\fP\&'\&.  Da second argument is tha name
+of any of tha builtin widgets dat handle completions:
+\fBcomplete\-word\fP, \fBexpand\-or\-complete\fP,
+\fBexpand\-or\-complete\-prefix\fP, \fBmenu\-complete\fP,
+\fBmenu\-expand\-or\-complete\fP, \fBreverse\-menu\-complete\fP,
+\fBlist\-choices\fP, or \fBdelete\-char\-or\-list\fP\&.  Note dat dis will still
+work even if tha widget up in question has been re\-bound\&.
+.PP
+When dis newly defined widget is bound ta a key
+usin tha \fBbindkey\fP builtin command defined up in tha \fBzsh/zle\fP module
+(see \fIzshzle\fP(1)), typin dat key will call tha shell function `\fBcompleter\fP\&'\&. This
+function is responsible fo' generatin tha possible matches rockin the
+builtins busted lyrics bout below\&.  As wit other ZLE widgets, tha function is
+called wit its standard input closed\&.
+.PP
+Once tha function returns, tha completion code takes over control again
+and treats tha matches up in tha same manner as tha specified builtin
+widget, up in dis case \fBexpand\-or\-complete\fP\&.
+.PP
+.PP
+.SH "COMPLETION SPECIAL PARAMETERS"
+.PP
+Da parametas \fBZLE_REMOVE_SUFFIX_CHARS\fP n' \fBZLE_SPACE_SUFFIX_CHARS\fP
+are used by tha completion mechanizzle yo, but is not special\&.
+See \fIParametas Used By Da Shell\fP up in \fIzshparam\fP(1)\&.
+.PP
+Inside completion widgets, n' any functions called from them, some
+parametas have special meaning; outside these functions they is not
+special ta tha shell up in any way\&.  These parametas is used ta pass
+information between tha completion code n' tha completion widget\&. Right back up in yo muthafuckin ass. Some of
+the builtin commandz n' tha condizzle codes use or chizzle tha current
+valuez of these parameters\&.  Any existin joints is ghon be hidden during
+execution of completion widgets; except fo' \fBcompstate\fP, tha parameters
+are reset on each function exit (includin nested function calls from
+within tha completion widget) ta tha joints they had when tha function was
+entered\&.
+.PP
+.PD 0
+.TP
+.PD
+\fBCURRENT\fP
+This is tha number of tha current word, i\&.e\&. tha word tha cursor is
+currently on up in tha \fBwords\fP array\&.  Note dat dis value is only
+correct if tha \fBksharrays\fP option aint set\&.
+.TP
+\fBIPREFIX\fP
+Initially dis is ghon be set ta tha empty string\&.  This parameta functions
+like \fBPREFIX\fP; it gotz nuff a strang which precedes tha one up in \fBPREFIX\fP
+and aint considered part of tha list of matches\&.  Typically, a strang is
+transferred from tha beginnin of \fBPREFIX\fP ta tha end of \fBIPREFIX\fP, for
+example:
+.RS
+.PP
+.RS
+.nf
+\fBIPREFIX=${PREFIX%%\e=*}=
+PREFIX=${PREFIX#*=}\fP
+.fi
+.RE
+.PP
+causes tha part of tha prefix up ta n' includin tha straight-up original gangsta equal sign not
+to be treated as part of a matched string\&.  This can be done automatically
+by tha \fBcompset\fP builtin, peep below\&.
+.RE
+.TP
+\fBISUFFIX\fP
+As \fBIPREFIX\fP yo, but fo' a suffix dat should not be considered part
+of tha matches; note dat tha \fBISUFFIX\fP strang bigs up tha \fBSUFFIX\fP
+string\&.
+.TP
+\fBPREFIX\fP
+Initially dis is ghon be set ta tha part of tha current word from the
+beginnin of tha word up ta tha posizzle of tha cursor; it may be altered
+to give a cold-ass lil common prefix fo' all matches\&.
+.TP
+\fBQIPREFIX\fP
+This parameta is read\-only n' gotz nuff tha quoted strang up ta the
+word bein completed\&. E\&.g\&. when completin `\fB"foo\fP\&', dis parameter
+gotz nuff tha double quote\&. If tha \fB\-q\fP option of \fBcompset\fP is used 
+(see below), n' tha original gangsta strang was `\fB"foo bar\fP\&' wit the
+cursor on tha `\fBbar\fP\&', dis parameta gotz nuff `\fB"foo \fP'\&.
+.TP
+\fBQISUFFIX\fP
+Like \fBQIPREFIX\fP yo, but containin tha suffix\&.
+.TP
+\fBSUFFIX\fP
+Initially dis is ghon be set ta tha part of tha current word from the
+cursor posizzle ta tha end; it may be altered ta give a cold-ass lil common suffix for
+all matches\&.  It be most useful when tha option \fBCOMPLETE_IN_WORD\fP is
+set, as otherwise tha whole word on tha command line is treated as a
+prefix\&.
+.TP
+\fBcompstate\fP
+This be a associatizzle array wit various keys n' joints dat the
+completion code uses ta exchange shiznit wit tha completion widget\&.
+Da keys are:
+.RS
+.PP
+.PD 0
+.TP
+.PD
+\fBall_quotes\fP
+Da \fB\-q\fP option of tha \fBcompset\fP builtin command (see below)
+allows a quoted strang ta be fucked up tha fuck into separate lyrics; if tha cursor is
+on one of dem lyrics, dat word is ghon be completed, possibly invoking
+`\fBcompset \-q\fP\&' recursively\&.  With dis key it is possible ta test the
+typez of quoted strings which is currently fucked up tha fuck into parts up in this
+fashion\&.  Its value gotz nuff one characta fo' each quotin level\&.  The
+charactas is a single quote or a thugged-out double quote fo' strings quoted with
+these characters, a thugged-out dollars sign fo' strings quoted with
+\fB$\&'\fP\fI\&.\&.\&.\fP\fB'\fP n' a funky-ass backslash fo' strings not startin wit a
+quote character\&.  Da first characta up in tha value always correspondz ta the
+innermost quotin level\&.
+.TP
+\fBcontext\fP
+This is ghon be set by tha completion code ta tha overall context
+in which completion be attempted\&. Possible joints are:
+.RS
+.PP
+.PD 0
+.TP
+.PD
+\fBarray_value\fP
+when completin inside tha value of a array parameta assignment; in
+this case tha \fBwords\fP array gotz nuff tha lyrics inside tha parentheses\&.
+.TP
+\fBbrace_parameter\fP
+when completin tha name of a parameta up in a parameta expansion beginning
+with \fB${\fP\&.  This context will also be set when completin parameter
+flags followin \fB${(\fP; tha full command line argument is presented
+and tha handlez must test tha value ta be completed ta ascertain that
+this is tha case\&.
+.TP
+\fBassign_parameter\fP
+when completin tha name of a parameta up in a parameta assignment\&.
+.TP
+\fBcommand\fP
+when completin fo' a aiiight command (either up in command posizzle or for
+an argument of tha command)\&.
+.TP
+\fBcondition\fP
+when completin inside a `\fB[[\fP\&.\&.\&.\fB]]\fP\&' conditionizzle expression; in
+this case tha \fBwords\fP array gotz nuff only tha lyrics inside the
+conditionizzle expression\&.
+.TP
+\fBmath\fP
+when completin up in a mathematical environment like fuckin a
+`\fB((\fP\&.\&.\&.\fB))\fP\&' construct\&.
+.TP
+\fBparameter\fP
+when completin tha name of a parameta up in a parameta expansion beginning
+with \fB$\fP but not \fB${\fP\&.
+.TP
+\fBredirect\fP
+when completin afta a redirection operator\&.
+.TP
+\fBsubscript\fP
+when completin inside a parameta subscript\&.
+.TP
+\fBvalue\fP
+when completin tha value of a parameta assignment\&.
+.RE
+.TP
+\fBexact\fP
+Controls tha behaviour when tha \fBREC_EXACT\fP option is set\&.  It will be
+set ta \fBaccept\fP if a exact match would be accepted, n' is ghon be unset
+otherwise\&.
+.RS
+.PP
+If dat shiznit was set when at least one match equal ta tha strang on tha line
+was generated, tha match be accepted\&.
+.RE
+.TP
+\fBexact_string\fP
+Da strang of a exact match if one was found, otherwise unset\&.
+.TP
+\fBignored\fP
+Da number of lyrics dat was ignored cuz they matched one of the
+patterns given wit tha \fB\-F\fP option ta tha \fBcompadd\fP builtin
+command\&.
+.TP
+\fBinsert\fP
+This controls tha manner up in which a match is banged tha fuck into tha command
+line\&.  On entry ta tha widget function, if it is unset tha command line is
+not ta be chizzled; if set ta \fBunambiguous\fP, any prefix common ta all
+matches is ta be inserted; if set ta \fBautomenu\-unambiguous\fP, the
+common prefix is ta be banged n' tha next invocation of the
+completion code may start menu completion (due ta tha \fBAUTO_MENU\fP
+option bein set); if set ta \fBmenu\fP or \fBautomenu\fP menu completion
+will be started fo' tha matches currently generated (in the
+latta case dis will happen cuz tha \fBAUTO_MENU\fP is set)\&. The
+value may also contain tha strang `\fBtab\fP\&' when tha completion code
+would normally not straight-up do completion yo, but only bang tha TAB
+character\&.
+.RS
+.PP
+On exit it may be set ta any of tha joints above (where settin it to
+the empty strang is tha same ol' dirty as unsettin it), or ta a number, up in which
+case tha match whose number is given is ghon be banged tha fuck into tha command line\&.
+Negatizzle numbers count backward from tha last match (with `\fB\-1\fP\&'
+selectin tha last match) n' out\-of\-range joints is wrapped
+around, so dat a value of zero selects tha last match n' a value
+one mo' than tha maximum selects tha first\&. Unless tha value of this
+key endz up in a space, tha match is banged as up in a menu completion,
+i\&.e\&. without automatically appendin a space\&.
+.PP
+Both \fBmenu\fP n' \fBautomenu\fP may also specify tha number of the
+match ta insert, given afta a cold-ass lil colon\&.  For example, `\fBmenu:2\fP\&' says
+to start menu completion, beginnin wit tha second match\&.
+.PP
+Note dat a value containin tha substrin `\fBtab\fP\&' make the
+matches generated be ignored n' only tha TAB be inserted\&.
+.PP
+Finally, it may also be set ta \fBall\fP, which make all matches
+generated be banged tha fuck into tha line\&.
+.RE
+.TP
+\fBinsert_positions\fP
+When tha completion system bangs a unambiguous strang tha fuck into the
+line, there may be multiple places where charactas is missin or
+where tha characta banged differs from at least one match\&.  The
+value of dis key gotz nuff a cold-ass lil colon separated list of all these
+positions, as indexes tha fuck into tha command line\&.
+.TP
+\fBlast_prompt\fP
+If dis is set ta a non\-empty strang fo' every last muthafuckin match added, the
+completion code will move tha cursor back ta tha previous prompt after
+the list of completions has been displayed\&.  Initially dis is set or
+unset accordin ta tha \fBALWAYS_LAST_PROMPT\fP option\&.
+.TP
+\fBlist\fP
+This controls whether or how tha fuck tha list of matches is ghon be displayed\&.  If it
+is unset or empty they aint NEVER gonna be listed; if its value begins with
+\fBlist\fP, they will always be listed; if it begins wit \fBautolist\fP
+or \fBambiguous\fP, they is ghon be listed when tha \fBAUTO_LIST\fP or
+\fBLIST_AMBIGUOUS\fP options respectively would normally cause dem to
+be\&.
+.RS
+.PP
+If tha substrin \fBforce\fP appears up in tha value, dis make the
+list be shown even if there is only one match\&. Normally, tha list
+would be shown only if there be at least two matches\&.
+.PP
+Da value gotz nuff tha substrin \fBpacked\fP if tha \fBLIST_PACKED\fP
+option is set\&. If dis substrin is given fo' all matches added ta a
+group, dis crew will show tha \fBLIST_PACKED\fP behavior\&. Da same is
+done fo' tha \fBLIST_ROWS_FIRST\fP option wit tha substrin \fBrows\fP\&.
+.PP
+Finally, if tha value gotz nuff tha strang \fBexplanations\fP, only the
+explanation strings, if any, is ghon be listed n' if it gotz nuff
+\fBlyrics\fP, only tha lyrics (added wit tha \fB\-x\fP option of
+\fBcompadd\fP) is ghon be listed\&.  If it gotz nuff both \fBexplanations\fP and
+\fBlyrics\fP both kindz of explanation strings is ghon be listed\&.  It
+will be set appropriately on entry ta a cold-ass lil completion widget n' may be
+changed there\&.
+.RE
+.TP
+\fBlist_lines\fP
+This gives tha number of lines dat is needed ta display tha full
+list of completions\&.  Note dat ta calculate tha total number of lines
+to display you need ta add tha number of lines needed fo' tha command
+line ta dis value, dis be available as tha value of tha \fBBUFFERLINES\fP
+special parameter\&.
+.TP
+\fBlist_max\fP
+Initially dis is set ta tha value of tha \fBLISTMAX\fP parameter\&.
+It may be set ta any other value; when tha widget exits dis value
+will be used up in tha same way as tha value of \fBLISTMAX\fP\&.
+.TP
+\fBnmatches\fP
+Da number of matches generated n' accepted by tha completion code so
+far\&.
+.TP
+\fBold_insert\fP
+On entry ta tha widget dis is ghon be set ta tha number of tha match of
+an oldschool list of completions dat is currently banged tha fuck into tha command
+line\&. If no match has been inserted, dis is unset\&.
+.RS
+.PP
+As wit \fBold_list\fP, tha value of dis key will only be used if it is the
+strin \fBkeep\fP\&. If dat shiznit was set ta dis value by tha widget n' there was an
+old match banged tha fuck into tha command line, dis match is ghon be kept n' if
+the value of tha \fBinsert\fP key specifies dat another match should be
+inserted, dis is ghon be banged afta tha oldschool one\&.
+.RE
+.TP
+\fBold_list\fP
+This is set ta \fByes\fP if there is still a valid list of completions
+from a previous completion all up in tha time tha widget is invoked\&.  This will
+usually be tha case if n' only if tha previous editin operation was a
+completion widget or one of tha builtin completion functions\&.  If there be a
+valid list n' it be also currently shown on tha screen, tha value of this
+key is \fBshown\fP\&.
+.RS
+.PP
+Afta tha widget has exited tha value of dis key is only used if it
+was set ta \fBkeep\fP\&.  In dis case tha completion code will continue
+to use dis oldschool list\&.  If tha widget generated freshly smoked up matches, they will
+not be used\&.
+.RE
+.TP
+\fBparameter\fP
+Da name of tha parameta when completin up in a subscript or up in the
+value of a parameta assignment\&.
+.TP
+\fBpattern_insert\fP
+Normally dis is set ta \fBmenu\fP, which specifies dat menu completion will
+be used whenever a set of matches was generated rockin pattern matching\&.  If
+it is set ta any other non\-empty strang by tha user n' menu completion is
+not selected by other option settings, tha code will instead bang any
+common prefix fo' tha generated matches as wit aiiight completion\&.
+.TP
+\fBpattern_match\fP
+Locally controls tha behaviour given by tha \fBGLOB_COMPLETE\fP option\&.
+Initially it is set ta `\fB*\fP\&' if n' only if tha option is set\&.
+Da completion widget may set it ta dis value, ta a empty string
+(which has tha same ol' dirty effect as unsettin it), or ta any
+other non\-empty string\&.  If it is non\-empty, unquoted metacharactas on the
+command line is ghon be treated as patterns; if it is `\fB*\fP\&', then
+additionally a wildcard `\fB*\fP\&' be assumed all up in tha cursor position; if
+it is empty or unset, metacharactas is ghon be treated literally\&.
+.RS
+.PP
+Note dat tha matcher justifications given ta tha \fBcompadd\fP builtin
+command is not used if dis is set ta a non\-empty string\&.
+.RE
+.TP
+\fBquote\fP
+When completin inside quotes, dis gotz nuff tha quotation character
+(i\&.e\&. either a single quote, a thugged-out double quote, or a funky-ass backtick)\&.  Otherwise it
+is unset\&.
+.TP
+\fBquoting\fP
+When completin inside single quotes, dis is set ta tha string
+\fBsingle\fP; inside double quotes, tha string
+\fBdouble\fP; inside backticks, tha strang \fBbacktick\fP\&.
+Otherwise it is unset\&.
+.TP
+\fBredirect\fP
+Da redirection operator when completin up in a redirection position,
+i\&.e\&. one of \fB<\fP, \fB>\fP, etc\&.
+.TP
+\fBrestore\fP
+This is set ta \fBauto\fP before a gangbangin' function is entered, which forces the
+special parametas mentioned above (\fBwords\fP, \fBCURRENT\fP, \fBPREFIX\fP,
+\fBIPREFIX\fP, \fBSUFFIX\fP, n' \fBISUFFIX\fP) ta be restored ta their
+previous joints when tha function exits\&.   If a gangbangin' function unsets it or
+sets it ta any other string, they aint gonna be restored\&.
+.TP
+\fBto_end\fP
+Specifies tha occasions on which tha cursor is moved ta tha end of a string
+when a match is inserted\&.  On entry ta a widget function, it may be
+\fBsingle\fP if dis will happen when a single unambiguous match was inserted
+or \fBmatch\fP if it will happen any time a match is banged (for example,
+by menu completion; dis is likely ta be tha effect of tha \fBALWAYS_TO_END\fP
+option)\&.
+.RS
+.PP
+On exit, it may be set ta \fBsingle\fP as above\&.  It may also be set to
+\fBalways\fP, or ta tha empty strang or unset; up in dem cases tha cursor will
+be moved ta tha end of tha strang always or never respectively\&.  Any
+other strang is treated as \fBmatch\fP\&.
+.RE
+.TP
+\fBunambiguous\fP
+This key is read\-only n' will always be set ta tha common (unambiguous)
+prefix tha completion code has generated fo' all matches added so far\&.
+.TP
+\fBunambiguous_cursor\fP
+This gives tha posizzle tha cursor would be placed at if the
+common prefix up in tha \fBunambiguous\fP key was inserted, relatizzle to
+the value of dat key\&. Da cursor would be placed before tha character
+whose index is given by dis key\&.
+.TP
+\fBunambiguous_positions\fP
+This gotz nuff all positions where charactas up in tha unambiguous string
+are missin or where tha characta banged differs from at least one
+of tha matches\&.  Da positions is given as indexes tha fuck into tha string
+given by tha value of tha \fBunambiguous\fP key\&.
+.TP
+\fBvared\fP
+If completion is called while editin a line rockin tha \fBvared\fP
+builtin, tha value of dis key is set ta tha name of tha parameter
+given as a argument ta \fBvared\fP\&.  This key is only set while a \fBvared\fP
+command be active\&.
+.RE
+.TP
+\fBwords\fP
+This array gotz nuff tha lyrics present on tha command line currently being
+edited\&.
+.PP
+.SH "COMPLETION BUILTIN COMMANDS"
+.PD 0
+.TP
+.PD 0
+\fBcompadd\fP [ \fB\-akqQfenUld12C\fP ] [ \fB\-F\fP \fIarray\fP ]
+.TP
+.PD 0
+[ \fB\-P\fP \fIprefix\fP ] [ \fB\-S\fP \fIsuffix\fP ]
+.TP
+.PD 0
+[ \fB\-p\fP \fIhidden\-prefix\fP ] [ \fB\-s\fP \fIhidden\-suffix\fP ]
+.TP
+.PD 0
+[ \fB\-i\fP \fIignored\-prefix\fP ] [ \fB\-I\fP \fIignored\-suffix\fP ]
+.TP
+.PD 0
+[ \fB\-W\fP \fIfile\-prefix\fP ] [ \fB\-d\fP \fIarray\fP ]
+.TP
+.PD 0
+[ \fB\-J\fP \fIname\fP ] [ \fB\-V\fP \fIname\fP ] [ \fB\-X\fP \fIexplanation\fP ] [ \fB\-x\fP \fImessage\fP ]
+.TP
+.PD 0
+[ \fB\-r\fP \fIremove\-chars\fP ] [ \fB\-R\fP \fIremove\-func\fP ]
+.TP
+.PD 0
+[ \fB\-D\fP \fIarray\fP ] [ \fB\-O\fP \fIarray\fP ] [ \fB\-A\fP \fIarray\fP ]
+.TP
+.PD 0
+[ \fB\-E\fP \fInumber\fP ]
+.TP
+.PD
+[ \fB\-M\fP \fImatch\-spec\fP ] [ \fB\-\fP\fB\-\fP ] [ \fIwords\fP \&.\&.\&. ]
+.RS
+.PP
+This builtin command can be used ta add matches directly n' control
+all tha shiznit tha completion code stores wit each possible
+match\&. Da return status is zero if at least one match was added and
+non\-zero if no matches was added\&.
+.PP
+Da completion code breaks tha strang ta complete tha fuck into seven fieldz in
+the order: 
+.PP
+.RS
+.nf
+\fI<ipre><apre><hpre><word><hsuf><asuf><isuf>\fP
+.fi
+.RE
+.PP
+Da first field
+is a ignored prefix taken from tha command line, tha contentz of the
+\fBIPREFIX\fP parameta plus tha strang given wit tha \fB\-i\fP
+option\&. With tha \fB\-U\fP option, only tha strang from tha \fB\-i\fP
+option is used\&. Da field \fI<apre>\fP be a optionizzle prefix string
+given wit tha \fB\-P\fP option\&.  Da \fI<hpre>\fP field be a string
+that is considered part of tha match but dat should not be shown when 
+listin completions, given wit tha \fB\-p\fP option; fo' example,
+functions dat do filename generation might specify
+a common path prefix dis way\&.  \fI<word>\fP is tha part of tha match that
+should step tha fuck up in tha list of completions, i\&.e\&. one of tha \fIwords\fP given
+at tha end of tha \fBcompadd\fP command line\&. Da suffixes \fI<hsuf>\fP,
+\fI<asuf>\fP n' \fI<isuf>\fP correspond ta tha prefixes \fI<hpre>\fP,
+\fI<apre>\fP n' \fI<ipre>\fP n' is given by tha options \fB\-s\fP, \fB\-S\fP and
+\fB\-I\fP, respectively\&.
+.PP
+Da supported flags are:
+.PP
+.PD 0
+.TP
+.PD
+\fB\-P\fP \fIprefix\fP
+This gives a strang ta be banged before tha given \fIwords\fP\&.  The
+strin given aint considered as part of tha match n' any shell
+metacharactas up in it aint gonna be quoted when tha strang is inserted\&.
+.TP
+\fB\-S\fP \fIsuffix\fP
+Like \fB\-P\fP yo, but gives a strang ta be banged afta tha match\&.
+.TP
+\fB\-p\fP \fIhidden\-prefix\fP
+This gives a strang dat should be banged tha fuck into tha command line before the
+match but dat should not step tha fuck up in tha list of matches\&. Unless the
+\fB\-U\fP option is given, dis strang must be matched as part of tha string
+on tha command line\&.
+.TP
+\fB\-s\fP \fIhidden\-suffix\fP
+Like `\fB\-p\fP\&' yo, but gives a strang ta bang afta tha match\&.
+.TP
+\fB\-i\fP \fIignored\-prefix\fP
+This gives a strang ta bang tha fuck into tha command line just before any
+strin given wit tha `\fB\-P\fP\&' option\&.  Without `\fB\-P\fP' tha strang is
+inserted before tha strang given wit `\fB\-p\fP\&' or directly before the
+match\&.
+.TP
+\fB\-I\fP \fIignored\-suffix\fP
+Like \fB\-i\fP yo, but gives a ignored suffix\&.
+.TP
+\fB\-a\fP
+With dis flag tha \fIwords\fP is taken as namez of arrays n' the
+possible matches is they joints\&.  If only some elementz of the
+arrays is needed, tha \fIwords\fP may also contain subscripts, as in
+`\fBfoo[2,\-1]\fP\&'\&.
+.TP
+\fB\-k\fP
+With dis flag tha \fIwords\fP is taken as namez of associatizzle arrays
+and tha possible matches is they keys\&.  As fo' \fB\-a\fP, the
+\fIwords\fP may also contain subscripts, as up in `\fBfoo[(R)*bar*]\fP\&'\&.
+.TP
+\fB\-d\fP \fIarray\fP
+This addz per\-match display strings\&. Da \fIarray\fP should contain one 
+element per \fIword\fP given\&. Da completion code will then display tha 
+first element instead of tha straight-up original gangsta \fIword\fP, n' so on\&. The
+\fIarray\fP may be given as tha name of a array parameta or directly
+as a space\-separated list of lyrics up in parentheses\&.
+.RS
+.PP
+If there be fewer display strings than \fIwords\fP, tha leftover
+\fIwords\fP is ghon be displayed unchanged n' if there be mo' display
+strings than \fIwords\fP, tha leftover display strings is ghon be silently
+ignored\&.
+.RE
+.TP
+\fB\-l\fP
+This option only has a effect if used together wit tha \fB\-d\fP
+option\&. If it is given, tha display strings is listed one per line,
+not arrayed up in columns\&.
+.TP
+\fB\-o\fP
+This option only has a effect if used together wit tha \fB\-d\fP
+option\&.  If it is given, tha order of tha output is determined by the
+match strings;  otherwise it is determined by tha display strings
+(i\&.e\&. tha strings given by tha \fB\-d\fP option)\&.
+.TP
+\fB\-J\fP \fIname\fP
+Gives tha name of tha crew of matches tha lyrics should be stored in\&.
+.TP
+\fB\-V\fP \fIname\fP
+Like \fB\-J\fP but namin a unsorted group\&. These is up in a gangbangin' finger-lickin' different name
+space than crews pimped wit tha \fB\-J\fP flag\&.
+.TP
+\fB\-1\fP
+If given together wit tha \fB\-V\fP option, makes
+only consecutizzle duplicates up in tha crew be removed\&. If combined with
+the \fB\-J\fP option, dis has no visible effect\&. Note dat groups
+with n' without dis flag is up in different name spaces\&.
+.TP
+\fB\-2\fP
+If given together wit tha \fB\-J\fP or \fB\-V\fP option, make all
+duplicates be kept\& fo' realz. Again, crews wit n' without dis flag is in
+different name spaces\&.
+.TP
+\fB\-X\fP \fIexplanation\fP
+Da \fIexplanation\fP strang is ghon be printed wit tha list of matches,
+above tha crew currently selected\&.
+.TP
+\fB\-x\fP \fImessage\fP
+Like \fB\-X\fP yo, but tha \fImessage\fP is ghon be printed even if there be no 
+matches up in tha group\&.
+.TP
+\fB\-q\fP
+Da suffix given wit \fB\-S\fP is ghon be automatically removed if 
+the next characta typed be a funky-ass blank or do not bang anything, or if
+the suffix consistz of only one characta n' tha next characta typed 
+is tha same ol' dirty character\&.
+.TP
+\fB\-r\fP \fIremove\-chars\fP
+This be a mo' versatile form of tha \fB\-q\fP option\&.
+Da suffix given wit \fB\-S\fP or tha slash automatically added after
+completin directories is ghon be automatically removed if
+the next characta typed bangs one of tha charactas given up in the
+\fIremove\-chars\fP\&.  This strang is parsed as a cold-ass lil charactas class and
+understandz tha backslash sequences used by tha \fBprint\fP command\&.  For
+example, `\fB\-r "a\-z\et"\fP\&' removes tha suffix if tha next characta typed
+inserts a lower case characta or a TAB, n' `\fB\-r "^0\-9"\fP\&' removes the
+suffix if tha next characta typed bangs anythang but a gangbangin' finger-lickin' digit\&. One extra
+backslash sequence is understood up in dis string: `\fB\e\-\fP\&' standz for
+all charactas dat bang nothing\&. Thus `\fB\-S "=" \-q\fP\&' is tha same
+as `\fB\-S "=" \-r "= \et\en\e\-"\fP\&'\&.
+.RS
+.PP
+This option may also be used without tha \fB\-S\fP option; then any
+automatically added space is ghon be removed when one of tha charactas up in the
+list is typed\&.
+.RE
+.TP
+\fB\-R\fP \fIremove\-func\fP
+This be another form of tha \fB\-r\fP option\&. When a suffix 
+has been banged n' tha completion accepted, tha function
+\fIremove\-func\fP is ghon be called afta tha next characta typed\&.  It is
+passed tha length of tha suffix as a argument n' can use tha special
+parametas available up in ordinary (non\-completion) zle widgets (see
+\fIzshzle\fP(1)) ta analyse n' modify tha command line\&.
+.TP
+\fB\-f\fP
+If dis flag is given, all of tha matches built from \fIwords\fP are
+marked as bein tha namez of files\&.  They is not required ta be actual
+filenames yo, but if they are, n' tha option \fBLIST_TYPES\fP is set, the
+charactas describin tha typez of tha filez up in tha completion lists will
+be shown\&. This also forces a slash ta be added when tha name of a
+directory is completed\&.
+.TP
+\fB\-e\fP
+This flag can be used ta tell tha completion code dat tha matches
+added is parameta names fo' a parameta expansion\&. This will make
+the \fBAUTO_PARAM_SLASH\fP n' \fBAUTO_PARAM_KEYS\fP options be used for
+the matches\&.
+.TP
+\fB\-W\fP \fIfile\-prefix\fP
+This strang be a pathname dat will be
+prepended ta each of tha matches formed by tha given \fIwords\fP together 
+with any prefix specified by tha \fB\-p\fP option ta form a cold-ass lil complete filename
+for testing\&.  Hence it is only useful if combined wit tha \fB\-f\fP flag, as
+the tests aint gonna otherwise be performed\&.
+.TP
+\fB\-F\fP \fIarray\fP
+Specifies a array containin patterns\&. Lyrics matchin one of these
+patterns is ignored, i\&.e\&. not considered ta be possible matches\&.
+.RS
+.PP
+Da \fIarray\fP may be tha name of a array parameta or a list of
+literal patterns enclosed up in parentheses n' quoted, as up in `\fB\-F "(*?\&.o
+*?\&.h)"\fP\&'\&. If tha name of a array is given, tha elementz of tha array are
+taken as tha patterns\&.
+.RE
+.TP
+\fB\-Q\fP
+This flag instructs tha completion 
+code not ta quote any metacharactas up in tha lyrics when insertin them
+into tha command line\&.
+.TP
+\fB\-M\fP \fImatch\-spec\fP
+This gives local match justifications as busted lyrics bout below in
+the section `Completion Matchin Control\&'\&. This option may be given mo' than once\&.
+In dis case all \fImatch\-spec\fPs given is concatenated wit spaces
+between dem ta form tha justification strang ta use\&.
+Note dat they will only be used if tha \fB\-U\fP option aint given\&.
+.TP
+\fB\-n\fP
+Specifies dat tha lyrics added is ta be used as possible
+matches yo, but is not ta step tha fuck up in tha completion listing\&.
+.TP
+\fB\-U\fP
+If dis flag is given, all lyrics given is ghon be accepted n' no matching
+will be done by tha completion code\&. Normally dis is used in
+functions dat do tha matchin theyselves\&.
+.TP
+\fB\-O\fP \fIarray\fP
+If dis option is given, tha \fIwords\fP is \fInot\fP added ta tha set of
+possible completions\&.  Instead, matchin is done as usual n' all of the
+\fIwords\fP given as arguments dat match tha strang on tha command line
+will be stored up in tha array parameta whose name is given as \fIarray\fP\&.
+.TP
+\fB\-A\fP \fIarray\fP
+As tha \fB\-O\fP option, except dat instead of dem of tha \fIwords\fP which
+match bein stored up in \fIarray\fP, tha strings generated internally by the
+completion code is stored\&. For example,
+with a matchin justification of `\fB\-M "L:|no="\fP\&', tha strang `\fBnof\fP'
+on tha command line n' tha strang `\fBfoo\fP\&' as one of tha \fIwords\fP, this
+option stores tha strang `\fBnofoo\fP\&' up in tha array, whereas tha \fB\-O\fP
+option stores tha `\fBfoo\fP\&' originally given\&.
+.TP
+\fB\-D\fP \fIarray\fP
+As wit \fB\-O\fP, tha \fIwords\fP is not added ta tha set of possible
+completions\&.  Instead, tha completion code tests whether each \fIword\fP 
+in turn matches what tha fuck is on tha line\&.  If tha \fIn\fPth \fIword\fP do not
+match, tha \fIn\fPth element of tha \fIarray\fP is removed\&.  Elements
+for which tha correspondin \fIword\fP is matched is retained\&.
+.TP
+\fB\-C\fP
+This option addz a special match which expandz ta all other matches
+when banged tha fuck into tha line, even dem dat is added afta this
+option is used\&.  Together wit tha \fB\-d\fP option it is possible to
+specify a strang dat should be displayed up in tha list fo' dis special 
+match\&.  If no strang is given, it is ghon be shown as a strang containin 
+the strings dat would be banged fo' tha other matches, truncated ta 
+the width of tha screen\&.
+.TP
+\fB\-E\fP
+This option addz \fInumber\fP empty matches afta tha \fIwords\fP have
+been added\&.  An empty match takes up space up in completion listings but
+will never be banged up in tha line n' can\&'t be selected wit menu
+completion or menu selection\&.  This make empty matches only useful to
+format completion lists n' ta make explanatory strang be shown in
+completion lists (since empty matches can be given display strings
+with tha \fB\-d\fP option)\&.  And cuz all but one empty strang would
+otherwise be removed, dis option implies tha \fB\-V\fP n' \fB\-2\fP
+options (even if a explicit \fB\-J\fP option is given)\&.
+.TP
+.PD 0
+\fB\-\fP
+.TP
+.PD
+\fB\-\fP\fB\-\fP
+This flag endz tha list of flags n' options\& fo' realz. All arguments afta it
+will be taken as tha lyrics ta use as matches even if they begin with
+hyphens\&.
+.PP
+Except fo' tha \fB\-M\fP flag, if any of these flags is given mo' than
+once, tha straight-up original gangsta one (and its argument) is ghon be used\&.
+.RE
+.TP
+.PD 0
+\fBcompset \-p\fP \fInumber\fP
+.TP
+.PD 0
+\fBcompset \-P\fP [ \fInumber\fP ] \fIpattern\fP
+.TP
+.PD 0
+\fBcompset \-s\fP \fInumber\fP
+.TP
+.PD 0
+\fBcompset \-S\fP [ \fInumber\fP ] \fIpattern\fP
+.TP
+.PD 0
+\fBcompset \-n\fP \fIbegin\fP [ \fIend\fP ]
+.TP
+.PD 0
+\fBcompset \-N\fP \fIbeg\-pat\fP [ \fIend\-pat\fP ]
+.TP
+.PD
+\fBcompset \-q\fP
+This command simplifies modification of tha special parameters,
+while its return status allows tests on dem ta be carried out\&.
+.RS
+.PP
+Da options are:
+.PP
+.PD 0
+.TP
+.PD
+\fB\-p\fP \fInumber\fP
+If tha contentz of tha \fBPREFIX\fP parameta is longer than \fInumber\fP
+characters, tha straight-up original gangsta \fInumber\fP charactas is removed from it and
+appended ta tha contentz of tha \fBIPREFIX\fP parameter\&.
+.TP
+\fB\-P\fP [ \fInumber\fP ] \fIpattern\fP
+If tha value of tha \fBPREFIX\fP parameta begins wit anythang that
+matches tha \fIpattern\fP, tha matched portion is removed from
+\fBPREFIX\fP n' appended ta \fBIPREFIX\fP\&.
+.RS
+.PP
+Without tha optionizzle \fInumber\fP, tha longest match is taken yo, but
+if \fInumber\fP is given, anythang up ta tha \fInumber\fPth match is
+moved\&.  If tha \fInumber\fP is negative, tha \fInumber\fPth longest
+match is moved\&. For example, if \fBPREFIX\fP gotz nuff tha string
+`\fBa=b=c\fP\&', then \fBcompset \-P '*\e='\fP will move tha strang `\fBa=b=\fP' 
+into tha \fBIPREFIX\fP parameter yo, but \fBcompset \-P 1 \&'*\e='\fP will move only
+the strang `\fBa=\fP\&'\&.
+.RE
+.TP
+\fB\-s\fP \fInumber\fP
+As \fB\-p\fP yo, but transfer tha last \fInumber\fP charactas from the
+value of \fBSUFFIX\fP ta tha front of tha value of \fBISUFFIX\fP\&.
+.TP
+\fB\-S\fP [ \fInumber\fP ] \fIpattern\fP
+As \fB\-P\fP yo, but match tha last portion of \fBSUFFIX\fP n' transfer the
+matched portion ta tha front of tha value of \fBISUFFIX\fP\&.
+.TP
+\fB\-n\fP \fIbegin\fP [ \fIend\fP ]
+If tha current word posizzle as specified by tha parameta \fBCURRENT\fP 
+is pimped outa than or equal ta \fIbegin\fP, anythang up ta the
+\fIbegin\fPth word is removed from tha \fBwords\fP array n' tha value
+of tha parameta \fBCURRENT\fP is decremented by \fIbegin\fP\&.
+.RS
+.PP
+If tha optionizzle \fIend\fP is given, tha modification is done only if
+the current word posizzle be also less than or equal ta \fIend\fP\&. In
+this case, tha lyrics from posizzle \fIend\fP onwardz is also removed from
+the \fBwords\fP array\&.
+.PP
+Both \fIbegin\fP n' \fIend\fP may be wack ta count backwards
+from tha last element of tha \fBwords\fP array\&.
+.RE
+.TP
+\fB\-N\fP \fIbeg\-pat\fP [ \fIend\-pat\fP ]
+If one of tha elementz of tha \fBwords\fP array before tha one at the
+index given by tha value of tha parameta \fBCURRENT\fP matches the
+pattern \fIbeg\-pat\fP, all elements up ta n' includin tha matchin one are
+removed from tha \fBwords\fP array n' tha value of \fBCURRENT\fP is chizzled to
+point ta tha same word up in tha chizzled array\&.
+.RS
+.PP
+If tha optionizzle pattern \fIend\-pat\fP be also given, n' there be an
+element up in tha \fBwords\fP array matchin dis pattern, tha parameters
+are modified only if tha index of dis word is higher than tha one
+given by tha \fBCURRENT\fP parameta (so dat tha matchin word has 
+to be afta tha cursor)\&. In dis case, tha lyrics startin wit tha one
+matchin \fBend\-pat\fP is also removed from tha \fBwords\fP
+array\&. If \fBwords\fP gotz nuff no word matchin \fIend\-pat\fP, the
+testin n' modification is performed as if it was not given\&.
+.RE
+.TP
+\fB\-q\fP
+Da word
+currently bein completed is split on spaces tha fuck into separate lyrics,
+respectin tha usual shell quotin conventions\&.  Da 
+resultin lyrics is stored up in tha \fBwords\fP array, n' \fBCURRENT\fP,
+\fBPREFIX\fP, \fBSUFFIX\fP, \fBQIPREFIX\fP, n' \fBQISUFFIX\fP is modified to
+reflect tha word part dat is completed\&.
+.PP
+In all tha above cases tha return status is zero if tha test succeeded
+and tha parametas was modified n' non\-zero otherwise\&. This allows
+one ta use dis builtin up in tests such as:
+.PP
+.RS
+.nf
+\fBif compset \-P \&'*\e='; then \&.\&.\&.\fP
+.fi
+.RE
+.PP
+This forces anythang up ta n' includin tha last equal sign ta be
+ignored by tha completion code\&.
+.RE
+.TP
+\fBcompcall\fP [ \fB\-TD\fP ]
+This allows tha use of completions defined wit tha \fBcompctl\fP builtin
+from within completion widgets\&.  Da list of matches is ghon be generated as
+if one of tha non\-widget completion functions (\fBcomplete\-word\fP, etc\&.)
+had been called, except dat only \fBcompctl\fPs given fo' specific commands
+are used\&. To force tha code ta try completions defined wit tha \fB\-T\fP
+option of \fBcompctl\fP and/or tha default completion (whether defined by
+\fBcompctl \-D\fP or tha builtin default) up in tha appropriate places, the
+\fB\-T\fP and/or \fB\-D\fP flags can be passed ta \fBcompcall\fP\&.
+.RS
+.PP
+Da return status can be used ta test if a matchin \fBcompctl\fP
+definizzle was found\&. Well shiiiit, it is non\-zero if a \fBcompctl\fP was found and
+zero otherwise\&.
+.PP
+Note dat dis builtin is defined by tha \fBzsh/compctl\fP module\&.
+.RE
+.PP
+.SH "COMPLETION CONDITION CODES"
+.PP
+Da followin additionizzle condizzle codes fo' use within tha \fB[[ \&.\&.\&. ]]\fP
+construct is available up in completion widgets\&.  These work on tha special
+parameters\&.  All of these tests can also be performed by tha \fBcompset\fP
+builtin yo, but up in tha case of tha condizzle codes tha contentz of tha special
+parametas is not modified\&.
+.PP
+.PD 0
+.TP
+.PD
+\fB\-prefix\fP [ \fInumber\fP ] \fIpattern\fP
+true if tha test fo' tha \fB\-P\fP option of \fBcompset\fP would succeed\&.
+.TP
+\fB\-suffix\fP [ \fInumber\fP ] \fIpattern\fP
+true if tha test fo' tha \fB\-S\fP option of \fBcompset\fP would succeed\&.
+.TP
+\fB\-after\fP \fIbeg\-pat\fP
+true if tha test of tha \fB\-N\fP option wit only tha \fIbeg\-pat\fP given 
+would succeed\&.
+.TP
+\fB\-between\fP \fIbeg\-pat end\-pat\fP
+true if tha test fo' tha \fB\-N\fP option wit both patterns would succeed\&.
+.PP
+.SH "COMPLETION MATCHING CONTROL"
+.PP
+It be possible by use of the
+\fB\-M\fP option of tha \fBcompadd\fP builtin command ta specify how tha fuck the
+charactas up in tha strang ta be completed (referred ta here as the
+command line) map onto tha charactas up in tha list of matches produced by
+the completion code (referred ta here as tha trial completions)\&. Note
+that dis aint used if tha command line gotz nuff a glob pattern and
+the \fBGLOB_COMPLETE\fP option is set or tha \fBpattern_match\fP of the
+\fBcompstate\fP special association is set ta a non\-empty string\&.
+.PP
+Da \fImatch\-spec\fP given as tha argument ta tha \fB\-M\fP option (see
+`Completion Builtin Commands\&' above) consistz of one or mo' matchin descriptions separated by
+whitespace\&.  Each description consistz of a letta followed by a cold-ass lil colon
+and then tha patterns describin which characta sequences on tha line match
+which characta sequences up in tha trial completion\&.  Any sequence of
+charactas not handled up in dis fashizzle must match exactly, as usual\&.
+.PP
+Da formz of \fImatch\-spec\fP understood is as bigs up\&. In each case, the
+form wit a upper case initial characta retains tha strang already
+typed on tha command line as tha final result of completion, while with
+a lower case initial characta tha strang on tha command line is chizzled
+into tha correspondin part of tha trial completion\&.
+.PP
+.PD 0
+.TP
+.PD 0
+\fBm:\fP\fIlpat\fP\fB=\fP\fItpat\fP
+.TP
+.PD
+\fBM:\fP\fIlpat\fP\fB=\fP\fItpat\fP
+Here, \fIlpat\fP be a pattern dat matches on tha command line,
+correspondin ta \fItpat\fP which matches up in tha trial completion\&.
+.TP
+.PD 0
+\fBl:\fP\fIlanchor\fP\fB|\fP\fIlpat\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBL:\fP\fIlanchor\fP\fB|\fP\fIlpat\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBl:\fP\fIlanchor\fP\fB||\fP\fIranchor\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBL:\fP\fIlanchor\fP\fB||\fP\fIranchor\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBb:\fP\fIlpat\fP\fB=\fP\fItpat\fP
+.TP
+.PD
+\fBB:\fP\fIlpat\fP\fB=\fP\fItpat\fP
+These lettas is fo' patterns dat is anchored by another pattern on
+the left side\&. Matchin fo' \fIlpat\fP n' \fItpat\fP be as fo' \fBm\fP and
+\fBM\fP yo, but tha pattern \fIlpat\fP matched on tha command line must be
+preceded by tha pattern \fIlanchor\fP\&.  Da \fIlanchor\fP can be blank to
+anchor tha match ta tha start of tha command line string; otherwise the
+anchor can occur anywhere yo, but must match up in both tha command line and
+trial completion strings\&.
+.RS
+.PP
+If no \fIlpat\fP is given but a \fIranchor\fP is, dis matches tha gap
+between substrings matched by \fIlanchor\fP n' \fIranchor\fP\&. Unlike
+\fIlanchor\fP, tha \fIranchor\fP only need ta match tha trial
+completion string\&.
+.PP
+Da \fBb\fP n' \fBB\fP forms is similar ta \fBl\fP n' \fBL\fP wit a empty 
+anchor yo, but need ta match only tha beginnin of tha trial completion
+or tha word on tha command line, respectively\&.
+.RE
+.TP
+.PD 0
+\fBr:\fP\fIlpat\fP\fB|\fP\fIranchor\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBR:\fP\fIlpat\fP\fB|\fP\fIranchor\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBr:\fP\fIlanchor\fP\fB||\fP\fIranchor\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBR:\fP\fIlanchor\fP\fB||\fP\fIranchor\fP\fB=\fP\fItpat\fP
+.TP
+.PD 0
+\fBe:\fP\fIlpat\fP\fB=\fP\fItpat\fP
+.TP
+.PD
+\fBE:\fP\fIlpat\fP\fB=\fP\fItpat\fP
+As \fBl\fP, \fBL\fP, \fBb\fP n' \fBB\fP, wit tha difference dat tha command
+line n' trial completion patterns is anchored on tha right side\&.
+Here a empty \fIranchor\fP n' tha \fBe\fP n' \fBE\fP forms force the
+match ta tha end of tha trial completion or command line string\&.
+.PP
+Each \fIlpat\fP, \fItpat\fP or \fIanchor\fP is either a empty strang or
+consistz of a sequence of literal charactas (which may be quoted wit a
+backslash), question marks, characta classes, n' correspondence
+classes; ordinary shell patterns is not used\&.  Literal charactas match
+only theyselves, question marks match any character, n' character
+classes is formed as fo' globbin n' match any characta up in tha given
+set\&.
+.PP
+Correspondence classes is defined like characta classes yo, but wit two
+differences: they is delimited by a pair of braces, n' negated classes
+are not allowed, so tha charactas \fB!\fP n' \fB^\fP have no special
+meanin directly afta tha openin brace\&.  They indicate dat a range of
+charactas on tha line match a range of charactas up in tha trial
+completion yo, but (unlike ordinary characta classes) paired accordin to
+the correspondin posizzle up in tha sequence\&.  For example, ta make any
+ASCII lower case letta on tha line match tha correspondin upper case
+letta up in tha trial completion, you can use `\fBm:{a\-z}={A\-Z}\fP\&'
+(however, peep below fo' tha recommended form fo' this)\&.  Mo'
+than one pair of classes can occur, up in which case tha straight-up original gangsta class before
+the \fB=\fP correspondz ta tha straight-up original gangsta afta it, n' so on\&.  If one side has
+more such classes than tha other side, tha superfluous classes behave
+like aiiight characta classes\&.  In anchor patterns correspondence classes
+also behave like aiiight characta classes\&.
+.PP
+Da standard `\fB[:\fP\fIname\fP\fB:]\fP\&' forms busted lyrics bout fo' standard shell
+patterns,
+see tha section FILENAME GENERATION up in \fIzshexpn\fP(1),
+may step tha fuck up in correspondence classes as well as aiiight character
+classes\&.  Da only special behaviour up in correspondence classes is if
+the form on tha left n' tha form on tha right is each one of
+\fB[:upper:]\fP, \fB[:lower:]\fP\&.  In these cases the
+characta up in tha word n' tha characta on tha line must be tha same up
+to a gangbangin' finger-lickin' difference up in case\&.  Hence ta make any lower case characta on the
+line match tha correspondin upper case characta up in tha trial
+completion you can use `\fBm:{[:lower:]}={[:upper:]}\fP\&'\&.  Although the
+matchin system do not yet handle multibyte characters, dis is likely
+to be a gangbangin' future extension, at which point dis syntax will handle
+arbitrary alphabets; hence dis form, rather than tha use of explicit
+ranges, is tha recommended form\&.  In other cases
+`\fB[:\fP\fIname\fP\fB:]\fP\&' forms is allowed\&.  If tha two forms on tha left
+and right is tha same, tha charactas must match exactly\&.  In remaining
+cases, tha correspondin tests is applied ta both charactas yo, but they
+are not otherwise constrained; any matchin characta up in one set goes
+with any matchin characta up in tha other set:  dis is equivalent ta the
+behaviour of ordinary characta classes\&.
+.PP
+Da pattern \fItpat\fP may also be one or two stars, `\fB*\fP\&' or
+`\fB**\fP\&'\&. This means dat tha pattern on tha command line can match
+any number of charactas up in tha trial completion\&. In dis case the
+pattern must be anchored (on either side); up in tha case of a single
+star, tha \fIanchor\fP then determines how tha fuck much of tha trial completion
+is ta be included \-\- only tha charactas up ta tha next appearizzle of
+the anchor is ghon be matched\&. With two stars, substrings matched by the
+anchor can be matched, too\&.
+.PP
+Examples:
+.PP
+Da keyz of tha \fBoptions\fP association defined by tha \fBparameter\fP
+module is tha option names up in all\-lower\-case form, without
+underscores, n' without tha optionizzle \fBno\fP all up in tha beginnin even
+though tha builtins \fBsetopt\fP n' \fBunsetopt\fP KNOW option names
+with upper case letters, underscores, n' tha optionizzle \fBno\fP\&.  The
+followin altas tha matchin rulez so dat tha prefix \fBno\fP n' any
+underscore is ignored when tryin ta match tha trial completions
+generated n' upper case lettas on tha line match tha corresponding
+lower case lettas up in tha lyrics:
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'L:|[nN][oO]= M:_= M:{[:upper:]}={[:lower:]}' \- \e 
+  ${(k)options} \fP
+.fi
+.RE
+.PP
+Da first part say dat tha pattern `\fB[nN][oO]\fP\&' all up in tha beginning
+(the empty anchor before tha pipe symbol) of tha strang on the
+line matches tha empty strang up in tha list of lyrics generated by
+completion, so it is ghon be ignored if present\&. Da second part do the
+same fo' a underscore anywhere up in tha command line string, n' the
+third part uses correspondence classes so dat any
+upper case letta on tha line matches tha correspondin lower case
+letta up in tha word\&. Da use of tha upper case formz of the
+specification charactas (\fBL\fP n' \fBM\fP) guarantees dat what tha fuck has
+already been typed on tha command line (in particular tha prefix
+\fBno\fP) aint gonna be deleted\&.
+.PP
+Note dat tha use of \fBL\fP up in tha straight-up original gangsta part means dat it matches
+only when all up in tha beginnin of both tha command line strang n' the
+trial completion\&. I\&.e\&., tha strang `\fB_NO_f\fP\&' would not be
+completed ta `\fB_NO_foo\fP\&', nor would `\fBNONO_f\fP' be completed to
+`\fBNONO_foo\fP\&' cuz of tha leadin underscore or tha second
+`\fBNO\fP\&' on tha line which make tha pattern fail even though they is 
+otherwise ignored\&. To fix this, one would use `\fBB:[nN][oO]=\fP\&'
+instead of tha straight-up original gangsta part\& fo' realz. As busted lyrics bout above, dis matches at the
+beginnin of tha trial completion, independent of other charactas or
+substrings all up in tha beginnin of tha command line word which is ignored
+by tha same or other \fImatch\-spec\fPs\&.
+.PP
+Da second example make completion case insensitive\&.  This is just
+the same as up in tha option example, except here we wish ta retain the
+charactas up in tha list of completions:
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'m:{[:lower:]}={[:upper:]}' \&.\&.\&. \fP
+.fi
+.RE
+.PP
+This make lower case lettas match they upper case counterparts\&.
+To make upper case lettas match tha lower case forms as well:
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'m:{[:lower:][:upper:]}={[:upper:][:lower:]}' \&.\&.\&. \fP
+.fi
+.RE
+.PP
+A sick example fo' tha use of \fB*\fP patterns is partial word
+completion\&. Right back up in yo muthafuckin ass. Sometimes you wanna make strings like `\fBc\&.s\&.u\fP\&'
+complete ta strings like `\fBcomp\&.source\&.unix\fP\&', i\&.e\&. tha word on the
+command line consistz of multiple parts, separated by a thugged-out dot up in this
+example, where each part should be completed separately \-\- note,
+however, dat tha case where each part of tha word, i\&.e\&. `\fBcomp\fP\&',
+`\fBsource\fP\&' n' `\fBunix\fP' up in dis example, is ta be completed from
+separate setz of matches
+is a gangbangin' finger-lickin' different problem ta be solved by tha implementation of the
+completion widget\&.  Da example can be handled by:
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'r:|\&.=* r:|=*' \e 
+  \- comp\&.sources\&.unix comp\&.sources\&.misc \&.\&.\&.\fP
+.fi
+.RE
+.PP
+Da first justification say dat \fIlpat\fP is tha empty string, while
+\fIanchor\fP be a thugged-out dot; \fItpat\fP is \fB*\fP, so dis can match anything
+except fo' tha `\fB\&.\fP\&' from tha anchor in
+the trial completion word\&.  So up in `\fBc\&.s\&.u\fP\&', tha matcher sees `\fBc\fP',
+followed by tha empty string, followed by tha anchor `\fB\&.\fP\&', and
+likewise fo' tha second dot, n' replaces tha empty strings before the
+anchors, givin `\fBc\fP[\fBomp\fP]\fB\&.s\fP[\fBources\fP]\fB\&.u\fP[\fBnix\fP]\&', where
+the last part of tha completion is just as normal\&.
+.PP
+With tha pattern shown above, tha strang `\fBc\&.u\fP\&' could not be
+completed ta `\fBcomp\&.sources\&.unix\fP\&' cuz tha single star means
+that no dot (matched by tha anchor) can be skipped\&. By rockin two stars 
+as up in `\fBr:|\&.=**\fP\&', however, `\fBc\&.u\fP' could be completed to
+`\fBcomp\&.sources\&.unix\fP\&'\&. This also shows dat up in some cases,
+especially if tha anchor be a real pattern, like a cold-ass lil characta class,
+the form wit two stars may result up in mo' matches than one wanna\&.
+.PP
+Da second justification is needed ta make dis work when tha cursor is
+in tha middle of tha strang on tha command line n' tha option
+\fBCOMPLETE_IN_WORD\fP is set\&. In dis case tha completion code would
+normally try ta match trial completions dat end wit tha strang as
+typed so far, i\&.e\&. it will only bang freshly smoked up charactas all up in tha cursor
+posizzle rather than all up in tha end\&.  However up in our example we wanna
+the code ta recognise matches which contain extra charactas afta the
+strin on tha line (the `\fBnix\fP\&' up in tha example)\&.  Hence we say dat the
+empty strang all up in tha end of tha strang on tha line matches any characters
+at tha end of tha trial completion\&.
+.PP
+Mo' generally, tha justification
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'r:|[\&.,_\-]=* r:|=*' \&.\&.\&. \fP
+.fi
+.RE
+.PP
+allows one ta complete lyrics wit abbreviations before any of the
+charactas up in tha square brackets\&.  For example, to
+complete \fBveryverylongfile\&.c\fP rather than \fBveryverylongheader\&.h\fP
+with tha above up in effect, you can just type \fBvery\&.c\fP before attempting
+completion\&.
+.PP
+Da justifications wit both a left n' a right anchor is useful to
+complete partial lyrics whose parts is not separated by some
+special character\&. For example, up in some places strings gotta be
+completed dat is formed `\fBLikeThis\fP\&' (i\&.e\&. tha separate parts are
+determined by a leadin upper case letter) or maybe one has to
+complete strings wit trailin numbers\& yo. Here one could use tha simple
+form wit only one anchor as in:
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'r:|[[:upper:]0\-9]=* r:|=*' LikeTHIS FooHoo 5foo123 5bar234\fP
+.fi
+.RE
+.PP
+But wit this, tha strang `\fBH\fP\&' would neither complete ta `\fBFooHoo\fP'
+nor ta `\fBLikeTHIS\fP\&' cuz up in each case there be a upper case
+letta before tha `\fBH\fP\&' n' dat is matched by tha anchor\&. Likewise, 
+a `\fB2\fP\&' would not be completed\&. In both cases dis could be chizzled
+by rockin `\fBr:|[[:upper:]0\-9]=**\fP\&' yo, but then `\fBH\fP' completes ta both
+`\fBLikeTHIS\fP\&' n' `\fBFooHoo\fP' n' a `\fB2\fP' matches tha other
+strings cuz charactas can be banged before every last muthafuckin upper case
+letta n' digit\&. To avoid dis one would use:
+.PP
+.RS
+.nf
+\fBcompadd \-M \&'r:[^[:upper:]0\-9]||[[:upper:]0\-9]=** r:|=*' \e 
+    LikeTHIS FooHoo foo123 bar234\fP
+.fi
+.RE
+.PP
+By rockin these two anchors, a `\fBH\fP\&' matches only upper case `\fBH\fPz dat 
+are immediately preceded by suttin' matchin tha left anchor
+`\fB[^[:upper:]0\-9]\fP\&'\&. Da effect is, of course, dat `\fBH\fP' matches only
+the strang `\fBFooHoo\fP\&', a `\fB2\fP' matches only `\fBbar234\fP' n' so on\&.
+.PP
+When rockin tha completion system (see
+\fIzshcompsys\fP(1)), playas can define match justifications dat is ta be used for
+specific contexts by rockin tha \fBmatcher\fP n' \fBmatcher\-list\fP
+styles\&. Da joints fo' tha latta is ghon be used everywhere\&.
+.PP
+.SH "COMPLETION WIDGET EXAMPLE"
+.PP
+Da first step is ta define tha widget:
+.PP
+.RS
+.nf
+\fBzle \-C complete complete\-word complete\-files\fP
+.fi
+.RE
+.PP
+Then tha widget can be bound ta a key rockin tha \fBbindkey\fP builtin
+command:
+.PP
+.RS
+.nf
+\fBbindkey \&'^X\et' complete\fP
+.fi
+.RE
+.PP
+Afta dat tha shell function \fBcomplete\-files\fP is ghon be invoked
+afta typin control\-X n' TAB\&. Da function should then generate the
+matches, e\&.g\&.:
+.PP
+.RS
+.nf
+\fBcomplete\-filez () { compadd \- * }\fP
+.fi
+.RE
+.PP
+This function will complete filez up in tha current directory matchin tha 
+current word\&.

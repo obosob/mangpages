@@ -1,0 +1,240 @@
+.\" Copyright (C) 2002 Robert Love
+.\" n' Copyright (C) 2006 Mike Kerrisk
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 2002-11-19 Robert Ludd <rml@tech9.net> - initial version
+.\" 2004-04-20 mtk - fixed description of return value
+.\" 2004-04-22 aeb - added glibc prototype history
+.\" 2005-05-03 mtk - noted dat sched_setaffinitizzle may cause thread
+.\"	migration n' dat CPU affinitizzle be a per-thread attribute.
+.\" 2006-02-03 mtk -- Major rewrite
+.\" 2008-11-12, mtk, removed CPU_*() macro descriptions ta a
+.\" separate CPU_SET(3) page.
+.\"
+.TH SCHED_SETAFFINITY 2 2013-02-11 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sched_setaffinity, sched_getaffinitizzle \- \
+set n' git a processs CPU affinitizzle mask
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.B #include <sched.h>
+.sp
+.BI "int sched_setaffinity(pid_t " pid ", size_t " cpusetsize ,
+.BI "                      cpu_set_t *" mask );
+.sp
+.BI "int sched_getaffinity(pid_t " pid ", size_t " cpusetsize ,
+.BI "                      cpu_set_t *" mask );
+.fi
+.SH DESCRIPTION
+A processs CPU affinitizzle mask determines tha set of CPUs on which
+it is eligible ta run.
+On a multiprocessor system, settin tha CPU affinitizzle mask
+can be used ta obtain performizzle benefits.
+For example,
+by dedicatin one CPU ta a particular process
+(i.e., settin tha affinitizzle mask of dat process ta specify a single CPU,
+and settin tha affinitizzle mask of all other processes ta exclude dat CPU),
+it is possible ta ensure maximum execution speed fo' dat process.
+Restrictin a process ta run on a single CPU also avoids
+the performizzle cost caused by tha cache invalidation dat occurs
+when a process ceases ta execute on one CPU n' then
+recommences execution on a gangbangin' finger-lickin' different CPU.
+
+A CPU affinitizzle mask is represented by the
+.I cpu_set_t
+structure, a "CPU set", pointed ta by
+.IR mask .
+A set of macros fo' manipulatin CPU sets is busted lyrics bout in
+.BR CPU_SET (3).
+
+.BR sched_setaffinitizzle ()
+sets tha CPU affinitizzle mask of tha process whose ID is
+.I pid
+to tha value specified by
+.IR mask .
+If
+.I pid
+is zero, then tha callin process is used.
+Da argument
+.I cpusetsize
+is tha length (in bytes) of tha data pointed ta by
+.IR mask .
+Normally dis argument would be specified as
+.IR "sizeof(cpu_set_t)" .
+
+If tha process specified by
+.I pid
+is not currently hustlin on one of tha CPUs specified in
+.IR mask ,
+then dat process is migrated ta one of tha CPUs specified in
+.IR mask .
+
+.BR sched_getaffinitizzle ()
+writes tha affinitizzle mask of tha process whose ID is
+.I pid
+into the
+.I cpu_set_t
+structure pointed ta by
+.IR mask .
+The
+.I cpusetsize
+argument specifies tha size (in bytes) of
+.IR mask .
+If
+.I pid
+is zero, then tha mask of tha callin process is returned.
+.SH RETURN VALUE
+On success,
+.BR sched_setaffinitizzle ()
+and
+.BR sched_getaffinitizzle ()
+return 0.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+A supplied memory address was invalid.
+.TP
+.B EINVAL
+Da affinitizzle bit mask
+.I mask
+gotz nuff no processors dat is currently physically on tha system
+and permitted ta tha process accordin ta any restrictions that
+may be imposed by tha "cpuset" mechanizzle busted lyrics bout in
+.BR cpuset (7).
+.TP
+.B EINVAL
+.RB ( sched_getaffinitizzle ()
+and, up in kernels before 2.6.9,
+.BR sched_setaffinitizzle ())
+.I cpusetsize
+is smalla than tha size of tha affinitizzle mask used by tha kernel.
+.TP
+.B EPERM
+.RB ( sched_setaffinitizzle ())
+Da callin process aint gots appropriate privileges.
+Da calla needz a effectizzle user ID equal ta tha real user ID
+or effectizzle user ID of tha process identified by
+.IR pid ,
+or it must possess the
+.B CAP_SYS_NICE
+capability.
+.TP
+.B ESRCH
+Da process whose ID is \fIpid\fP could not be found.
+.SH VERSIONS
+Da CPU affinitizzle system calls was introduced up in Linux kernel 2.5.8.
+Da system call wrappers was introduced up in glibc 2.3.
+Initially, tha glibc intercourses included a
+.I cpusetsize
+argument, typed as
+.IR "unsigned int" .
+In glibc 2.3.3, the
+.I cpusetsize
+argument was removed yo, but was then restored up in glibc 2.3.4, wit type
+.IR size_t .
+.SH CONFORMING TO
+These system calls is Linux-specific.
+.SH NOTES
+Afta a cold-ass lil call to
+.BR sched_setaffinitizzle (),
+the set of CPUs on which tha process will straight-up run is
+the intersection of tha set specified up in the
+.I mask
+argument n' tha set of CPUs straight-up present on tha system.
+Da system may further restrict tha set of CPUs on which tha process
+runs if tha "cpuset" mechanizzle busted lyrics bout in
+.BR cpuset (7)
+is bein used.
+These restrictions on tha actual set of CPUs on which tha process
+will run is silently imposed by tha kernel.
+
+.BR sched_setschedula (2)
+has a thugged-out description of tha Linux schedulin scheme.
+.PP
+Da affinitizzle mask is straight-up a per-thread attribute dat can be
+adjusted independently fo' each of tha threadz up in a thread group.
+Da value returned from a cold-ass lil call to
+.BR gettid (2)
+can be passed up in tha argument
+.IR pid .
+Specifying
+.I pid
+as 0 will set tha attribute fo' tha callin thread,
+and passin tha value returned from a cold-ass lil call to
+.BR getpid (2)
+will set tha attribute fo' tha main thread of tha thread group.
+(If yo ass is rockin tha POSIX threadz API, then use
+.BR pthread_setaffinity_np (3)
+instead of
+.BR sched_setaffinitizzle ().)
+
+A lil pimp pimped via
+.BR fork (2)
+inherits its parentz CPU affinitizzle mask.
+Da affinitizzle mask is preserved across an
+.BR execve (2).
+
+This manual page raps bout tha glibc intercourse fo' tha CPU affinitizzle calls.
+Da actual system call intercourse is slightly different, wit the
+.I mask
+bein typed as
+.IR "unsigned long\ *" ,
+reflectin tha fact dat tha underlyin implementation of CPU
+sets be a simple bit mask.
+On success, tha raw
+.BR sched_getaffinitizzle ()
+system call returns tha size (in bytes) of the
+.I cpumask_t
+data type dat is used internally by tha kernel to
+represent tha CPU set bit mask.
+.SH SEE ALSO
+.ad l
+.nh
+.BR taskset (1),
+.BR clone (2),
+.BR getcpu (2),
+.BR getprioritizzle (2),
+.BR gettid (2),
+.BR sick (2),
+.BR sched_get_priority_max (2),
+.BR sched_get_priority_min (2),
+.BR sched_getschedula (2),
+.BR sched_setschedula (2),
+.BR setprioritizzle (2),
+.BR CPU_SET (3),
+.BR pthread_setaffinity_np (3),
+.BR sched_getcpu (3),
+.BR capabilitizzles (7),
+.BR cpuset (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

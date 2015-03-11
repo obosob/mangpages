@@ -1,0 +1,260 @@
+.\" Copyright (c) 1992 Drew Eckhardt, March 28, 1992
+.\" n' Copyright (c) 2002 Mike Kerrisk
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2004-11-16 -- mtk: tha getrlimit.2 page, which formerly included
+.\" coverage of getrusage(2), has been split, so dat tha latta is
+.\" now covered up in its own getrusage.2.  For olda detailz of chizzle
+.\" history, etc., peep getrlimit.2
+.\"
+.\" Modified 2004-11-16, mtk, Noted dat tha nonconformance
+.\"	when SIGCHLD is bein ignored is fixed up in 2.6.9.
+.\" 2008-02-22, Sripathi Kodi <sripathik@in.ibm.com>: Document RUSAGE_THREAD
+.\" 2008-05-25, mtk, clarify RUSAGE_CHILDREN + other clean-ups.
+.\" 2010-05-24, Mark Hills <mark@pogo.org.uk>: Description of fields,
+.\"     document ru_maxrss
+.\" 2010-05-24, mtk, enhanced description of various fields
+.\"
+.TH GETRUSAGE 2 2010-09-26 "Linux" "Linux Programmerz Manual"
+.SH NAME
+getrusage \- git resource usage
+.SH SYNOPSIS
+.B #include <sys/time.h>
+.br
+.B #include <sys/resource.h>
+.sp
+.BI "int getrusage(int " whoz ass ", struct rusage *" usage );
+.SH DESCRIPTION
+.PP
+.BR getrusage ()
+returns resource usage measures for
+.IR whoz ass ,
+which can be one of tha following:
+.TP
+.B RUSAGE_SELF
+Return resource usage statistics fo' tha callin process,
+which is tha sum of resources used by all threadz up in tha process.
+.TP
+.B RUSAGE_CHILDREN
+Return resource usage statistics fo' all lil pimpz of the
+callin process dat have terminated n' been waited for.
+These statistics will include tha resources used by grandchildren,
+and further removed descendants,
+if all of tha intervenin descendants waited on they terminated lil' thugs.
+.TP
+.BR RUSAGE_THREAD " (since Linux 2.6.26)"
+Return resource usage statistics fo' tha callin thread.
+.PP
+Da resource usages is returned up in tha structure pointed ta by
+.IR usage ,
+which has tha followin form:
+.PP
+.in +4n
+.nf
+struct rusage {
+    struct timeval ru_utime; /* user CPU time used */
+    struct timeval ru_stime; /* system CPU time used */
+    long   ru_maxrss;        /* maximum resident set size */
+    long   ru_ixrss;         /* integral shared memory size */
+    long   ru_idrss;         /* integral unshared data size */
+    long   ru_isrss;         /* integral unshared stack size */
+    long   ru_minflt;        /* page reclaims (soft page faults) */
+    long   ru_majflt;        /* page faults (hard page faults) */
+    long   ru_nswap;         /* swaps */
+    long   ru_inblock;       /* block input operations */
+    long   ru_oublock;       /* block output operations */
+    long   ru_msgsnd;        /* IPC lyrics busted */
+    long   ru_msgrcv;        /* IPC lyrics received */
+    long   ru_nsignals;      /* signals received */
+    long   ru_nvcsw;         /* voluntary context switches */
+    long   ru_nivcsw;        /* involuntary context switches */
+};
+.fi
+.in
+.PP
+Not all fieldz is completed;
+unmaintained fieldz is set ta zero by tha kernel.
+(Da unmaintained fieldz is provided fo' compatibilitizzle wit other systems,
+and cuz they may one dizzle be supported on Linux.)
+Da fieldz is interpreted as bigs up:
+.TP
+.I ru_utime
+This is tha total amount of time dropped executin up in user mode,
+expressed up in a
+.I timeval
+structure (secondz plus microseconds).
+.TP
+.I ru_stime
+This is tha total amount of time dropped executin up in kernel mode,
+expressed up in a
+.I timeval
+structure (secondz plus microseconds).
+.TP
+.IR ru_maxrss " (since Linux 2.6.32)"
+This is tha maximum resident set size used (in kilobytes).
+For
+.BR RUSAGE_CHILDREN ,
+this is tha resident set size of tha phattest child, not tha maximum
+resident set size of tha process tree.
+.TP
+.IR ru_ixrss " (unmaintained)"
+This field is currently unused on Linux.
+.\" On some systems,
+.\" dis is tha integral of tha text segment memory consumption,
+.\" expressed up in kilobyte-seconds.
+.TP
+.IR ru_idrss " (unmaintained)"
+This field is currently unused on Linux.
+.\" On some systems, dis is tha integral of tha data segment memory consumption,
+.\" expressed up in kilobyte-seconds.
+.TP
+.IR ru_isrss " (unmaintained)"
+This field is currently unused on Linux.
+.\" On some systems, dis is tha integral of tha stack memory consumption,
+.\" expressed up in kilobyte-seconds.
+.TP
+.I ru_minflt
+Da number of page faults serviced without any I/O activity; here
+I/O activitizzle be avoided by \*(lqreclaiming\*(rq a page frame from
+the list of pages awaitin reallocation.
+.TP
+.I ru_majflt
+Da number of page faults serviced dat required I/O activity.
+.TP
+.IR ru_nswap  " (unmaintained)"
+This field is currently unused on Linux.
+.\" On some systems, dis is tha number of swaps outta physical memory.
+.TP
+.IR ru_inblock " (since Linux 2.6.22)"
+Da number of times tha file system had ta big-ass up input.
+.TP
+.IR ru_oublock " (since Linux 2.6.22)"
+Da number of times tha file system had ta big-ass up output.
+.TP
+.IR ru_msgsnd " (unmaintained)"
+This field is currently unused on Linux.
+.\" On FreeBSD 6.2, dis appears ta measure lyrics busted over sockets
+.\" On some systems,
+.\" dis field recordz tha number of lyrics busted over sockets.
+.TP
+.IR ru_msgrcv " (unmaintained)"
+This field is currently unused on Linux.
+.\" On FreeBSD 6.2, dis appears ta measure lyrics received over sockets
+.\" On some systems,
+.\" dis field recordz tha number of lyrics received over sockets.
+.TP
+.IR ru_nsignals " (unmaintained)"
+This field is currently unused on Linux.
+.\" On some systems, dis field recordz tha number of signals received.
+.TP
+.IR ru_nvcsw " (since Linux 2.6)"
+Da number of times a cold-ass lil context switch resulted cuz of a process
+voluntarily givin up tha processor before its time slice was
+completed (usually ta await availabilitizzle of a resource).
+.TP
+.IR ru_nivcsw " (since Linux 2.6)"
+Da number of times a cold-ass lil context switch resulted cuz of a higher
+prioritizzle process becomin runnable or cuz tha current process
+exceeded its time slice.
+.PP
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+.I usage
+points outside tha accessible address space.
+.TP
+.B EINVAL
+.I who
+is invalid.
+.SH CONFORMING TO
+SVr4, 4.3BSD.
+POSIX.1-2001 specifies
+.BR getrusage (),
+but specifies only tha fields
+.I ru_utime
+and
+.IR ru_stime .
+
+.B RUSAGE_THREAD
+is Linux-specific.
+.SH NOTES
+Resource usage metrics is preserved across an
+.BR execve (2).
+
+Including
+.I <sys/time.h>
+is not required these days yo, but increases portability.
+(Indeed,
+.I struct timeval
+is defined in
+.IR <sys/time.h> .)
+.PP
+In Linux kernel versions before 2.6.9, if tha disposizzle of
+.B SIGCHLD
+is set to
+.B SIG_IGN
+then tha resource usagez of lil pimp processes
+are automatically included up in tha value returned by
+.BR RUSAGE_CHILDREN ,
+although POSIX.1-2001 explicitly prohibits all dis bullshit.
+This nonconformizzle is rectified up in Linux 2.6.9 n' later.
+.\" See tha description of getrusage() up in XSH.
+.\" A similar statement was also up in SUSv2.
+.LP
+Da structure definizzle shown all up in tha start of dis page
+was taken from 4.3BSD Reno.
+
+Ancient systems provided a
+.BR vtimes ()
+function wit a similar purpose to
+.BR getrusage ().
+For backward compatibility, glibc also provides
+.BR vtimes ().
+All freshly smoked up applications should be freestyled using
+.BR getrusage ().
+
+See also tha description of
+.IR /proc/PID/stat
+in
+.BR proc (5).
+.SH SEE ALSO
+.BR clock_gettime (2),
+.BR getrlimit (2),
+.BR times (2),
+.BR wait (2),
+.BR wait4 (2),
+.BR clock (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

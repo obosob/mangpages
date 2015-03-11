@@ -1,0 +1,415 @@
+.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: packet.7,v 1.13 2000/08/14 08:03:45 ak Exp $
+.\"
+.TH PACKET  7 2012-05-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+packet \- packet intercourse on thang level.
+.SH SYNOPSIS
+.nf
+.B #include <sys/socket.h>
+.br
+.B #include <netpacket/packet.h>
+.br
+.B #include <net/ethernet.h>     /* tha L2 protocols */
+.sp
+.BI "packet_socket = socket(AF_PACKET, int " socket_type ", int "protocol );
+.fi
+.SH DESCRIPTION
+Packet sockets is used ta receive or bust raw packets all up in tha thang driver
+(OSI Layer 2) level.
+They allow tha user ta implement protocol modulez up in user space
+on top of tha physical layer.
+
+The
+.I socket_type
+is either
+.B SOCK_RAW
+for raw packets includin tha link level header or
+.B SOCK_DGRAM
+for cooked packets wit tha link level header removed.
+Da link level
+header shiznit be available up in a cold-ass lil common format up in a
+.IR sockaddr_ll .
+.I protocol
+is tha IEEE 802.3 protocol number up in network order.
+See the
+.I <linux/if_ether.h>
+include file fo' a list of allowed protocols.
+When protocol
+is set to
+.B htons(ETH_P_ALL)
+then all protocols is received.
+All incomin packetz of dat protocol type is ghon be passed ta tha packet
+socket before they is passed ta tha protocols implemented up in tha kernel.
+
+Only processes wit effectizzle UID 0 or the
+.B CAP_NET_RAW
+capabilitizzle may open packet sockets.
+
+.B SOCK_RAW
+packets is passed ta n' from tha thang driver without any chizzlez in
+the packet data.
+When receivin a packet, tha address is still parsed and
+passed up in a standard
+.I sockaddr_ll
+address structure.
+When transmittin a packet, tha user supplied buffer
+should contain tha physical layer header.
+That packet is then
+queued unmodified ta tha network driver of tha intercourse defined by the
+destination address.
+Some thang drivers always add other headers.
+.B SOCK_RAW
+is similar ta but not compatible wit tha obsolete
+.B AF_INET/SOCK_PACKET
+of Linux 2.0.
+
+.B SOCK_DGRAM
+operates on a slightly higher level.
+Da physical header is removed before tha packet is passed ta tha user.
+Packets busted all up in a
+.B SOCK_DGRAM
+packet socket git a suitable physical layer header based on the
+information up in the
+.I sockaddr_ll
+destination address before they is queued.
+
+By default all packetz of tha specified protocol type
+are passed ta a packet socket.
+To git packets only from a specific intercourse use
+.BR bind (2)
+specifyin a address up in a
+.I struct sockaddr_ll
+to bind tha packet socket ta a intercourse.
+Only the
+.I sll_protocol
+and the
+.I sll_ifindex
+address fieldz is used fo' purposez of binding.
+
+The
+.BR connect (2)
+operation aint supported on packet sockets.
+
+When the
+.B MSG_TRUNC
+flag is passed to
+.BR recvmsg (2),
+.BR recv (2),
+.BR recvfrom (2)
+the real length of tha packet on tha wire be always returned,
+even when it is longer than tha buffer.
+.SS Address types
+Da sockaddr_ll be a thang independent physical layer address.
+
+.in +4n
+.nf
+struct sockaddr_ll {
+    unsigned short sll_family;   /* Always AF_PACKET */
+    unsigned short sll_protocol; /* Physical layer protocol */
+    int            sll_ifindex;  /* Interface number */
+    unsigned short sll_hatype;   /* ARP hardware type */
+    unsigned char  sll_pkttype;  /* Packet type */
+    unsigned char  sll_halen;    /* Length of address */
+    unsigned char  sll_addr[8];  /* Physical layer address */
+};
+.fi
+.in
+
+.I sll_protocol
+is tha standard ethernet protocol type up in network order as defined
+in the
+.I <linux/if_ether.h>
+include file.
+It defaults ta tha socketz protocol.
+.I sll_ifindex
+is tha intercourse index of tha intercourse
+(see
+.BR netdevice (7));
+0 matches any intercourse (only permitted fo' binding).
+.I sll_hatype
+is a ARP type as defined up in the
+.I <linux/if_arp.h>
+include file.
+.I sll_pkttype
+gotz nuff tha packet type.
+Valid types are
+.B PACKET_HOST
+for a packet addressed ta tha local host,
+.B PACKET_BROADCAST
+for a physical layer broadcast packet,
+.B PACKET_MULTICAST
+for a packet busted ta a physical layer multicast address,
+.B PACKET_OTHERHOST
+for a packet ta some other host dat has been caught by a thang driver
+in promiscuous mode, and
+.B PACKET_OUTGOING
+for a packet originated from tha local host dat is looped back ta a packet
+socket.
+These types make sense only fo' receiving.
+.I sll_addr
+and
+.I sll_halen
+contain tha physical layer (e.g., IEEE 802.3) address n' its length.
+Da exact interpretation dependz on tha device.
+
+When you bust packets it is enough ta specify
+.IR sll_family ,
+.IR sll_addr ,
+.IR sll_halen ,
+.IR sll_ifindex .
+Da other fieldz should be 0.
+.I sll_hatype
+and
+.I sll_pkttype
+are set on received packets fo' yo' shiznit.
+For bind only
+.I sll_protocol
+and
+.I sll_ifindex
+are used.
+.SS Socket options
+Packet sockets can be used ta configure physical layer multicasting
+and promiscuous mode.
+It works by calling
+.BR setsockopt (2)
+on a packet socket for
+.B SOL_PACKET
+and one of tha options
+.B PACKET_ADD_MEMBERSHIP
+to add a funky-ass bindin or
+.B PACKET_DROP_MEMBERSHIP
+to drop dat shit.
+They both expect a
+.B packet_mreq
+structure as argument:
+
+.in +4n
+.nf
+struct packet_mreq {
+    int            mr_ifindex;    /* intercourse index */
+    unsigned short mr_type;       /* action */
+    unsigned short mr_alen;       /* address length */
+    unsigned char  mr_address[8]; /* physical layer address */
+};
+.fi
+.in
+
+.B mr_ifindex
+gotz nuff tha intercourse index fo' tha intercourse whose status
+should be chizzled.
+The
+.B mr_type
+parameta specifies which action ta perform.
+.B PACKET_MR_PROMISC
+enablez receivin all packets on a gangbangin' finger-lickin' dirty-ass shared medium (often known as
+"promiscuous mode"),
+.B PACKET_MR_MULTICAST
+bindz tha socket ta tha physical layer multicast crew specified in
+.B mr_address
+and
+.BR mr_alen ,
+and
+.B PACKET_MR_ALLMULTI
+sets tha socket up ta receive all multicast packets arrivin at
+the intercourse.
+
+In addizzle tha traditionizzle ioctls
+.BR SIOCSIFFLAGS ,
+.BR SIOCADDMULTI ,
+.B SIOCDELMULTI
+can be used fo' tha same purpose.
+.SS Ioctls
+.B SIOCGSTAMP
+can be used ta receive tha timestamp of tha last received packet.
+Argument be a
+.I struct timeval.
+.\" FIXME Document SIOCGSTAMPNS
+
+In addizzle all standard ioctls defined in
+.BR netdevice (7)
+and
+.BR socket (7)
+are valid on packet sockets.
+.SS Error handling
+Packet sockets do no error handlin other than errors occurred
+while passin tha packet ta tha thang driver.
+They aint gots tha concept of a pendin error.
+.SH ERRORS
+.TP
+.B EADDRNOTAVAIL
+Unknown multicast crew address passed.
+.TP
+.B EFAULT
+User passed invalid memory address.
+.TP
+.B EINVAL
+Invalid argument.
+.TP
+.B EMSGSIZE
+Packet is bigger than intercourse MTU.
+.TP
+.B ENETDOWN
+Interface aint up.
+.TP
+.B ENOBUFS
+Not enough memory ta allocate tha packet.
+.TP
+.B ENODEV
+Unknown thang name or intercourse index specified up in intercourse address.
+.TP
+.B ENOENT
+No packet received.
+.TP
+.B ENOTCONN
+No intercourse address passed.
+.TP
+.B ENXIO
+Interface address contained a invalid intercourse index.
+.TP
+.B EPERM
+User has insufficient privileges ta carry up dis operation.
+
+In addizzle other errors may be generated by tha low-level driver.
+.SH VERSIONS
+.B AF_PACKET
+is a freshly smoked up feature up in Linux 2.2.
+Earlier Linux versions supported only
+.BR SOCK_PACKET .
+.PP
+Da include file
+.I <netpacket/packet.h>
+is present since glibc 2.1.
+Older systems need:
+.sp
+.in +4n
+.nf
+#include <asm/types.h>
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>  /* Da L2 protocols */
+.fi
+.in
+.SH NOTES
+For portable programs it is suggested ta use
+.B AF_PACKET
+via
+.BR pcap (3);
+although dis covers only a subset of the
+.B AF_PACKET
+features.
+
+The
+.B SOCK_DGRAM
+packet sockets make no attempt ta create or parse tha IEEE 802.2 LLC
+header fo' a IEEE 802.3 frame.
+When
+.B ETH_P_802_3
+is specified as protocol fo' bustin  tha kernel creates the
+802.3 frame n' fills up tha length field; tha user has ta supply tha LLC
+header ta git a gangbangin' straight-up conformin packet.
+Incomin 802.3 packets is not multiplexed on tha DSAP/SSAP protocol
+fields; instead they is supplied ta tha user as protocol
+.B ETH_P_802_2
+with tha LLC header prepended.
+It be thus not possible ta bind to
+.BR ETH_P_802_3 ;
+bind to
+.B ETH_P_802_2
+instead n' do tha protocol multiplex yo ass.
+Da default fo' bustin  is tha standard Ethernet DIX
+encapsulation wit tha protocol filled in.
+
+Packet sockets is not subject ta tha input or output firewall chains.
+.SS Compatibility
+In Linux 2.0, tha only way ta git a packet socket was by calling
+.BI "socket(AF_INET, SOCK_PACKET, " protocol )\fR.
+This is still supported but straight fuckin deprecated.
+Da main difference between tha two methodz is that
+.B SOCK_PACKET
+uses tha old
+.I struct sockaddr_pkt
+to specify a intercourse, which don't provide physical layer
+independence.
+
+.in +4n
+.nf
+struct sockaddr_pkt {
+    unsigned short spkt_family;
+    unsigned char  spkt_device[14];
+    unsigned short spkt_protocol;
+};
+.fi
+.in
+
+.I spkt_family
+gotz nuff
+the thang type,
+.I spkt_protocol
+is tha IEEE 802.3 protocol type as defined in
+.I <sys/if_ether.h>
+and
+.I spkt_device
+is tha thang name as a null-terminated string, fo' example, eth0.
+
+This structure is obsolete n' should not be used up in freshly smoked up code.
+.SH BUGS
+glibc 2.1 aint gots a thugged-out define for
+.BR SOL_PACKET .
+Da suggested workaround is ta use:
+.in +4n
+.nf
+
+#ifndef SOL_PACKET
+#define SOL_PACKET 263
+#endif
+
+.fi
+.in
+This is fixed up in lata glibc versions n' also do not occur on
+libc5 systems.
+
+Da IEEE 802.2/803.3 LLC handlin could be considered as a funky-ass bug.
+
+Socket filtas is not documented.
+
+The
+.B MSG_TRUNC
+.BR recvmsg (2)
+extension be a skanky hack n' should be replaced by a cold-ass lil control message.
+There is currently no way ta git tha original gangsta destination address of
+packets via
+.BR SOCK_DGRAM .
+.\" .SH CREDITS
+.\" This playa page was freestyled by Andi Kleen wit help from Matthew Wilcox.
+.\" AF_PACKET up in Linux 2.2 was implemented
+.\" by Alexey Kuznetsov, based on code by Alan Cox n' others.
+.SH SEE ALSO
+.BR socket (2),
+.BR pcap (3),
+.BR capabilitizzles (7),
+.BR ip (7),
+.BR raw (7),
+.BR socket (7)
+
+RFC\ 894 fo' tha standard IP Ethernet encapsulation.
+RFC\ 1700 fo' tha IEEE 802.3 IP encapsulation.
+
+The
+.I <linux/if_ether.h>
+include file fo' physical layer protocols.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

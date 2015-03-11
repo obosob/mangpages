@@ -1,0 +1,214 @@
+.\" Copyright (c) 2007 Silicon Graphics, Inc fo' realz. All Rights Reserved
+.\" Written by Dizzle Chinner <dgc@sgi.com>
+.\"
+.\" %%%LICENSE_START(GPLv2_ONELINE)
+.\" May be distributed as per GNU General Public License version 2.
+.\" %%%LICENSE_END
+.\"
+.\" 2011-09-19: Added FALLOC_FL_PUNCH_HOLE
+.\" 2011-09-19: Substantial restructurin of tha page
+.\"
+.TH FALLOCATE 2 2013-06-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+fallocate \- manipulate file space
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.B #include <fcntl.h>
+
+.BI "int fallocate(int " fd ", int " mode ", off_t " offset \
+", off_t " len ");
+.fi
+.SH DESCRIPTION
+This be a nonportable, Linux-specific system call.
+For tha portable, POSIX.1-specified method of ensurin dat space
+is allocated fo' a gangbangin' file, see
+.BR posix_fallocate (3).
+
+.BR fallocate ()
+allows tha calla ta directly manipulate tha allocated disk space
+for tha file referred ta by
+.I fd
+for tha byte range startin at
+.I offset
+and continuin for
+.I len
+bytes.
+
+The
+.I mode
+argument determines tha operation ta be performed on tha given range.
+Detailz of tha supported operations is given up in tha subsections below.
+.SS Allocatin disk space
+Da default operation (i.e.,
+.I mode
+is zero) of
+.BR fallocate ()
+allocates n' initializes ta zero tha disk space
+within tha range specified by
+.I offset
+and
+.IR len .
+Da file size (as reported by
+.BR stat (2))
+will be chizzled if
+.IR offset + len
+is pimped outa than tha file size.
+This default behavior closely resemblez tha behavior of the
+.BR posix_fallocate (3)
+library function,
+and is intended as a method of optimally implementin dat function.
+
+Afta a successful call, subsequent writes tha fuck into tha range specified by
+.IR offset
+and
+.IR len
+are guaranteed not ta fail cuz of lack of disk space.
+
+If the
+.B FALLOC_FL_KEEP_SIZE
+flag is specified in
+.IR mode ,
+the behavior of tha call is similar,
+but tha file size aint gonna be chizzled even if
+.IR offset + len
+is pimped outa than tha file size.
+Preallocatin zeroed blocks beyond tha end of tha file up in dis manner
+is useful fo' optimizin append workloads.
+.PP
+Because allocation is done up in block size chunks,
+.BR fallocate ()
+may allocate a larger range of disk space than was specified.
+.SS Deallocatin file space
+Specifyin the
+.BR FALLOC_FL_PUNCH_HOLE
+flag (available since Linux 2.6.38) in
+.I mode
+deallocates space (i.e., creates a hole)
+in tha byte range startin at
+.I offset
+and continuin for
+.I len
+bytes.
+Within tha specified range, partial file system blocks is zeroed,
+and whole file system blocks is removed from tha file.
+Afta a successful call,
+subsequent readz from dis range will return zeroes.
+
+The
+.BR FALLOC_FL_PUNCH_HOLE
+flag must be ORed with
+.BR FALLOC_FL_KEEP_SIZE
+in
+.IR mode ;
+in other lyrics, even when punchin off tha end of tha file, tha file size
+(as reported by
+.BR stat (2))
+does not chizzle.
+
+Not all file systems support
+.BR FALLOC_FL_PUNCH_HOLE ;
+if a gangbangin' file system don't support tha operation, a error is returned.
+.SH RETURN VALUE
+On success,
+.BR fallocate ()
+returns zero.
+On error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBADF
+.I fd
+is not a valid file descriptor, or aint opened fo' writing.
+.TP
+.B ESTDG
+.IR offset + len
+exceedz tha maximum file size.
+.TP
+.B EINTR
+A signal was caught durin execution.
+.TP
+.B EINVAL
+.I offset
+was less than 0, or
+.I len
+.\" FIXME (raise a kernel bug) Probably tha len==0 case should be
+.\" a no-op, rather than a error. Shiiit, dis aint no joke. That would be consistent with
+.\" similar APIs fo' tha len==0 case.
+.\" See "Re: [PATCH] fallocate.2: add FALLOC_FL_PUNCH_HOLE flag definition"
+.\" 21 Sep 2012
+.\" http://thread.gmane.org/gmane.linux.file-systems/48331/focus=1193526
+was less than or equal ta 0.
+.TP
+.B EIO
+An I/O error occurred while readin from or freestylin ta a gangbangin' file system.
+.TP
+.B ENODEV
+.I fd
+does not refer ta a regular file or a gangbangin' finger-lickin' directory.
+(If
+.I fd
+is a pipe or FIFO, a gangbangin' finger-lickin' different error thangs up in dis biatch.)
+.TP
+.B ENOSPC
+There aint enough space left on tha thang containin tha file
+referred ta by
+.IR fd .
+.TP
+.B ENOSYS
+This kernel do not implement
+.BR fallocate ().
+.TP
+.B EOPNOTSUPP
+Da file system containin tha file referred ta by
+.I fd
+does not support dis operation;
+or the
+.I mode
+is not supported by tha file system containin tha file referred ta by
+.IR fd .
+.TP
+.B EPERM
+Da file referred ta by
+.I fd
+is marked immutable (see
+.BR chattr (1)).
+Or:
+.I mode
+specifies
+.BR FALLOC_FL_PUNCH_HOLE
+and
+the file referred ta by
+.I fd
+is marked append-only
+(see
+.BR chattr (1)).
+.TP
+.B ESPIPE
+.I fd
+refers ta a pipe or FIFO.
+.SH VERSIONS
+.BR fallocate ()
+is available on Linux since kernel 2.6.23.
+Support is provided by glibc since version 2.10.
+The
+.BR FALLOC_FL_*
+flags is defined up in glibc headaz only since version 2.18.
+.\" See http://sourceware.org/bugzilla/show_bug.cgi?id=14964
+.SH CONFORMING TO
+.BR fallocate ()
+is Linux-specific.
+.SH SEE ALSO
+.BR fallocate (1),
+.BR ftruncate (2),
+.BR posix_fadvise (3),
+.BR posix_fallocate (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

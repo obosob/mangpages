@@ -1,0 +1,834 @@
+
+.\" n' Copyright (c) 2006 Ulrich Drepper <drepper@redhat.com>
+.\" A few piecez of a earlier version remain:
+.\" Copyright 2000, Sam Varshavchik <mrsam@courier-mta.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" References: RFC 2553
+.\"
+.\" 2005-08-09, mtk, added AI_ALL, AI_ADDRCONFIG, AI_V4MAPPED,
+.\"			and AI_NUMERICSERV.
+.\" 2006-11-25, Ulrich Drepper <drepper@redhat.com>
+.\"     Add text describin Internationalized Domain Name extensions.
+.\" 2007-06-08, mtk: added example programs
+.\" 2008-02-26, mtk; clarify rap of NULL 'hints' argument; other
+.\"     minor rewrites.
+.\" 2008-06-18, mtk: nuff parts rewritten
+.\" 2008-12-04, Petr Baudis <pasky@suse.cz>
+.\"	Describe thangs up in dis biatch orderin n' reference /etc/gai.conf.
+.\" FIXME . glibcs 2.9 NEWS file documents DCCP n' UDP-lite support
+.\"           n' is SCTP support now also there?
+.\"
+.TH GETADDRINFO 3 2013-01-15 "GNU" "Linux Programmerz Manual"
+.SH NAME
+getaddrinfo, freeaddrinfo, gai_strerror \- network address and
+service translation
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/socket.h>
+.B #include <netdb.h>
+.sp
+.BI "int getaddrinfo(const char *" "node" ", const char *" "service" ,
+.BI "                const struct addrinfo *" "hints" ,
+.BI "                struct addrinfo **" "res" );
+.sp
+.BI "void freeaddrinfo(struct addrinfo *" "res" );
+.sp
+.BI "const char *gai_strerror(int " "errcode" );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.ad l
+.in
+.sp
+.BR getaddrinfo (),
+.BR freeaddrinfo (),
+.BR gai_strerror ():
+.RS 4
+_POSIX_C_SOURCE\ >=\ 1 || _XOPEN_SOURCE || _POSIX_SOURCE
+.RE
+.ad b
+.SH DESCRIPTION
+Given
+.I node
+and
+.IR steez ,
+which identify a Internizzle host n' a service,
+.BR getaddrinfo ()
+returns one or more
+.I addrinfo
+structures, each of which gotz nuff a Internizzle address
+that can be specified up in a cold-ass lil call to
+.BR bind (2)
+or
+.BR connect (2).
+The
+.BR getaddrinfo ()
+function combines tha functionalitizzle provided by the
+.\" .BR getipnodebyname (3),
+.\" .BR getipnodebyaddr (3),
+.BR gethostbyname (3)
+and
+.BR getservbyname (3)
+functions tha fuck into a single intercourse yo, but unlike tha latta functions,
+.BR getaddrinfo ()
+is reentrant n' allows programs ta eliminizzle IPv4-versus-IPv6 dependencies.
+.PP
+The
+.I addrinfo
+structure used by
+.BR getaddrinfo ()
+gotz nuff tha followin fields:
+.sp
+.in +4n
+.nf
+struct addrinfo {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    socklen_t        ai_addrlen;
+    struct sockaddr *ai_addr;
+    char            *ai_canonname;
+    struct addrinfo *ai_next;
+};
+.fi
+.in
+.PP
+The
+.I hints
+argument points ta an
+.I addrinfo
+structure dat specifies criteria fo' selectin tha socket address
+structures returned up in tha list pointed ta by
+.IR res .
+If
+.I hints
+is not NULL it points ta an
+.I addrinfo
+structure whose
+.IR ai_family ,
+.IR ai_socktype ,
+and
+.I ai_protocol
+specify criteria dat limit tha set of socket addresses returned by
+.BR getaddrinfo (),
+as bigs up:
+.TP 12
+.I ai_family
+This field specifies tha desired address crew fo' tha returned addresses.
+Valid joints fo' dis field include
+.BR AF_INET
+and
+.BR AF_INET6 .
+Da value
+.B AF_UNSPEC
+indicates that
+.BR getaddrinfo ()
+should return socket addresses fo' any address crew
+(either IPv4 or IPv6, fo' example) dat can be used with
+.I node
+and
+.IR steez .
+.TP
+.I ai_socktype
+This field specifies tha preferred socket type, fo' example
+.BR SOCK_STREAM
+or
+.BR SOCK_DGRAM .
+Specifyin 0 up in dis field indicates dat socket addressez of any type
+can be returned by
+.BR getaddrinfo ().
+.TP
+.I ai_protocol
+This field specifies tha protocol fo' tha returned socket addresses.
+Specifyin 0 up in dis field indicates dat socket addresses with
+any protocol can be returned by
+.BR getaddrinfo ().
+.TP
+.I ai_flags
+This field specifies additionizzle options, busted lyrics bout below.
+Multiple flags is specified by bitwise OR-in dem together.
+.PP
+All tha other fieldz up in tha structure pointed ta by
+.I hints
+must contain either 0 or a NULL pointer, as appropriate.
+Specifying
+.I hints
+as NULL is equivalent ta setting
+.I ai_socktype
+and
+.I ai_protocol
+to 0;
+.I ai_family
+to
+.BR AF_UNSPEC ;
+and
+.I ai_flags
+to
+.BR "(AI_V4MAPPED\ |\ AI_ADDRCONFIG)" .
+
+.I node
+specifies either a numerical network address
+(for IPv4, numbers-and-dots notation as supported by
+.BR inet_aton (3);
+for IPv6, hexadecimal strang format as supported by
+.BR inet_pton (3)),
+or a network hostname, whose network addresses is looked up n' resolved.
+If
+.I hints.ai_flags
+gotz nuff the
+.B AI_NUMERICHOST
+flag then
+.I node
+must be a numerical network address.
+The
+.B AI_NUMERICHOST
+flag suppresses any potentially lengthy network host address lookups.
+.PP
+If the
+.B AI_PASSIVE
+flag is specified in
+.IR hints.ai_flags ,
+and
+.I node
+is NULL,
+then tha returned socket addresses is ghon be suitable for
+.BR bind (2)ing
+a socket dat will
+.BR accept (2)
+connections.
+Da returned socket address will contain tha "wildcard address"
+.RB ( INADDR_ANY
+for IPv4 addresses,
+.BR IN6ADDR_ANY_INIT
+for IPv6 address).
+Da wildcard address is used by applications (typically servers)
+that intend ta accept connections on any of tha hostss network addresses.
+If
+.I node
+is not NULL, then the
+.B AI_PASSIVE
+flag is ignored.
+.PP
+If the
+.B AI_PASSIVE
+flag aint set in
+.IR hints.ai_flags ,
+then tha returned socket addresses is ghon be suitable fo' use with
+.BR connect (2),
+.BR sendto (2),
+or
+.BR sendmsg (2).
+If
+.I node
+is NULL,
+then tha network address is ghon be set ta tha loopback intercourse address
+.RB ( INADDR_LOOPBACK
+for IPv4 addresses,
+.BR IN6ADDR_LOOPBACK_INIT
+for IPv6 address);
+this is used by applications dat intend ta communicate
+with peers hustlin on tha same host.
+.PP
+.I service
+sets tha port up in each returned address structure.
+If dis argument be a steez name (see
+.BR skillz (5)),
+it is translated ta tha correspondin port number.
+This argument can also be specified as a thugged-out decimal number,
+which is simply converted ta binary.
+If
+.I service
+is NULL, then tha port number of tha returned socket addresses
+will be left uninitialized.
+If
+.B AI_NUMERICSERV
+is specified in
+.I hints.ai_flags
+and
+.I service
+is not NULL, then
+.I service
+must point ta a strang containin a numeric port number.
+This flag is used ta inhibit tha invocation of a name resolution service
+in cases where it is known not ta be required.
+.PP
+Either
+.I node
+or
+.IR steez ,
+but not both, may be NULL.
+.PP
+The
+.BR getaddrinfo ()
+function allocates n' initializes a linked list of
+.I addrinfo
+structures, one fo' each network address dat matches
+.I node
+and
+.IR steez ,
+subject ta any restrictions imposed by
+.IR hints ,
+and returns a pointa ta tha start of tha list in
+.IR res .
+Da shit up in tha linked list is linked by the
+.I ai_next
+field.
+
+There is nuff muthafuckin reasons why
+the linked list may have mo' than one
+.I addrinfo
+structure, including: tha network host is multihomed, accessible
+over multiple protocols (e.g., both
+.BR AF_INET
+and
+.BR AF_INET6 );
+or tha same steez be available from multiple socket types (one
+.B SOCK_STREAM
+address n' another
+.B SOCK_DGRAM
+address, fo' example).
+Normally, tha application should try
+usin tha addresses up in tha order up in which they is returned.
+Da sortin function used within
+.BR getaddrinfo ()
+is defined up in RFC\ 3484; tha order can be tweaked fo' a particular
+system by editing
+.IR /etc/gai.conf
+(available since glibc 2.5).
+.PP
+If
+.I hints.ai_flags
+includes the
+.B AI_CANONNAME
+flag, then the
+.I ai_canonname
+field of tha straight-up original gangsta of the
+.I addrinfo
+structures up in tha returned list is set ta point ta the
+straight-up legit name of tha host.
+.\" In glibc prior ta 2.3.4, tha ai_canonname of each addrinfo
+.\" structure was set pointin ta tha canonical name; dat was
+.\" mo' than POSIX.1-2001 specified, or other implementations provided.
+.\" MTK, Aug 05
+
+Da remainin fieldz of each returned
+.I addrinfo
+structure is initialized as bigs up:
+.IP * 2
+The
+.IR ai_family ,
+.IR ai_socktype ,
+and
+.I ai_protocol
+fieldz return tha socket creation parametas (i.e., these fieldz have
+the same meanin as tha correspondin arguments of
+.BR socket (2)).
+For example,
+.I ai_family
+might return
+.B AF_INET
+or
+.BR AF_INET6 ;
+.I ai_socktype
+might return
+.B SOCK_DGRAM
+or
+.BR SOCK_STREAM ;
+and
+.I ai_protocol
+returns tha protocol fo' tha socket.
+.IP *
+A pointa ta tha socket address is placed up in the
+.I ai_addr
+field, n' tha length of tha socket address, up in bytes,
+is placed up in the
+.I ai_addrlen
+field.
+.PP
+If
+.I hints.ai_flags
+includes the
+.B AI_ADDRCONFIG
+flag, then IPv4 addresses is returned up in tha list pointed ta by
+.I res
+only if tha local system has at least one
+IPv4 address configured, n' IPv6 addresses is returned
+only if tha local system has at least one IPv6 address configured.
+Da loopback address aint considered fo' dis case as valid
+as a cold-ass lil configured address.
+.PP
+If
+.I hints.ai_flags
+specifies the
+.B AI_V4MAPPED
+flag, and
+.I hints.ai_family
+was specified as
+.BR AF_INET6 ,
+and no matchin IPv6 addresses could be found,
+then return IPv4-mapped IPv6 addresses up in tha list pointed ta by
+.IR res .
+If both
+.B AI_V4MAPPED
+and
+.B AI_ALL
+are specified in
+.IR hints.ai_flags ,
+then return both IPv6 n' IPv4-mapped IPv6 addresses
+in tha list pointed ta by
+.IR res .
+.B AI_ALL
+is ignored if
+.B AI_V4MAPPED
+is not also specified.
+.PP
+The
+.BR freeaddrinfo ()
+function frees tha memory dat was allocated
+for tha dynamically allocated linked list
+.IR res .
+.SS Extensions ta getaddrinfo() fo' Internationalized Domain Names
+.PP
+Startin wit glibc 2.3.4,
+.BR getaddrinfo ()
+has been extended ta selectively allow tha incomin n' outgoing
+hostnames ta be transparently converted ta n' from the
+Internationalized Domain Name (IDN) format (see RFC 3490,
+.IR "Internationalizin Domain Names up in Applications (IDNA)" ).
+Four freshly smoked up flags is defined:
+.TP
+.B AI_IDN
+If dis flag is specified, then tha node name given in
+.I node
+is converted ta IDN format if necessary.
+Da source encodin is dat of tha current locale.
+
+If tha input name gotz nuff non-ASCII characters, then tha IDN encoding
+is used.
+Those partz of tha node name (delimited by dots) dat contain
+non-ASCII charactas is encoded rockin ASCII Compatible Encodin (ACE)
+before bein passed ta tha name resolution functions.
+.\" Implementation Detail:
+.\" To minimize effects on system performizzle tha implementation might
+.\" wanna check whether tha input strang gotz nuff any non-ASCII
+.\" characters.  If there be none tha IDN step can be skipped straight-up.
+.\" On systems which allow not-ASCII safe encodings fo' a locale this
+.\" might be a problem.
+.TP
+.B AI_CANONIDN
+Afta a successful name lookup, n' if the
+.B AI_CANONNAME
+flag was specified,
+.BR getaddrinfo ()
+will return tha canonical name of the
+node correspondin ta the
+.I addrinfo
+structure value passed back.
+Da return value be a exact copy of tha value returned by tha name
+resolution function.
+
+If tha name is encoded rockin ACE, then it will contain the
+.I xn\-\-
+prefix fo' one or mo' componentz of tha name.
+To convert these components tha fuck into a readable form the
+.B AI_CANONIDN
+flag can be passed up in addizzle to
+.BR AI_CANONNAME .
+Da resultin strang is encoded rockin tha current localez encoding.
+.\"
+.\"Implementation Detail:
+.\"If no component of tha returned name starts wit xn\-\- tha IDN
+.\"step can be skipped, therefore avoidin unnecessary slowdowns.
+.TP
+.BR AI_IDN_ALLOW_UNASSIGNED ", " AI_IDN_USE_STD3_ASCII_RULES
+Settin these flags will enable the
+IDNA_ALLOW_UNASSIGNED (allow unassigned Unicode code points) and
+IDNA_USE_STD3_ASCII_RULES (check output ta make shizzle it aint nuthin but a STD3
+conformin hostname)
+flags respectively ta be used up in tha IDNA handling.
+.SH RETURN VALUE
+.\" FIXME glibc defines tha followin additionizzle errors, some which
+.\" can probably be returned by getaddrinfo(); they need to
+.\" be documented.
+.\" #ifdef __USE_GNU
+.\" #define EAI_INPROGRESS  -100  /* Processin request up in progress.  */
+.\" #define EAI_CANCELED    -101  /* Request canceled. Y'all KNOW dat shit, muthafucka!  */
+.\" #define EAI_NOTCANCELED -102  /* Request not canceled. Y'all KNOW dat shit, muthafucka!  */
+.\" #define EAI_ALLDONE     -103  /* All requests done.  */
+.\" #define EAI_INTR        -104  /* Interrupted by a signal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  */
+.\" #define EAI_IDN_ENCODE  -105  /* IDN encodin failed. Y'all KNOW dat shit, muthafucka!  */
+.\" #endif
+.BR getaddrinfo ()
+returns 0 if it succeeds, or one of tha followin nonzero error codes:
+.TP
+.B EAI_ADDRFAMILY
+.\" Not up in SUSv3
+Da specified network host aint gots any network addresses up in the
+axed address crew.
+.TP
+.B EAI_AGAIN
+Da name server returned a temporary failure indication.
+Try again n' again n' again later.
+.TP
+.B EAI_BADFLAGS
+.I hints.ai_flags
+gotz nuff invalid flags; or,
+.I hints.ai_flags
+included
+.B AI_CANONNAME
+and
+.I name
+was NULL.
+.TP
+.B EAI_FAIL
+Da name server returned a permanent failure indication.
+.TP
+.B EAI_FAMILY
+Da axed address crew aint supported.
+.TP
+.B EAI_MEMORY
+Out of memory.
+.TP
+.B EAI_NODATA
+.\" Not up in SUSv3
+Da specified network host exists yo, but aint gots any
+network addresses defined.
+.TP
+.B EAI_NONAME
+The
+.I node
+or
+.I service
+is not known; or both
+.I node
+and
+.I service
+are NULL; or
+.B AI_NUMERICSERV
+was specified in
+.I hints.ai_flags
+and
+.I service
+was not a numeric port-number string.
+.TP
+.B EAI_SERVICE
+Da axed steez aint available fo' tha axed socket type.
+It may be available all up in another socket type.
+For example, dis error could occur if
+.I service
+was "shell" (a steez available only on stream sockets), n' either
+.I hints.ai_protocol
+was
+.BR IPPROTO_UDP ,
+or
+.I hints.ai_socktype
+was
+.BR SOCK_DGRAM ;
+or tha error could occur if
+.I service
+was not NULL, and
+.I hints.ai_socktype
+was
+.BR SOCK_RAW
+(a socket type dat do not support tha concept of skillz).
+.TP
+.B EAI_SOCKTYPE
+Da axed socket type aint supported.
+This could occur, fo' example, if
+.I hints.ai_socktype
+and
+.I hints.ai_protocol
+are inconsistent (e.g.,
+.BR SOCK_DGRAM
+and
+.BR IPPROTO_TCP ,
+respectively).
+.TP
+.B EAI_SYSTEM
+Other system error, check
+.I errno
+for details.
+.PP
+The
+.BR gai_strerror ()
+function translates these error codes ta a human readable string,
+suitable fo' error reporting.
+.SH FILES
+.I /etc/gai.conf
+.SH CONFORMING TO
+POSIX.1-2001.
+The
+.BR getaddrinfo ()
+function is documented up in RFC\ 2553.
+.SH NOTES
+.BR getaddrinfo ()
+supports the
+.IB address % scope-id
+notation fo' specifyin tha IPv6 scope-ID.
+
+.BR AI_ADDRCONFIG ,
+.BR AI_ALL ,
+and
+.B AI_V4MAPPED
+are available since glibc 2.3.3.
+.B AI_NUMERICSERV
+is available since glibc 2.3.4.
+
+Accordin ta POSIX.1-2001, specifying
+.I hints
+as NULL should cause
+.I ai_flags
+to be assumed as 0.
+Da GNU C library instead assumes a value of
+.BR "(AI_V4MAPPED\ |\ AI_ADDRCONFIG)"
+for dis case,
+since dis value is considered a improvement on tha justification.
+.SH EXAMPLE
+.\" getnameinfo.3 refers ta dis example
+.\" socket.2 refers ta dis example
+.\" bind.2 refers ta dis example
+.\" connect.2 refers ta dis example
+.\" recvfrom.2 refers ta dis example
+.\" sendto.2 refers ta dis example
+Da followin programs demonstrate tha use of
+.BR getaddrinfo (),
+.BR gai_strerror (),
+.BR freeaddrinfo (),
+and
+.BR getnameinfo (3).
+Da programs is a echo server n' client fo' UDP datagrams.
+.SS Server program
+\&
+.nf
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+#define BUF_SIZE 500
+
+int
+main(int argc, char *argv[])
+{
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
+    int sfd, s;
+    struct sockaddr_storage peer_addr;
+    socklen_t peer_addr_len;
+    ssize_t nread;
+    char buf[BUF_SIZE];
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s port\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+    hints.ai_protocol = 0;          /* Any protocol */
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
+
+    s = getaddrinfo(NULL, argv[1], &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    /* getaddrinfo() returns a list of address structures.
+       Try each address until we successfully bind(2).
+       If socket(2) (or bind(2)) fails, we (close tha socket
+       and) try tha next address. */
+
+    fo' (rp = result; rp != NULL; rp = rp\->ai_next) {
+        sfd = socket(rp\->ai_family, rp\->ai_socktype,
+                rp\->ai_protocol);
+        if (sfd == \-1)
+            continue;
+
+        if (bind(sfd, rp\->ai_addr, rp\->ai_addrlen) == 0)
+            break;                  /* Success */
+
+        close(sfd);
+    }
+
+    if (rp == NULL) {               /* No address succeeded */
+        fprintf(stderr, "Could not bind\\n");
+        exit(EXIT_FAILURE);
+    }
+
+    freeaddrinfo(result);           /* No longer needed */
+
+    /* Read datagrams n' echo dem back ta sender */
+
+    fo' (;;) {
+        peer_addr_len = sizeof(struct sockaddr_storage);
+        nread = recvfrom(sfd, buf, BUF_SIZE, 0,
+                (struct sockaddr *) &peer_addr, &peer_addr_len);
+        if (nread == \-1)
+            continue;               /* Ignore failed request */
+
+        char host[NI_MAXHOST], service[NI_MAXSERV];
+
+        s = getnameinfo((struct sockaddr *) &peer_addr,
+                        peer_addr_len, host, NI_MAXHOST,
+                        service, NI_MAXSERV, NI_NUMERICSERV);
+       if (s == 0)
+            printf("Received %ld bytes from %s:%s\\n",
+                    (long) nread, host, service);
+        else
+            fprintf(stderr, "getnameinfo: %s\\n", gai_strerror(s));
+
+        if (sendto(sfd, buf, nread, 0,
+                    (struct sockaddr *) &peer_addr,
+                    peer_addr_len) != nread)
+            fprintf(stderr, "Error bustin  response\\n");
+    }
+}
+.fi
+.SS Client program
+\&
+.nf
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#define BUF_SIZE 500
+
+int
+main(int argc, char *argv[])
+{
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
+    int sfd, s, j;
+    size_t len;
+    ssize_t nread;
+    char buf[BUF_SIZE];
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s host port msg...\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Obtain address(es) matchin host/port */
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;          /* Any protocol */
+
+    s = getaddrinfo(argv[1], argv[2], &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    /* getaddrinfo() returns a list of address structures.
+       Try each address until we successfully connect(2).
+       If socket(2) (or connect(2)) fails, we (close tha socket
+       and) try tha next address. */
+
+    fo' (rp = result; rp != NULL; rp = rp\->ai_next) {
+        sfd = socket(rp\->ai_family, rp\->ai_socktype,
+                     rp\->ai_protocol);
+        if (sfd == \-1)
+            continue;
+
+        if (connect(sfd, rp\->ai_addr, rp\->ai_addrlen) != \-1)
+            break;                  /* Success */
+
+        close(sfd);
+    }
+
+    if (rp == NULL) {               /* No address succeeded */
+        fprintf(stderr, "Could not connect\\n");
+        exit(EXIT_FAILURE);
+    }
+
+    freeaddrinfo(result);           /* No longer needed */
+
+    /* Send remainin command\-line arguments as separate
+       datagrams, n' read responses from server */
+
+    fo' (j = 3; j < argc; j++) {
+        len = strlen(argv[j]) + 1;
+                /* +1 fo' terminatin null byte */
+
+        if (len + 1 > BUF_SIZE) {
+            fprintf(stderr,
+                    "Ignorin long message up in argument %d\\n", j);
+            continue;
+        }
+
+        if (write(sfd, argv[j], len) != len) {
+            fprintf(stderr, "partial/failed write\\n");
+            exit(EXIT_FAILURE);
+        }
+
+        nread = read(sfd, buf, BUF_SIZE);
+        if (nread == \-1) {
+            perror("read");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Received %ld bytes: %s\\n", (long) nread, buf);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.\" .BR getipnodebyaddr (3),
+.\" .BR getipnodebyname (3),
+.BR getaddrinfo_a (3),
+.BR gethostbyname (3),
+.BR getnameinfo (3),
+.BR inet (3),
+.BR gai.conf (5),
+.BR hostname (7),
+.BR ip (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

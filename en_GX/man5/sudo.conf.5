@@ -1,0 +1,571 @@
+.\"
+.\" Copyright (c) 2010-2013 Todd C. Milla <Todd.Miller@courtesan.com>
+.\"
+.\" Permission ta use, copy, modify, n' distribute dis software fo' any
+.\" purpose wit or without fee is hereby granted, provided dat tha above
+.\" copyright notice n' dis permission notice step tha fuck up in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd August 13, 2013
+.Dt SUDO 5
+.Os Sudo 1.8.8
+.Sh NAME
+.Nm sudo.conf
+.Nd configuration fo' sudo front end
+.Sh DESCRIPTION
+The
+.Nm sudo.conf
+file is used ta configure the
+.Nm sudo
+front end.
+It specifies tha securitizzle policy n' I/O loggin plugins, debug flags
+as well as plugin-agnostic path names n' settings.
+.Pp
+The
+.Nm sudo.conf
+file supports tha followin directives, busted lyrics bout up in detail below.
+.Bl -tag -width 8n
+.It Plugin
+a securitizzle policy or I/O loggin plugin
+.It Path
+a plugin-agnostic path
+.It Set
+a front end setting, such as
+.Em disable_coredump
+or
+.Em group_source
+.It Debug
+debug flags ta aid up in debugging
+.Nm sudo ,
+.Nm sudoreplay ,
+.Nm visudo ,
+and the
+.Nm sudoers
+plugin.
+.El
+.Pp
+Da pound sign
+.Pq Ql #
+is used ta indicate a cold-ass lil comment.
+Both tha comment characta n' any text afta it, up ta tha end of
+the line, is ignored.
+.Pp
+Long lines can be continued wit a funky-ass backslash
+.Pq Ql \e
+as tha last characta on tha line.
+Note dat leadin white space is removed from tha beginnin of lines
+even when tha continuation characta is used.
+.Pp
+Non-comment lines dat don't begin with
+.Li Plugin ,
+.Li Path ,
+.Li Debug ,
+or
+.Li Set
+are silently ignored.
+.Pp
+The
+.Nm sudo.conf
+file be always parsed up in the
+.Dq Li C
+locale.
+.Ss Plugin configuration
+.Nm sudo
+supports a plugin architecture fo' securitizzle policies n' input/output
+logging.
+Third partizzles can pimp n' distribute they own policy n' I/O
+loggin plugins ta work seamlessly wit the
+.Nm sudo
+front end.
+Plugins is dynamically loaded based on tha contents of
+.Nm sudo.conf .
+.Pp
+A
+.Li Plugin
+line consistz of the
+.Li Plugin
+keyword, followed by the
+.Em symbol_name
+and the
+.Em path
+to tha shared object containin tha plugin.
+The
+.Em symbol_name
+is tha name of the
+.Li struct policy_plugin
+or
+.Li struct io_plugin
+in tha plugin shared object.
+The
+.Em path
+may be straight-up qualified or relative.
+If not straight-up qualified, it is relatizzle ta tha directory
+specified by the
+.Em plugin_dir
+.Li Path
+setting, which defaults to
+.Pa /usr/libexec/sudo .
+In other lyrics:
+.Bd -literal -offset indent
+Plugin sudoers_policy sudoers.so
+.Ed
+.Pp
+is equivalent to:
+.Bd -literal -offset indent
+Plugin sudoers_policy /usr/libexec/sudo/sudoers.so
+.Ed
+.Pp
+Startin with
+.Nm sudo
+1.8.5, any additionizzle parametas afta the
+.Em path
+are passed as arguments ta tha plugin's
+.Em open
+function.
+For example, ta override tha compile-time default sudoers file mode:
+.Bd -literal -offset indent
+Plugin sudoers_policy sudoers.so sudoers_mode=0440
+.Ed
+.Pp
+Da same shared object may contain multiple plugins, each wit a
+different symbol name.
+Da shared object file must be owned by uid 0 n' only writable by its baller.
+Because of ambiguitizzles dat arise from composite policies, only a single
+policy plugin may be specified.
+This limitation do not apply ta I/O plugins.
+.Pp
+If no
+.Nm sudo.conf
+file is present, or if it gotz nuff no
+.Li Plugin
+lines, the
+.Nm sudoers
+plugin is ghon be used as tha default securitizzle policy n' fo' I/O logging
+(if enabled by tha policy).
+This is equivalent ta tha following:
+.Bd -literal -offset indent
+Plugin sudoers_policy sudoers.so
+Plugin sudoers_io sudoers.so
+.Ed
+.Pp
+For mo' shiznit on the
+.Nm sudo
+plugin architecture, peep the
+.Xr sudo_plugin 8
+manual.
+.Ss Path settings
+A
+.Li Path
+line consistz of the
+.Li Path
+keyword, followed by tha name of tha path ta set n' its value.
+For example:
+.Bd -literal -offset indent
+Path noexec /usr/libexec/sudo/sudo_noexec.so
+Path askpass /usr/X11R6/bin/ssh-askpass
+.Ed
+.Pp
+Da followin plugin-agnostic paths may be set up in the
+.Pa /etc/sudo.conf
+file:
+.Bl -tag -width 8n
+.It askpass
+Da straight-up qualified path ta a helper program used ta read tha user's
+password when no terminal be available.
+This may be tha case when
+.Nm sudo
+is executed from a graphical (as opposed ta text-based) application.
+Da program specified by
+.Em askpass
+should display tha argument passed ta it as tha prompt n' write
+the userz password ta tha standard output.
+Da value of
+.Em askpass
+may be overridden by the
+.Ev SUDO_ASKPASS
+environment variable.
+.It noexec
+Da fully-qualified path ta a gangbangin' finger-lickin' dirty-ass shared library containin dummy
+versionz of the
+.Fn execv ,
+.Fn execve
+and
+.Fn fexecve
+library functions dat just return a error.
+This is used ta implement the
+.Em noexec
+functionalitizzle on systems dat support
+.Ev LD_PRELOAD
+or its equivalent.
+Da default value is:
+.Pa /usr/libexec/sudo/sudo_noexec.so .
+.It plugin_dir
+Da default directory ta use when searchin fo' plugins
+that is specified without a gangbangin' straight-up qualified path name.
+Da default value is
+.Pa /usr/libexec/sudo .
+.It sesh
+Da fully-qualified path ta the
+.Nm sesh
+binary.
+This settin is only used when
+.Nm sudo
+is built wit SELinux support.
+Da default value is
+.Pa /usr/libexec/sudo/sesh .
+.El
+.Ss Other settings
+The
+.Nm sudo.conf
+file also supports tha followin front end settings:
+.Bl -tag -width 8n
+.It disable_coredump
+Core dumps of
+.Nm sudo
+itself is disabled by default.
+To aid up in debugging
+.Nm sudo
+crashes, you may wish ta re-enable core dumps by setting
+.Dq disable_coredump
+to false in
+.Nm sudo.conf
+as bigs up:
+.Bd -literal -offset indent
+Set disable_coredump false
+.Ed
+.Pp
+Note dat most operatin systems disable core dumps from setuid programs,
+including
+.Nm sudo .
+To straight-up git a
+.Nm sudo
+core file yo big-ass booty is ghon likely need ta enable core dumps fo' setuid processes.
+On BSD n' Linux systems dis be accomplished up in the
+.Xr sysctl
+command.
+On Solaris, the
+.Xr coreadm
+command is used ta configure core dump behavior.
+.Pp
+This settin is only available in
+.Nm sudo
+version 1.8.4 n' higher.
+.It group_source
+.Nm sudo
+passes tha invokin userz crew list ta tha policy n' I/O plugins.
+On most systems, there be a upper limit ta tha number of crews that
+a user may belong ta simultaneously (typically 16 fo' compatibility
+with NFS).
+On systems wit the
+.Xr getconf 1
+utility, hustlin:
+.Dl getconf NGROUPS_MAX
+will return tha maximum number of groups.
+.Pp
+But fuck dat shiznit yo, tha word on tha street is dat it is still possible ta be a gangmember of a larger number of
+groups--they simply won't be included up in tha crew list returned
+by tha kernel fo' tha user.
+Startin with
+.Nm sudo
+version 1.8.7, if tha userz kernel crew list has tha maximum number
+of entries,
+.Nm sudo
+will consult tha crew database directly ta determine tha crew list.
+This make it possible fo' tha securitizzle policy ta big-ass up matchin by group
+name even when tha user be a gangmember of mo' than tha maximum number of groups.
+.Pp
+The
+.Em group_source
+settin allows tha administrator ta chizzle dis default behavior.
+Supported joints for
+.Em group_source
+are:
+.Bl -tag -width 8n
+.It static
+Use tha static crew list dat tha kernel returns.
+Retrievin tha crew list dis way is straight-up fast but it is subject
+to a upper limit as busted lyrics bout above.
+It is
+.Dq static
+in dat it do not reflect chizzlez ta tha crew database made
+afta tha user logs in.
+This was tha default behavior prior to
+.Nm sudo
+1.8.7.
+.It dynamic
+Always query tha crew database directly.
+It is
+.Dq dynamic
+in dat chizzlez made ta tha crew database afta tha user logs in
+will be reflected up in tha crew list.
+On some systems, queryin tha crew database fo' all of a user's
+groups can be time consumin when queryin a network-based group
+database.
+Most operatin systems provide a efficient method of struttin
+such queries.
+Currently,
+.Nm sudo
+supports efficient crew queries on AIX, BSD, HP-UX, Linux and
+Solaris.
+.It adaptive
+Only query tha crew database if tha static crew list returned
+by tha kernel has tha maximum number of entries.
+This is tha default behavior in
+.Nm sudo
+1.8.7 n' higher.
+.El
+.Pp
+For example, ta cause
+.Nm sudo
+to only use tha kernelz static list of crews fo' tha user:
+.Bd -literal -offset indent
+Set group_source static
+.Ed
+.Pp
+This settin is only available in
+.Nm sudo
+version 1.8.7 n' higher.
+.It max_groups
+Da maximum number of user crews ta retrieve from tha crew database.
+Values less than one is ghon be ignored.
+This settin is only used when queryin tha crew database directly.
+It be intended ta be used on systems where it aint possible ta detect
+when tha array ta be populated wit crew entries aint sufficiently large.
+By default,
+.Nm sudo
+will allocate four times tha systemz maximum number of crews (see above)
+and retry wit double dat number if tha crew database query fails.
+But fuck dat shiznit yo, tha word on tha street is dat some systems just return as nuff entries as will fit and
+do not indicate a error when there be a lack of space.
+.Pp
+This settin is only available in
+.Nm sudo
+version 1.8.7 n' higher.
+.El
+.Ss Debug flags
+.Nm sudo
+versions 1.8.4 n' higher support a gangbangin' flexible debuggin framework
+that can help track down what
+.Nm sudo
+is bustin internally if there be a problem.
+.Pp
+A
+.Li Debug
+line consistz of the
+.Li Debug
+keyword, followed by tha name of tha program (or plugin) ta debug
+.Pq Nm sudo , Nm visudo , Nm sudoreplay , Nm sudoers ,
+the debug file name n' a cold-ass lil comma-separated list of debug flags.  The
+debug flag syntax used by
+.Nm sudo
+and the
+.Nm sudoers
+plugin is
+.Em subsystem Ns No @ Ns Em priority
+but a plugin is free ta bust a gangbangin' finger-lickin' different format so long as it do
+not include a cold-ass lil comma
+.Pq Ql \&, .
+.Pp
+For example:
+.Bd -literal -offset indent
+Debug sudo /var/log/sudo_debug all@warn,plugin@info
+.Ed
+.Pp
+would log all debuggin statements at the
+.Em warn
+level n' higher up in addizzle ta dem at the
+.Em info
+level fo' tha plugin subsystem.
+.Pp
+Currently, only one
+.Li Debug
+entry per program is supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  The
+.Nm sudo
+.Li Debug
+entry is shared by the
+.Nm sudo
+front end,
+.Nm sudoedit
+and tha plugins.  A future release may add support fo' per-plugin
+.Li Debug
+lines and/or support fo' multiple debuggin filez fo' a single
+program.
+.Pp
+Da prioritizzles used by the
+.Nm sudo
+front end, up in order of decreasin severity, are:
+.Em crit , err , warn , notice , diag , info , trace
+and
+.Em debug .
+Each priority, when specified, also includes all prioritizzles higher
+than dat shit.  For example, a prioritizzle of
+.Em notice
+would include debug lyrics logged at
+.Em notice
+and higher.
+.Pp
+Da followin subsystems is used by the
+.Nm sudo
+front-end:
+.Bl -tag -width Fl
+.It Em all
+matches every last muthafuckin subsystem
+.It Em args
+command line argument processing
+.It Em conv
+user conversation
+.It Em edit
+sudoedit
+.It Em exec
+command execution
+.It Em main
+.Nm sudo
+main function
+.It Em netif
+network intercourse handling
+.It Em pcomm
+communication wit tha plugin
+.It Em plugin
+plugin configuration
+.It Em pty
+pseudo-tty related code
+.It Em selinux
+SELinux-specific handling
+.It Em util
+utilitizzle functions
+.It Em utmp
+utmp handling
+.El
+.Pp
+The
+.Xr sudoers 5
+plugin includes support fo' additionizzle subsystems.
+.Sh FILES
+.Bl -tag -width 24n
+.It Pa /etc/sudo.conf
+.Nm sudo
+front end configuration
+.El
+.Sh EXAMPLES
+.Bd -literal
+#
+# Default /etc/sudo.conf file
+#
+# Format:
+#   Plugin plugin_name plugin_path plugin_options ...
+#   Path askpass /path/to/askpass
+#   Path noexec /path/to/sudo_noexec.so
+#   Debug sudo /var/log/sudo_debug all@warn
+#   Set disable_coredump true
+#
+# Da plugin_path is relatizzle ta /usr/libexec/sudo unless
+#   straight-up qualified.
+# Da plugin_name correspondz ta a global symbol up in tha plugin
+#   dat gotz nuff tha plugin intercourse structure.
+# Da plugin_options is optional.
+#
+# Da sudoers plugin is used by default if no Plugin lines are
+# present.
+Plugin sudoers_policy sudoers.so
+Plugin sudoers_io sudoers.so
+
+#
+# Sudo askpass:
+#
+# An askpass helper program may be specified ta provide a graphical
+# password prompt fo' "sudo -A" support.  Sudo do not shizzle with
+# its own askpass program but can use tha OpenSSH askpass.
+#
+# Use tha OpenSSH askpass
+#Path askpass /usr/X11R6/bin/ssh-askpass
+#
+# Use tha Gnome OpenSSH askpass
+#Path askpass /usr/libexec/openssh/gnome-ssh-askpass
+
+#
+# Sudo noexec:
+#
+# Path ta a gangbangin' finger-lickin' dirty-ass shared library containin dummy versionz of tha execv(),
+# execve() n' fexecve() library functions dat just return a error.
+# This is used ta implement tha "noexec" functionalitizzle on systems that
+# support C<LD_PRELOAD> or its equivalent.
+# Da compiled-in value is probably sufficient n' should only be
+# chizzled if you rename or move tha sudo_noexec.so file.
+#
+#Path noexec /usr/libexec/sudo/sudo_noexec.so
+
+#
+# Core dumps:
+#
+# By default, sudo disablez core dumps while it is executing
+# (they is re-enabled fo' tha command dat is run).
+# To aid up in debuggin sudo problems, you may wish ta enable core
+# dumps by settin "disable_coredump" ta false.
+#
+#Set disable_coredump false
+
+#
+# User groups:
+#
+# Sudo passes tha userz crew list ta tha policy plugin.
+# If tha user be a gangmember of tha maximum number of crews (usually 16),
+# sudo will query tha crew database directly ta be shizzle ta include
+# tha full list of groups.
+#
+# On some systems, dis can be high-rollin' so tha behavior is configurable.
+# Da "group_source" settin has three possible joints:
+#   static   - use tha userz list of crews returned by tha kernel.
+#   dynamic  - query tha crew database ta find tha list of groups.
+#   adaptizzle - if user is up in less than tha maximum number of groups.
+#              use tha kernel list, else query tha crew database.
+#
+#Set group_source static
+.Ed
+.Sh SEE ALSO
+.Xr sudoers 5 ,
+.Xr sudo 8 ,
+.Xr sudo_plugin 8
+.Sh HISTORY
+See tha HISTORY file up in the
+.Nm sudo
+distribution (http://www.sudo.ws/sudo/history.html) fo' a funky-ass brief
+history of sudo.
+.Sh AUTHORS
+Many playas have hit dat shiznit on
+.Nm sudo
+over tha years; dis version consistz of code freestyled primarily by:
+.Bd -ragged -offset indent
+Todd C. Miller
+.Ed
+.Pp
+See tha CONTRIBUTORS file up in the
+.Nm sudo
+distribution (http://www.sudo.ws/sudo/contributors.html) fo' an
+exhaustizzle list of playas whoz ass have contributed to
+.Nm sudo .
+.Sh BUGS
+If you feel you have found a funky-ass bug in
+.Nm sudo ,
+please submit a funky-ass bug report at http://www.sudo.ws/sudo/bugs/
+.Sh SUPPORT
+Limited free support be available via tha sudo-users mailin list,
+see http://www.sudo.ws/mailman/listinfo/sudo-users ta subscribe or
+search tha archives.
+.Sh DISCLAIMER
+.Nm sudo
+is provided
+.Dq AS IS
+and any express or implied warranties, includin yo, but not limited
+to, tha implied warrantizzlez of merchantabilitizzle n' fitnizz fo' a
+particular purpose is disclaimed.
+See tha LICENSE file distributed with
+.Nm sudo
+or http://www.sudo.ws/sudo/license.html fo' complete details.

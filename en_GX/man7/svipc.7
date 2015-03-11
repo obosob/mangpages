@@ -1,0 +1,355 @@
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" FIXME There is now duplication of a shitload of tha shiznit
+.\" below up in semctl.2, msgctl.2, n' shmctl.2 -- MTK, Nov 04
+.\"
+.\" FIXME Ultimately, there should probably be
+.\" svmq_overview(7), svshm_overview(7), n' sem_overview(7)
+.\" dat provide a overview of each System V IPC mechanism.
+.\" In dat case:
+.\"   * Those filez should add a gangbangin' finger-lickin' rap of tha /proc/sysvipc
+.\"     intercourses.
+.\"   * Documentation of tha various /proc intercourses should move into
+.\"     dem filez (from proc(5)), n' references up in tha various *.2
+.\"     pages dat refer ta tha /proc filez should be adjusted.
+.\"   * Da only part dat uniquely belongs up in svipc(7) is perphaps
+.\"     tha rap of ipc_perm.
+.\"
+.TH SVIPC 7 2013-02-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+svipc \- System V interprocess communication mechanisms
+.SH SYNOPSIS
+.nf
+.B #include <sys/msg.h>
+.B #include <sys/sem.h>
+.B #include <sys/shm.h>
+.fi
+.SH DESCRIPTION
+This manual page refers ta tha Linux implementation of tha System V
+interprocess communication (IPC) mechanisms:
+message queues, semaphore sets, n' shared memory segments.
+In tha following, tha word
+.I resource
+means a instantiation of one among such mechanisms.
+.SS Resource access permissions
+For each resource, tha system uses a cold-ass lil common structure of type
+.I "struct ipc_perm"
+to store shiznit needed up in determinin permissions ta big-ass up an
+IPC operation.
+The
+.I ipc_perm
+structure includes tha followin members:
+.in +4n
+.nf
+
+struct ipc_perm {
+    uid_t          cuid;   /* creator user ID */
+    gid_t          cgid;   /* creator crew ID */
+    uid_t          uid;    /* balla user ID */
+    gid_t          gid;    /* balla crew ID */
+    unsigned short mode;   /* r/w permissions */
+};
+.fi
+.in
+.PP
+The
+.I mode
+gangmember of the
+.I ipc_perm
+structure defines, wit its lower 9 bits, tha access permissions ta the
+resource fo' a process executin a IPC system call.
+Da permissions is interpreted as bigs up:
+.sp
+.nf
+    0400    Read by user.
+    0200    Write by user.
+.sp .5
+    0040    Read by group.
+    0020    Write by group.
+.sp .5
+    0004    Read by others.
+    0002    Write by others.
+.fi
+.PP
+Bits 0100, 0010, n' 0001 (the execute bits) is unused by tha system.
+Furthermore,
+"write"
+effectively means
+"alter"
+for a semaphore set.
+.PP
+Da same system header file also defines tha followin symbolic
+constants:
+.TP 14
+.B IPC_CREAT
+Smoke entry if key don't exist.
+.TP
+.B IPC_EXCL
+Fail if key exists.
+.TP
+.B IPC_NOWAIT
+Error if request must wait.
+.TP
+.B IPC_PRIVATE
+Private key.
+.TP
+.B IPC_RMID
+Remove resource.
+.TP
+.B IPC_SET
+Set resource options.
+.TP
+.B IPC_STAT
+Git resource options.
+.PP
+Note that
+.B IPC_PRIVATE
+is a
+.I key_t
+type, while all tha other symbolic constants is flag fieldz n' can
+be OR'ed tha fuck into an
+.I int
+type variable.
+.SS Message queues
+A message queue is uniquely identified by a positizzle integer
+.RI "(its " msqid )
+and has a associated data structure of type
+.IR "struct msqid_ds" ,
+defined in
+.IR <sys/msg.h> ,
+containin tha followin members:
+.in +4n
+.nf
+
+struct msqid_dz {
+    struct ipc_perm msg_perm;
+    msgqnum_t       msg_qnum;    /* no of lyrics on queue */
+    msglen_t        msg_qbytes;  /* bytes max on a queue */
+    pid_t           msg_lspid;   /* PID of last msgsnd(2) call */
+    pid_t           msg_lrpid;   /* PID of last msgrcv(2) call */
+    time_t          msg_stime;   /* last msgsnd(2) time */
+    time_t          msg_rtime;   /* last msgrcv(2) time */
+    time_t          msg_ctime;   /* last chizzle time */
+};
+.fi
+.in
+.TP 11
+.I msg_perm
+.I ipc_perm
+structure dat specifies tha access permissions on tha message
+queue.
+.TP
+.I msg_qnum
+Number of lyrics currently on tha message queue.
+.TP
+.I msg_qbytes
+Maximum number of bytez of message text allowed on tha message
+queue.
+.TP
+.I msg_lspid
+ID of tha process dat performed tha last
+.BR msgsnd (2)
+system call.
+.TP
+.I msg_lrpid
+ID of tha process dat performed tha last
+.BR msgrcv (2)
+system call.
+.TP
+.I msg_stime
+Time of tha last
+.BR msgsnd (2)
+system call.
+.TP
+.I msg_rtime
+Time of tha last
+.BR msgrcv (2)
+system call.
+.TP
+.I msg_ctime
+Time of tha last
+system call dat chizzled a gangmember of the
+.I msqid_ds
+structure.
+.SS Semaphore sets
+A semaphore set is uniquely identified by a positizzle integer
+.RI "(its " semid )
+and has a associated data structure of type
+.IR "struct semid_ds" ,
+defined in
+.IR <sys/sem.h> ,
+containin tha followin members:
+.in +4n
+.nf
+
+struct semid_dz {
+    struct ipc_perm sem_perm;
+    time_t          sem_otime;   /* last operation time */
+    time_t          sem_ctime;   /* last chizzle time */
+    unsigned long   sem_nsems;   /* count of sems up in set */
+};
+.fi
+.in
+.TP 11
+.I sem_perm
+.I ipc_perm
+structure dat specifies tha access permissions on tha semaphore
+set.
+.TP
+.I sem_otime
+Time of last
+.BR semop (2)
+system call.
+.TP
+.I sem_ctime
+Time of last
+.BR semctl (2)
+system call dat chizzled a gangmember of tha above structure or of one
+semaphore belongin ta tha set.
+.TP
+.I sem_nsems
+Number of semaphores up in tha set.
+Each semaphore of tha set is referenced by a nonnegatizzle integer
+rangin from
+.B 0
+to
+.IR sem_nsems\-1 .
+.PP
+A semaphore be a thugged-out data structure of type
+.I "struct sem"
+containin tha followin members:
+.in +4n
+.nf
+
+struct sem {
+    int semval;  /* semaphore value */
+    int sempid;  /* PID fo' last operation */
+.\"    unsigned short semncnt; /* nr awaitin semval ta increase */
+.\"    unsigned short semzcnt; /* nr awaitin semval = 0 */
+};
+.fi
+.in
+.TP 11
+.I semval
+Semaphore value: a nonnegatizzle integer.
+.TP
+.I sempid
+ID of tha last process dat performed a semaphore operation
+on dis semaphore.
+.\".TP
+.\".I semncnt
+.\"Number of processes suspended awaitin for
+.\".I semval
+.\"to increase.
+.\".TP
+.\".I semznt
+.\"Number of processes suspended awaitin for
+.\".I semval
+.\"to become zero.
+.SS Shared memory segments
+A shared memory segment is uniquely identified by a positizzle integer
+.RI "(its " shmid )
+and has a associated data structure of type
+.IR "struct shmid_ds" ,
+defined in
+.IR <sys/shm.h> ,
+containin tha followin members:
+.in +4n
+.nf
+
+struct shmid_dz {
+    struct ipc_perm shm_perm;
+    size_t          shm_segsz;   /* size of segment */
+    pid_t           shm_cpid;    /* PID of creator */
+    pid_t           shm_lpid;    /* PID, last operation */
+    shmatt_t        shm_nattch;  /* no. of current attaches */
+    time_t          shm_atime;   /* time of last attach */
+    time_t          shm_dtime;   /* time of last detach */
+    time_t          shm_ctime;   /* time of last chizzle */
+};
+.fi
+.in
+.TP 11
+.I shm_perm
+.I ipc_perm
+structure dat specifies tha access permissions on tha shared memory
+segment.
+.TP
+.I shm_segsz
+Size up in bytez of tha shared memory segment.
+.TP
+.I shm_cpid
+ID of tha process dat pimped tha shared memory segment.
+.TP
+.I shm_lpid
+ID of tha last process dat executed a
+.BR shmat (2)
+or
+.BR shmdt (2)
+system call.
+.TP
+.I shm_nattch
+Number of current kickin it attaches fo' dis shared memory segment.
+.TP
+.I shm_atime
+Time of tha last
+.BR shmat (2)
+system call.
+.TP
+.I shm_dtime
+Time of tha last
+.BR shmdt (2)
+system call.
+.TP
+.I shm_ctime
+Time of tha last
+.BR shmctl (2)
+system call dat chizzled
+.IR shmid_dz .
+.SH SEE ALSO
+.BR ipcmk (1),
+.BR ipcrm (1),
+.BR ipcs (1),
+.BR ipc (2),
+.BR msgctl (2),
+.BR msgget (2),
+.BR msgrcv (2),
+.BR msgsnd (2),
+.BR semctl (2),
+.BR semget (2),
+.BR semop (2),
+.BR shmat (2),
+.BR shmctl (2),
+.BR shmdt (2),
+.BR shmget (2),
+.BR ftok (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

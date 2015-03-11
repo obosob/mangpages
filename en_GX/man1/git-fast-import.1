@@ -1,0 +1,1535 @@
+'\" t
+.\"     Title: git-fast-import
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 10/25/2014
+.\"    Manual: Git Manual
+.\"    Source: Git 1.9.3
+.\"  Language: Gangsta
+.\"
+.TH "GIT\-FAST\-IMPORT" "1" "10/25/2014" "Git 1\&.9\&.3" "Git Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+git-fast-import \- Backend fo' fast Git data importers
+.SH "SYNOPSIS"
+.sp
+.nf
+frontend | \fIgit fast\-import\fR [options]
+.fi
+.sp
+.SH "DESCRIPTION"
+.sp
+This program is probably not what tha fuck tha end user wants ta run directly\&. Most end playas wanna use one of tha existin frontend programs, which parses a specific type of foreign source n' feedz tha contents stored there ta \fIgit fast\-import\fR\&.
+.sp
+fast\-import readz a mixed command/data stream from standard input n' writes one or mo' packfilez directly tha fuck into tha current repository\&. When EOF is received on standard input, fast import writes up updated branch n' tag refs, straight-up uppimpin tha current repository wit tha newly imported data\&.
+.sp
+Da fast\-import backend itself can import tha fuck into a empty repository (one dat has already been initialized by \fIgit init\fR) or incrementally update a existin populated repository\&. Whether or not incremenstrual imports is supported from a particular foreign source dependz on tha frontend program up in use\&.
+.SH "OPTIONS"
+.PP
+\-\-force
+.RS 4
+Force uppimpin modified existin branches, even if bustin so would cause commits ta be lost (as tha freshly smoked up commit do not contain tha oldschool commit)\&.
+.RE
+.PP
+\-\-quiet
+.RS 4
+Disable all non\-fatal output, makin fast\-import silent when it is successful\&. This option disablez tha output shown by \-\-stats\&.
+.RE
+.PP
+\-\-stats
+.RS 4
+Display some basic statistics bout tha objects fast\-import has pimped, tha packfilez they was stored into, n' tha memory used by fast\-import durin dis run\&. Right back up in yo muthafuckin ass. Showin dis output is currently tha default yo, but can be disabled wit \-\-quiet\&.
+.RE
+.SS "Options fo' Frontends"
+.PP
+\-\-cat\-blob\-fd=<fd>
+.RS 4
+Write responses to
+cat\-blob
+and
+ls
+queries ta tha file descriptor <fd> instead of
+stdout\& fo' realz. Allows
+progress
+output intended fo' tha end\-user ta be separated from other output\&.
+.RE
+.PP
+\-\-date\-format=<fmt>
+.RS 4
+Specify tha type of dates tha frontend will supply ta fast\-import within
+lyricist,
+committer
+and
+tagger
+commands\&. Right back up in yo muthafuckin ass. See \(lqDate Formats\(rq below fo' details bout which formats is supported, n' they syntax\&.
+.RE
+.PP
+\-\-done
+.RS 4
+Terminizzle wit error if there is no
+done
+command all up in tha end of tha stream\&. This option might be useful fo' detectin errors dat cause tha frontend ta terminizzle before it has started ta write a stream\&.
+.RE
+.SS "Locationz of Marks Files"
+.PP
+\-\-export\-marks=<file>
+.RS 4
+Dumps tha internal marks table ta <file> when complete\&. Marks is freestyled one per line as
+:markid SHA\-1\&. Frontendz can use dis file ta validate imports afta they done been completed, or ta save tha marks table across incremenstrual runs\& fo' realz. As <file> is only opened n' truncated at checkpoint (or completion) tha same path can also be safely given ta \-\-import\-marks\&.
+.RE
+.PP
+\-\-import\-marks=<file>
+.RS 4
+Before processin any input, load tha marks specified up in <file>\&. Da input file must exist, must be readable, n' must use tha same format as produced by \-\-export\-marks\&. Multiple options may be supplied ta import mo' than one set of marks\&. If a mark is defined ta different joints, tha last file wins\&.
+.RE
+.PP
+\-\-import\-marks\-if\-exists=<file>
+.RS 4
+Like \-\-import\-marks but instead of errorin out, silently skips tha file if it do not exist\&.
+.RE
+.PP
+\-\-[no\-]relative\-marks
+.RS 4
+Afta specifyin \-\-relative\-marks tha paths specified wit \-\-import\-marks= n' \-\-export\-marks= is relatizzle ta a internal directory up in tha current repository\&. In git\-fast\-import dis means dat tha paths is relatizzle ta tha \&.git/info/fast\-import directory\&. But fuck dat shiznit yo, tha word on tha street is dat other importas may bust a gangbangin' finger-lickin' different location\&.
+.sp
+Relatizzle n' non\-relatizzle marks may be combined by interweavin \-\-(no\-)\-relative\-marks wit tha \-\-(import|export)\-marks= options\&.
+.RE
+.SS "Performizzle n' Compression Tuning"
+.PP
+\-\-active\-branches=<n>
+.RS 4
+Maximum number of branches ta maintain actizzle at once\&. Right back up in yo muthafuckin ass. See \(lqMemory Utilization\(rq below fo' details\&. Default is 5\&.
+.RE
+.PP
+\-\-big\-file\-threshold=<n>
+.RS 4
+Maximum size of a funky-ass blob dat fast\-import will attempt ta create a thugged-out delta for, expressed up in bytes\&. Da default is 512m (512 MiB)\&. Right back up in yo muthafuckin ass. Some importas may wish ta lower dis on systems wit constrained memory\&.
+.RE
+.PP
+\-\-depth=<n>
+.RS 4
+Maximum delta depth, fo' blob n' tree deltification\&. Default is 10\&.
+.RE
+.PP
+\-\-export\-pack\-edges=<file>
+.RS 4
+Afta bustin a packfile, print a line of data ta <file> listin tha filename of tha packfile n' tha last commit on each branch dat was freestyled ta dat packfile\&. This shiznit may be useful afta importin projects whose total object set exceedz tha 4 GiB packfile limit, as these commits can be used as edge points durin calls to
+\fIgit pack\-objects\fR\&.
+.RE
+.PP
+\-\-max\-pack\-size=<n>
+.RS 4
+Maximum size of each output packfile\&. Da default is unlimited\&.
+.RE
+.SH "PERFORMANCE"
+.sp
+Da design of fast\-import allows it ta import big-ass projects up in a minimum amount of memory usage n' processin time\& fo' realz. Assumin tha frontend be able ta keep up wit fast\-import n' feed it a cold-ass lil constant stream of data, import times fo' projects holdin 10+ muthafuckin yearz of history n' containin 100,000+ individual commits is generally completed up in just 1\-2 minutes on like modest (~$2,000 USD) hardware\&.
+.sp
+Most bottlenecks step tha fuck up ta be up in foreign source data access (the source just cannot extract revisions fast enough) or disk IO (fast\-import writes as fast as tha disk will take tha data)\&. Imports will run fasta if tha source data is stored on a gangbangin' finger-lickin' different drive than tha destination Git repository (due ta less IO contention)\&.
+.SH "DEVELOPMENT COST"
+.sp
+A typical frontend fo' fast\-import tendz ta weigh up in at approximately 200 linez of Perl/Python/Ruby code\&. Most pimpers done been able ta create hustlin importas up in just a cold-ass lil couple hours, even though it is they first exposure ta fast\-import, n' sometimes even ta Git\&. This be a ideal thang, given dat most conversion tools is throw\-away (use once, n' never look back)\&.
+.SH "PARALLEL OPERATION"
+.sp
+Like \fIgit push\fR or \fIgit fetch\fR, imports handled by fast\-import is safe ta run alongside parallel git repack \-a \-d or git gc invocations, or any other Git operation (includin \fIgit prune\fR, as loose objects is never used by fast\-import)\&.
+.sp
+fast\-import do not lock tha branch or tag refs it be actively importing\& fo' realz. Afta tha import, durin its ref update phase, fast\-import tests each existin branch ref ta verify tha update is ghon be a gangbangin' fast\-forward update (the commit stored up in tha ref is contained up in tha freshly smoked up history of tha commit ta be written)\&. If tha update aint a gangbangin' fast\-forward update, fast\-import will skip uppimpin dat ref n' instead prints a warnin message\&. fast\-import will always attempt ta update all branch refs, n' do not stop on tha straight-up original gangsta failure\&.
+.sp
+Branch thugged-out shiznit can be forced wit \-\-force yo, but it\(cqs recommended dat dis only be used on a otherwise on tha down-low repository\&. Usin \-\-force aint necessary fo' a initial import tha fuck into a empty repository\&.
+.SH "TECHNICAL DISCUSSION"
+.sp
+fast\-import tracks a set of branches up in memory\& fo' realz. Any branch can be pimped or modified at any point durin tha import process by bustin  a cold-ass lil commit command on tha input stream\&. This design allows a gangbangin' frontend program ta process a unlimited number of branches simultaneously, generatin commits up in tha order they is available from tha source data\&. Well shiiiit, it also simplifies tha frontend programs considerably\&.
+.sp
+fast\-import do not use or alta tha current hustlin directory, or any file within it\&. (It do however update tha current Git repository, as referenced by GIT_DIR\&.) Therefore a import frontend may use tha hustlin directory fo' its own purposes, like fuckin extractin file revisions from tha foreign source\&. This ignorizzle of tha hustlin directory also allows fast\-import ta run straight-up quickly, as it do not need ta big-ass up any costly file update operations when switchin between branches\&.
+.SH "INPUT FORMAT"
+.sp
+With tha exception of raw file data (which Git do not interpret) tha fast\-import input format is text (ASCII) based\&. This text based format simplifies pimpment n' debuggin of frontend programs, especially when a higher level language like fuckin Perl, Python or Ruby is bein used\&.
+.sp
+fast\-import is straight-up strict bout its input\&. Where we say SP below we mean \fBexactly\fR one space\&. Likewise LF means one (and only one) linefeed n' HT one (and only one) horizontal tab\&. Right back up in yo muthafuckin ass. Supplyin additionizzle whitespace charactas will cause unexpected thangs up in dis biatch, like fuckin branch names or file names wit leadin or trailin spaces up in they name, or early termination of fast\-import when it encountas unexpected input\&.
+.SS "Stream Comments"
+.sp
+To aid up in debuggin frontendz fast\-import ignores any line dat begins wit # (ASCII pound/hash) up ta n' includin tha line endin LF\& fo' realz. A comment line may contain any sequence of bytes dat do not contain a LF n' therefore may be used ta include any detailed debuggin shiznit dat might be specific ta tha frontend n' useful when inspectin a gangbangin' fast\-import data stream\&.
+.SS "Date Formats"
+.sp
+Da followin date formats is supported\& fo' realz. A frontend should select tha format it will use fo' dis import by passin tha format name up in tha \-\-date\-format=<fmt> command line option\&.
+.PP
+raw
+.RS 4
+This is tha Git natizzle format n' is
+<time> SP <offutc>\&. Well shiiiit, it be also fast\-import\(cqs default format, if \-\-date\-format was not specified\&.
+.sp
+Da time of tha event is specified by
+<time>
+as tha number of secondz since tha UNIX epoch (midnight, Jan 1, 1970, UTC) n' is freestyled as a ASCII decimal integer\&.
+.sp
+Da local offset is specified by
+<offutc>
+as a positizzle or wack offset from UTC\&. For example EST (which is 5 minutes behind UTC) would be expressed in
+<tz>
+by \(lq\-0500\(rq while UTC is \(lq+0000\(rq\&. Da local offset do not affect
+<time>; it is used only as a advisement ta help formattin routines display tha timestamp\&.
+.sp
+If tha local offset aint available up in tha source material, use \(lq+0000\(rq, or da most thugged-out common local offset\&. For example nuff crews gotz a CVS repository which has only eva been accessed by playas whoz ass is located up in tha same location n' time unit\&. In dis case a reasonable offset from UTC could be assumed\&.
+.sp
+Unlike the
+rfc2822
+format, dis format is straight-up strict\& fo' realz. Any variation up in formattin will cause fast\-import ta reject tha value\&.
+.RE
+.PP
+rfc2822
+.RS 4
+This is tha standard email format as busted lyrics bout by RFC 2822\&.
+.sp
+An example value is \(lqTue Feb 6 11:22:18 2007 \-0500\(rq\&. Da Git parser be accurate yo, but a lil on tha lenient side\&. Well shiiiit, it is tha same ol' dirty parser used by
+\fIgit am\fR
+when applyin patches received from email\&.
+.sp
+Some malformed strings may be accepted as valid dates\&. In a shitload of these cases Git will still be able ta obtain tha erect date from tha malformed string\&. There is also some typez of malformed strings which Git will parse wrong, n' yet consider valid\&. Right back up in yo muthafuckin ass. Seriously malformed strings is ghon be rejected\&.
+.sp
+Unlike the
+raw
+format above, tha time unit/UTC offset shiznit contained up in a RFC 2822 date strang is used ta adjust tha date value ta UTC prior ta storage\&. Therefore it is blingin dat dis shiznit be as accurate as possible\&.
+.sp
+If tha source material uses RFC 2822 steez dates, tha frontend should let fast\-import handle tha parsin n' conversion (rather than attemptin ta do it itself) as tha Git parser has been well tested up in tha wild\&.
+.sp
+Frontendz should prefer the
+raw
+format if tha source material already uses UNIX\-epoch format, can be coaxed ta give dates up in dat format, or its format is easily convertible ta it, as there is no ambiguitizzle up in parsing\&.
+.RE
+.PP
+now
+.RS 4
+Always use tha current time n' time unit\&. Da literal
+now
+must always be supplied for
+<when>\&.
+.sp
+This be a toy format\&. Da current time n' time unit of dis system be always copied tha fuck into tha identitizzle strang all up in tha time it is bein pimped by fast\-import\&. There is no way ta specify a gangbangin' finger-lickin' different time or time unit\&.
+.sp
+This particular format is supplied as it\(cqs short ta implement n' may be useful ta a process dat wants ta create a freshly smoked up commit up in dis biatch, without needin ta bust a hustlin directory or
+\fIgit update\-index\fR\&.
+.sp
+If separate
+author
+and
+committer
+commandz is used up in a
+commit
+the timestamps may not match, as tha system clock is ghon be polled twice (once fo' each command)\&. Da only way ta ensure dat both lyricist n' committa identitizzle shiznit has tha same ol' dirty timestamp is ta omit
+author
+(thus copyin from
+committer) or ta bust a thugged-out date format other than
+now\&.
+.RE
+.SS "Commands"
+.sp
+fast\-import accepts nuff muthafuckin commandz ta update tha current repository n' control tha current import process\&. Mo' detailed rap (with examples) of each command bigs up later\&.
+.PP
+commit
+.RS 4
+Creates a freshly smoked up branch or thugged-out shiznit a existin branch by bustin a freshly smoked up commit n' uppimpin tha branch ta point all up in tha newly pimped commit\&.
+.RE
+.PP
+tag
+.RS 4
+Creates a annotated tag object from a existin commit or branch\&. Lightweight tags is not supported by dis command, as they is not recommended fo' recordin meaningful points up in time\&.
+.RE
+.PP
+reset
+.RS 4
+Reset a existin branch (or a freshly smoked up branch) ta a specific revision\&. This command must be used ta chizzle a funky-ass branch ta a specific revision without bustin a cold-ass lil commit on it\&.
+.RE
+.PP
+blob
+.RS 4
+Convert raw file data tha fuck into a funky-ass blob, fo' future use up in a
+commit
+command\&. This command is optionizzle n' aint needed ta big-ass up a import\&.
+.RE
+.PP
+checkpoint
+.RS 4
+Forces fast\-import ta close tha current packfile, generate its unique SHA\-1 checksum n' index, n' start a freshly smoked up packfile\&. This command is optionizzle n' aint needed ta big-ass up a import\&.
+.RE
+.PP
+progress
+.RS 4
+Causes fast\-import ta echo tha entire line ta its own standard output\&. This command is optionizzle n' aint needed ta big-ass up a import\&.
+.RE
+.PP
+done
+.RS 4
+Marks tha end of tha stream\&. This command is optionizzle unless the
+done
+feature was axed rockin the
+\-\-done
+command line option or
+feature done
+command\&.
+.RE
+.PP
+cat\-blob
+.RS 4
+Causes fast\-import ta print a funky-ass blob in
+\fIcat\-file \-\-batch\fR
+format ta tha file descriptor set with
+\-\-cat\-blob\-fd
+or
+stdout
+if unspecified\&.
+.RE
+.PP
+ls
+.RS 4
+Causes fast\-import ta print a line describin a gangbangin' finger-lickin' directory entry in
+\fIls\-tree\fR
+format ta tha file descriptor set with
+\-\-cat\-blob\-fd
+or
+stdout
+if unspecified\&.
+.RE
+.PP
+feature
+.RS 4
+Enable tha specified feature\&. This requires dat fast\-import supports tha specified feature, n' aborts if it do not\&.
+.RE
+.PP
+option
+.RS 4
+Specify any of tha options listed under OPTIONS dat do not chizzle stream semantic ta suit tha frontend\(cqs needs\&. This command is optionizzle n' aint needed ta big-ass up a import\&.
+.RE
+.SS "commit"
+.sp
+Smoke or update a funky-ass branch wit a freshly smoked up commit, recordin one logical chizzle ta tha project\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqcommit\(aq SP <ref> LF
+        mark?
+        (\(aqauthor\(aq (SP <name>), biatch? SP LT <email> GT SP <when> LF)?
+        \(aqcommitter\(aq (SP <name>), biatch? SP LT <email> GT SP <when> LF
+        data
+        (\(aqfrom\(aq SP <commit\-ish> LF)?
+        (\(aqmerge\(aq SP <commit\-ish> LF)?
+        (filemodify | filedelete | filecopy | filerename | filedeleteall | notemodify)*
+        LF?
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+where <ref> is tha name of tha branch ta make tha commit on\&. Typically branch names is prefixed wit refs/heads/ up in Git, so importin tha CVS branch symbol RELENG\-1_0 would use refs/heads/RELENG\-1_0 fo' tha value of <ref>\&. Da value of <ref> must be a valid refname up in Git\& fo' realz. As LF aint valid up in a Git refname, no quotin or escapin syntax is supported here\&.
+.sp
+A mark command may optionally appear, requestin fast\-import ta save a reference ta tha newly pimped commit fo' future use by tha frontend (see below fo' format)\&. Well shiiiit, it is straight-up common fo' frontendz ta mark every last muthafuckin commit they create, thereby allowin future branch creation from any imported commit\&.
+.sp
+Da data command followin committa must supply tha commit message (see below fo' data command syntax)\&. To import a empty commit message bust a 0 length data\&. Commit lyrics is free\-form n' is not interpreted by Git\&. Currently they must be encoded up in UTF\-8, as fast\-import do not permit other encodings ta be specified\&.
+.sp
+Zero or mo' filemodify, filedelete, filecopy, filerename, filedeleteall n' notemodify commandz may be included ta update tha contentz of tha branch prior ta bustin tha commit\&. These commandz may be supplied up in any order\& yo. However it is recommended dat a gangbangin' filedeleteall command precede all filemodify, filecopy, filerename n' notemodify commandz up in tha same commit, as filedeleteall wipes tha branch clean (see below)\&.
+.sp
+Da LF afta tha command is optionizzle (it used ta be required)\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBauthor\fR
+.RS 4
+.sp
+An lyricist command may optionally appear, if tha lyricist shiznit might differ from tha committa shiznit\&. If lyricist is omitted then fast\-import will automatically use tha committer\(cqs shiznit fo' tha lyricist portion of tha commit\&. Right back up in yo muthafuckin ass. See below fo' a thugged-out description of tha fieldz up in lyricist, as they is identical ta committer\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBcommitter\fR
+.RS 4
+.sp
+Da committa command indicates whoz ass made dis commit, n' when they made it\&.
+.sp
+Here <name> is tha person\(cqs display name (for example \(lqCom M Itter\(rq) n' <email> is tha person\(cqs email address (\(lqcm@example\&.com\(rq)\&. LT n' GT is tha literal less\-than (\ex3c) n' pimped outer\-than (\ex3e) symbols\&. These is required ta delimit tha email address from tha other fieldz up in tha line\&. Note dat <name> n' <email> is free\-form n' may contain any sequence of bytes, except LT, GT n' LF\&. <name> is typically UTF\-8 encoded\&.
+.sp
+Da time of tha chizzle is specified by <when> rockin tha date format dat was selected by tha \-\-date\-format=<fmt> command line option\&. Right back up in yo muthafuckin ass. See \(lqDate Formats\(rq above fo' tha set of supported formats, n' they syntax\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBfrom\fR
+.RS 4
+.sp
+Da from command is used ta specify tha commit ta initialize dis branch from\&. This revision is ghon be tha straight-up original gangsta ancestor of tha freshly smoked up commit\&. Da state of tha tree built at dis commit will begin wit tha state all up in tha from commit, n' be altered by tha content modifications up in dis commit\&.
+.sp
+Omittin tha from command up in tha straight-up original gangsta commit of a freshly smoked up branch will cause fast\-import ta create dat commit wit no ancestor\&. This tendz ta be desired only fo' tha initial commit of a project\&. If tha frontend creates all filez from scratch when bustin a freshly smoked up branch, a merge command may be used instead of from ta start tha commit wit a empty tree\&. Omittin tha from command on existin branches is probably desired, as tha current commit on dat branch be automatically assumed ta be tha straight-up original gangsta ancestor of tha freshly smoked up commit\&.
+.sp
+As LF aint valid up in a Git refname or SHA\-1 expression, no quotin or escapin syntax is supported within <commit\-ish>\&.
+.sp
+Here <commit\-ish> be any of tha following:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Da name of a existin branch already up in fast\-import\(cqs internal branch table\&. If fast\-import don\(cqt know tha name, it\(cqs treated as a SHA\-1 expression\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+A mark reference,
+:<idnum>, where
+<idnum>
+is tha mark number\&.
+.sp
+Da reason fast\-import uses
+:
+to denote a mark reference is dis characta aint legal up in a Git branch name\&. Da leading
+:
+makes it easy as fuck  ta distinguish between tha mark 42 (:42) n' tha branch 42 (42
+or
+refs/heads/42), or a abbreviated SHA\-1 which happened ta consist only of base\-10 digits\&.
+.sp
+Marks must be declared (via
+mark) before they can be used\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+A complete 40 byte or abbreviated commit SHA\-1 up in hex\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Any valid Git SHA\-1 expression dat resolves ta a cold-ass lil commit\&. Right back up in yo muthafuckin ass. See \(lqSPECIFYING REVISIONS\(rq in
+\fBgitrevisions\fR(7)
+for details\&.
+.RE
+.sp
+Da special case of restartin a incremenstrual import from tha current branch value should be freestyled as:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        from refs/heads/branch^0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Da ^0 suffix is necessary as fast\-import do not permit a funky-ass branch ta start from itself, n' tha branch is pimped up in memory before tha from command is even read from tha input\& fo' realz. Addin ^0 will force fast\-import ta resolve tha commit all up in Git\(cqs revision parsin library, rather than its internal branch table, thereby loadin up in tha existin value of tha branch\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBmerge\fR
+.RS 4
+.sp
+Includes one additionizzle ancestor commit\&. Da additionizzle ancestry link do not chizzle tha way tha tree state is built at dis commit\&. If tha from command is omitted when bustin a freshly smoked up branch, tha straight-up original gangsta merge commit is ghon be tha straight-up original gangsta ancestor of tha current commit, n' tha branch will start up wit no files\& fo' realz. An unlimited number of merge commandz per commit is permitted by fast\-import, thereby establishin a n\-way merge\& yo. However Git\(cqs other tools never create commits wit mo' than 15 additionizzle ancestors (formin a 16\-way merge)\&. For dis reason it is suggested dat frontendz do not use mo' than 15 merge commandz per commit; 16, if startin a new, empty branch\&.
+.sp
+Here <commit\-ish> be any of tha commit justification expressions also accepted by from (see above)\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBfilemodify\fR
+.RS 4
+.sp
+Included up in a cold-ass lil commit command ta add a freshly smoked up file or chizzle tha content of a existin file\&. This command has two different meanz of specifyin tha content of tha file\&.
+.PP
+External data format
+.RS 4
+Da data content fo' tha file was already supplied by a prior
+blob
+command\&. Da frontend just need ta connect it\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqM\(aq SP <mode> SP <dataref> SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Here usually
+<dataref>
+must be either a mark reference (:<idnum>) set by a prior
+blob
+command, or a gangbangin' full 40\-byte SHA\-1 of a existin Git blob object\&. If
+<mode>
+is
+040000`
+then
+<dataref>
+must be tha full 40\-byte SHA\-1 of a existin Git tree object or a mark reference set with
+\-\-import\-marks\&.
+.RE
+.PP
+Inline data format
+.RS 4
+Da data content fo' tha file has not been supplied yet\&. Da frontend wants ta supply it as part of dis modify command\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqM\(aq SP <mode> SP \(aqinline\(aq SP <path> LF
+        data
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+See below fo' a thugged-out detailed description of the
+data
+command\&.
+.RE
+.sp
+In both formats <mode> is tha type of file entry, specified up in octal\&. Git only supports tha followin modes:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+100644
+or
+644: A aiiight (not\-executable) file\&. Da majoritizzle of filez up in most projects use dis mode\&. If up in doubt, dis is what tha fuck you want\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+100755
+or
+755: A normal yo, but executable, file\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+120000: A symlink, tha content of tha file is ghon be tha link target\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+160000: A gitlink, SHA\-1 of tha object refers ta a cold-ass lil commit up in another repository\&. Git links can only be specified by SHA or all up in a cold-ass lil commit mark\&. They is used ta implement submodules\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+040000: A subdirectory\&. Right back up in yo muthafuckin ass. Subdirectories can only be specified by SHA or all up in a tree mark set with
+\-\-import\-marks\&.
+.RE
+.sp
+In both formats <path> is tha complete path of tha file ta be added (if not already existing) or modified (if already existing)\&.
+.sp
+A <path> strang must use UNIX\-style directory separators (forward slash /), may contain any byte other than LF, n' must not start wit double quote (")\&.
+.sp
+A path can use C\-style strang quoting; dis be accepted up in all cases n' mandatory if tha filename starts wit double quote or gotz nuff LF\&. In C\-style quoting, tha complete name should be surrounded wit double quotes, n' any LF, backslash, or double quote charactas must be escaped by precedin dem wit a funky-ass backslash (e\&.g\&., "path/with\en, \e\e n' \e" up in it")\&.
+.sp
+Da value of <path> must be up in canonical form\&. That is it must not:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+contain a empty directory component (e\&.g\&.
+foo//bar
+is invalid),
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+end wit a gangbangin' finger-lickin' directory separator (e\&.g\&.
+foo/
+is invalid),
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+start wit a gangbangin' finger-lickin' directory separator (e\&.g\&.
+/foo
+is invalid),
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+contain tha special component
+\&.
+or
+\&.\&.
+(e\&.g\&.
+foo/\&./bar
+and
+foo/\&.\&./bar
+are invalid)\&.
+.RE
+.sp
+Da root of tha tree can be represented by a empty strang as <path>\&.
+.sp
+It be recommended dat <path> always be encoded rockin UTF\-8\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBfiledelete\fR
+.RS 4
+.sp
+Included up in a cold-ass lil commit command ta remove a gangbangin' file or recursively delete a entire directory from tha branch\&. If tha file or directory removal make its parent directory empty, tha parent directory is ghon be automatically removed too\&. This cascades up tha tree until tha straight-up original gangsta non\-empty directory or tha root is reached\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqD\(aq SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+here <path> is tha complete path of tha file or subdirectory ta be removed from tha branch\&. Right back up in yo muthafuckin ass. See filemodify above fo' a thugged-out detailed description of <path>\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBfilecopy\fR
+.RS 4
+.sp
+Recursively copies a existin file or subdirectory ta a gangbangin' finger-lickin' different location within tha branch\&. Da existin file or directory must exist\&. If tha destination exists it is ghon be straight-up replaced by tha content copied from tha source\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqC\(aq SP <path> SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+here tha straight-up original gangsta <path> is tha source location n' tha second <path> is tha destination\&. Right back up in yo muthafuckin ass. See filemodify above fo' a thugged-out detailed description of what tha fuck <path> may look like\&. To bust a source path dat gotz nuff SP tha path must be quoted\&.
+.sp
+A filecopy command takes effect immediately\&. Once tha source location has been copied ta tha destination any future commandz applied ta tha source location aint gonna impact tha destination of tha copy\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBfilerename\fR
+.RS 4
+.sp
+Renames a existin file or subdirectory ta a gangbangin' finger-lickin' different location within tha branch\&. Da existin file or directory must exist\&. If tha destination exists it is ghon be replaced by tha source directory\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqR\(aq SP <path> SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+here tha straight-up original gangsta <path> is tha source location n' tha second <path> is tha destination\&. Right back up in yo muthafuckin ass. See filemodify above fo' a thugged-out detailed description of what tha fuck <path> may look like\&. To bust a source path dat gotz nuff SP tha path must be quoted\&.
+.sp
+A filerename command takes effect immediately\&. Once tha source location has been renamed ta tha destination any future commandz applied ta tha source location will create freshly smoked up filez there n' not impact tha destination of tha rename\&.
+.sp
+Note dat a gangbangin' filerename is tha same ol' dirty as a gangbangin' filecopy followed by a gangbangin' filedelete of tha source location\&. There be a slight performizzle advantage ta rockin filerename yo, but tha advantage is so lil' small-ass dat it is never worth tryin ta convert a thugged-out delete/add pair up in source material tha fuck into a rename fo' fast\-import\&. This filerename command is provided just ta simplify frontendz dat already have rename shiznit n' don\(cqt want bother wit decomposin it tha fuck into a gangbangin' filecopy followed by a gangbangin' filedelete\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBfiledeleteall\fR
+.RS 4
+.sp
+Included up in a cold-ass lil commit command ta remove all filez (and also all directories) from tha branch\&. This command resets tha internal branch structure ta have no filez up in it, allowin tha frontend ta subsequently add all bangin-ass filez from scratch\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqdeleteall\(aq LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This command is mad useful if tha frontend do not know (or do not care ta know) what tha fuck filez is currently on tha branch, n' therefore cannot generate tha proper filedelete commandz ta update tha content\&.
+.sp
+Issuin a gangbangin' filedeleteall followed by tha needed filemodify commandz ta set tha erect content will produce tha same thangs up in dis biatch as bustin  only tha needed filemodify n' filedelete commands\&. Da filedeleteall approach may however require fast\-import ta use slightly mo' memory per actizzle branch (less than 1 MiB fo' even most big-ass projects); so frontendz dat can easily obtain only tha affected paths fo' a cold-ass lil commit is encouraged ta do so\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBnotemodify\fR
+.RS 4
+.sp
+Included up in a cold-ass lil commit <notes_ref> command ta add a freshly smoked up note annotatin a <commit\-ish> or chizzle dis annotation contents\&. Internally it is similar ta filemodify 100644 on <commit\-ish> path (maybe split tha fuck into subdirectories)\&. It\(cqs not advised ta use any other commandz ta write ta tha <notes_ref> tree except filedeleteall ta delete all existin notes up in dis tree\&. This command has two different meanz of specifyin tha content of tha note\&.
+.PP
+External data format
+.RS 4
+Da data content fo' tha note was already supplied by a prior
+blob
+command\&. Da frontend just need ta connect it ta tha commit dat is ta be annotated\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqN\(aq SP <dataref> SP <commit\-ish> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Here
+<dataref>
+can be either a mark reference (:<idnum>) set by a prior
+blob
+command, or a gangbangin' full 40\-byte SHA\-1 of a existin Git blob object\&.
+.RE
+.PP
+Inline data format
+.RS 4
+Da data content fo' tha note has not been supplied yet\&. Da frontend wants ta supply it as part of dis modify command\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqN\(aq SP \(aqinline\(aq SP <commit\-ish> LF
+        data
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+See below fo' a thugged-out detailed description of the
+data
+command\&.
+.RE
+.sp
+In both formats <commit\-ish> be any of tha commit justification expressions also accepted by from (see above)\&.
+.RE
+.SS "mark"
+.sp
+Arranges fo' fast\-import ta save a reference ta tha current object, allowin tha frontend ta recall dis object at a gangbangin' future point up in time, without knowin its SHA\-1\& yo. Here tha current object is tha object creation command tha mark command appears within\&. This can be commit, tag, n' blob yo, but commit is da most thugged-out common usage\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqmark\(aq SP \(aq:\(aq <idnum> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+where <idnum> is tha number assigned by tha frontend ta dis mark\&. Da value of <idnum> is expressed as a ASCII decimal integer\&. Da value 0 is reserved n' cannot be used as a mark\&. Only joints pimped outa than or equal ta 1 may be used as marks\&.
+.sp
+New marks is pimped automatically\&. Existin marks can be moved ta another object simply by reusin tha same <idnum> up in another mark command\&.
+.SS "tag"
+.sp
+Creates a annotated tag referrin ta a specific commit\&. To create lightweight (non\-annotated) tags peep tha reset command below\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqtag\(aq SP <name> LF
+        \(aqfrom\(aq SP <commit\-ish> LF
+        \(aqtagger\(aq (SP <name>), biatch? SP LT <email> GT SP <when> LF
+        data
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+where <name> is tha name of tha tag ta create\&.
+.sp
+Tag names is automatically prefixed wit refs/tags/ when stored up in Git, so importin tha CVS branch symbol RELENG\-1_0\-FINAL would use just RELENG\-1_0\-FINAL fo' <name>, n' fast\-import will write tha correspondin ref as refs/tags/RELENG\-1_0\-FINAL\&.
+.sp
+Da value of <name> must be a valid refname up in Git n' therefore may contain forward slashes\& fo' realz. As LF aint valid up in a Git refname, no quotin or escapin syntax is supported here\&.
+.sp
+Da from command is tha same ol' dirty as up in tha commit command; peep above fo' details\&.
+.sp
+Da tagger command uses tha same ol' dirty format as committa within commit; again n' again n' again peep above fo' details\&.
+.sp
+Da data command followin tagger must supply tha annotated tag message (see below fo' data command syntax)\&. To import a empty tag message bust a 0 length data\&. Tag lyrics is free\-form n' is not interpreted by Git\&. Currently they must be encoded up in UTF\-8, as fast\-import do not permit other encodings ta be specified\&.
+.sp
+Signin annotated tags durin import from within fast\-import aint supported\&. Tryin ta include yo' own PGP/GPG signature aint recommended, as tha frontend do not (easily) have access ta tha complete set of bytes which normally goes tha fuck into such a signature\&. If signin is required, create lightweight tags from within fast\-import wit reset, then create tha annotated versionz of dem tags offline wit tha standard \fIgit tag\fR process\&.
+.SS "reset"
+.sp
+Creates (or recreates) tha named branch, optionally startin from a specific revision\&. Da reset command allows a gangbangin' frontend ta issue a freshly smoked up from command fo' a existin branch, or ta create a freshly smoked up branch from a existin commit without bustin a freshly smoked up commit\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqreset\(aq SP <ref> LF
+        (\(aqfrom\(aq SP <commit\-ish> LF)?
+        LF?
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+For a thugged-out detailed description of <ref> n' <commit\-ish> peep above under commit n' from\&.
+.sp
+Da LF afta tha command is optionizzle (it used ta be required)\&.
+.sp
+Da reset command can also be used ta create lightweight (non\-annotated) tags\&. For example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+reset refs/tags/938
+from :938
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+would create tha lightweight tag refs/tags/938 referrin ta whatever commit mark :938 references\&.
+.SS "blob"
+.sp
+Requests freestylin one file revision ta tha packfile\&. Da revision aint connected ta any commit; dis connection must be formed up in a subsequent commit command by referencin tha blob all up in a assigned mark\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqblob\(aq LF
+        mark?
+        data
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da mark command is optionizzle here as some frontendz have chosen ta generate tha Git SHA\-1 fo' tha blob on they own, n' feed dat directly ta commit\&. This is typically mo' work than it\(cqs worth however, as marks is inexpensive ta store n' easy as fuck  ta use\&.
+.SS "data"
+.sp
+Supplies raw data (for use as blob/file content, commit lyrics, or annotated tag lyrics) ta fast\-import\&. Data can be supplied rockin a exact byte count or delimited wit a terminatin line\&. Real frontendz intended fo' thang\-qualitizzle conversions should always use tha exact byte count format, as it is mo' robust n' performs better\&. Da delimited format is intended primarily fo' testin fast\-import\&.
+.sp
+Comment lines appearin within tha <raw> part of data commandz is always taken ta be part of tha body of tha data n' is therefore never ignored by fast\-import\&. This make it safe ta import any file/message content whose lines might start wit #\&.
+.PP
+Exact byte count format
+.RS 4
+Da frontend must specify tha number of bytez of data\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqdata\(aq SP <count> LF
+        <raw> LF?
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+where
+<count>
+is tha exact number of bytes appearin within
+<raw>\&. Da value of
+<count>
+is expressed as a ASCII decimal integer\&. The
+LF
+on either side of
+<raw>
+is not included in
+<count>
+and aint gonna be included up in tha imported data\&.
+.sp
+The
+LF
+after
+<raw>
+is optionizzle (it used ta be required) but recommended\& fo' realz. Always includin it make debuggin a gangbangin' fast\-import stream easier as tha next command always starts up in column 0 of tha next line, even if
+<raw>
+did not end wit an
+LF\&.
+.RE
+.PP
+Delimited format
+.RS 4
+A delimita strang is used ta mark tha end of tha data\&. fast\-import will compute tha length by searchin fo' tha delimiter\&. This format is primarily useful fo' testin n' aint recommended fo' real data\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqdata\(aq SP \(aq<<\(aq <delim> LF
+        <raw> LF
+        <delim> LF
+        LF?
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+where
+<delim>
+is tha chosen delimita string\&. Da string
+<delim>
+must not step tha fuck up on a line by itself within
+<raw>, as otherwise fast\-import is ghon be thinkin tha data endz earlier than it straight-up do\&. The
+LF
+immediately trailing
+<raw>
+is part of
+<raw>\&. This is one of tha limitationz of tha delimited format, it is impossible ta supply a thugged-out data chunk which aint gots a LF as its last byte\&.
+.sp
+The
+LF
+after
+<delim> LF
+is optionizzle (it used ta be required)\&.
+.RE
+.SS "checkpoint"
+.sp
+Forces fast\-import ta close tha current packfile, start a freshly smoked up one, n' ta save up all current branch refs, tags n' marks\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqcheckpoint\(aq LF
+        LF?
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Note dat fast\-import automatically switches packfilez when tha current packfile reaches \-\-max\-pack\-size, or 4 GiB, whichever limit is smaller\&. Durin a automatic packfile switch fast\-import do not update tha branch refs, tags or marks\&.
+.sp
+As a cold-ass lil checkpoint can require a thugged-out dope amount of CPU time n' disk IO (to compute tha overall pack SHA\-1 checksum, generate tha correspondin index file, n' update tha refs) it can easily take nuff muthafuckin minutes fo' a single checkpoint command ta complete\&.
+.sp
+Frontendz may chizzle ta issue checkpoints durin mad big-ass n' long hustlin imports, or when they need ta allow another Git process access ta a funky-ass branch\& yo. However given dat a 30 GiB Subversion repository can be loaded tha fuck into Git all up in fast\-import up in bout 3 hours, explicit checkpointin may not be necessary\&.
+.sp
+Da LF afta tha command is optionizzle (it used ta be required)\&.
+.SS "progress"
+.sp
+Causes fast\-import ta print tha entire progress line unmodified ta its standard output channel (file descriptor 1) when tha command is processed from tha input stream\&. Da command otherwise has no impact on tha current import, or on any of fast\-import\(cqs internal state\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqprogress\(aq SP <any> LF
+        LF?
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da <any> part of tha command may contain any sequence of bytes dat do not contain LF\&. Da LF afta tha command is optional\&. Callaz may wish ta process tha output all up in a tool like fuckin sed ta remove tha leadin part of tha line, fo' example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+frontend | git fast\-import | sed \(aqs/^progress //\(aq
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Placin a progress command immediately afta a cold-ass lil checkpoint will inform tha reader when tha checkpoint has been completed n' it can safely access tha refs dat fast\-import updated\&.
+.SS "cat\-blob"
+.sp
+Causes fast\-import ta print a funky-ass blob ta a gangbangin' file descriptor previously arranged wit tha \-\-cat\-blob\-fd argument\&. Da command otherwise has no impact on tha current import; its main purpose is ta retrieve blobs dat may be up in fast\-import\(cqs memory but not accessible from tha target repository\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqcat\-blob\(aq SP <dataref> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da <dataref> can be either a mark reference (:<idnum>) set previously or a gangbangin' full 40\-byte SHA\-1 of a Git blob, preexistin or locked n loaded ta be written\&.
+.sp
+Output uses tha same ol' dirty format as git cat\-file \-\-batch:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+<sha1> SP \(aqblob\(aq SP <size> LF
+<contents> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This command can be used anywhere up in tha stream dat comments is accepted\&. In particular, tha cat\-blob command can be used up in tha middle of a cold-ass lil commit but not up in tha middle of a thugged-out data command\&.
+.sp
+See \(lqResponses To Commands\(rq below fo' details bout how tha fuck ta read dis output safely\&.
+.SS "ls"
+.sp
+Prints shiznit bout tha object at a path ta a gangbangin' file descriptor previously arranged wit tha \-\-cat\-blob\-fd argument\&. This allows printin a funky-ass blob from tha actizzle commit (with cat\-blob) or copyin a funky-ass blob or tree from a previous commit fo' use up in tha current one (with filemodify)\&.
+.sp
+Da ls command can be used anywhere up in tha stream dat comments is accepted, includin tha middle of a cold-ass lil commit\&.
+.PP
+Readin from tha actizzle commit
+.RS 4
+This form can only be used up in tha middle of a
+commit\&. Da path names a gangbangin' finger-lickin' directory entry within fast\-import\(cqs actizzle commit\&. Da path must be quoted up in dis case\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqls\(aq SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.RE
+.PP
+Readin from a named tree
+.RS 4
+The
+<dataref>
+can be a mark reference (:<idnum>) or tha full 40\-byte SHA\-1 of a Git tag, commit, or tree object, preexistin or waitin ta be written\&. Da path is relatizzle ta tha top level of tha tree named by
+<dataref>\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqls\(aq SP <dataref> SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.RE
+.sp
+See filemodify above fo' a thugged-out detailed description of <path>\&.
+.sp
+Output uses tha same ol' dirty format as git ls\-tree <tree> \-\- <path>:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+<mode> SP (\(aqblob\(aq | \(aqtree\(aq | \(aqcommit\(aq) SP <dataref> HT <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da <dataref> represents tha blob, tree, or commit object at <path> n' can be used up in lata \fIcat\-blob\fR, \fIfilemodify\fR, or \fIls\fR commands\&.
+.sp
+If there is no file or subtree at dat path, \fIgit fast\-import\fR will instead report
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+missin SP <path> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+See \(lqResponses To Commands\(rq below fo' details bout how tha fuck ta read dis output safely\&.
+.SS "feature"
+.sp
+Require dat fast\-import supports tha specified feature, or abort if it do not\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        \(aqfeature\(aq SP <feature> (\(aq=\(aq <argument>), biatch? LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da <feature> part of tha command may be any one of tha following:
+.PP
+date\-format, export\-marks, relative\-marks, no\-relative\-marks, force
+.RS 4
+Act as though tha correspondin command\-line option wit a leading
+\fI\-\-\fR
+was passed on tha command line (see OPTIONS, above)\&.
+.RE
+.PP
+import\-marks, import\-marks\-if\-exists
+.RS 4
+Like \-\-import\-marks except up in two respects: first, only one "feature import\-marks" or "feature import\-marks\-if\-exists" command be allowed per stream; second, a \-\-import\-marks= or \-\-import\-marks\-if\-exists command\-line option overrides any of these "feature" commandz up in tha stream; third, "feature import\-marks\-if\-exists" like a cold-ass lil correspondin command\-line option silently skips a nonexistent file\&.
+.RE
+.PP
+cat\-blob, ls
+.RS 4
+Require dat tha backend support the
+\fIcat\-blob\fR
+or
+\fIls\fR
+command\&. Versionz of fast\-import not supportin tha specified command will exit wit a message indicatin so\&. This lets tha import error up early wit a cold-ass lil clear message, rather than wastin time on tha early part of a import before tha unsupported command is detected\&.
+.RE
+.PP
+notes
+.RS 4
+Require dat tha backend support the
+\fInotemodify\fR
+(N) subcommand ta the
+\fIcommit\fR
+command\&. Versionz of fast\-import not supportin notes will exit wit a message indicatin so\&.
+.RE
+.PP
+done
+.RS 4
+Error up if tha stream endz without a
+\fIdone\fR
+command\&. Without dis feature, errors causin tha frontend ta end abruptly at a cold-ass lil convenient point up in tha stream can go undetected\&. This may occur, fo' example, if a import front end takes a thugged-out dirt nap up in mid\-operation without emittin SIGTERM or SIGKILL at its subordinizzle git fast\-import instance\&.
+.RE
+.SS "option"
+.sp
+Processes tha specified option so dat git fast\-import behaves up in a way dat suits tha frontend\(cqs needs\&. Note dat options specified by tha frontend is overridden by any options tha user may specify ta git fast\-import itself\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+    \(aqoption\(aq SP <option> LF
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da <option> part of tha command may contain any of tha options listed up in tha OPTIONS section dat do not chizzle import semantics, without tha leadin \fI\-\-\fR n' is treated up in tha same way\&.
+.sp
+Option commandz must be tha straight-up original gangsta commandz on tha input (not countin feature commands), ta give a option command afta any non\-option command be a error\&.
+.sp
+Da followin commandline options chizzle import semantics n' may therefore not be passed as option:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+date\-format
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+import\-marks
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+export\-marks
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+cat\-blob\-fd
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+force
+.RE
+.SS "done"
+.sp
+If tha done feature aint up in use, treated as if EOF was read\&. This can be used ta tell fast\-import ta finish early\&.
+.sp
+If tha \-\-done command line option or feature done command is up in use, tha done command is mandatory n' marks tha end of tha stream\&.
+.SH "RESPONSES TO COMMANDS"
+.sp
+New objects freestyled by fast\-import is not available immediately\&. Most fast\-import commandz have no visible effect until tha next checkpoint (or completion)\&. Da frontend can bust commandz ta fill fast\-import\(cqs input pipe without worryin bout how tha fuck quickly they will take effect, which improves performizzle by simplifyin scheduling\&.
+.sp
+For some frontends, though, it is useful ta be able ta read back data from tha current repository as it is bein updated (for example when tha source material raps bout objects up in termz of patches ta be applied ta previously imported objects)\&. This can be accomplished by connectin tha frontend n' fast\-import via bidirectionizzle pipes:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+mkfifo fast\-import\-output
+frontend <fast\-import\-output |
+git fast\-import >fast\-import\-output
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+A frontend set up dis way can use progress, ls, n' cat\-blob commandz ta read shiznit from tha import up in progress\&.
+.sp
+To avoid deadlock, such frontendz must straight-up consume any pendin output from progress, ls, n' cat\-blob before struttin writes ta fast\-import dat might block\&.
+.SH "CRASH REPORTS"
+.sp
+If fast\-import is supplied invalid input it will terminizzle wit a non\-zero exit status n' create a cold-ass lil crash report up in tha top level of tha Git repository dat shiznit was importin into\&. Crash reports contain a snapshot of tha internal fast\-import state as well as da most thugged-out recent commandz dat lead up ta tha crash\&.
+.sp
+All recent commandz (includin stream comments, file chizzlez n' progress commands) is shown up in tha command history within tha crash report yo, but raw file data n' commit lyrics is excluded from tha crash report\&. This exclusion saves space within tha report file n' reduces tha amount of bufferin dat fast\-import must big-ass up durin execution\&.
+.sp
+Afta freestylin a cold-ass lil crash report fast\-import will close tha current packfile n' export tha marks table\&. This allows tha frontend pimper ta inspect tha repository state n' resume tha import from tha point where it crashed\&. Da modified branches n' tags is not updated durin a cold-ass lil crash, as tha import did not complete successfully\&. Branch n' tag shiznit can be found up in tha crash report n' must be applied manually if tha update is needed\&.
+.sp
+An example crash:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ pussaaaaay >in <<END_OF_INPUT
+# mah straight-up first test commit
+commit refs/heads/master
+committa Shawn O\&. Pearce <spearce> 19283 \-0400
+# whoz ass is dat muthafucka anyway?
+data <<EOF
+this is mah commit
+EOF
+M 644 inline \&.gitignore
+data <<EOF
+\&.gitignore
+EOF
+M 777 inline bob
+END_OF_INPUT
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git fast\-import <in
+fatal: Corrupt mode: M 777 inline bob
+fast\-import: dumpin crash report ta \&.git/fast_import_crash_8434
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ pussaaaaay \&.git/fast_import_crash_8434
+fast\-import crash report:
+    fast\-import process: 8434
+    parent process     : 1391
+    at Sat Sep 1 00:58:12 2007
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+fatal: Corrupt mode: M 777 inline bob
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Most Recent Commandz Before Crash
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+  # mah straight-up first test commit
+  commit refs/heads/master
+  committa Shawn O\&. Pearce <spearce> 19283 \-0400
+  # whoz ass is dat muthafucka anyway?
+  data <<EOF
+  M 644 inline \&.gitignore
+  data <<EOF
+* M 777 inline bob
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Actizzle Branch LRU
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+    active_branches = 1 cur, 5 max
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+pos  clock name
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 1)      0 refs/heads/master
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Inactizzle Branches
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+refs/heads/master:
+  status      : actizzle loaded dirty
+  tip commit  : 0000000000000000000000000000000000000000
+  oldschool tree    : 0000000000000000000000000000000000000000
+  cur tree    : 0000000000000000000000000000000000000000
+  commit clock: 0
+  last pack   :
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+END OF CRASH REPORT
+.fi
+.if n \{\
+.RE
+.\}
+.SH "TIPS AND TRICKS"
+.sp
+Da followin tips n' tricks done been collected from various playaz of fast\-import, n' is offered here as suggestions\&.
+.SS "Use One Mark Per Commit"
+.sp
+When bustin a repository conversion, bust a unique mark per commit (mark :<n>) n' supply tha \-\-export\-marks option on tha command line\&. fast\-import will dump a gangbangin' file which lists every last muthafuckin mark n' tha Git object SHA\-1 dat correspondz ta it\&. If tha frontend can tie tha marks back ta tha source repository, it is easy as fuck  ta verify tha accuracy n' completenizz of tha import by comparin each Git commit ta tha correspondin source revision\&.
+.sp
+Comin from a system like fuckin Perforce or Subversion dis should be like simple, as tha fast\-import mark can also be tha Perforce chizzleset number or tha Subversion revision number\&.
+.SS "Freely Skip Around Branches"
+.sp
+Don\(cqt bother tryin ta optimize tha frontend ta stick ta one branch at a time durin a import\& fo' realz. Although bustin so might be slightly fasta fo' fast\-import, it tendz ta increase tha complexitizzle of tha frontend code considerably\&.
+.sp
+Da branch LRU builtin ta fast\-import tendz ta behave straight-up well, n' tha cost of activatin a inactizzle branch is so low dat bouncin round between branches has virtually no impact on import performance\&.
+.SS "Handlin Renames"
+.sp
+When importin a renamed file or directory, simply delete tha oldschool name(s) n' modify tha freshly smoked up name(s) durin tha correspondin commit\&. Git performs rename detection after\-the\-fact, rather than explicitly durin a cold-ass lil commit\&.
+.SS "Use Tag Fixup Branches"
+.sp
+Some other SCM systems let tha user create a tag from multiple filez which is not from tha same commit/changeset\&. Or ta create tags which is a subset of tha filez available up in tha repository\&.
+.sp
+Importin these tags as\-is up in Git is impossible without makin at least one commit which \(lqfixes up\(rq tha filez ta match tha content of tha tag\&. Use fast\-import\(cqs reset command ta reset a thugged-out dummy branch outside of yo' aiiight branch space ta tha base commit fo' tha tag, then commit one or mo' file fixup commits, n' finally tag tha dummy branch\&.
+.sp
+For example since all aiiight branches is stored under refs/heads/ name tha tag fixup branch TAG_FIXUP\&. This way it is impossible fo' tha fixup branch used by tha importa ta have namespace conflicts wit real branches imported from tha source (the name TAG_FIXUP aint refs/heads/TAG_FIXUP)\&.
+.sp
+When committin fixups, consider rockin merge ta connect tha commit(s) which is supplyin file revisions ta tha fixup branch\&. Bustin so will allow tools like fuckin \fIgit blame\fR ta track all up in tha real commit history n' properly annotate tha source files\&.
+.sp
+Afta fast\-import terminates tha frontend will need ta do rm \&.git/TAG_FIXUP ta remove tha dummy branch\&.
+.SS "Import Now, Repack Later"
+.sp
+As soon as fast\-import completes tha Git repository is straight-up valid n' locked n loaded fo' use\&. Typically dis takes only a straight-up short time, even fo' considerably big-ass projects (100,000+ commits)\&.
+.sp
+However repackin tha repository is necessary ta improve data localitizzle n' access performance\&. Well shiiiit, it can also take minutes on mad big-ass projects (especially if \-f n' a big-ass \-\-window parameta is used)\&. Right back up in yo muthafuckin ass. Since repackin is safe ta run alongside readaz n' writers, run tha repack up in tha background n' let it finish when it finishes\&. There is no reason ta wait ta explore yo' freshly smoked up Git project!
+.sp
+If you chizzle ta wait fo' tha repack, don\(cqt try ta run benchmarks or performizzle tests until repackin is completed\&. fast\-import outputs suboptimal packfilez dat is simply never peeped up in real use thangs\&.
+.SS "Repackin Oldschool Data"
+.sp
+If yo ass is repackin straight-up oldschool imported data (e\&.g\&. olda than tha last year), consider expendin some extra CPU time n' supplyin \-\-window=50 (or higher) when you run \fIgit repack\fR\&. This will take longer yo, but will also produce a smalla packfile\&. Yo ass only need ta expend tha effort once, n' mah playas rockin yo' project will benefit from tha smalla repository\&.
+.SS "Include Some Progress Lyrics"
+.sp
+Every once up in a while have yo' frontend emit a progress message ta fast\-import\&. Da contentz of tha lyrics is entirely free\-form, so one suggestion would be ta output tha current month n' year each time tha current commit date moves tha fuck into tha next month\&. Yo crazy-ass playas will feel betta knowin how tha fuck much of tha data stream has been processed\&.
+.SH "PACKFILE OPTIMIZATION"
+.sp
+When packin a funky-ass blob fast\-import always attempts ta deltify against tha last blob written\&. Unless specifically arranged fo' by tha frontend, dis will probably not be a prior version of tha same file, so tha generated delta aint gonna be tha smallest possible\&. Da resultin packfile is ghon be compressed yo, but aint gonna be optimal\&.
+.sp
+Frontendz which have efficient access ta all revisionz of a single file (for example readin a RCS/CVS ,v file) can chizzle ta supply all revisionz of dat file as a sequence of consecutizzle blob commands\&. This allows fast\-import ta deltify tha different file revisions against each other, savin space up in tha final packfile\&. Marks can be used ta lata identify individual file revisions durin a sequence of commit commands\&.
+.sp
+Da packfile(s) pimped by fast\-import do not encourage phat disk access patterns\&. This is caused by fast\-import freestylin tha data up in tha order it is received on standard input, while Git typically organizes data within packfilez ta make da most thugged-out recent (current tip) data step tha fuck up before oldschool data\&. Git also clustas commits together, speedin up revision traversal all up in betta cache locality\&.
+.sp
+For dis reason it is straight fuckin recommended dat playas repack tha repository wit git repack \-a \-d afta fast\-import completes, allowin Git ta reorganize tha packfilez fo' fasta data access\&. If blob deltas is suboptimal (see above) then also addin tha \-f option ta force recomputation of all deltas can hella reduce tha final packfile size (30\-50% smalla can be like typical)\&.
+.SH "MEMORY UTILIZATION"
+.sp
+There is a fuckin shitload of factors which affect how tha fuck much memory fast\-import requires ta big-ass up a import\&. Like critical sectionz of core Git, fast\-import uses its own memory allocators ta amortize any overheadz associated wit malloc\&. In practice fast\-import tendz ta amortize any malloc overheadz ta 0, cuz of its use of big-ass block allocations\&.
+.SS "per object"
+.sp
+fast\-import maintains a in\-memory structure fo' every last muthafuckin object freestyled up in dis execution\&. On a 32 bit system tha structure is 32 bytes, on a 64 bit system tha structure is 40 bytes (due ta tha larger pointa sizes)\&. Objects up in tha table is not deallocated until fast\-import terminates\&. Importin 2 mazillion objects on a 32 bit system will require approximately 64 MiB of memory\&.
+.sp
+Da object table is straight-up a hashtable keyed on tha object name (the unique SHA\-1)\&. This storage configuration allows fast\-import ta reuse a existin or already freestyled object n' avoid freestylin duplicates ta tha output packfile\&. Duplicate blobs is surprisingly common up in a import, typically cuz of branch merges up in tha source\&.
+.SS "per mark"
+.sp
+Marks is stored up in a sparse array, rockin 1 pointa (4 bytes or 8 bytes, dependin on pointa size) per mark\& fo' realz. Although tha array is sparse, frontendz is still straight fuckin encouraged ta use marks between 1 n' n, where n is tha total number of marks required fo' dis import\&.
+.SS "per branch"
+.sp
+Branches is classified as actizzle n' inactive\&. Da memory usage of tha two classes is hella different\&.
+.sp
+Inactizzle branches is stored up in a structure which uses 96 or 120 bytes (32 bit or 64 bit systems, respectively), plus tha length of tha branch name (typically under 200 bytes), per branch\&. fast\-import will easily handle as nuff as 10,000 inactizzle branches up in under 2 MiB of memory\&.
+.sp
+Actizzle branches have tha same overhead as inactizzle branches yo, but also contain copiez of every last muthafuckin tree dat has been recently modified on dat branch\&. If subtree include has not been modified since tha branch became active, its contents aint gonna be loaded tha fuck into memory yo, but if subtree src has been modified by a cold-ass lil commit since tha branch became active, then its contents is ghon be loaded up in memory\&.
+.sp
+As actizzle branches store metadata bout tha filez contained on dat branch, they in\-memory storage size can grow ta a cold-ass lil considerable size (see below)\&.
+.sp
+fast\-import automatically moves actizzle branches ta inactizzle status based on a simple least\-recently\-used algorithm\&. Da LRU chain is updated on each commit command\&. Da maximum number of actizzle branches can be increased or decreased on tha command line wit \-\-active\-branches=\&.
+.SS "per actizzle tree"
+.sp
+Trees (aka directories) use just 12 bytez of memory on top of tha memory required fo' they entries (see \(lqper actizzle file\(rq below)\&. Da cost of a tree is virtually 0, as its overhead amortizes up over tha individual file entries\&.
+.SS "per actizzle file entry"
+.sp
+Filez (and pointas ta subtrees) within actizzle trees require 52 or 64 bytes (32/64 bit platforms) per entry\&. To conserve space, file n' tree names is pooled up in a cold-ass lil common strang table, allowin tha filename \(lqMakefile\(rq ta use just 16 bytes (afta includin tha strang header overhead) no matta how tha fuck nuff times it occurs within tha project\&.
+.sp
+Da actizzle branch LRU, when coupled wit tha filename strang pool n' lazy loadin of subtrees, allows fast\-import ta efficiently import projects wit 2,000+ branches n' 45,114+ filez up in a straight-up limited memory footprint (less than 2\&.7 MiB per actizzle branch)\&.
+.SH "SIGNALS"
+.sp
+Sendin \fBSIGUSR1\fR ta tha \fIgit fast\-import\fR process endz tha current packfile early, simulatin a cold-ass lil checkpoint command\&. Da impatient operator can use dis facilitizzle ta peek all up in tha objects n' refs from a import up in progress, all up in tha cost of some added hustlin time n' worse compression\&.
+.SH "GIT"
+.sp
+Part of tha \fBgit\fR(1) suite

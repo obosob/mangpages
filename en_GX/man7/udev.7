@@ -1,0 +1,561 @@
+'\" t
+.TH "UDEV" "7" "" "systemd 208" "udev"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+udev \- Dynamic thang pimpment
+.SH "DESCRIPTION"
+.PP
+udev supplies tha system software wit thang events, manages permissionz of thang nodes n' may create additionizzle symlinks up in the
+/dev
+directory, or renames network intercourses\&. Da kernel probably just assigns unpredictable thang names based on tha order of discovery\&. Meaningful symlinks or network thang names provide a way ta reliably identify devices based on they propertizzles or current configuration\&.
+.PP
+Da udev daemon,
+\fBsystemd-udevd.service\fR(8), receives thang uevents directly from tha kernel whenever a thang be added or removed from tha system, or it chizzlez its state\&. When udev receives a thang event, it matches its configured set of rulez against various thang attributes ta identify tha device\&. Rulez dat match may provide additionizzle thang shiznit ta be stored up in tha udev database or ta be used ta create meaningful symlink names\&.
+.PP
+All thang shiznit udev processes is stored up in tha udev database n' busted up ta possible event subscribers\& fo' realz. Access ta all stored data n' tha event sources is provided by tha library libudev\&.
+.SH "RULES FILES"
+.PP
+Da udev rulez is read from tha filez located up in tha system rulez directory
+/usr/lib/udev/rules\&.d, tha volatile runtime directory
+/run/udev/rules\&.d
+and tha local administration directory
+/etc/udev/rules\&.d\& fo' realz. All rulez filez is collectively sorted n' processed up in lexical order, regardless of tha directories up in which they live\&. But fuck dat shiznit yo, tha word on tha street is dat filez wit identical filenames replace each other\&. Filez in
+/etc
+have tha highest priority, filez in
+/run
+take precedence over filez wit tha same name in
+/lib\&. This can be used ta override a system\-supplied rulez file wit a local file if needed; a symlink in
+/etc
+with tha same name as a rulez file in
+/lib, pointin to
+/dev/null, disablez tha rulez file entirely\&. Rule filez must have tha extension
+\&.rules; other extensions is ignored\&.
+.PP
+Every line up in tha rulez file gotz nuff at least one key\-value pair\&. Except fo' empty lines or lines beginnin with
+"#", which is ignored\&. There is two kindz of keys: match n' assignment\&. If all match keys match against they joints, tha rule gets applied n' tha assignment keys git tha specified joints assigned\&.
+.PP
+A matchin rule may rename a network intercourse, add symlinks pointin ta tha thang node, or run a specified program as part of tha event handling\&.
+.PP
+A rule consistz of a cold-ass lil comma\-separated list of one or mo' key\-value pairs\&. Each key has a gangbangin' finger-lickin' distinct operation, dependin on tha used operator\&. Valid operators are:
+.PP
+"=="
+.RS 4
+Compare fo' equality\&.
+.RE
+.PP
+"!="
+.RS 4
+Compare fo' inequality\&.
+.RE
+.PP
+"="
+.RS 4
+Assign a value ta a key\&. Keys dat represent a list is reset n' only dis single value be assigned\&.
+.RE
+.PP
+"+="
+.RS 4
+Add tha value ta a key dat holdz a list of entries\&.
+.RE
+.PP
+":="
+.RS 4
+Assign a value ta a key finally; disallow any lata chizzles\&.
+.RE
+.PP
+Da followin key names can be used ta match against thang properties\&. Right back up in yo muthafuckin ass. Some of tha keys also match against propertizzlez of tha parent devices up in sysfs, not only tha thang dat has generated tha event\&. If multiple keys dat match a parent thang is specified up in a single rule, all these keys must match at one n' tha same parent device\&.
+.PP
+\fIACTION\fR
+.RS 4
+Match tha name of tha event action\&.
+.RE
+.PP
+\fIDEVPATH\fR
+.RS 4
+Match tha devpath of tha event device\&.
+.RE
+.PP
+\fIKERNEL\fR
+.RS 4
+Match tha name of tha event device\&.
+.RE
+.PP
+\fINAME\fR
+.RS 4
+Match tha name of a network intercourse\&. Well shiiiit, it can be used once tha NAME key has been set up in one of tha precedin rules\&.
+.RE
+.PP
+\fISYMLINK\fR
+.RS 4
+Match tha name of a symlink targetin tha node\&. Well shiiiit, it can be used once a SYMLINK key has been set up in one of tha precedin rules\&. There may be multiple symlinks; only one need ta match\&.
+.RE
+.PP
+\fISUBSYSTEM\fR
+.RS 4
+Match tha subsystem of tha event device\&.
+.RE
+.PP
+\fIDRIVER\fR
+.RS 4
+Match tha driver name of tha event device\&. Only set dis key fo' devices which is bound ta a thugged-out driver all up in tha time tha event is generated\&.
+.RE
+.PP
+\fIATTR{\fR\fI\fIfilename\fR\fR\fI}\fR
+.RS 4
+Match sysfs attribute jointz of tha event device\&. Trailin whitespace up in tha attribute joints is ignored unless tha specified match value itself gotz nuff trailin whitespace\&.
+.RE
+.PP
+\fIKERNELS\fR
+.RS 4
+Search tha devpath upwardz fo' a matchin thang name\&.
+.RE
+.PP
+\fISUBSYSTEMS\fR
+.RS 4
+Search tha devpath upwardz fo' a matchin thang subsystem name\&.
+.RE
+.PP
+\fIDRIVERS\fR
+.RS 4
+Search tha devpath upwardz fo' a matchin thang driver name\&.
+.RE
+.PP
+\fIATTRS{\fR\fI\fIfilename\fR\fR\fI}\fR
+.RS 4
+Search tha devpath upwardz fo' a thang wit matchin sysfs attribute joints\&. If multiple
+\fIATTRS\fR
+matches is specified, all of dem must match on tha same device\&. Trailin whitespace up in tha attribute joints is ignored unless tha specified match value itself gotz nuff trailin whitespace\&.
+.RE
+.PP
+\fITAGS\fR
+.RS 4
+Search tha devpath upwardz fo' a thang wit matchin tag\&.
+.RE
+.PP
+\fIENV{\fR\fI\fIkey\fR\fR\fI}\fR
+.RS 4
+Match against a thang property value\&.
+.RE
+.PP
+\fITAG\fR
+.RS 4
+Match against a thang tag\&.
+.RE
+.PP
+\fITEST{\fR\fI\fIoctal mode mask\fR\fR\fI}\fR
+.RS 4
+Test tha existence of a gangbangin' file\& fo' realz. An octal mode mask can be specified if needed\&.
+.RE
+.PP
+\fIPROGRAM\fR
+.RS 4
+Execute a program ta determine whether there be a match; tha key is legit if tha program returns successfully\&. Da thang propertizzles is made available ta tha executed program up in tha environment\&. Da program\*(Aqs standard ouput be available up in the
+\fIRESULT\fR
+key\&.
+.sp
+This can only be used fo' straight-up short\-runnin foreground tasks\&. For details, see
+\fIRUN\fR\&.
+.RE
+.PP
+\fIRESULT\fR
+.RS 4
+Match tha returned strang of tha last
+\fIPROGRAM\fR
+call\&. This key can be used up in tha same or up in any lata rule afta a
+\fIPROGRAM\fR
+call\&.
+.RE
+.PP
+Most of tha fieldz support shell glob pattern matchin n' alternate patterns\&. Da followin special charactas is supported:
+.PP
+"*"
+.RS 4
+Matches zero or mo' characters\&.
+.RE
+.PP
+"?"
+.RS 4
+Matches any single character\&.
+.RE
+.PP
+"[]"
+.RS 4
+Matches any single characta specified within tha brackets\&. For example, tha pattern string
+"tty[SR]"
+would match either
+"ttyS"
+or
+"ttyR"\&. Ranges is also supported via the
+"\-"
+character\&. For example, ta match on tha range of all digits, tha pattern
+"[0\-9]"
+could be used\&. If tha straight-up original gangsta characta followin the
+"["
+is a
+"!", any charactas not enclosed is matched\&.
+.RE
+.PP
+"|"
+.RS 4
+Separates alternatizzle patterns\&. For example, tha pattern string
+"abc|x*"
+would match either
+"abc"
+or
+"x*"\&.
+.RE
+.PP
+Da followin keys can git joints assigned:
+.PP
+\fINAME\fR
+.RS 4
+Da name ta use fo' a network intercourse\&. Da name of a thang node cannot be chizzled by udev, only additionizzle symlinks can be pimped\&.
+.RE
+.PP
+\fISYMLINK\fR
+.RS 4
+Da name of a symlink targetin tha node\&. Every matchin rule addz dis value ta tha list of symlinks ta be pimped\&.
+.sp
+Da set of charactas ta name a symlink is limited\& fo' realz. Allowed charactas are
+"0\-9A\-Za\-z#+\-\&.:=@_/", valid UTF\-8 characta sequences, and
+"\ex00"
+hex encoding\& fo' realz. All other charactas is replaced by a
+"_"
+character\&.
+.sp
+Multiple symlinks may be specified by separatin tha names by tha space character\&. In case multiple devices claim tha same name, tha link always points ta tha thang wit tha highest link_priority\&. If tha current thang goes away, tha links is re\-evaluated n' tha thang wit tha next highest link_prioritizzle becomes tha balla of tha link\&. If no link_prioritizzle is specified, tha order of tha devices (and which one of dem owns tha link) is undefined\&.
+.sp
+Symlink names must never conflict wit tha kernel\*(Aqs default thang node names, as dat would result up in unpredictable behavior\&.
+.RE
+.PP
+\fIOWNER\fR, \fIGROUP\fR, \fIMODE\fR
+.RS 4
+Da permissions fo' tha thang node\&. Every specified value overrides tha compiled\-in default value\&.
+.RE
+.PP
+\fIATTR{\fR\fI\fIkey\fR\fR\fI}\fR
+.RS 4
+Da value dat should be freestyled ta a sysfs attribute of tha event device\&.
+.RE
+.PP
+\fIENV{\fR\fI\fIkey\fR\fR\fI}\fR
+.RS 4
+Set a thang property value\&. Property names wit a leading
+"\&."
+are neither stored up in tha database nor exported ta events or external tools (run by, fo' example, the
+\fIPROGRAM\fR
+match key)\&.
+.RE
+.PP
+\fITAG\fR
+.RS 4
+Attach a tag ta a thugged-out device\&. This is used ta filta events fo' playaz of libudev\*(Aqs monitor functionality, or ta enumerate a crew of tagged devices\&. Da implementation can only work efficiently if only all dem tags is attached ta a thugged-out device\&. Well shiiiit, it is only meant ta be used up in contexts wit specific thang filta requirements, n' not as a general\-purpose flag\&. Excessive use might result up in inefficient event handling\&.
+.RE
+.PP
+\fIRUN{\fR\fI\fItype\fR\fR\fI}\fR
+.RS 4
+Add a program ta tha list of programs ta be executed afta processin all tha rulez fo' a specific event, dependin on
+"type":
+.PP
+"program"
+.RS 4
+Execute a external program specified as tha assigned value\&. If no absolute path is given, tha program is sposed ta fuckin live in
+/usr/lib/udev; otherwise, tha absolute path must be specified\&.
+.sp
+This is tha default if no
+\fItype\fR
+is specified\&.
+.RE
+.PP
+"builtin"
+.RS 4
+As
+\fIprogram\fR yo, but use one of tha built\-in programs rather than a external one\&.
+.RE
+.sp
+Da program name n' followin arguments is separated by spaces\&. Right back up in yo muthafuckin ass. Single quotes can be used ta specify arguments wit spaces\&.
+.sp
+This can only be used fo' straight-up short\-runnin foreground tasks\&. Hustlin a event process fo' a long-ass period of time may block all further events fo' dis or a thugged-out dependent device\&.
+.sp
+Startin daemons or other long\-runnin processes aint appropriate fo' udev; tha forked processes, detached or not, is ghon be unconditionally capped afta tha event handlin has finished\&.
+.RE
+.PP
+\fILABEL\fR
+.RS 4
+A named label ta which a
+\fIGOTO\fR
+may jump\&.
+.RE
+.PP
+\fIGOTO\fR
+.RS 4
+Jumps ta tha next
+\fILABEL\fR
+with a matchin name\&.
+.RE
+.PP
+\fIIMPORT{\fR\fI\fItype\fR\fR\fI}\fR
+.RS 4
+Import a set of variablez as thang properties, dependin on
+"type":
+.PP
+"program"
+.RS 4
+Execute a external program specified as tha assigned value n' import its output, which must be up in environment key format\&. Path justification, command/argument separation, n' quotin work like in
+\fIRUN\fR\&.
+.RE
+.PP
+"builtin"
+.RS 4
+Similar to
+"program" yo, but use one of tha built\-in programs rather than a external one\&.
+.RE
+.PP
+"file"
+.RS 4
+Import a text file specified as tha assigned value, tha content of which must be up in environment key format\&.
+.RE
+.PP
+"db"
+.RS 4
+Import a single property specified as tha assigned value from tha current thang database\&. This works only if tha database be already populated by a earlier event\&.
+.RE
+.PP
+"cmdline"
+.RS 4
+Import a single property from tha kernel command line\&. For simple flags tha value of tha property is set to
+"1"\&.
+.RE
+.PP
+"parent"
+.RS 4
+Import tha stored keys from tha parent thang by readin tha database entry of tha parent device\&. Da value assigned to
+\fBIMPORT{parent}\fR
+is used as a gangbangin' filta of key names ta import (with tha same shell glob pattern matchin used fo' comparisons)\&.
+.RE
+.sp
+This can only be used fo' straight-up short\-runnin foreground tasks\&. For details see
+\fBRUN\fR\&.
+.RE
+.PP
+\fIWAIT_FOR\fR
+.RS 4
+Wait fo' a gangbangin' file ta become available or until a timeout of 10 secondz expires\&. Da path is relatizzle ta tha sysfs device; if no path is specified, dis waits fo' a attribute ta appear\&.
+.RE
+.PP
+\fIOPTIONS\fR
+.RS 4
+Rule n' thang options:
+.PP
+\fBlink_priority=\fR\fB\fIvalue\fR\fR
+.RS 4
+Specify tha prioritizzle of tha pimped symlinks\&. Devices wit higher prioritizzles overwrite existin symlinkz of other devices\&. Da default is 0\&.
+.RE
+.PP
+\fBevent_timeout=\fR
+.RS 4
+Number of secondz a event waits fo' operations ta finish before givin up n' terminatin itself\&.
+.RE
+.PP
+\fBstring_escape=\fR\fB\fInone|replace\fR\fR
+.RS 4
+Usually control n' other possibly unsafe charactas is replaced up in strings used fo' thang naming\&. Da mode of replacement can be specified wit dis option\&.
+.RE
+.PP
+\fBstatic_node=\fR
+.RS 4
+Apply tha permissions specified up in dis rule ta tha static thang node wit tha specified name\& fo' realz. Also, fo' every last muthafuckin tag specified up in dis rule, create a symlink up in tha directory
+/run/udev/static_node\-tags/\fItag\fR
+pointin all up in tha static thang node wit tha specified name\&. Right back up in yo muthafuckin ass. Static thang node creation is performed by systemd\-tmpfilez before systemd\-udevd is started\&. Da static nodes might not gotz a cold-ass lil correspondin kernel device; they is used ta trigger automatic kernel module loadin when they is accessed\&.
+.RE
+.PP
+\fBwatch\fR
+.RS 4
+Watch tha thang node wit inotify; when tha node is closed afta bein opened fo' writing, a cold-ass lil chizzle uevent is synthesized\&.
+.RE
+.PP
+\fBnowatch\fR
+.RS 4
+Disable tha watchin of a thang node wit inotify\&.
+.RE
+.RE
+.PP
+The
+\fINAME\fR,
+\fISYMLINK\fR,
+\fIPROGRAM\fR,
+\fIOWNER\fR,
+\fIGROUP\fR,
+\fIMODE\fR, and
+\fIRUN\fR
+fieldz support simple strang substitutions\&. The
+\fIRUN\fR
+substitutions is performed afta all rulez done been processed, right before tha program is executed, allowin fo' tha use of thang propertizzles set by earlier matchin rules\&. For all other fields, substitutions is performed while tha individual rule is bein processed\&. Da available substitutions are:
+.PP
+\fB$kernel\fR, \fB%k\fR
+.RS 4
+Da kernel name fo' dis device\&.
+.RE
+.PP
+\fB$number\fR, \fB%n\fR
+.RS 4
+Da kernel number fo' dis device\&. For example,
+"sda3"
+has kernel number
+"3"\&.
+.RE
+.PP
+\fB$devpath\fR, \fB%p\fR
+.RS 4
+Da devpath of tha device\&.
+.RE
+.PP
+\fB$id\fR, \fB%b\fR
+.RS 4
+Da name of tha thang matched while searchin tha devpath upwardz for
+\fBSUBSYSTEMS\fR,
+\fBKERNELS\fR,
+\fBDRIVERS\fR, and
+\fBATTRS\fR\&.
+.RE
+.PP
+\fB$driver\fR
+.RS 4
+Da driver name of tha thang matched while searchin tha devpath upwardz for
+\fBSUBSYSTEMS\fR,
+\fBKERNELS\fR,
+\fBDRIVERS\fR, and
+\fBATTRS\fR\&.
+.RE
+.PP
+\fB$attr{\fR\fB\fIfile\fR\fR\fB}\fR, \fB%s{\fR\fB\fIfile\fR\fR\fB}\fR
+.RS 4
+Da value of a sysfs attribute found all up in tha thang where all keyz of tha rule have matched\&. If tha matchin thang aint gots such a attribute, n' a previous
+\fBKERNELS\fR,
+\fBSUBSYSTEMS\fR,
+\fBDRIVERS\fR, or
+\fBATTRS\fR
+test selected a parent device, then tha attribute from dat parent thang is used\&.
+.sp
+If tha attribute be a symlink, tha last element of tha symlink target is returned as tha value\&.
+.RE
+.PP
+\fB$env{\fR\fB\fIkey\fR\fR\fB}\fR, \fB%E{\fR\fB\fIkey\fR\fR\fB}\fR
+.RS 4
+A thang property value\&.
+.RE
+.PP
+\fB$major\fR, \fB%M\fR
+.RS 4
+Da kernel major number fo' tha device\&.
+.RE
+.PP
+\fB$minor\fR, \fB%m\fR
+.RS 4
+Da kernel minor number fo' tha device\&.
+.RE
+.PP
+\fB$result\fR, \fB%c\fR
+.RS 4
+Da strang returned by tha external program axed with
+\fIPROGRAM\fR\& fo' realz. A single part of tha string, separated by a space character, may be selected by specifyin tha part number as a attribute:
+"%c{N}"\&. If tha number is followed by the
+"+"
+character, dis part plus all remainin partz of tha result strang is substituted:
+"%c{N+}"\&.
+.RE
+.PP
+\fB$parent\fR, \fB%P\fR
+.RS 4
+Da node name of tha parent device\&.
+.RE
+.PP
+\fB$name\fR
+.RS 4
+Da current name of tha device\&. If not chizzled by a rule, it is tha name of tha kernel device\&.
+.RE
+.PP
+\fB$links\fR
+.RS 4
+A space\-separated list of tha current symlinks\&. Da value is only set durin a remove event or if a earlier rule assigned a value\&.
+.RE
+.PP
+\fB$root\fR, \fB%r\fR
+.RS 4
+Da udev_root value\&.
+.RE
+.PP
+\fB$sys\fR, \fB%S\fR
+.RS 4
+Da sysfs mount point\&.
+.RE
+.PP
+\fB$devnode\fR, \fB%N\fR
+.RS 4
+Da name of tha thang node\&.
+.RE
+.PP
+\fB%%\fR
+.RS 4
+The
+"%"
+characta itself\&.
+.RE
+.PP
+\fB$$\fR
+.RS 4
+The
+"$"
+characta itself\&.
+.RE
+.SH "HARDWARE DATABASE FILES"
+.PP
+Da hwdb filez is read from tha filez located up in tha system hwdb directory
+/usr/lib/udev/hwdb\&.d, tha volatile runtime directory
+/run/udev/hwdb\&.d
+and tha local administration directory
+/etc/udev/hwdb\&.d\& fo' realz. All hwdb filez is collectively sorted n' processed up in lexical order, regardless of tha directories up in which they live\&. But fuck dat shiznit yo, tha word on tha street is dat filez wit identical filenames replace each other\&. Filez in
+/etc
+have tha highest priority, filez in
+/run
+take precedence over filez wit tha same name in
+/lib\&. This can be used ta override a system\-supplied hwdb file wit a local file if needed; a symlink in
+/etc
+with tha same name as a hwdb file in
+/lib, pointin to
+/dev/null, disablez tha hwdb file entirely\&. hwdb filez must have tha extension
+\&.hwdb; other extensions is ignored\&.
+.PP
+Da hwdb file gotz nuff data recordz consistin of matches n' associated key\-value pairs\&. Every record up in tha hwdb starts wit one or mo' match string, specifyin a gangbangin' finger-lickin' dirty-ass shell glob ta compare tha database lookup strang against\&. Multiple match lines is specified up in additionizzle consecutizzle lines\&. Every match line is compared indivdually, they is combined by OR\&. Every match line must start all up in tha straight-up original gangsta characta of tha line\&.
+.PP
+Da match lines is followed by one or mo' key\-value pair lines, which is recognized by a leadin space character\&. Da key name n' value is separated by
+"="\& fo' realz. An empty line signifies tha end of a record\&. Lines beginnin with
+"#"
+are ignored\&.
+.PP
+Da content of all hwdb filez is read by
+\fBudevadm\fR(8)
+and compiled ta a funky-ass binary database located at
+/etc/udev/hwdb\&.bin\&. Durin runtime only tha binary database is used\&.
+.SH "SEE ALSO"
+.PP
+\fBsystemd-udevd.service\fR(8),
+\fBudevadm\fR(8)

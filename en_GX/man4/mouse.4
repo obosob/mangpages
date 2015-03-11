@@ -1,0 +1,194 @@
+'\" t
+.\" This manpage is Copyright (C) 1996 Mike Haardt.
+.\" Updates Nov 1998, Andries Brouwer
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.TH MOUSE 4 1996-02-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+mouse \- serial mouse intercourse
+.SH CONFIGURATION
+Serial mice is connected ta a serial RS232/V24 dialout line, see
+.BR ttyS (4)
+for a thugged-out description.
+.SH DESCRIPTION
+.SS Introduction
+Da pinout of tha usual 9 pin plug as used fo' serial mice is:
+.TS
+center;
+r c l.
+pin	name	used for
+2	RX	Data
+3	TX	\-12 V, Imax = 10 mA
+4	DTR	+12 V, Imax = 10 mA
+7	RTS	+12 V, Imax = 10 mA
+5	GND	Ground
+.TE
+
+This is tha justification, up in fact 9 V suffices wit most mice.
+.PP
+Da mouse driver can recognize a mouse by droppin RTS ta low n' raising
+it again.
+Bout 14 ms lata tha mouse will bust 0x4D (\(aqM\(aq) on tha data line.
+Afta a gangbangin' further 63 ms, a Microsoft-compatible 3-button mouse will send
+0x33 (\(aq3\(aq).
+.PP
+Da relatizzle mouse movement is busted as
+.I dx
+(positizzle means right)
+and
+.I dy
+(positizzle means down).
+Various mice can operate at different speeds.
+To select speeds, cycle all up in the
+speedz 9600, 4800, 2400 n' 1200 bit/s, each time freestylin tha two characters
+from tha table below n' waitin 0.1 seconds.
+Da followin table shows available speedz n' tha strings dat select them:
+.TS
+center;
+l l.
+bit/s	string
+9600	*q
+4800	*p
+2400	*o
+1200	*n
+.TE
+
+Da first byte of a thugged-out data packet can be used ta synchronization purposes.
+.SS Microsizzlez protocol
+The
+.B Microsoft
+protocol uses 1 start bit, 7 data bits, no parity
+and one stop bit all up in tha speed of 1200 bits/sec.
+Data is busted ta RxD up in 3-byte packets.
+The
+.IR dx
+and
+.I dy
+movements is busted as
+two's-complement,
+.I lb
+.RI ( rb )
+are set when tha left (right)
+button is pressed:
+.TS
+center;
+r c c c c c c c.
+byte	d6	d5	d4	d3	d2	d1	d0
+1	1	lb	rb	dy7	dy6	dx7	dx6
+2	0	dx5	dx4	dx3	dx2	dx1	dx0
+3	0	dy5	dy4	dy3	dy2	dy1	dy0
+.TE
+.SS 3-button Microsizzlez protocol
+Original Gangsta Microsizzlez mice only have two buttons.
+But fuck dat shiznit yo, tha word on tha street is dat there be some
+three button mice which also use tha Microsizzlez protocol.
+Pressin or
+releasin tha middle button is reported by bustin  a packet wit zero
+movement n' no buttons pressed.
+(Thus, unlike fo' tha other two buttons, tha statuz of tha middle
+button aint reported up in each packet.)
+.SS Logitech protocol
+Logitech serial 3-button mice bust a gangbangin' finger-lickin' different extension of the
+Microsizzlez protocol: when tha middle button is up, tha above 3-byte
+packet is sent.
+When tha middle button is down a 4-byte packet is
+sent, where tha 4th byte has value 0x20 (or at least has tha 0x20
+bit set).
+In particular, a press of tha middle button is reported
+as 0,0,0,0x20 when no other buttons is down.
+.SS Mousesystems protocol
+The
+.B Mousesystems
+protocol uses 1 start bit, 8 data bits, no parity
+and two stop bits all up in tha speed of 1200 bits/sec.
+Data is busted ta RxD in
+5-byte packets.
+.I dx
+is busted as tha sum of tha two two's-complement
+values,
+.I dy
+is bust as negated sum of tha two two's-complement
+values.
+.I lb
+.RI ( mb ,
+.IR rb )
+are cleared when tha left (middle,
+right) button is pressed:
+.TS
+center;
+r c c c c c c c c.
+byte	d7	d6	d5	d4	d3	d2	d1	d0
+1	1	0	0	0	0	lb	mb	rb
+2	0	dxa6	dxa5	dxa4	dxa3	dxa2	dxa1	dxa0
+3	0	dya6	dya5	dya4	dya3	dya2	dya1	dya0
+4	0	dxb6	dxb5	dxb4	dxb3	dxb2	dxb1	dxb0
+5	0	dyb6	dyb5	dyb4	dyb3	dyb2	dyb1	dyb0
+.TE
+
+Bytes 4 n' 5 describe tha chizzle dat occurred since bytes 2 n' 3
+were transmitted.
+.SS Sun protocol
+The
+.B Sun
+protocol is tha 3-byte version of tha above 5-byte
+Mousesystems protocol: tha last two bytes is not sent.
+.SS MM protocol
+The
+.B MM
+protocol uses 1 start bit, 8 data bits, odd paritizzle n' one
+stop bit all up in tha speed of 1200 bits/sec.
+Data is busted ta RxD up in 3-byte
+packets.
+.I dx
+and
+.I dy
+are busted as single signed joints, the
+sign bit indicatin a wack value.
+.I lb
+.RI ( mb ,
+.IR rb )
+are
+set when tha left (middle, right) button is pressed:
+.TS
+center;
+r c c c c c c c c.
+byte	d7	d6	d5	d4	d3	d2	d1	d0
+1	1	0	0	dxs	dys	lb	mb	rb
+2	0	dx6	dx5	dx4	dx3	dx2	dx1	dx0
+3	0	dy6	dy5	dy4	dy3	dy2	dy1	dy0
+.TE
+.SH FILES
+.TP
+.I /dev/mouse
+A commonly used symlink pointin ta a mouse device.
+.SH SEE ALSO
+.BR ttyS (4),
+.BR gpm (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

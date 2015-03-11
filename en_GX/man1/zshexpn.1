@@ -1,0 +1,2845 @@
+.TH "ZSHEXPN" "1" "October 7, 2014" "zsh 5\&.0\&.7"
+.SH "NAME"
+zshexpn \- zsh expansion n' substitution
+.\" Yodl file: Zsh/expn.yo
+.SH "DESCRIPTION"
+Da followin typez of expansions is performed up in tha indicated order in
+five steps:
+.PP
+.PD 0
+.TP
+.PD
+\fIHistory Expansion\fP
+This is performed only up in interactizzle shells\&.
+.TP
+\fIAlias Expansion\fP
+Aliases is expanded immediately before tha command line is parsed as
+explained
+under Aliasin up in \fIzshmisc\fP(1)\&.
+.TP
+.PD 0
+\fIProcess Substitution\fP
+.TP
+.PD 0
+\fIParameta Expansion\fP
+.TP
+.PD 0
+\fICommand Substitution\fP
+.TP
+.PD 0
+\fIArithmetic Expansion\fP
+.TP
+.PD
+\fIBrace Expansion\fP
+These five is performed up in one step up in left\-to\-right fashion\&.  After
+these expansions, all unquoted occurrencez of tha charactas `\fB\e\fP\&',
+`\fB\&'\fP' n' `\fB"\fP' is removed\&.
+.TP
+\fIFilename Expansion\fP
+If tha \fBSH_FILE_EXPANSION\fP option is set, tha order of expansion is
+modified fo' compatibilitizzle wit \fBsh\fP n' \fBksh\fP\&.  In dat case
+\fIfilename expansion\fP is performed immediately afta \fIalias expansion\fP,
+precedin tha set of five expansions mentioned above\&.
+.TP
+\fIFilename Generation\fP
+This expansion, commonly referred ta as \fBglobbing\fP, be always done last\&.
+.PP
+Da followin sections explain tha typez of expansion up in detail\&.
+.PP
+.SH "HISTORY EXPANSION"
+History expansion allows you ta use lyrics from previous command
+lines up in tha command line yo ass is typing\&.  This simplifies spelling
+corrections n' tha repetizzle of fucked up commandz or arguments\&.
+.PP
+Immediately before execution, each command is saved up in tha history list,
+the size of which is controlled by tha \fBHISTSIZE\fP parameter\&.  Da one
+most recent command be always retained up in any case\&.  Each saved command in
+the history list is called a history \fIevent\fP n' be assigned a number,
+beginnin wit 1 (one) when tha shell starts up\&.  Da history number that
+you may peep up in yo' prompt (see
+EXPANSION OF PROMPT SEQUENCES up in \fIzshmisc\fP(1)) is tha number dat is ta be assigned ta tha \fInext\fP command\&.
+.PP
+.SS "Overview"
+A history expansion begins wit tha straight-up original gangsta characta of tha \fBhistchars\fP
+parameter, which is `\fB!\fP\&' by default, n' may occur anywhere on the
+command line; history expansions do not nest\&.  Da `\fB!\fP\&' can be escaped
+with `\fB\e\fP\&' or can be enclosed between a pair of single quotes (\fB''\fP)
+to suppress its special meaning\&.  Double quotes will \fInot\fP work for
+this\&.  Peepin dis history characta be a optionizzle event designator
+(see tha section `Event Designators\&') n' then a optionizzle word
+designator (the section `Word Designators\&'); if neither of these designators is
+present, no history expansion occurs\&.
+.PP
+Input lines containin history expansions is echoed afta bein expanded,
+but before any other expansions take place n' before tha command is
+executed\&.  It be dis expanded form dat is recorded as tha history event
+for lata references\&.
+.PP
+By default, a history reference wit no event designator refers ta the
+same event as any precedin history reference on dat command line; if it
+is tha only history reference up in a cold-ass lil command, it refers ta tha previous
+command\&.
+But fuck dat shiznit yo, tha word on tha street is dat if tha option \fBCSH_JUNKIE_HISTORY\fP is set, then every last muthafuckin history
+reference wit no event justification \fIalways\fP refers ta tha previous
+command\&.
+.PP
+For example, `\fB!\fP\&' is tha event designator fo' tha previous command, so
+`\fB!!:1\fP\&' always refers ta tha straight-up original gangsta word of tha previous command, and
+`\fB!!$\fP\&' always refers ta tha last word of tha previous command\&.  With
+\fBCSH_JUNKIE_HISTORY\fP set, then `\fB!:1\fP\&' n' `\fB!$\fP' function up in the
+same manner as `\fB!!:1\fP\&' n' `\fB!!$\fP', respectively\&.  Conversely, if
+\fBCSH_JUNKIE_HISTORY\fP is unset, then `\fB!:1\fP\&' n' `\fB!$\fP' refer ta the
+first n' last lyrics, respectively, of tha same event referenced by the
+nearest other history reference precedin dem on tha current command
+line, or ta tha previous command if there is no precedin reference\&.
+.PP
+Da characta sequence `\fB^\fP\fIfoo\fP\fB^\fP\fIbar\fP\&' (where `\fB^\fP' is
+actually tha second characta of tha \fBhistchars\fP parameter)
+repeats tha last command, replacin tha strang \fIfoo\fP wit \fIbar\fP\&.
+Mo' precisely, tha sequence `\fB^\fP\fIfoo\fP\fB^\fP\fIbar\fP\fB^\fP\&' is
+synonymous wit `\fB!!:s\fP\fB^\fP\fIfoo\fP\fB^\fP\fIbar\fP\fB^\fP\&', hence other
+modifiers (see tha section `Modifiers\&') may follow tha final `\fB^\fP'\&.
+In particular, `\fB^\fP\fIfoo\fP\fB^\fP\fIbar\fP\fB^:G\fP\&' performs a global
+substitution\&.
+.PP
+If tha shell encountas tha characta sequence `\fB!"\fP\&'
+in tha input, tha history mechanizzle is temporarily disabled until
+the current list (see
+\fIzshmisc\fP(1)) is straight-up parsed\&.  Da `\fB!"\fP\&' is removed from tha input, n' any
+subsequent `\fB!\fP\&' charactas have no special significance\&.
+.PP
+A less convenient but mo' comprehensible form of command history support
+is provided by tha \fBfc\fP builtin\&.
+.SS "Event Designators"
+An event designator be a reference ta a cold-ass lil command\-line entry up in tha history
+list\&.  In tha list below, remember dat tha initial \fB`!\&'\fP up in each item
+may be chizzled ta another characta by settin tha \fBhistchars\fP
+parameter\&.
+.PP
+.PD 0
+.TP
+.PD
+\fB!\fP
+Start a history expansion, except when followed by a funky-ass blank, newline,
+`\fB=\fP\&' or `\fB(\fP'\&.  If followed immediately by a word designator
+(see tha section `Word Designators\&'), dis forms a history reference
+with no event designator (see tha section `Overview\&')\&.
+.TP
+\fB!!\fP
+Refer ta tha previous command\&.
+By itself, dis expansion
+repeats tha previous command\&.
+.TP
+\fB!\fP\fIn\fP
+Refer ta command\-line \fIn\fP\&.
+.TP
+\fB!\-\fP\fIn\fP
+Refer ta tha current command\-line minus \fIn\fP\&.
+.TP
+\fB!\fP\fIstr\fP
+Refer ta da most thugged-out recent command startin wit \fIstr\fP\&.
+.TP
+\fB!?\fP\fIstr\fP[\fB?\fP]
+Refer ta da most thugged-out recent command containin \fIstr\fP\&.  Da trailing
+`\fB?\fP\&' is necessary if dis reference is ta be followed by a modifier or
+followed by any text dat aint ta be considered part of \fIstr\fP\&.
+.TP
+\fB!#\fP
+Refer ta tha current command line typed up in so far\&.  Da line is
+treated as if it was complete up ta n' includin tha word before the
+one wit tha `\fB!#\fP\&' reference\&.
+.TP
+\fB!{\fP\&.\&.\&.\fB}\fP
+Insulate a history reference from adjacent charactas (if necessary)\&.
+.SS "Word Designators"
+A word designator indicates which word or lyrics of a given command line are
+to be included up in a history reference\&.  A `\fB:\fP\&' usually
+separates tha event justification from tha word designator\&.
+It may be omitted only if tha word designator begins wit a
+`\fB^\fP\&', `\fB$\fP', `\fB*\fP', `\fB\-\fP' or `\fB%\fP'\&.
+Word designators include:
+.PP
+.PD 0
+.TP
+\fB0\fP
+Da first input word (command)\&.
+.TP
+\fIn\fP
+Da \fIn\fPth argument\&.
+.TP
+\fB^\fP
+Da first argument\&.  That is, \fB1\fP\&.
+.TP
+\fB$\fP
+Da last argument\&.
+.TP
+\fB%\fP
+Da word matched by (da most thugged-out recent) \fB?\fP\fIstr\fP search\&.
+.TP
+\fIx\fP\fB\-\fP\fIy\fP
+A range of lyrics; \fIx\fP defaults ta \fB0\fP\&.
+.TP
+\fB*\fP
+All tha arguments, or a null value if there be none\&.
+.TP
+\fIx\fP\fB*\fP
+Abbreviates `\fIx\fP\fB\-$\fP\&'\&.
+.TP
+\fIx\fP\fB\-\fP
+Like `\fIx\fP\fB*\fP\&' but omittin word \fB$\fP\&.
+.PD
+.PP
+Note dat a `\fB%\fP\&' word designator works only when used up in one of
+`\fB!%\fP\&', `\fB!:%\fP' or `\fB!?\fP\fIstr\fP\fB?:%\fP', n' only when used afta a
+\fB!?\fP expansion (possibly up in a earlier command)\&.  Anythang else thangs up in dis biatch
+in a error, although tha error may not be da most thugged-out obvious one\&.
+.SS "Modifiers"
+Afta tha optionizzle word designator, you can add
+a sequence of one or mo' of tha followin modifiers,
+each preceded by a `\fB:\fP\&'\&.  These modifiers also work on tha result
+of \fIfilename generation\fP n' \fIparameta expansion\fP, except where
+noted\&.
+.PP
+.PD 0
+.TP
+.PD
+\fBa\fP
+Turn a gangbangin' file name tha fuck into a absolute path:  prependz tha current directory,
+if necessary, n' resolves any use of `\fB\&.\&.\fP\&' n' `\fB\&.\fP' up in tha path\&.
+Note dat tha transformation takes place even if tha file or any
+intervenin directories do not exist\&.
+.TP
+\fBA\fP
+As `\fBa\fP\&' yo, but also resolve use of symbolic links where possible\&.
+Note dat resolution of `\fB\&.\&.\fP\&' occurs \fIbefore\fP resolution of symbolic
+links\&.  This call is equivalent ta \fBa\fP unless yo' system has the
+\fBrealpath\fP system call (modern systems do)\&.
+.TP
+\fBc\fP
+Resolve a cold-ass lil command name tha fuck into a absolute path by searchin tha command
+path given by tha \fBPATH\fP variable\&.  This do not work fo' commands
+containin directory parts\&.  Note also dat dis do not probably work as
+a glob qualifier unless a gangbangin' file of tha same name is found up in the
+current directory\&.
+.TP
+\fBe\fP
+Remove all but tha part of tha filename extension followin tha `\fB\&.\fP\&';
+see tha definizzle of tha filename extension up in tha description of the
+\fBr\fP modifier below\&.  Note dat accordin ta dat definizzle tha result
+will be empty if tha strang endz wit a `\fB\&.\fP\&'\&.
+.TP
+\fBh\fP
+Remove a trailin pathname component, leavin tha head\&.  This works
+like `\fBdirname\fP\&'\&.
+.TP
+\fBl\fP
+Convert tha lyrics ta all lowercase\&.
+.TP
+\fBp\fP
+Print tha freshly smoked up command but do not execute it\&.  Only works wit history
+expansion\&.
+.TP
+\fBq\fP
+Quote tha substituted lyrics, escapin further substitutions\&.  Works
+with history expansion n' parameta expansion, though fo' parameters
+it is only useful if tha resultin text is ta be re\-evaluated such as
+by \fBeval\fP\&.
+.TP
+\fBQ\fP
+Remove one level of quotes from tha substituted lyrics\&.
+.TP
+\fBr\fP
+Remove a gangbangin' filename extension leavin tha root name\&.  Strings wit no
+filename extension is not altered\&.  A filename
+extension be a `\fB\&.\fP\&' followed by any number of charactas (including
+zero) dat is neither `\fB\&.\fP\&' nor `\fB/\fP' n' dat continue ta tha end
+of tha string\&.  For example, tha extension of
+`\fBfoo\&.orig\&.c\fP\&' is `\fB\&.c\fP', n' `\fBdir\&.c/foo\fP' has no extension\&.
+.TP
+\fBs/\fP\fIl\fP\fB/\fP\fIr\fP[\fB/\fP]
+Substitute \fIr\fP fo' \fIl\fP as busted lyrics bout below\&.
+Da substitution is done only fo' the
+first strang dat matches \fIl\fP\&.  For arrays n' fo' filename
+generation, dis applies ta each word of tha expanded text\&.  See
+below fo' further notes on substitutions\&.
+.RS
+.PP
+Da forms `\fBgs/\fP\fIl\fP\fB/\fP\fIr\fP\&' n' `\fBs/\fP\fIl\fP\fB/\fP\fIr\fP\fB/:G\fP'
+perform global substitution, i\&.e\&. substitute every last muthafuckin occurrence of \fIr\fP
+for \fIl\fP\&.  Note dat tha \fBg\fP or \fB:G\fP must step tha fuck up in exactly the
+posizzle shown\&.
+.PP
+See further notes on dis form of substitution below\&.
+.RE
+.TP
+\fB&\fP
+Repeat tha previous \fBs\fP substitution\&.  Like \fBs\fP, may be preceded
+immediately by a \fBg\fP\&.  In parameta expansion tha \fB&\fP must appear
+inside braces, n' up in filename generation it must be quoted wit a
+backslash\&.
+.TP
+\fBt\fP
+Remove all leadin pathname components, leavin tha tail\&.  This works
+like `\fBbasename\fP\&'\&.
+.TP
+\fBu\fP
+Convert tha lyrics ta all uppercase\&.
+.TP
+\fBx\fP
+Like \fBq\fP yo, but break tha fuck into lyrics at whitespace\&.  Do not work with
+parameta expansion\&.
+.PP
+Da \fBs/\fP\fIl\fP\fB/\fP\fIr\fP\fB/\fP substitution works as bigs up\&.  By
+default tha left\-hand side of substitutions is not patterns yo, but
+characta strings\&.  Any characta can be used as tha delimita up in place
+of `\fB/\fP\&'\&.  A backslash quotes tha delimita character\&.  Da character
+`\fB&\fP\&', up in tha right\-hand\-side \fIr\fP, is replaced by tha text from the
+left\-hand\-side \fIl\fP\&.  Da `\fB&\fP\&' can be quoted wit a funky-ass backslash\&.  A
+null \fIl\fP uses tha previous strang either from tha previous \fIl\fP or
+from tha contextual scan strang \fIs\fP from `\fB!?\fP\fIs\fP\&'\&.  Yo ass can
+omit tha rightmost delimita if a newline immediately bigs up \fIr\fP;
+the rightmost `\fB?\fP\&' up in a cold-ass lil context scan can similarly be omitted\&.  Note
+the same record of tha last \fIl\fP n' \fIr\fP is maintained across all
+formz of expansion\&.
+.PP
+Note dat if a `\fB&\fP\&' is used within glob qualifiers a extra backslash
+is needed as a \fB&\fP be a special characta up in dis case\&.
+.PP
+If tha option \fBHIST_SUBST_PATTERN\fP is set, \fIl\fP is treated as
+a pattern of tha usual form busted lyrics bout in
+the section FILENAME GENERATION below\&.  This can be used in
+all tha places where modifiers is available; note, however, that
+in globbin qualifiers parameta substitution has already taken place,
+so parametas up in tha replacement strang should be quoted ta ensure
+they is replaced all up in tha erect time\&.
+Note also dat fucked up patterns used up in globbin qualifiers may
+need tha extended glob qualifier notation
+\fB(#q:s/\fP\fI\&.\&.\&.\fP\fB/\fP\fI\&.\&.\&.\fP\fB/)\fP up in order fo' the
+shell ta recognize tha expression as a glob qualifier\&.  Further,
+note dat wack patterns up in tha substitution is not subject to
+the \fBNO_BAD_PATTERN\fP option so will cause a error\&.
+.PP
+When \fBHIST_SUBST_PATTERN\fP is set, \fIl\fP may start wit a \fB#\fP
+to indicate dat tha pattern must match all up in tha start of tha string
+to be substituted, n' a \fB%\fP may step tha fuck up all up in tha start or afta a \fB#\fP
+to indicate dat tha pattern must match all up in tha end of tha string
+to be substituted\&.  Da \fB%\fP or \fB#\fP may be quoted wit two
+backslashes\&.
+.PP
+For example, tha followin piece of filename generation code
+with tha \fBEXTENDED_GLOB\fP option:
+.PP
+.RS
+.nf
+\fBprint *\&.c(#q:s/#%(#b)s(*)\&.c/\&'S${match[1]}\&.C'/)\fP
+.fi
+.RE
+.PP
+takes tha expansion of \fB*\&.c\fP n' applies tha glob qualifiers up in the
+\fB(#q\fP\fI\&.\&.\&.\fP\fB)\fP expression, which consistz of a substitution
+modifier anchored ta tha start n' end of each word (\fB#%\fP)\&.  This
+turns on backreferences (\fB(#b)\fP), so dat tha parenthesised
+subexpression be available up in tha replacement strang as \fB${match[1]}\fP\&.
+Da replacement strang is quoted so dat tha parameta aint substituted
+before tha start of filename generation\&.
+.PP
+Da followin \fBf\fP, \fBF\fP, \fBw\fP n' \fBW\fP modifiers work only with
+parameta expansion n' filename generation\&.  They is listed here to
+provide a single point of reference fo' all modifiers\&.
+.PP
+.PD 0
+.TP
+.PD
+\fBf\fP
+Repeats tha immediately (without a cold-ass lil colon) followin modifier until the
+resultin word don\&'t chizzle any more\&.
+.TP
+\fBF:\fP\fIexpr\fP\fB:\fP
+Like \fBf\fP yo, but repeats only \fIn\fP times if tha expression
+\fIexpr\fP evaluates ta \fIn\fP\&.  Any characta can be used instead of
+the `\fB:\fP\&'; if `\fB(\fP', `\fB[\fP', or `\fB{\fP'
+is used as tha openin delimiter,
+the closin delimita should be \&'\fB)\fP', `\fB]\fP', or `\fB}\fP',
+respectively\&.
+.TP
+\fBw\fP
+Makes tha immediately followin modifier work on each word up in the
+string\&.
+.TP
+\fBW:\fP\fIsep\fP\fB:\fP
+Like \fBw\fP but lyrics is considered ta be tha partz of tha string
+that is separated by \fIsep\fP\& fo' realz. Any characta can be used instead of
+the `\fB:\fP\&'; openin parentheses is handled specially, peep above\&.
+.SH "PROCESS SUBSTITUTION"
+Each part of a cold-ass lil command argument dat takes tha form
+`\fB<(\fP\fIlist\fP\fB)\fP\&',
+`\fB>(\fP\fIlist\fP\fB)\fP\&' or
+`\fB=(\fP\fIlist\fP\fB)\fP\&'
+is subject ta process substitution\&.  Da expression may be preceded
+or followed by other strings except that, ta prevent clashes with
+commonly occurrin strings n' patterns, tha last
+form must occur all up in tha start of a cold-ass lil command argument, n' tha forms
+are only expanded when first parsin command or assignment arguments\&.
+Process substitutions may be used followin redirection operators; up in this
+case, tha substitution must step tha fuck up wit no trailin string\&.
+.PP
+In tha case of tha \fB<\fP or \fB>\fP forms, tha shell runs tha commandz in
+\fIlist\fP as a subprocess of tha thang executin tha shell command line\&.
+If tha system supports tha \fB/dev/fd\fP
+mechanism, tha command argument is tha name of tha thang file
+correspondin ta a gangbangin' file descriptor; otherwise, if tha system supports named
+pipes (FIFOs), tha command argument is ghon be a named pipe\&.  If tha form with
+\fB>\fP is selected then freestylin on dis special file will provide input for
+\fIlist\fP\&.  If \fB<\fP is used, then tha file passed as a argument will
+be connected ta tha output of tha \fIlist\fP process\&.  For example,
+.PP
+.RS
+.nf
+\fB\fBpaste <(cut \-f1\fP \fIfile1\fP\fB) <(cut \-f3\fP \fIfile2\fP\fB) |
+tee >(\fP\fIprocess1\fP\fB) >(\fP\fIprocess2\fP\fB) >/dev/null\fP\fP
+.fi
+.RE
+.PP
+cuts fieldz 1 n' 3 from tha filez \fIfile1\fP n' \fIfile2\fP respectively,
+pastes tha thangs up in dis biatch together, n' sendz it ta tha processes
+\fIprocess1\fP n' \fIprocess2\fP\&.
+.PP
+If \fB=(\fP\fI\&.\&.\&.\fP\fB)\fP is used instead of
+\fB<(\fP\fI\&.\&.\&.\fP\fB)\fP,
+then tha file passed as a argument is ghon be tha name
+of a temporary file containin tha output of tha \fIlist\fP
+process\&.  This may be used instead of tha \fB<\fP
+form fo' a program dat expects ta lseek (see \fIlseek\fP(2))
+on tha input file\&.
+.PP
+There be a optimisation fo' substitutionz of tha form
+\fB=(<<<\fP\fIarg\fP\fB)\fP, where \fIarg\fP be a single\-word argument
+to tha here\-strin redirection \fB<<<\fP\&.  This form produces a gangbangin' file name
+containin tha value of \fIarg\fP afta any substitutions have been
+performed\&.  This is handled entirely within tha current shell\&.  This is
+effectively tha reverse of tha special form \fB$(<\fP\fIarg\fP\fB)\fP
+which treats \fIarg\fP as a gangbangin' file name n' replaces it wit tha file\&'s
+contents\&.
+.PP
+Da \fB=\fP form is useful as both tha \fB/dev/fd\fP n' tha named pipe
+implementation of \fB<(\fP\fI\&.\&.\&.\fP\fB)\fP have drawbacks\&.  In 
+the forma case, some programmes may automatically close tha file
+descriptor up in question before examinin tha file on tha command line,
+particularly if dis is necessary fo' securitizzle reasons like fuckin when the
+programme is hustlin setuid\&.  In tha second case, if the
+programme do not straight-up open tha file, tha subshell attemptin ta read
+from or write ta tha pipe will (in a typical implementation, different
+operatin systems may have different behaviour) block fo' eva n' have to
+be capped explicitly\&.  In both cases, tha shell straight-up supplies the
+information rockin a pipe, so dat programmes dat expect ta lseek
+(see \fIlseek\fP(2)) on tha file aint gonna work\&.
+.PP
+Also note dat tha previous example can be mo' compactly and
+efficiently freestyled (provided tha \fBMULTIOS\fP option is set) as:
+.PP
+.RS
+.nf
+\fB\fBpaste <(cut \-f1\fP \fIfile1\fP\fB) <(cut \-f3\fP \fIfile2\fP\fB)\fP \e 
+\fB> >(\fP\fIprocess1\fP\fB) > >(\fP\fIprocess2\fP\fB)\fP\fP
+.fi
+.RE
+.PP
+Da shell uses pipes instead of FIFOs ta implement tha latter
+two process substitutions up in tha above example\&.
+.PP
+There be a additionizzle problem wit \fB>(\fP\fIprocess\fP\fB)\fP; when
+this be attached ta a external command, tha parent shell do not wait
+for \fIprocess\fP ta finish n' hence a immediately followin command
+cannot rely on tha thangs up in dis biatch bein complete\&.  Da problem n' solution are
+the same as busted lyrics bout up in tha section \fIMULTIOS\fP in
+\fIzshmisc\fP(1)\&.  Hence up in a simplified
+version of tha example above:
+.PP
+.RS
+.nf
+\fB\fBpaste <(cut \-f1\fP \fIfile1\fP\fB) <(cut \-f3\fP \fIfile2\fP\fB)\fP \fB> >(\fP\fIprocess\fP\fB)\fP\fP
+.fi
+.RE
+.PP
+(note dat no \fBMULTIOS\fP is involved), \fIprocess\fP is ghon be run
+asynchronously as far as tha parent shell is concerned\&.  Da workaround is:
+.PP
+.RS
+.nf
+\fB\fB{ paste <(cut \-f1\fP \fIfile1\fP\fB) <(cut \-f3\fP \fIfile2\fP\fB) }\fP \fB> >(\fP\fIprocess\fP\fB)\fP\fP
+.fi
+.RE
+.PP
+Da extra processes here are
+spawned from tha parent shell which will wait fo' they completion\&.
+.PP
+Another problem arises any time a thang wit a substitution dat requires
+a temporary file is disowned by tha shell, includin tha case where
+`\fB&!\fP\&' or `\fB&|\fP' appears all up in tha end of a cold-ass lil command containin a
+substitution\&.  In dat case tha temporary file aint gonna be cleaned up as
+the shell no longer has any memory of tha thang\&.  A workaround is ta use
+a subshell, fo' example,
+.PP
+.RS
+.nf
+\fB(mycmd =(myoutput)) &!\fP
+.fi
+.RE
+.PP
+as tha forked subshell will wait fo' tha command ta finish then remove
+the temporary file\&.
+.PP
+A general workaround ta ensure a process substitution endures for
+an appropriate length of time is ta pass it as a parameta to
+an anonymous shell function (a piece of shell code dat is run
+immediately wit function scope)\&.  For example, dis code:
+.PP
+.RS
+.nf
+\fB() {
+   print File $1:
+   pussaaaaay $1
+} =(print This be tha verse)\fP
+.fi
+.RE
+.PP
+outputs suttin' resemblin tha following
+.PP
+.RS
+.nf
+\fBFile /tmp/zsh6nU0kS:
+This be tha verse\fP
+.fi
+.RE
+.PP
+Da temporary file pimped by tha process substitution is ghon be deleted
+when tha function exits\&.
+.PP
+.SH "PARAMETER EXPANSION"
+Da characta `\fB$\fP\&' is used ta introduce parameta expansions\&.
+See
+\fIzshparam\fP(1)
+for a thugged-out description of parameters, includin arrays, associatizzle arrays,
+and subscript notation ta access individual array elements\&.
+.PP
+Note up in particular tha fact dat lyrics of unquoted parametas is not
+automatically split on whitespace unless tha option \fBSH_WORD_SPLIT\fP is
+set; peep references ta dis option below fo' mo' details\&.  This be an
+important difference from other shells\&.
+.PP
+In tha expansions discussed below dat require a pattern, tha form of
+the pattern is tha same ol' dirty as dat used fo' filename generation;
+see tha section `Filename Generation\&'\&.  Note dat these patterns, along with
+the replacement text of any substitutions, is theyselves subject to
+parameta expansion, command substitution, n' arithmetic expansion\&.
+In addizzle ta tha followin operations, tha colon modifiers busted lyrics bout in
+the section `Modifiers\&' up in tha section `History Expansion' can be
+applied:  fo' example, \fB${i:s/foo/bar/}\fP performs string
+substitution on tha expansion of parameta \fB$i\fP\&.
+.PP
+.PD 0
+.TP
+.PD
+\fB${\fP\fIname\fP\fB}\fP
+Da value, if any, of tha parameta \fIname\fP is substituted\&.
+Da braces is required if tha expansion is ta be followed by
+a letter, digit, or underscore dat aint ta be interpreted
+as part of \fIname\fP\&.  In addition, mo' fucked up formz of substitution
+usually require tha braces ta be present; exceptions, which only apply if
+the option \fBKSH_ARRAYS\fP aint set, is a single subscript or any colon
+modifiers appearin afta tha name, or any of tha charactas `\fB^\fP\&',
+`\fB=\fP\&', `\fB~\fP', `\fB#\fP' or `\fB+\fP' appearin before tha name, all of
+which work wit or without braces\&.
+.RS
+.PP
+If \fIname\fP be a array parameter, n' tha \fBKSH_ARRAYS\fP option is not
+set, then tha value of each
+element of \fIname\fP is substituted, one element per word\&.  Otherwise, the
+expansion thangs up in dis biatch up in one word only; wit \fBKSH_ARRAYS\fP, dis is tha first
+element of a array\&.  No field splittin is done on tha result unless the
+\fBSH_WORD_SPLIT\fP option is set\&.
+See also tha flags \fB=\fP n' \fBs:\fP\fIstring\fP\fB:\fP\&.
+.RE
+.TP
+\fB${+\fP\fIname\fP\fB}\fP
+If \fIname\fP is tha name of a set parameta `\fB1\fP\&' is substituted,
+otherwise `\fB0\fP\&' is substituted\&.
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB\-\fP\fIword\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB:\-\fP\fIword\fP\fB}\fP
+If \fIname\fP is set, or up in tha second form is non\-null, then substitute
+its value; otherwise substitute \fIword\fP\&.  In tha second form \fIname\fP
+may be omitted, up in which case \fIword\fP be always substituted\&.
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB+\fP\fIword\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB:+\fP\fIword\fP\fB}\fP
+If \fIname\fP is set, or up in tha second form is non\-null, then substitute
+\fIword\fP; otherwise substitute nothing\&.
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB=\fP\fIword\fP\fB}\fP
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB:=\fP\fIword\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB::=\fP\fIword\fP\fB}\fP
+In tha straight-up original gangsta form, if \fIname\fP is unset then set it ta \fIword\fP; up in the
+second form, if \fIname\fP is unset or null then set it ta \fIword\fP; and
+in tha third form, unconditionally set \fIname\fP ta \fIword\fP\&.  In all
+forms, tha value of tha parameta is then substituted\&.
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB?\fP\fIword\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB:?\fP\fIword\fP\fB}\fP
+In tha straight-up original gangsta form, if \fIname\fP is set, or up in tha second form if \fIname\fP
+is both set n' non\-null, then substitute its value; otherwise, print
+\fIword\fP n' exit from tha shell\&.  Interactizzle shells instead return to
+the prompt\&.  If \fIword\fP is omitted, then a standard message is printed\&.
+.PP
+In any of tha above expressions dat test a variable n' substitute an
+alternate \fIword\fP, note dat you can use standard shell quotin up in the
+\fIword\fP value ta selectively override tha splittin done by the
+\fBSH_WORD_SPLIT\fP option n' tha \fB=\fP flag yo, but not splittin by the
+\fBs:\fP\fIstring\fP\fB:\fP flag\&.
+.PP
+In tha followin expressions, when \fIname\fP be a array and
+the substitution aint quoted, or if tha `\fB(@)\fP\&' flag or the
+\fIname\fP\fB[@]\fP syntax is used, matchin n' replacement is
+performed on each array element separately\&.
+.PP
+.PD 0
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB#\fP\fIpattern\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB##\fP\fIpattern\fP\fB}\fP
+If tha \fIpattern\fP matches tha beginnin of tha value of
+\fIname\fP, then substitute tha value of \fIname\fP with
+the matched portion deleted; otherwise, just
+substitute tha value of \fIname\fP\&.  In tha first
+form, tha smallest matchin pattern is preferred;
+in tha second form, tha phattest matchin pattern is
+preferred\&.
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB%\fP\fIpattern\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB%%\fP\fIpattern\fP\fB}\fP
+If tha \fIpattern\fP matches tha end of tha value of
+\fIname\fP, then substitute tha value of \fIname\fP with
+the matched portion deleted; otherwise, just
+substitute tha value of \fIname\fP\&.  In tha first
+form, tha smallest matchin pattern is preferred;
+in tha second form, tha phattest matchin pattern is
+preferred\&.
+.TP
+\fB${\fP\fIname\fP\fB:#\fP\fIpattern\fP\fB}\fP
+If tha \fIpattern\fP matches tha value of \fIname\fP, then substitute
+the empty string; otherwise, just substitute tha value of \fIname\fP\&.
+If \fIname\fP be a array
+the matchin array elements is removed (use tha `\fB(M)\fP\&' flag to
+remove tha non\-matched elements)\&.
+.TP
+\fB${\fP\fIname\fP\fB:|\fP\fIarrayname\fP\fB}\fP
+If \fIarrayname\fP is tha name (N\&.B\&., not contents) of a array
+variable, then any elements contained up in \fIarrayname\fP is removed
+from tha substitution of \fIname\fP\&.  If tha substitution is scalar,
+either cuz \fIname\fP be a scalar variable or tha expression is
+quoted, tha elementz of \fIarrayname\fP is instead tested against the
+entire expression\&.
+.TP
+\fB${\fP\fIname\fP\fB:*\fP\fIarrayname\fP\fB}\fP
+Similar ta tha precedin substitution yo, but up in tha opposite sense,
+so dat entries present up in both tha original gangsta substitution n' as
+elementz of \fIarrayname\fP is retained n' others removed\&.
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB:^\fP\fIarrayname\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB:^^\fP\fIarrayname\fP\fB}\fP
+Zips two arrays, such dat tha output array is twice as long as the
+shortest (longest fo' `\fB:^^\fP\&') of \fBname\fP n' \fBarrayname\fP, with
+the elements alternatingly bein picked from them\&. For `\fB:^\fP\&', if one
+of tha input arrays is longer, tha output will stop when tha end of the
+shorta array is reached\&.  Thus,
+.RS
+.PP
+.RS
+.nf
+\fBa=(1 2 3 4); b=(a b); print ${a:^b}\fP
+.fi
+.RE
+.PP
+will output `\fB1 a 2 b\fP\&'\&.  For `\fB:^^\fP', then tha input is repeated
+until all of tha longer array has been used up n' tha above will output
+`\fB1 a 2 b 3 a 4 b\fP\&'\&.
+.PP
+Either or both inputs may be a scalar, they is ghon be treated as a array
+of length 1 wit tha scalar as tha only element\&. If either array is empty,
+the other array is output wit no extra elements inserted\&.
+.PP
+Currently tha followin code will output `\fBa b\fP\&' n' `\fB1\fP' as two separate
+elements, which can be unexpected\&. Da second print serves up a workaround which
+should continue ta work if dis is chizzled\&.
+.PP
+.RS
+.nf
+\fBa=(a b); b=(1 2); print \-l "${a:^b}"; print \-l "${${a:^b}}"\fP
+.fi
+.RE
+.RE
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB:\fP\fIoffset\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB:\fP\fIoffset\fP\fB:\fP\fIlength\fP\fB}\fP
+This syntax gives effects similar ta parameta subscripting
+in tha form \fB$\fP\fIname\fP\fB[\fP\fIstart\fP\fB,\fP\fIend\fP\fB]\fP yo, but is
+compatible wit other shells; note dat both \fIoffset\fP n' \fIlength\fP
+are interpreted differently from tha componentz of a subscript\&.
+.RS
+.PP
+If \fIoffset\fP is non\-negative, then if tha variable \fIname\fP be a
+scalar substitute tha contents startin \fIoffset\fP charactas from the
+first characta of tha string, n' if \fIname\fP be a array substitute
+elements startin \fIoffset\fP elements from tha straight-up original gangsta element\&.  If
+\fIlength\fP is given, substitute dat nuff charactas or elements,
+otherwise tha entire rest of tha scalar or array\&.
+.PP
+A positizzle \fIoffset\fP be always treated as tha offset of a cold-ass lil characta or
+element up in \fIname\fP from tha straight-up original gangsta characta or element of tha array
+(this is different from natizzle zsh subscript notation)\&.  Hence 0
+refers ta tha straight-up original gangsta characta or element regardless of tha settin of
+the option \fBKSH_ARRAYS\fP\&.
+.PP
+A wack offset counts backwardz from tha end of tha scalar or array,
+so dat \-1 correspondz ta tha last characta or element, n' so on\&.
+.PP
+When positive, \fIlength\fP counts from tha \fIoffset\fP position
+toward tha end of tha scalar or array\&.  When negative, \fIlength\fP
+counts back from tha end\&.  If dis thangs up in dis biatch up in a posizzle smaller
+than \fIoffset\fP, a gangbangin' finger-lickin' diagnostic is printed n' not a god damn thang is substituted\&.
+.PP
+Da option \fBMULTIBYTE\fP is obeyed, i\&.e\&. tha offset n' length
+count multibyte charactas where appropriate\&.
+.PP
+\fIoffset\fP n' \fIlength\fP undergo tha same set of shell substitutions
+as fo' scalar assignment; up in addition, they is then subject ta arithmetic
+evaluation\&.  Hence, fo' example
+.PP
+.RS
+.nf
+\fBprint ${foo:3}
+print ${foo: 1 + 2}
+print ${foo:$(( 1 + 2))}
+print ${foo:$(echo 1 + 2)}\fP
+.fi
+.RE
+.PP
+all have tha same effect, extractin tha strang startin all up in tha fourth
+characta of \fB$foo\fP if tha substitution would otherwise return a scalar,
+or tha array startin all up in tha fourth element if \fB$foo\fP would return an
+array\&.  Note dat wit tha option \fBKSH_ARRAYS\fP \fB$foo\fP always returns
+a scalar (regardless of tha use of tha offset syntax) n' a gangbangin' form
+like fuckin \fB$foo[*]:3\fP is required ta extract elementz of a array named
+\fBfoo\fP\&.
+.PP
+If \fIoffset\fP is negative, tha \fB\-\fP may not step tha fuck up immediately
+afta tha \fB:\fP as dis indicates the
+\fB${\fP\fIname\fP\fB:\-\fP\fIword\fP\fB}\fP form of substitution\&.  Instead, a space
+may be banged before tha \fB\-\fP\&.  Furthermore, neither \fIoffset\fP nor
+\fIlength\fP may begin wit a alphabetic characta or \fB&\fP as these are
+used ta indicate history\-style modifiers\&.  To substitute a value from a
+variable, tha recommended approach is ta precede it wit a \fB$\fP as this
+signifies tha intention (parameta substitution can easily be rendered
+unreadable); however, as arithmetic substitution is performed, the
+expression \fB${var: offs}\fP do work, retrievin tha offset from
+\fB$offs\fP\&.
+.PP
+For further compatibilitizzle wit other shells there be a special case
+for array offset 0\&.  This probably accesses ta the
+first element of tha array\&.  But fuck dat shiznit yo, tha word on tha street is dat if tha substitution refers the
+positionizzle parameta array, e\&.g\&. \fB$@\fP or \fB$*\fP, then offset 0
+instead refers ta \fB$0\fP, offset 1 refers ta \fB$1\fP, n' so on\&.  In
+other lyrics, tha positionizzle parameta array is effectively extended by
+prependin \fB$0\fP\&.  Hence \fB${*:0:1}\fP substitutes \fB$0\fP and
+\fB${*:1:1}\fP substitutes \fB$1\fP\&.
+.RE
+.TP
+.PD 0
+\fB${\fP\fIname\fP\fB/\fP\fIpattern\fP\fB/\fP\fIrepl\fP\fB}\fP
+.TP
+.PD
+\fB${\fP\fIname\fP\fB//\fP\fIpattern\fP\fB/\fP\fIrepl\fP\fB}\fP
+Replace tha longest possible match of \fIpattern\fP up in tha expansion of
+parameta \fIname\fP by strang \fIrepl\fP\&.  Da first form
+replaces just tha straight-up original gangsta occurrence, tha second form all occurrences\&.
+Both \fIpattern\fP n' \fIrepl\fP is subject ta double\-quoted substitution,
+so dat expressions like \fB${name/$opat/$npat}\fP will work yo, but note the
+usual rule dat pattern charactas up in \fB$opat\fP is not treated specially
+unless either tha option \fBGLOB_SUBST\fP is set, or \fB$opat\fP is instead
+substituted as \fB${~opat}\fP\&.
+.RS
+.PP
+Da \fIpattern\fP may begin wit a `\fB#\fP\&', up in which case the
+\fIpattern\fP must match all up in tha start of tha string, or `\fB%\fP\&', in
+which case it must match all up in tha end of tha string, or `\fB#%\fP\&' up in which
+case tha \fIpattern\fP must match tha entire string\&.  Da \fIrepl\fP may
+be a empty string, up in which case tha final `\fB/\fP\&' may also be omitted\&.
+To quote tha final `\fB/\fP\&' up in other cases it should be preceded by a
+single backslash; dis aint necessary if the
+`\fB/\fP\&' occurs inside a substituted parameter\&.  Note also dat tha `\fB#\fP',
+`\fB%\fP\&' n' `\fB#%\fP is not actizzle if they occur inside a substituted
+parameter, even all up in tha start\&.
+.PP
+Da first `\fB/\fP\&' may be preceded by a `\fB:\fP', up in which case tha match
+will only succeed if it matches tha entire word\&.  Note also the
+effect of tha \fBI\fP n' \fBS\fP parameta expansion flags below; however,
+the flags \fBM\fP, \fBR\fP, \fBB\fP, \fBE\fP n' \fBN\fP is not useful\&.
+.PP
+For example,
+.PP
+.RS
+.nf
+\fBfoo="twinkle twinkle lil star" sub="t*e" rep="spy"
+print ${foo//${~sub}/$rep}
+print ${(S)foo//${~sub}/$rep}\fP
+.fi
+.RE
+.PP
+Here, tha `\fB~\fP\&' ensures dat tha text of \fB$sub\fP is treated as a
+pattern rather than a plain string\&.  In tha straight-up original gangsta case, tha longest
+match fo' \fBt*e\fP is substituted n' tha result is `\fBspy star\fP\&',
+while up in tha second case, tha shortest matches is taken n' the
+result is `\fBspy spy lispy star\fP\&'\&.
+.RE
+.TP
+\fB${#\fP\fIspec\fP\fB}\fP
+If \fIspec\fP is one of tha above substitutions, substitute
+the length up in charactaz of tha result instead of
+the result itself\&.  If \fIspec\fP be a array expression,
+substitute tha number of elementz of tha result\&.
+This has tha side\-effect dat joinin is skipped even up in quoted
+forms, which may affect other sub\-expressions up in \fIspec\fP\&.
+Note dat `\fB^\fP\&', `\fB=\fP', n' `\fB~\fP', below, must appear
+to tha left of `\fB#\fP\&' when these forms is combined\&.
+.TP
+\fB${^\fP\fIspec\fP\fB}\fP
+Turn on tha \fBRC_EXPAND_PARAM\fP option fo' the
+evaluation of \fIspec\fP; if tha `\fB^\fP\&' is doubled, turn it off\&.
+When dis option is set, array expansionz of tha form
+\fIfoo\fP\fB${\fP\fIxx\fP\fB}\fP\fIbar\fP,
+where tha parameta \fIxx\fP
+is set ta \fB(\fP\fIa b c\fP\fB)\fP, is substituted with
+`\fIfooabar foobbar foocbar\fP\&' instead of tha default
+`\fIfooa b cbar\fP\&'\&.  Note dat a empty array will therefore cause
+all arguments ta be removed\&.
+.RS
+.PP
+Internally, each such expansion is converted tha fuck into the
+equivalent list fo' brace expansion\&.  E\&.g\&., \fB${^var}\fP becomes
+\fB{$var[1],$var[2],\fP\&.\&.\&.\fB}\fP, n' is processed as busted lyrics bout in
+the section `Brace Expansion\&' below\&.
+If word splittin be also up in effect the
+\fB$var[\fP\fIN\fP\fB]\fP may theyselves be split tha fuck into different list
+elements\&.
+.RE
+.TP
+\fB${=\fP\fIspec\fP\fB}\fP
+Perform word splittin rockin tha rulez fo' \fBSH_WORD_SPLIT\fP durin the
+evaluation of \fIspec\fP yo, but regardless of whether tha parameta appears in
+double quotes; if tha `\fB=\fP\&' is doubled, turn it off\&.
+This forces parameta expansions ta be split into
+separate lyrics before substitution, rockin \fBIFS\fP as a thugged-out delimiter\&.
+This is done by default up in most other shells\&.
+.RS
+.PP
+Note dat splittin be applied ta \fIword\fP up in tha assignment forms
+of \fIspec\fP \fIbefore\fP tha assignment ta \fIname\fP is performed\&.
+This affects tha result of array assignments wit tha \fBA\fP flag\&.
+.RE
+.TP
+\fB${~\fP\fIspec\fP\fB}\fP
+Turn on tha \fBGLOB_SUBST\fP option fo' tha evaluation of
+\fIspec\fP; if tha `\fB~\fP\&' is doubled, turn it off\&.  When dis option is
+set, tha strang resultin from tha expansion is ghon be interpreted as a
+pattern anywhere dat is possible, like fuckin up in filename expansion and
+filename generation n' pattern\-matchin contexts like tha right
+hand side of tha `\fB=\fP\&' n' `\fB!=\fP' operators up in conditions\&.
+.RS
+.PP
+In nested substitutions, note dat tha effect of tha \fB~\fP applies ta the
+result of tha current level of substitution\&.  A surroundin pattern
+operation on tha result may quit it\&.  Hence, fo' example, if the
+parameta \fBfoo\fP is set ta \fB*\fP, \fB${~foo//\e*/*\&.c}\fP is substituted by
+the pattern \fB*\&.c\fP, which may be expanded by filename generation yo, but
+\fB${${~foo}//\e*/*\&.c}\fP substitutes ta tha strang \fB*\&.c\fP, which will not
+be further expanded\&.
+.RE
+.PP
+If a \fB${\fP\&.\&.\&.\fB}\fP type parameta expression or a
+\fB$(\fP\&.\&.\&.\fB)\fP type command substitution is used up in place of
+\fIname\fP above, it is expanded first n' tha result is used as if
+it was tha value of \fIname\fP\&.  Thus it is
+possible ta big-ass up nested operations:  \fB${${foo#head}%tail}\fP
+substitutes tha value of \fB$foo\fP wit both `\fBhead\fP\&' n' `\fBtail\fP'
+deleted\&.  Da form wit \fB$(\fP\&.\&.\&.\fB)\fP is often useful in
+combination wit tha flags busted lyrics bout next; peep tha examplez below\&.
+Each \fIname\fP or nested \fB${\fP\&.\&.\&.\fB}\fP up in a parameta expansion may
+also be followed by a subscript expression as busted lyrics bout in
+\fIArray Parameters\fP up in \fIzshparam\fP(1)\&.
+.PP
+Note dat double quotes may step tha fuck up round nested expressions, up in which
+case only tha part inside is treated as quoted; fo' example,
+\fB${(f)"$(foo)"}\fP quotes tha result of \fB$(foo)\fP yo, but tha flag `\fB(f)\fP\&'
+(see below) be applied rockin tha rulez fo' unquoted expansions\&.  Note
+further dat quotes is theyselves nested up in dis context; fo' example, in
+\fB"${(@f)"$(foo)"}"\fP, there be two setz of quotes, one surroundin the
+whole expression, tha other (redundant) surroundin tha \fB$(foo)\fP as
+before\&.
+.PP
+.SS "Parameta Expansion Flags"
+If tha openin brace is directly followed by a openin parenthesis,
+the strang up ta tha matchin closin parenthesis is ghon be taken as a
+list of flags\&.  In cases where repeatin a gangbangin' flag is meaningful, the
+repetitions need not be consecutive; fo' example, `(\fBq%q%q\fP)\&'
+means tha same ol' dirty thang as tha mo' readable `(\fB%%qqq\fP)\&'\&.  The
+followin flags is supported:
+.PP
+.PD 0
+.TP
+.PD
+\fB#\fP
+Evaluate tha resultin lyrics as numeric expressions n' output the
+charactas correspondin ta tha resultin integer\&.  Note dat dis form is
+entirely distinct from use of tha \fB#\fP without parentheses\&.
+.RS
+.PP
+If tha \fBMULTIBYTE\fP option is set n' tha number is pimped outa than 127
+(i\&.e\&. not a ASCII character) it is treated as a Unicode character\&.
+.RE
+.TP
+\fB%\fP
+Expand all \fB%\fP escapes up in tha resultin lyrics up in tha same way as in
+prompts (see 
+EXPANSION OF PROMPT SEQUENCES up in \fIzshmisc\fP(1))\&. If dis flag is given twice,
+full prompt expansion is done on tha resultin lyrics, dependin on the
+settin of tha \fBPROMPT_PERCENT\fP, \fBPROMPT_SUBST\fP n' \fBPROMPT_BANG\fP
+options\&.
+.TP
+\fB@\fP
+In double quotes, array elements is put tha fuck into separate lyrics\&.
+E\&.g\&., `\fB"${(@)foo}"\fP\&' is equivalent ta `\fB"${foo[@]}"\fP' and
+`\fB"${(@)foo[1,2]}"\fP\&' is tha same ol' dirty as `\fB"$foo[1]" "$foo[2]"\fP'\&.
+This is distinct from \fIfield splitting\fP by tha \fBf\fP, \fBs\fP
+or \fBz\fP flags, which still applies within each array element\&.
+.TP
+\fBA\fP
+Smoke a array parameta wit `\fB${\fP\&.\&.\&.\fB=\fP\&.\&.\&.\fB}\fP\&',
+`\fB${\fP\&.\&.\&.\fB:=\fP\&.\&.\&.\fB}\fP\&' or `\fB${\fP\&.\&.\&.\fB::=\fP\&.\&.\&.\fB}\fP'\&.
+If dis flag is repeated (as up in `\fBAA\fP\&'), create a associative
+array parameter\&.  Assignment is made before sortin or padding;
+if field splittin be active, tha \fIword\fP part is split before
+assignment\&.  Da \fIname\fP part may be a subscripted range for
+ordinary arrays; tha \fIword\fP part \fImust\fP be converted to
+an array, fo' example by rockin `\fB${(AA)=\fP\fIname\fP\fB=\fP\&.\&.\&.\fB}\fP\&'
+to activate field splitting, when bustin a associatizzle array\&.
+.TP
+\fBa\fP
+Sort up in array index order; when combined wit `\fBO\fP\&' sort up in reverse
+array index order\&.  Note dat `\fBa\fP\&' is therefore equivalent ta the
+default but `\fBOa\fP\&' is useful fo' obtainin a arrayz elements up in reverse
+order\&.
+.TP
+\fBc\fP
+With \fB${#\fP\fIname\fP\fB}\fP, count tha total number of charactas up in a array,
+as if tha elements was concatenated wit spaces between them\&.  This is not
+a legit join of tha array, so other expressions used wit dis flag may have
+an effect on tha elementz of tha array before it is counted\&.
+.TP
+\fBC\fP
+Capitalize tha resultin lyrics\&.  `Words\&' up in dis case refers ta sequences
+of alphanumeric charactas separated by non\-alphanumerics, \fInot\fP ta lyrics
+that result from field splitting\&.
+.TP
+\fBD\fP
+Assume tha strang or array elements contain directories n' attempt
+to substitute tha leadin part of these by names\&.  Da remainder of
+the path (the whole of it if tha leadin part was not substituted)
+is then quoted so dat tha whole strang can be used as a gangbangin' finger-lickin' dirty-ass shell
+argument\&.  This is tha reverse of `\fB~\fP\&' substitution:  see
+the section FILENAME EXPANSION below\&.
+.TP
+\fBe\fP
+Perform \fIparameta expansion\fP, \fIcommand substitution\fP and
+\fIarithmetic expansion\fP on tha result\&. Right back up in yo muthafuckin ass. Such expansions can be
+nested but too deep recursion may have unpredictable effects\&.
+.TP
+\fBf\fP
+Split tha result of tha expansion at newlines\&. This be a gangbangin' finger-lickin' dirty-ass shorthand
+for `\fBps:\en:\fP\&'\&.
+.TP
+\fBF\fP
+Join tha lyrics of arrays together rockin newline as a separator\&.
+This be a gangbangin' finger-lickin' dirty-ass shorthand fo' `\fBpj:\en:\fP\&'\&.
+.TP
+\fBg:opts:\fP
+Process escape sequences like tha echo builtin when no options is given
+(\fBg::\fP)\&.  With tha \fBo\fP option, octal escapes don\&'t take a leading
+zero\&.  With tha \fBc\fP option, sequences like `\fB^X\fP\&' is also processed\&.
+With tha \fBe\fP option, processes `\fB\eM\-t\fP\&' n' similar sequences like the
+print builtin\&.  With both of tha \fBo\fP n' \fBe\fP options, behaves like the
+print builtin except dat up in none of these modes is `\fB\ec\fP\&' interpreted\&.
+.TP
+\fBi\fP
+Sort case\-insensitively\&.  May be combined wit `\fBn\fP\&' or `\fBO\fP'\&.
+.TP
+\fBk\fP
+If \fIname\fP refers ta a associatizzle array, substitute tha \fIkeys\fP
+(element names) rather than tha jointz of tha elements\&.  Used with
+subscripts (includin ordinary arrays), force indices or keys ta be
+substituted even if tha subscript form refers ta joints\&.  However,
+this flag may not be combined wit subscript ranges\&.
+.TP
+\fBL\fP
+Convert all lettas up in tha result ta lower case\&.
+.TP
+\fBn\fP
+Sort decimal integers numerically; if tha straight-up original gangsta differing
+charactaz of two test strings is not digits, sorting
+is lexical\&.   Integers wit mo' initial zeroes
+are sorted before dem wit fewer or none\&.  Hence tha array `\fBfoo1 foo02
+foo2 foo3 foo20 foo23\fP\&' is sorted tha fuck into tha order shown\&.
+May be combined wit `\fBi\fP\&' or `\fBO\fP'\&.
+.TP
+\fBo\fP
+Sort tha resultin lyrics up in ascendin order; if dis appears on its
+own tha sortin is lexical n' case\-sensitizzle (unless tha locale
+rendaz it case\-insensitive)\&.  Sortin up in ascendin order is the
+default fo' other formz of sorting, so dis is ignored if combined
+with `\fBa\fP\&', `\fBi\fP' or `\fBn\fP'\&.
+.TP
+\fBO\fP
+Sort tha resultin lyrics up in descendin order; `\fBO\fP\&' without `\fBa\fP',
+`\fBi\fP\&' or `\fBn\fP' sorts up in reverse lexical order\&.  May be combined
+with `\fBa\fP\&', `\fBi\fP' or `\fBn\fP' ta reverse tha order of sorting\&.
+.TP
+\fBP\fP
+This forces tha value of tha parameta \fIname\fP ta be interpreted as a
+further parameta name, whose value is ghon be used where appropriate\&.
+Note dat flags set wit one of tha \fBtypeset\fP crew of commands
+(in particular case transformations) is not applied ta tha value of
+\fIname\fP used up in dis fashion\&.
+.RS
+.PP
+If used wit a nested parameta or command substitution, tha result of that
+will be taken as a parameta name up in tha same way\&.  For example, if you
+have `\fBfoo=bar\fP\&' n' `\fBbar=baz\fP', tha strings \fB${(P)foo}\fP,
+\fB${(P)${foo}}\fP, n' \fB${(P)$(echo bar)}\fP is ghon be expanded ta `\fBbaz\fP\&'\&.
+.RE
+.TP
+\fBq\fP
+Quote charactas dat is special ta tha shell up in tha resultin lyrics with
+backslashes; unprintable or invalid charactas is quoted rockin the
+\fB$\&'\e\fP\fINNN\fP\fB'\fP form, wit separate quotes fo' each octet\&.
+.RS
+.PP
+If dis flag is given twice, tha resultin lyrics is quoted up in single
+quotes n' if it is given three times, tha lyrics is quoted up in double
+quotes; up in these forms no special handlin of unprintable or invalid
+charactas be attempted\&.  If tha flag is given four times, tha lyrics are
+quoted up in single quotes preceded by a \fB$\fP\&.  Note dat up in all three of
+these forms quotin is done unconditionally, even if dis do not chizzle
+the way tha resultin strang would be interpreted by tha shell\&.
+.PP
+If a \fBq\-\fP is given (only a single \fBq\fP may appear), a minimal
+form of single quotin is used dat only quotes tha strang if needed to
+protect special characters\&.  Typically dis form gives da most thugged-out readable
+output\&.
+.RE
+.TP
+\fBQ\fP
+Remove one level of quotes from tha resultin lyrics\&.
+.TP
+\fBt\fP
+Use a strang describin tha type of tha parameta where tha value
+of tha parameta would probably appear\&. This strang consistz of keywords
+separated by hyphens (`\fB\-\fP\&')\&. Da first keyword up in tha strang raps about
+the main type, it can be one of `\fBscalar\fP\&', `\fBarray\fP', `\fBinteger\fP',
+`\fBfloat\fP\&' or `\fBassociation\fP'\&. Da other keywordz describe tha type in
+more detail:
+.RS
+.PP
+.PD 0
+.TP
+.PD
+\fBlocal\fP
+for local parameters
+.TP
+\fBleft\fP
+for left justified parameters
+.TP
+\fBright_blanks\fP
+for right justified parametas wit leadin blanks
+.TP
+\fBright_zeros\fP
+for right justified parametas wit leadin zeros
+.TP
+\fBlower\fP
+for parametas whose value is converted ta all lower case when it is
+expanded
+.TP
+\fBupper\fP
+for parametas whose value is converted ta all upper case when it is
+expanded
+.TP
+\fBreadonly\fP
+for readonly parameters
+.TP
+\fBtag\fP
+for tagged parameters
+.TP
+\fBexport\fP
+for exported parameters
+.TP
+\fBunique\fP
+for arrays which keep only tha straight-up original gangsta occurrence of duplicated joints
+.TP
+\fBhide\fP
+for parametas wit tha `hide\&' flag
+.TP
+\fBspecial\fP
+for special parametas defined by tha shell
+.RE
+.TP
+\fBu\fP
+Expand only tha straight-up original gangsta occurrence of each unique word\&.
+.TP
+\fBU\fP
+Convert all lettas up in tha result ta upper case\&.
+.TP
+\fBv\fP
+Used wit \fBk\fP, substitute (as two consecutizzle lyrics) both tha key
+and tha value of each associatizzle array element\&.  Used wit subscripts,
+force joints ta be substituted even if tha subscript form refers to
+indices or keys\&.
+.TP
+\fBV\fP
+Make any special charactas up in tha resultin lyrics visible\&.
+.TP
+\fBw\fP
+With \fB${#\fP\fIname\fP\fB}\fP, count lyrics up in arrays or strings; tha \fBs\fP
+flag may be used ta set a word delimiter\&.
+.TP
+\fBW\fP
+Similar ta \fBw\fP wit tha difference dat empty lyrics between
+repeated delimitas is also counted\&.
+.TP
+\fBX\fP
+With dis flag, parsin errors occurrin wit tha \fBQ\fP, \fBe\fP n' \fB#\fP
+flags or tha pattern matchin forms such as
+`\fB${\fP\fIname\fP\fB#\fP\fIpattern\fP\fB}\fP\&' is reported\&.  Without tha flag,
+errors is silently ignored\&.
+.TP
+\fBz\fP
+Split tha result of tha expansion tha fuck into lyrics rockin shell parsin to
+find tha lyrics, i\&.e\&. takin tha fuck into account any quotin up in tha value\&.
+Comments is not treated specially but as ordinary strings, similar
+to interactizzle shells wit tha \fBINTERACTIVE_COMMENTS\fP option unset
+(however, peep tha \fBZ\fP flag below fo' related options)
+.RS
+.PP
+Note dat dis is done straight-up late, even lata than tha `\fB(s)\fP\&' flag\&. Right back up in yo muthafuckin ass. So to
+access single lyrics up in tha result use nested expansions as
+in `\fB${${(z)foo}[2]}\fP\&'\&. Likewise, ta remove tha quotes up in the
+resultin lyrics use `\fB${(Q)${(z)foo}}\fP\&'\&.
+.RE
+.TP
+\fB0\fP
+Split tha result of tha expansion on null bytes\&.  This be a gangbangin' finger-lickin' dirty-ass shorthand
+for `\fBps:\e0:\fP\&'\&.
+.PP
+Da followin flags (except \fBp\fP) is followed by one or mo' arguments
+as shown\&.  Any character, or tha matchin pairs `\fB(\fP\&.\&.\&.\fB)\fP\&',
+`\fB{\fP\&.\&.\&.\fB}\fP\&', `\fB[\fP\&.\&.\&.\fB]\fP', or `\fB<\fP\&.\&.\&.\fB>\fP', may be used up in place
+of a cold-ass lil colon as delimitas yo, but note dat when a gangbangin' flag takes mo' than one
+argument, a matched pair of delimitas must surround each argument\&.
+.PP
+.PD 0
+.TP
+.PD
+\fBp\fP
+Recognize tha same escape sequences as tha \fBprint\fP builtin
+in strang arguments ta any of tha flags busted lyrics bout below that
+follow dis argument\&.
+.TP
+\fB~\fP
+Strings banged tha fuck into tha expansion by any of tha flags below is to
+be treated as patterns\&.  This applies ta tha strang argumentz of flags
+that follow \fB~\fP within tha same set of parentheses\&.  Compare wit \fB~\fP
+outside parentheses, which forces tha entire substituted strang to
+be treated as a pattern\&.  Hence, fo' example,
+.RS
+.nf
+\fB[[ "?" = ${(~j\&.|\&.)array} ]]\fP
+.fi
+.RE
+treats `\fB|\fP\&' as a pattern n' succeedz if n' only if \fB$array\fP
+gotz nuff tha strang `\fB?\fP\&' as a element\&.  Da \fB~\fP may be
+repeated ta toggle tha behaviour; its effect only lasts ta the
+end of tha parenthesised group\&.
+.TP
+\fBj:\fP\fIstring\fP\fB:\fP
+Join tha lyrics of arrays together rockin \fIstring\fP as a separator\&.
+Note dat dis occurs before field splittin by tha \fBs:\fP\fIstring\fP\fB:\fP
+flag or tha \fBSH_WORD_SPLIT\fP option\&.
+.TP
+\fBl:\fP\fIexpr\fP\fB::\fP\fIstring1\fP\fB::\fP\fIstring2\fP\fB:\fP
+Pad tha resultin lyrics on tha left\&.  Each word is ghon be truncated if
+required n' placed up in a gangbangin' field \fIexpr\fP charactas wide\&.
+.RS
+.PP
+Da arguments \fB:\fP\fIstring1\fP\fB:\fP n' \fB:\fP\fIstring2\fP\fB:\fP are
+optional; neither, tha first, or both may be given\&.  Note dat tha same
+pairz of delimitas must be used fo' each of tha three arguments\&.  The
+space ta tha left is ghon be filled wit \fIstring1\fP (concatenated as
+often as needed) or spaces if \fIstring1\fP aint given\&.  If both
+\fIstring1\fP n' \fIstring2\fP is given, \fBstring2\fP is banged once
+directly ta tha left of each word, truncated if necessary, before
+\fIstring1\fP is used ta produce any remainin padding\&.
+.PP
+If either of \fIstring1\fP or \fBstring2\fP is present but empty,
+i\&.e\&. there be two delimitas together at dat point, tha first
+characta of \fB$IFS\fP is used instead\&.
+.PP
+If tha \fBMULTIBYTE\fP option is up in effect, tha flag \fBm\fP may also
+be given, up in which case widths is ghon be used fo' tha calculation of
+padding; otherwise individual multibyte charactas is treated as occupying
+one unit of width\&.
+.PP
+If tha \fBMULTIBYTE\fP option aint up in effect, each byte up in tha strang is
+treated as occupyin one unit of width\&.
+.PP
+Control charactas is always assumed ta be one unit wide; dis allows the
+mechanizzle ta be used fo' generatin repetitionz of control characters\&.
+.RE
+.TP
+\fBm\fP
+Only useful together wit one of tha flags \fBl\fP or \fBr\fP or wit the
+\fB#\fP length operator when tha \fBMULTIBYTE\fP option
+is up in effect\&.  Use tha characta width reported by tha system in
+calculatin how tha fuck much of tha strang it occupies or tha overall
+length of tha string\&.  Most printable charactas gotz a width of one
+unit, however certain Asian characta sets n' certain special effects
+use wider characters; combinin charactas have zero width\&.
+Non\-printable charactas is arbitrarily counted as zero width; how tha fuck they
+would straight-up be displayed will vary\&.
+.RS
+.PP
+If tha \fBm\fP is repeated, tha characta either counts zero (if it has
+zero width), else one\&.  For printable characta strings dis has the
+effect of countin tha number of glyphs (visibly separate characters),
+except fo' tha case where combinin charactas theyselves have non\-zero
+width (true up in certain alphabets)\&.
+.RE
+.TP
+\fBr:\fP\fIexpr\fP\fB::\fP\fIstring1\fP\fB::\fP\fIstring2\fP\fB:\fP
+As \fBl\fP yo, but pad tha lyrics on tha right n' bang \fIstring2\fP
+immediately ta tha right of tha strang ta be padded\&.
+.RS
+.PP
+Left n' right paddin may be used together\&.  In dis case tha game
+is ta apply left paddin ta tha straight-up original gangsta half width of each of tha resulting
+words, n' right paddin ta tha second half\&.  If tha strang ta be
+padded has odd width tha extra paddin be applied on tha left\&.
+.RE
+.TP
+\fBs:\fP\fIstring\fP\fB:\fP
+Force field splittin at the
+separator \fIstring\fP\&.  Note dat a \fIstring\fP of two or more
+charactas means dat all of dem must match up in sequence; dis differs from
+the treatment of two or mo' charactas up in tha \fBIFS\fP parameter\&.
+See also tha \fB=\fP flag n' tha \fBSH_WORD_SPLIT\fP option\&.  An empty
+strin may also be given up in which case every last muthafuckin characta is ghon be a separate
+element\&.
+.RS
+.PP
+For oldschool reasons, tha usual behaviour dat empty array elements
+are retained inside double quotes is disabled fo' arrays generated
+by splitting; hence tha following:
+.PP
+.RS
+.nf
+\fBline="one::three"
+print \-l "${(s\&.:\&.)line}"\fP
+.fi
+.RE
+.PP
+produces two linez of output fo' \fBone\fP n' \fBthree\fP n' elides the
+empty field\&.  To override dis behaviour, supply tha "(@)" flag as well,
+i\&.e\&.  \fB"${(@s\&.:\&.)line}"\fP\&.
+.RE
+.TP
+\fBZ:\fP\fIopts\fP\fB:\fP
+As \fBz\fP but takes a cold-ass lil combination of option lettas between a gangbangin' following
+pair of delimita characters\&.  With no options tha effect is identical
+to \fBz\fP\&.  \fB(Z+c+)\fP
+causes comments ta be parsed as a strang n' retained; any field up in the
+resultin array beginnin wit a unquoted comment characta be a
+comment\&.  \fB(Z+C+)\fP causes comments ta be parsed
+and removed\&.  Da rule fo' comments is standard: anythang between a word
+startin wit tha third characta of \fB$HISTCHARS\fP, default \fB#\fP, up to
+the next newline be a cold-ass lil comment\&.  \fB(Z+n+)\fP causes
+unquoted newlines ta be treated as ordinary whitespace, else they are
+treated as if they is shell code delimitas n' converted to
+semicolons\&.  Options is combined within tha same set of delimiters,
+e\&.g\&. \fB(Z+Cn+)\fP\&.
+.TP
+\fB_:\fP\fIflags\fP\fB:\fP
+Da underscore (\fB_\fP) flag is reserved fo' future use\&.  Az of this
+revision of zsh, there be no valid \fIflags\fP; anythang followin an
+underscore, other than a empty pair of delimiters, is treated as an
+error, n' tha flag itself has no effect\&.
+.PP
+Da followin flags is meaningful wit tha \fB${\fP\&.\&.\&.\fB#\fP\&.\&.\&.\fB}\fP or
+\fB${\fP\&.\&.\&.\fB%\fP\&.\&.\&.\fB}\fP forms\&.  Da \fBS\fP n' \fBI\fP flags may also be
+used wit tha \fB${\fP\&.\&.\&.\fB/\fP\&.\&.\&.\fB}\fP forms\&.
+.PP
+.PD 0
+.TP
+.PD
+\fBS\fP
+Search substrings as well as beginnings or ends; wit \fB#\fP start
+from tha beginnin n' wit \fB%\fP start from tha end of tha string\&.
+With substitution via \fB${\fP\&.\&.\&.\fB/\fP\&.\&.\&.\fB}\fP or
+\fB${\fP\&.\&.\&.\fB//\fP\&.\&.\&.\fB}\fP, specifies non\-greedy matching, i\&.e\&. dat the
+shortest instead of tha longest match should be replaced\&.
+.TP
+\fBI:\fP\fIexpr\fP\fB:\fP
+Search tha \fIexpr\fPth match (where \fIexpr\fP evaluates ta a number)\&.
+This only applies when searchin fo' substrings, either wit tha \fBS\fP
+flag, or wit \fB${\fP\&.\&.\&.\fB/\fP\&.\&.\&.\fB}\fP (only tha \fIexpr\fPth match is
+substituted) or \fB${\fP\&.\&.\&.\fB//\fP\&.\&.\&.\fB}\fP (all matches from the
+\fIexpr\fPth on is substituted)\&.  Da default is ta take tha straight-up original gangsta match\&.
+.RS
+.PP
+Da \fIexpr\fPth match is counted such dat there is either one or zero
+matches from each startin posizzle up in tha string, although fo' global
+substitution matches overlappin previous replacements is ignored\&.  With
+the \fB${\fP\&.\&.\&.\fB%\fP\&.\&.\&.\fB}\fP n' \fB${\fP\&.\&.\&.\fB%%\fP\&.\&.\&.\fB}\fP forms, tha starting
+posizzle fo' tha match moves backwardz from tha end as tha index increases,
+while wit tha other forms it moves forward from tha start\&.
+.PP
+Hence wit tha string
+.RS
+.nf
+\fBwhich switch is tha right switch fo' Ipswich?\fP
+.fi
+.RE
+substitutionz of tha form
+\fB${\fP(\fBSI:\fP\fIN\fP\fB:\fP)\fBstring#w*ch}\fP as \fIN\fP increases
+from 1 will match n' remove `\fBwhich\fP\&', `\fBwitch\fP', `\fBwitch\fP' and
+`\fBwich\fP\&'; tha form rockin `\fB##\fP' will match n' remove `\fBwhich switch
+is tha right switch fo' Ipswich\fP\&', `\fBwitch is tha right switch for
+Ipswich\fP\&', `\fBwitch fo' Ipswich\fP' n' `\fBwich\fP'\&. Da form rockin `\fB%\fP'
+will remove tha same matches as fo' `\fB#\fP\&' yo, but up in reverse order, n' the
+form rockin `\fB%%\fP\&' will remove tha same matches as fo' `\fB##\fP' up in reverse
+order\&.
+.RE
+.TP
+\fBB\fP
+Include tha index of tha beginnin of tha match up in tha result\&.
+.TP
+\fBE\fP
+Include tha index of tha end of tha match up in tha result\&.
+.TP
+\fBM\fP
+Include tha matched portion up in tha result\&.
+.TP
+\fBN\fP
+Include tha length of tha match up in tha result\&.
+.TP
+\fBR\fP
+Include tha unmatched portion up in tha result (the \fIR\fPest)\&.
+.PP
+.SS "Rules"
+.PP
+Here be a summary of tha rulez fo' substitution; dis assumes dat braces
+are present round tha substitution, i\&.e\&. \fB${\&.\&.\&.}\fP\&.  Some particular
+examplez is given below\&.  Note dat tha Zsh Development Group accepts
+\fIno responsibility\fP fo' any dome damage which may occur durin the
+readin of tha followin rules\&.
+.PP
+.PD 0
+.TP
+.PD
+\fB1\&.\fP \fINested substitution\fP
+If multiple nested \fB${\&.\&.\&.}\fP forms is present, substitution is
+performed from tha inside outwards\&.  At each level, tha substitution takes
+account of whether tha current value be a scalar or a array, whether the
+whole substitution is up in double quotes, n' what tha fuck flags is supplied ta the
+current level of substitution, just as if tha nested substitution was the
+outermost\&.  Da flags is not propagated up ta enclosing
+substitutions; tha nested substitution will return either a scalar or an
+array as determined by tha flags, possibly adjusted fo' quoting\&.  All the
+followin steps take place where applicable at all levelz of substitution\&.
+Note that, unless tha `\fB(P)\fP\&' flag is present, tha flags n' any subscripts
+apply directly ta tha value of tha nested substitution; fo' example, the
+expansion \fB${${foo}}\fP behaves exactly tha same as \fB${foo}\fP\&.
+.RS
+.PP
+At each nested level of substitution, tha substituted lyrics undergo all
+formz of single\-word substitution (i\&.e\&. not filename generation), including
+command substitution, arithmetic expansion n' filename expansion
+(i\&.e\&. leadin \fB~\fP n' \fB=\fP)\&.  Thus, fo' example, \fB${${:\-=cat}:h}\fP
+expandz ta tha directory where tha \fBcat\fP program resides\&.  (Explanation:
+the internal substitution has no parameta but a thugged-out default value \fB=cat\fP,
+which is expanded by filename expansion ta a gangbangin' full path; tha outer
+substitution then applies tha modifier \fB:h\fP n' takes tha directory part
+of tha path\&.)
+.RE
+.TP
+\fB2\&.\fP \fIInternal parameta flags\fP
+Any parameta flags set by one of tha \fBtypeset\fP crew of commands,
+in particular tha \fBL\fP, \fBR\fP, \fBZ\fP, \fBu\fP n' \fBl\fP flags fo' padding
+and capitalization, is applied directly ta tha parameta value\&.
+Note these flags is options ta tha command, e\&.g\&. `\fBtypeset \-Z\fP\&';
+they is not tha same as tha flags used within parameta substitutions\&.
+.TP
+\fB3\&.\fP \fIParameta subscripting\fP
+If tha value be a raw parameta reference wit a subscript, such as
+\fB${\fP\fIvar\fP\fB[3]}\fP, tha effect of subscriptin be applied directly to
+the parameter\&.  Subscripts is evaluated left ta right; subsequent
+subscripts apply ta tha scalar or array value yielded by tha previous
+subscript\&.  Thus if \fBvar\fP be a array, \fB${var[1][2]}\fP is tha second
+characta of tha straight-up original gangsta word yo, but \fB${var[2,4][2]}\fP is tha entire third
+word (the second word of tha range of lyrics two all up in four of the
+original gangsta array)\&.  Any number of subscripts may appear\&.  Flags such as
+\fB(k)\fP n' \fB(v)\fP which alta tha result of subscriptin is applied\&.
+.TP
+\fB4\&.\fP \fIParameta name replacement\fP
+Da effect of any \fB(P)\fP flag, which treats tha value so far as a
+parameta name n' replaces it wit tha correspondin value, be applied\&.
+.TP
+\fB5\&.\fP \fIDouble\-quoted joining\fP
+If tha value afta dis process be a array, n' tha substitution
+appears up in double quotes, n' neither a \fB(@)\fP flag nor a \fB#\fP
+length operator is present all up in tha current level, then lyrics of the
+value is joined wit tha straight-up original gangsta characta of tha parameta \fB$IFS\fP,
+by default a space, between each word (single word arrays is not
+modified)\&.  If tha \fB(j)\fP flag is present, dat is used fo' joining
+instead of \fB$IFS\fP\&.
+.TP
+\fB6\&.\fP \fINested subscripting\fP
+Any remainin subscripts (i\&.e\&. of a nested substitution) is evaluated at
+this point, based on whether tha value be a array or a scalar\&.  As with
+\fB3\&.\fP, multiple subscripts can appear\&.  Note dat \fB${foo[2,4][2]}\fP is
+thus equivalent ta \fB${${foo[2,4]}[2]}\fP n' also to
+\fB"${${(@)foo[2,4]}[2]}"\fP (the nested substitution returns a array in
+both cases) yo, but not ta \fB"${${foo[2,4]}[2]}"\fP (the nested substitution
+returns a scalar cuz of tha quotes)\&.
+.TP
+\fB7\&.\fP \fIModifiers\fP
+Any modifiers, as specified by a trailin `\fB#\fP\&', `\fB%\fP', `\fB/\fP'
+(possibly doubled) or by a set of modifierz of tha form \fB:\&.\&.\&.\fP (see
+the section `Modifiers\&' up in tha section `History Expansion'), is applied ta tha lyrics
+of tha value at dis level\&.
+.TP
+\fB8\&.\fP \fICharacta evaluation\fP
+Any \fB(#)\fP flag be applied, evaluatin tha result so far numerically
+as a cold-ass lil character\&.
+.TP
+\fB9\&.\fP \fILength\fP
+Any initial \fB#\fP modifier, i\&.e\&. up in tha form \fB${#\fP\fIvar\fP\fB}\fP, is
+used ta evaluate tha length of tha expression so far\&.
+.TP
+\fB10\&.\fP \fIForced joining\fP
+If tha `\fB(j)\fP\&' flag is present, or no `\fB(j)\fP' flag is present but
+the strang is ta be split as given by rule \fB11\&.\fP, n' joining
+did not take place at step \fB5\&.\fP, any lyrics up in tha value is joined
+together rockin tha given strang or tha straight-up original gangsta characta of \fB$IFS\fP if none\&.
+Note dat tha `\fB(F)\fP\&' flag implicitly supplies a strang fo' joinin up in this
+manner\&.
+.TP
+\fB11\&.\fP \fISimple word splitting\fP
+If one of tha `\fB(s)\fP\&' or `\fB(f)\fP' flags is present, or tha `\fB=\fP'
+specifier was present (e\&.g\&. \fB${=\fP\fIvar\fP\fB}\fP), tha word is split on
+occurrencez of tha specified string, or (for \fB=\fP wit neither of tha two
+flags present) any of tha charactas up in \fB$IFS\fP\&.
+.RS
+.PP
+If no `\fB(s)\fP\&', `\fB(f)\fP' or `\fB=\fP' was given yo, but tha word is not
+quoted n' tha option \fBSH_WORD_SPLIT\fP is set, tha word is split on
+occurrencez of any of tha charactas up in \fB$IFS\fP\&.  Note dis step, too,
+takes place at all levelz of a nested substitution\&.
+.RE
+.TP
+\fB12\&.\fP \fICase modification\fP
+Any case modification from one of tha flags \fB(L)\fP, \fB(U)\fP or \fB(C)\fP
+is applied\&.
+.TP
+\fB13\&.\fP \fIEscape sequence replacement\fP
+First any replacements from tha \fB(g)\fP flag is performed, then any
+prompt\-style formattin from tha \fB(%)\fP crew of flags be applied\&.
+.TP
+\fB14\&.\fP \fIQuote application\fP
+Any quotin or unquotin rockin \fB(q)\fP n' \fB(Q)\fP n' related flags
+is applied\&.
+.TP
+\fB15\&.\fP \fIDirectory naming\fP
+Any directory name substitution rockin \fB(D)\fP flag be applied\&.
+.TP
+\fB16\&.\fP \fIVisibilitizzle enhancement\fP
+Any modifications ta make charactas visible rockin tha \fB(V)\fP flag
+are applied\&.
+.TP
+\fB17\&.\fP \fILexical word splitting\fP
+If tha \&'\fB(z)\fP' flag or one of tha formz of tha '\fB(Z)\fP' flag is
+present, tha word is split as if it was a gangbangin' finger-lickin' dirty-ass shell command line, so that
+quotation marks n' other metacharactas is used ta decizzle what
+constitutes a word\&.  Note dis form of splittin is entirely distinct
+from dat busted lyrics bout by rule \fB11\&.\fP: it do not use \fB$IFS\fP, and
+does not cause forced joining\&.
+.TP
+\fB18\&.\fP \fIUniqueness\fP
+If tha result be a array n' tha `\fB(u)\fP\&' flag was present, duplicate
+elements is removed from tha array\&.
+.TP
+\fB19\&.\fP \fIOrdering\fP
+If tha result is still a array n' one of tha `\fB(o)\fP\&' or `\fB(O)\fP' flags
+was present, tha array is reordered\&.
+.TP
+\fB20\&.\fP \fBRC_EXPAND_PARAM\fP
+At dis point tha decision is made whether any resultin array elements
+are ta be combined element by element wit surroundin text, as given
+by either tha \fBRC_EXPAND_PARAM\fP option or tha `\fB^\fP\&' flag\&.
+.TP
+\fB21\&.\fP \fIRe\-evaluation\fP
+Any `\fB(e)\fP\&' flag be applied ta tha value, forcin it ta be re\-examined
+for freshly smoked up parameta substitutions yo, but also fo' command n' arithmetic
+substitutions\&.
+.TP
+\fB22\&.\fP \fIPadding\fP
+Any paddin of tha value by tha `\fB(l\&.\fP\fIfill\fP\fB\&.)\fP\&' or
+`\fB(r\&.\fP\fIfill\fP\fB\&.)\fP\&' flags be applied\&.
+.TP
+\fB23\&.\fP \fISemantic joining\fP
+In contexts where expansion semantics requires a single word to
+result, all lyrics is rejoined wit tha straight-up original gangsta characta of \fBIFS\fP
+between\&.  So up in `\fB${(P\fP\fB)${(f\fP\fB)lines}}\fP\&'
+the value of \fB${lines}\fP is split at newlines yo, but then must be
+joined again n' again n' again before tha \fBP\fP flag can be applied\&.
+.RS
+.PP
+If a single word aint required, dis rule is skipped\&.
+.RE
+.TP
+\fB24\&.\fP \fIEmpty argument removal\fP
+If tha substitution do not step tha fuck up in double quotes, any resulting
+zero\-length argument, whether from a scalar or a element of a array,
+is elided from tha list of arguments banged tha fuck into tha command line\&.
+.RS
+.PP
+Strictly bustin lyrics, tha removal happens lata as tha same ol' dirty happens with
+other formz of substitution; tha point ta note here is simply that
+it occurs afta any of tha above parameta operations\&.
+.RE
+.PP
+.SS "Examples"
+Da flag \fBf\fP is useful ta split a thugged-out double\-quoted substitution line by
+line\&.  For example, \fB${(f)"$(<\fP\fIfile\fP\fB)"}\fP
+substitutes tha contentz of \fIfile\fP divided so dat each line is
+an element of tha resultin array\&.  Compare dis wit tha effect of
+\fB$\fP\fB(<\fP\fIfile\fP\fB)\fP alone, which divides tha file
+up by lyrics, or tha same inside double quotes, which make tha entire
+content of tha file a single string\&.
+.PP
+Da followin illustrates tha rulez fo' nested parameta expansions\&.
+Suppose dat \fB$foo\fP gotz nuff tha array \fB(bar baz\fP\fB)\fP:
+.PP
+.PD 0
+.TP
+.PD
+\fB"${(@)${foo}[1]}"\fP
+This produces tha result \fBb\fP\&.  First, tha inner substitution
+\fB"${foo}"\fP, which has no array (\fB@\fP) flag, produces a single word
+result \fB"bar baz"\fP\&.  Da outa substitution \fB"${(@)\&.\&.\&.[1]}"\fP detects
+that dis be a scalar, so dat (despite tha `\fB(@)\fP\&' flag) tha subscript
+picks tha straight-up original gangsta character\&. 
+.TP
+\fB"${${(@)foo}[1]}"\fP
+This produces tha result `\fBbar\fP\&'\&.  In dis case, tha inner substitution
+\fB"${(@)foo}"\fP produces tha array `\fB(bar baz\fP\fB)\fP\&'\&.  Da outer
+substitution \fB"${\&.\&.\&.[1]}"\fP detects dat dis be a array n' picks the
+first word\&.  This is similar ta tha simple case \fB"${foo[1]}"\fP\&.
+.PP
+As a example of tha rulez fo' word splittin n' joining, suppose \fB$foo\fP
+gotz nuff tha array `\fB(ax1 bx1\fP\fB)\fP\&'\&.  Then
+.PP
+.PD 0
+.TP
+.PD
+\fB${(s/x/)foo}\fP
+produces tha lyrics `\fBa\fP\&', `\fB1 b\fP' n' `\fB1\fP'\&.
+.TP
+\fB${(j/x/s/x/)foo}\fP
+produces `\fBa\fP\&', `\fB1\fP', `\fBb\fP' n' `\fB1\fP'\&.
+.TP
+\fB${(s/x/)foo%%1*}\fP
+produces `\fBa\fP\&' n' `\fB b\fP' (note tha extra space)\&.  As substitution
+occurs before either joinin or splitting, tha operation  first generates
+the modified array \fB(ax bx\fP\fB)\fP, which is joined ta give
+\fB"ax bx"\fP, n' then split ta give `\fBa\fP\&', `\fB b\fP' n' `'\&.  Da final
+empty strang will then be elided, as it aint up in double quotes\&.
+.PP
+.SH "COMMAND SUBSTITUTION"
+A command enclosed up in parentheses preceded by a thugged-out dollar sign, like
+`\fB$(\fP\&.\&.\&.\fB)\fP\&', or quoted wit grave 
+accents, like `\fB`\fP\&.\&.\&.\fB`\fP\&', is replaced wit its standard output, with
+any trailin newlines deleted\&.
+If tha substitution aint enclosed up in double quotes, the
+output is fucked up tha fuck into lyrics rockin tha \fBIFS\fP parameter\&.
+Da substitution `\fB$(cat\fP \fIfoo\fP\fB)\fP\&' may be replaced
+by tha equivalent but fasta `\fB$(<\fP\fIfoo\fP\fB)\fP\&'\&.
+In either case, if tha option \fBGLOB_SUBST\fP is set,
+the output is eligible fo' filename generation\&.
+.SH "ARITHMETIC EXPANSION"
+A strang of tha form `\fB$[\fP\fIexp\fP\fB]\fP\&' or
+`\fB$((\fP\fIexp\fP\fB))\fP\&' is substituted
+with tha value of tha arithmetic expression \fIexp\fP\&.  \fIexp\fP is
+subjected ta \fIparameta expansion\fP, \fIcommand substitution\fP
+and \fIarithmetic expansion\fP before it is evaluated\&.
+See tha section `Arithmetic Evaluation\&'\&.
+.SH "BRACE EXPANSION"
+A strang of tha form
+`\fIfoo\fP\fB{\fP\fIxx\fP\fB,\fP\fIyy\fP\fB,\fP\fIzz\fP\fB}\fP\fIbar\fP\&'
+is expanded ta tha individual lyrics
+`\fIfooxxbar\fP\&', `\fIfooyybar\fP' n' `\fIfoozzbar\fP'\&.
+Left\-to\-right order is preserved\&.  This construct
+may be nested\&.  Commas may be quoted up in order to
+include dem literally up in a word\&.
+.PP
+An expression of tha form `\fB{\fP\fIn1\fP\fB\&.\&.\fP\fIn2\fP\fB}\fP\&',
+where \fIn1\fP n' \fIn2\fP is integers,
+is expanded ta every last muthafuckin number between
+\fIn1\fP n' \fIn2\fP inclusive\&.  If either number begins wit a
+zero, all tha resultin numbers is ghon be padded wit leadin zeroes to
+that minimum width yo, but fo' wack numbers tha \fB\-\fP characta be also
+included up in tha width\&.  If tha numbers is up in decreasin order the
+resultin sequence will also be up in decreasin order\&.
+.PP
+An expression of tha form `\fB{\fP\fIn1\fP\fB\&.\&.\fP\fIn2\fP\fB\&.\&.\fP\fIn3\fP\fB}\fP\&',
+where \fIn1\fP, \fIn2\fP, n' \fIn3\fP is integers,
+is expanded as above yo, but only every last muthafuckin \fIn3\fPth number startin from \fIn1\fP
+is output\&.  If \fIn3\fP is wack tha numbers is output up in reverse order,
+this is slightly different from simply swappin \fIn1\fP n' \fIn2\fP up in tha case
+that tha step \fIn3\fP don\&'t evenly divide tha range\&.  Zero paddin can be
+specified up in any of tha three numbers, specifyin it up in tha third can be useful
+to pad fo' example `\fB{\-99\&.\&.100\&.\&.01}\fP\&' which aint possible ta specify by puttin a
+0 on either of tha straight-up original gangsta two numbers (i\&.e\&. pad ta two characters)\&.
+.PP
+An expression of tha form `\fB{\fP\fIc1\fP\fB\&.\&.\fP\fIc2\fP\fB}\fP\&', where
+\fIc1\fP n' \fIc2\fP is single charactas (which may be multibyte
+characters), is expanded ta every last muthafuckin characta up in tha range from \fIc1\fP to
+\fIc2\fP up in whatever characta sequence is used internally\&.  For
+charactas wit code points below 128 dis is US ASCII (this is tha only
+case most playas will need)\&.  If any intervenin characta is not
+printable, appropriate quotation is used ta render it printable\&.
+If tha characta sequence is reversed, tha output is up in reverse
+order, e\&.g\&. `\fB{d\&.\&.a}\fP\&' is substituted as `\fBd c b a\fP'\&.
+.PP
+If a funky-ass brace expression matches none of tha above forms, it is left
+unchanged, unless tha option \fBBRACE_CCL\fP (an abbreviation fo' `brace
+characta class\&') is set\&.
+In dat case, it is expanded ta a list of tha individual
+charactas between tha braces sorted tha fuck into tha order of tha characters
+in tha ASCII characta set (multibyte charactas is not currently
+handled)\&.  Da syntax is similar ta a
+\fB[\fP\&.\&.\&.\fB]\fP expression up in filename generation:
+`\fB\-\fP\&' is treated specially ta denote a range of charactas yo, but `\fB^\fP' or
+`\fB!\fP\&' as tha straight-up original gangsta characta is treated normally\&.  For example,
+`\fB{abcdef0\-9}\fP\&' expandz ta 16 lyrics \fB0 1 2 3 4 5 6 7 8 9 a funky-ass b c d e f\fP\&.
+.PP
+Note dat brace expansion aint part of filename generation (globbing); an
+expression like fuckin \fB*/{foo,bar}\fP is split tha fuck into two separate lyrics
+\fB*/foo\fP n' \fB*/bar\fP before filename generation takes place\&.  In
+particular, note dat dis is liable ta produce a `no match\&' error if
+\fIeither\fP of tha two expressions do not match; dis is ta be contrasted
+with \fB*/(foo|bar)\fP, which is treated as a single pattern but otherwise
+has similar effects\&.
+.PP
+To combine brace expansion wit array expansion, peep the
+\fB${^\fP\fIspec\fP\fB}\fP form busted lyrics about
+in tha section Parameta Expansion
+above\&.
+.PP
+.SH "FILENAME EXPANSION"
+Each word is checked ta peep if it begins wit a unquoted `\fB~\fP\&'\&.
+If it do, then tha word up ta a `\fB/\fP\&',
+or tha end of tha word if there is no `\fB/\fP\&',
+is checked ta peep if it can be substituted up in one of tha ways
+busted lyrics bout here\&.  If so, then tha `\fB~\fP\&' n' tha checked portion are
+replaced wit tha appropriate substitute value\&.
+.PP
+A `\fB~\fP\&' by itself is replaced by tha value of \fB$HOME\fP\&.
+A `\fB~\fP\&' followed by a `\fB+\fP' or a `\fB\-\fP' is replaced by current
+or previous hustlin directory, respectively\&.
+.PP
+A `\fB~\fP\&' followed by a number is replaced by tha directory at that
+posizzle up in tha directory stack\&.
+`\fB~0\fP\&' is equivalent ta `\fB~+\fP',
+and `\fB~1\fP\&' is tha top of tha stack\&.
+`\fB~+\fP\&' followed by a number is replaced by tha directory at that
+posizzle up in tha directory stack\&.
+`\fB~+0\fP\&' is equivalent ta `\fB~+\fP',
+and `\fB~+1\fP\&' is tha top of tha stack\&.
+`\fB~\-\fP\&' followed by a number is replaced by tha directory that
+many positions from tha bottom of tha stack\&.
+`\fB~\-0\fP\&' is tha bottom of tha stack\&.
+Da \fBPUSHD_MINUS\fP
+option exchanges tha effectz of `\fB~+\fP\&' n' `\fB~\-\fP' where they are
+followed by a number\&.
+.PP
+.SS "Dynamic named directories"
+.PP
+If tha function \fBzsh_directory_name\fP exists, or tha shell variable
+\fBzsh_directory_name_functions\fP exists n' gotz nuff a array of
+function names, then tha functions is used ta implement dynamic
+directory naming\&.  Da functions is tried up in order until one returns
+status zero, so it is blingin dat functions test whether they can
+handle tha case up in question n' return a appropriate status\&.
+.PP
+A `\fB~\fP\&' followed by a strang \fInamstr\fP up in unquoted square brackets is
+treated specially as a thugged-out dynamic directory name\&.  Note dat tha first
+unquoted closin square bracket always terminates \fInamstr\fP\&.  Da shell
+function is passed two arguments: tha strang \fBn\fP (for name) and
+\fInamstr\fP\&.  It should either set tha array \fBreply\fP ta a single element
+which is tha directory correspondin ta tha name n' return status zero
+(executin a assignment as tha last statement is probably sufficient), or
+it should return status non\-zero\&.  In tha forma case tha element of reply
+is used as tha directory; up in tha latta case tha substitution is deemed to
+have failed\&.  If all functions fail n' tha option \fBNOMATCH\fP is set,
+an error thangs up in dis biatch\&.
+.PP
+Da functions defined as above is also used ta peep if a gangbangin' finger-lickin' directory can
+be turned tha fuck into a name, fo' example when printin tha directory stack or
+when expandin \fB%~\fP up in prompts\&.  In dis case each function is passed two
+arguments: tha strang \fBd\fP (for directory) n' tha muthafucka fo' dynamic
+naming\&.  Da function should either return non\-zero status, if the
+directory cannot be named by tha function, or it should set tha array reply
+to consist of two elements: tha straight-up original gangsta is tha dynamic name fo' tha directory
+(as would step tha fuck up within `\fB~[\fP\fI\&.\&.\&.\fP\fB]\fP\&'), n' tha second is the
+prefix length of tha directory ta be replaced\&.  For example, if tha trial
+directory is \fB/home/myname/src/zsh\fP n' tha dynamic name for
+\fB/home/myname/src\fP (which has 16 characters) is \fBs\fP, then tha function
+sets
+.PP
+.RS
+.nf
+\fBreply=(s 16)\fP
+.fi
+.RE
+.PP
+Da directory name so returned is compared wit possible static names for
+partz of tha directory path, as busted lyrics bout below; it is used if tha prefix
+length matched (16 up in tha example) is longer than dat matched by any
+static name\&.
+.PP
+It aint a requirement dat a gangbangin' function implements both
+\fBn\fP n' \fBd\fP calls; fo' example, it might be appropriate fo' certain
+dynamic formz of expansion not ta be contracted ta names\&.  In dat case
+any call wit tha straight-up original gangsta argument \fBd\fP should cause a non\-zero status to
+be returned\&.
+.PP
+Da completion system calls `\fBzsh_directory_name c\fP\&' followed by
+equivalent calls ta elementz of tha array
+\fBzsh_directory_name_functions\fP, if it exists, up in order to
+complete dynamic names fo' directories\&.  Da code fo' dis should be
+as fo' any other completion function as busted lyrics bout in
+\fIzshcompsys\fP(1)\&.
+.PP
+As a hustlin example, here be a gangbangin' function dat expandz any dynamic names
+beginnin wit tha strang \fBp:\fP ta directories below
+\fB/home/pws/perforce\fP\&.  In dis simple case a static name fo' the
+directory would be just as effective\&.
+.PP
+.RS
+.nf
+\fBzsh_directory_name() {
+  emulate \-L zsh
+  setopt extendedglob
+  local \-a match mbegin mend
+  if [[ $1 = d ]]; then
+    # turn tha directory tha fuck into a name
+    if [[ $2 = (#b)(/home/pws/perforce/)([^/]##)* ]]; then
+      typeset \-ga reply
+      reply=(p:$match[2] $(( ${#match[1]} + ${#match[2]} )) )
+    else
+      return 1
+    fi
+  elif [[ $1 = n ]]; then
+    # turn tha name tha fuck into a gangbangin' finger-lickin' directory
+    [[ $2 != (#b)p:(?*) ]] && return 1
+    typeset \-ga reply
+    reply=(/home/pws/perforce/$match[1])
+  elif [[ $1 = c ]]; then
+    # complete names
+    local expl
+    local \-a dirs
+    dirs=(/home/pws/perforce/*(/:t))
+    dirs=(p:${^dirs})
+    _wanted dynamic\-dirs expl \&'dynamic directory' compadd \-S\e] \-a dirs
+    return
+  else
+    return 1
+  fi
+  return 0
+}\fP
+.fi
+.RE
+.PP
+.SS "Static named directories"
+A `\fB~\fP\&' followed by anythang not already covered consisting
+of any number of alphanumeric charactas or underscore (`\fB_\fP\&'),
+hyphen (`\fB\-\fP\&'), or dot (`\fB\&.\fP') is looked up as a
+named directory, n' replaced by tha value of dat named directory if found\&.
+Named directories is typically home directories fo' playas on tha system\&.
+They may also be defined if tha text afta tha `\fB~\fP\&' is tha name
+of a strang shell parameta whose value begins wit a `\fB/\fP\&'\&.
+Note dat trailin slashes is ghon be removed from tha path ta tha directory
+(though tha original gangsta parameta aint modified)\&.
+.PP
+It be also possible ta define directory names rockin tha \fB\-d\fP option ta the
+\fBhash\fP builtin\&.
+.PP
+When tha shell prints a path (e\&.g\&. when expandin \fB%~\fP up in prompts or when
+printin tha directory stack), tha path is checked ta peep if it has a named
+directory as its prefix\&.  If so, then tha prefix portion is replaced wit a
+`\fB~\fP\&' followed by tha name of tha directory\&.
+Da shorta of tha two wayz of referrin ta tha directory is used,
+i\&.e\&. either tha directory name or tha full path; tha name is used
+if they is tha same length\&.
+Da parametas \fB$PWD\fP n' \fB$OLDPWD\fP is never abbreviated up in dis fashion\&.
+.PP
+.SS "`=\&' expansion"
+.PP
+If a word begins wit a unquoted `\fB=\fP\&'
+and tha \fBEQUALS\fP option is set,
+the remainder of tha word is taken as the
+name of a cold-ass lil command\&.  If a cold-ass lil command
+exists by dat name, tha word is replaced
+by tha full pathname of tha command\&.
+.PP
+.SS "Notes"
+.PP
+Filename expansion is performed on tha right hand side of a parameter
+assignment, includin dem appearin afta commandz of the
+\fBtypeset\fP crew\&.  In dis case, tha right hand side is ghon be treated
+as a cold-ass lil colon\-separated list up in tha manner of tha \fBPATH\fP parameter,
+so dat a `\fB~\fP\&' or a `\fB=\fP' followin a `\fB:\fP' is eligible fo' expansion\&.
+All such behaviour can be
+disabled by quotin tha `\fB~\fP\&', tha `\fB=\fP', or tha whole expression (but not
+simply tha colon); tha \fBEQUALS\fP option be also bigged up\&.
+.PP
+If tha option \fBMAGIC_EQUAL_SUBST\fP is set, any unquoted shell
+argument up in tha form `\fIidentifier\fP\fB=\fP\fIexpression\fP\&' becomes eligible
+for file expansion as busted lyrics bout up in tha previous paragraph\&.  Quotin the
+first `\fB=\fP\&' also inhibits this\&.
+.PP
+.SH "FILENAME GENERATION"
+If a word gotz nuff a unquoted instizzle of one of tha characters
+`\fB*\fP\&', `\fB(\fP', `\fB|\fP', `\fB<\fP', `\fB[\fP', or `\fB?\fP', it is regarded
+as a pattern fo' filename generation, unless tha \fBGLOB\fP option is unset\&.
+If tha \fBEXTENDED_GLOB\fP option is set,
+the `\fB^\fP\&' n' `\fB#\fP' charactas also denote a pattern; otherwise
+they is not treated specially by tha shell\&.
+.PP
+Da word is replaced wit a list of sorted filenames dat match
+the pattern\&.  If no matchin pattern is found, tha shell gives
+an error message, unless tha \fBNULL_GLOB\fP option is set,
+in which case tha word is deleted; or unless tha \fBNOMATCH\fP
+option is unset, up in which case tha word is left unchanged\&.
+.PP
+In filename generation,
+the characta `\fB/\fP\&' must be matched explicitly;
+also, a `\fB\&.\fP\&' must be matched
+explicitly all up in tha beginnin of a pattern or afta a `\fB/\fP\&', unless the
+\fBGLOB_DOTS\fP option is set\&.
+No filename generation pattern
+matches tha filez `\fB\&.\fP\&' or `\fB\&.\&.\fP'\&.  In other instancez of pattern
+matching, tha `\fB/\fP\&' n' `\fB\&.\fP' is not treated specially\&.
+.SS "Glob Operators"
+.PD 0
+.TP
+.PD
+\fB*\fP
+Matches any string, includin tha null string\&.
+.TP
+\fB?\fP
+Matches any character\&.
+.TP
+\fB[\fP\&.\&.\&.\fB]\fP
+Matches any of tha enclosed characters\&.  Rangez of characters
+can be specified by separatin two charactas by a `\fB\-\fP\&'\&.
+A `\fB\-\fP\&' or `\fB]\fP' may be matched by includin it as the
+first characta up in tha list\&.
+There is also nuff muthafuckin named classez of characters, up in tha form
+`\fB[:\fP\fIname\fP\fB:]\fP\&' wit tha followin meanings\&.
+Da first set use tha macros provided by
+the operatin system ta test fo' tha given characta combinations,
+includin any modifications cuz of local language settings, see
+\fIctype\fP(3):
+.RS
+.PP
+.PD 0
+.TP
+.PD
+\fB[:alnum:]\fP
+Da characta be alphanumeric
+.TP
+\fB[:alpha:]\fP
+Da characta be alphabetic
+.TP
+\fB[:ascii:]\fP
+Da characta is 7\-bit, i\&.e\&. be a single\-byte characta without
+the top bit set\&.
+.TP
+\fB[:blank:]\fP
+Da characta is either space or tab
+.TP
+\fB[:cntrl:]\fP
+Da characta be a cold-ass lil control character
+.TP
+\fB[:digit:]\fP
+Da characta be a thugged-out decimal digit
+.TP
+\fB[:graph:]\fP
+Da characta be a printable characta other than whitespace
+.TP
+\fB[:lower:]\fP
+Da characta be a lowercase letter
+.TP
+\fB[:print:]\fP
+Da characta is printable
+.TP
+\fB[:punct:]\fP
+Da characta is printable but neither alphanumeric nor whitespace
+.TP
+\fB[:space:]\fP
+Da characta is whitespace
+.TP
+\fB[:upper:]\fP
+Da characta be a uppercase letter
+.TP
+\fB[:xdigit:]\fP
+Da characta be a hexadecimal digit
+.PP
+Another set of named classes is handled internally by tha shell and
+is not sensitizzle ta tha locale:
+.PP
+.PD 0
+.TP
+.PD
+\fB[:IDENT:]\fP
+Da characta be allowed ta form part of a gangbangin' finger-lickin' dirty-ass shell identifier, such
+as a parameta name
+.TP
+\fB[:IFS:]\fP
+Da characta is used as a input field separator, i\&.e\&. is contained up in the
+\fBIFS\fP parameter
+.TP
+\fB[:IFSSPACE:]\fP
+Da characta be a IFS white space character; peep tha documentation
+for \fBIFS\fP in
+the \fIzshparam\fP(1) manual page\&.
+.TP
+\fB[:WORD:]\fP
+Da characta is treated as part of a word; dis test is sensitive
+to tha value of tha \fBWORDCHARS\fP parameter
+.PP
+Note dat tha square brackets is additional
+to dem enclosin tha whole set of characters, so ta test fo' a
+single alphanumeric characta you need `\fB[[:alnum:]]\fP\&'\&.  Named
+characta sets can be used alongside other types,
+e\&.g\&. `\fB[[:alpha:]0\-9]\fP\&'\&.
+.RE
+.TP
+.PD 0
+\fB[^\fP\&.\&.\&.\fB]\fP
+.TP
+.PD
+\fB[!\fP\&.\&.\&.\fB]\fP
+Like \fB[\fP\&.\&.\&.\fB]\fP, except dat it matches any characta which is
+not up in tha given set\&.
+.TP
+\fB<\fP[\fIx\fP]\fB\-\fP[\fIy\fP]\fB>\fP
+Matches any number up in tha range \fIx\fP ta \fIy\fP, inclusive\&.
+Either of tha numbers may be omitted ta make tha range open\-ended;
+hence `\fB<\->\fP\&' matches any number\&.  To match individual digits, the
+\fB[\fP\&.\&.\&.\fB]\fP form is mo' efficient\&.
+.RS
+.PP
+Be careful when rockin other wildcardz adjacent ta patternz of dis form;
+for example, \fB<0\-9>*\fP will straight-up match any number whatsoever at the
+start of tha string, since tha `\fB<0\-9>\fP\&' will match tha straight-up original gangsta digit, and
+the `\fB*\fP\&' will match any others\&.  This be a trap fo' tha unwary yo, but is
+in fact a inevitable consequence of tha rule dat tha longest possible
+match always succeeds\&.  Expressions like fuckin `\fB<0\-9>[^[:digit:]]*\fP\&' can be
+used instead\&.
+.RE
+.TP
+\fB(\fP\&.\&.\&.\fB)\fP
+Matches tha enclosed pattern\&.  This is used fo' grouping\&.
+If tha \fBKSH_GLOB\fP option is set, then a
+`\fB@\fP\&', `\fB*\fP', `\fB+\fP', `\fB?\fP' or `\fB!\fP' immediately preceding
+the `\fB(\fP\&' is treated specially, as detailed below\&. Da option
+\fBSH_GLOB\fP prevents bare parentheses from bein used up in dis way, though
+the \fBKSH_GLOB\fP option is still available\&.
+.RS
+.PP
+Note dat groupin cannot extend over multiple directories: it be a error
+to gotz a `\fB/\fP\&' within a crew (this only applies fo' patterns used in
+filename generation)\&.  There is one exception:  a crew of tha form
+\fB(\fP\fIpat\fP\fB/)#\fP appearin as a cold-ass lil complete path segment can
+match a sequence of directories\&.  For example, \fBfoo/(a*/)#bar\fP matches
+\fBfoo/bar\fP, \fBfoo/any/bar\fP, \fBfoo/any/anyother/bar\fP, n' so on\&.
+.RE
+.TP
+\fIx\fP\fB|\fP\fIy\fP
+Matches either \fIx\fP or \fIy\fP\&.
+This operator has lower precedence than any other\&.
+Da `\fB|\fP\&' character
+must be within parentheses, ta avoid interpretation as a pipeline\&.
+.TP
+\fB^\fP\fIx\fP
+(Requires \fBEXTENDED_GLOB\fP ta be set\&.)
+Matches anythang except tha pattern \fIx\fP\&.
+This has a higher precedence than `\fB/\fP\&', so `\fB^foo/bar\fP'
+will search directories up in `\fB\&.\fP\&' except `\fB\&./foo\fP'
+for a gangbangin' file named `\fBbar\fP\&'\&.
+.TP
+\fIx\fP\fB~\fP\fIy\fP
+(Requires \fBEXTENDED_GLOB\fP ta be set\&.)
+Match anythang dat matches tha pattern \fIx\fP but do not match \fIy\fP\&.
+This has lower precedence than any operator except `\fB|\fP\&', so
+`\fB*/*~foo/bar\fP\&' will search fo' all filez up in all directories up in `\fB\&.\fP'
+and then exclude `\fBfoo/bar\fP\&' if there was such a match\&.
+Multiple patterns can be excluded by
+`\fIfoo\fP\fB~\fP\fIbar\fP\fB~\fP\fIbaz\fP\&'\&.
+In tha exclusion pattern (\fIy\fP), `\fB/\fP\&' n' `\fB\&.\fP' is not treated
+specially tha way they probably is up in globbing\&.
+.TP
+\fIx\fP\fB#\fP
+(Requires \fBEXTENDED_GLOB\fP ta be set\&.)
+Matches zero or mo' occurrencez of tha pattern \fIx\fP\&.
+This operator has high precedence; `\fB12#\fP\&' is equivalent ta `\fB1(2#)\fP',
+rather than `\fB(12)#\fP\&'\&.  It be a error fo' a unquoted `\fB#\fP' ta follow
+suttin' which cannot be repeated; dis includes a empty string, a
+pattern already followed by `\fB##\fP\&', or parentheses when part of a
+\fBKSH_GLOB\fP pattern (for example, `\fB!(\fP\fIfoo\fP\fB)#\fP\&' is
+invalid n' must be replaced by
+`\fB*(!(\fP\fIfoo\fP\fB))\fP\&')\&.
+.TP
+\fIx\fP\fB##\fP
+(Requires \fBEXTENDED_GLOB\fP ta be set\&.)
+Matches one or mo' occurrencez of tha pattern \fIx\fP\&.
+This operator has high precedence; `\fB12##\fP\&' is equivalent ta `\fB1(2##)\fP',
+rather than `\fB(12)##\fP\&'\&.  No mo' than two actizzle `\fB#\fP' charactas may
+appear together\&.  (Note tha potential clash wit glob qualifiers up in the
+form `\fB1(2##)\fP\&' which should therefore be avoided\&.)
+.SS "ksh\-like Glob Operators"
+If tha \fBKSH_GLOB\fP option is set, tha effectz of parentheses can be
+modified by a precedin `\fB@\fP\&', `\fB*\fP', `\fB+\fP', `\fB?\fP' or `\fB!\fP'\&.
+This characta need not be unquoted ta have special effects,
+but tha `\fB(\fP\&' must be\&.
+.PP
+.PD 0
+.TP
+.PD
+\fB@(\fP\&.\&.\&.\fB)\fP
+Match tha pattern up in tha parentheses\&.  (Like `\fB(\fP\&.\&.\&.\fB)\fP\&'\&.)
+.TP
+\fB*(\fP\&.\&.\&.\fB)\fP
+Match any number of occurrences\&.  (Like `\fB(\fP\&.\&.\&.\fB)#\fP\&',
+except dat recursive directory searchin aint supported\&.)
+.TP
+\fB+(\fP\&.\&.\&.\fB)\fP
+Match at least one occurrence\&.  (Like `\fB(\fP\&.\&.\&.\fB)##\fP\&',
+except dat recursive directory searchin aint supported\&.)
+.TP
+\fB?(\fP\&.\&.\&.\fB)\fP
+Match zero or one occurrence\&.  (Like `\fB(|\fP\&.\&.\&.\fB)\fP\&'\&.)
+.TP
+\fB!(\fP\&.\&.\&.\fB)\fP
+Match anythang but tha expression up in parentheses\&.
+(Like `\fB(^(\fP\&.\&.\&.\fB))\fP\&'\&.)
+.SS "Precedence"
+Da precedence of tha operators given above is (highest) `\fB^\fP\&', `\fB/\fP',
+`\fB~\fP\&', `\fB|\fP' (lowest); the
+remainin operators is simply treated from left ta right as part of a
+string, wit `\fB#\fP\&' n' `\fB##\fP' applyin ta tha shortest possible
+precedin unit (i\&.e\&. a cold-ass lil character, `\fB?\fP\&', `\fB[\fP\&.\&.\&.\fB]\fP',
+`\fB<\fP\&.\&.\&.\fB>\fP\&', or a parenthesised expression)\&.  As mentioned
+above, a `\fB/\fP\&' used as a gangbangin' finger-lickin' directory separator may not step tha fuck up inside
+parentheses, while a `\fB|\fP\&' must do so; up in patterns used up in other contexts
+than filename generation (for example, up in \fBcase\fP statements n' tests
+within `\fB[[\fP\&.\&.\&.\fB]]\fP\&'), a `\fB/\fP' aint special; n' `\fB/\fP' be also
+not special afta a `\fB~\fP\&' appearin outside parentheses up in a gangbangin' filename
+pattern\&.
+.SS "Globbin Flags"
+There is various flags which affect any text ta they right up ta the
+end of tha enclosin crew or ta tha end of tha pattern; they require
+the \fBEXTENDED_GLOB\fP option\& fo' realz. All take tha form
+\fB(#\fP\fIX\fP\fB)\fP where \fIX\fP may have one of tha following
+forms:
+.PP
+.PD 0
+.TP
+.PD
+\fBi\fP
+Case insensitive:  upper or lower case charactas up in tha pattern match
+upper or lower case characters\&.
+.TP
+\fBl\fP
+Lower case charactas up in tha pattern match upper or lower case
+characters; upper case charactas up in tha pattern still only match
+upper case characters\&.
+.TP
+\fBI\fP
+Case sensitive:  locally negates tha effect of \fBi\fP or \fBl\fP from
+that point on\&.
+.TP
+\fBb\fP
+Activate backreferences fo' parenthesised crews up in tha pattern;
+this do not work up in filename generation\&.  When a pattern wit a set of
+actizzle parentheses is matched, tha strings matched by tha crews are
+stored up in tha array \fB$match\fP, tha indicez of tha beginnin of tha matched
+parentheses up in tha array \fB$mbegin\fP, n' tha indicez of tha end up in tha array
+\fB$mend\fP, wit tha straight-up original gangsta element of each array correspondin ta tha first
+parenthesised group, n' so on\&.  These arrays is not otherwise special to
+the shell\&.  Da indices use tha same convention as do parameter
+substitution, so dat elementz of \fB$mend\fP n' \fB$mbegin\fP may be used in
+subscripts; tha \fBKSH_ARRAYS\fP option is bigged up\&.  Setz of globbin flags
+are not considered parenthesised groups; only tha straight-up original gangsta nine active
+parentheses can be referenced\&.
+.RS
+.PP
+For example,
+.PP
+.RS
+.nf
+\fBfoo="a strang wit a message"
+if [[ $foo = (a|an)\&' '(#b)(*)' '* ]]; then
+  print ${foo[$mbegin[1],$mend[1]]}
+fi\fP
+.fi
+.RE
+.PP
+prints `\fBstrin wit a\fP\&'\&.  Note dat tha straight-up original gangsta parenthesis is before the
+\fB(#b)\fP n' do not create a funky-ass backreference\&.
+.PP
+Backreferences work wit all formz of pattern matchin other than filename
+generation yo, but note dat when struttin matches on a entire array, such
+as \fB${\fP\fIarray\fP\fB#\fP\fIpattern\fP\fB}\fP, or a global substitution, such
+as \fB${\fP\fIparam\fP\fB//\fP\fIpat\fP\fB/\fP\fIrepl\fP\fB}\fP, only tha data fo' the
+last match remains available\&.  In tha case of global replacements dis may
+still be useful\&.  See tha example fo' tha \fBm\fP flag below\&.
+.PP
+Da numberin of backreferences strictly bigs up tha order of tha opening
+parentheses from left ta right up in tha pattern string, although sets of
+parentheses may be nested\&.  There is special rulez fo' parentheses followed
+by `\fB#\fP\&' or `\fB##\fP'\&.  Only tha last match of tha parenthesis is
+remembered: fo' example, up in `\fB[[ abab = (#b)([ab])# ]]\fP\&', only tha final
+`\fBb\fP\&' is stored up in \fBmatch[1]\fP\&.  Thus extra parentheses may be necessary
+to match tha complete segment: fo' example, use
+`\fBX((ab|cd)#)Y\fP\&' ta match
+a whole strang of either `\fBab\fP\&' or `\fBcd\fP' between `\fBX\fP' n' `\fBY\fP',
+usin tha value of \fB$match[1]\fP rather than \fB$match[2]\fP\&.
+.PP
+If tha match fails none of tha parametas be altered, so up in some cases it
+may be necessary ta initialise dem beforehand\&.  If a shitload of the
+backreferences fail ta match \-\- which happens if they is up in a alternate
+branch which fails ta match, or if they is followed by \fB#\fP n' matched
+zero times \-\- then tha matched strang is set ta tha empty string, n' the
+start n' end indices is set ta \-1\&.
+.PP
+Pattern matchin wit backreferences is slightly slower than without\&.
+.RE
+.TP
+\fBB\fP
+Deactivate backreferences, negatin tha effect of tha \fBb\fP flag from that
+point on\&.
+.TP
+\fBc\fP\fIN\fP\fB,\fP\fIM\fP
+Da flag \fB(#c\fP\fIN\fP\fB,\fP\fIM\fP\fB)\fP can be used anywhere
+that tha \fB#\fP or \fB##\fP operators can be used except up in tha expressions
+`\fB(*/)#\fP\&' n' `\fB(*/)##\fP' up in filename generation, where `\fB/\fP'
+has special meaning; it cannot be combined wit other globbin flags and
+a wack pattern error occurs if it is misplaced\&.  It be equivalent ta the
+form \fB{\fP\fIN\fP\fB,\fP\fIM\fP\fB}\fP up in regular expressions\&.  Da previous
+characta or crew is required ta match between \fIN\fP n' \fIM\fP times,
+inclusive\&.  Da form \fB(#c\fP\fIN\fP\fB)\fP requires exactly \fBN\fP
+matches; \fB(#c,\fP\fIM\fP\fB)\fP is equivalent ta specifyin \fIN\fP
+as 0; \fB(#c\fP\fIN\fP\fB,)\fP specifies dat there is no maximum
+limit on tha number of matches\&.
+.TP
+\fBm\fP
+Set references ta tha match data fo' tha entire strang matched; dis is
+similar ta backreferencin n' do not work up in filename generation\&.  The
+flag must be up in effect all up in tha end of tha pattern, i\&.e\&. not local ta a
+group\&. Da parametas \fB$MATCH\fP,  \fB$MBEGIN\fP n' \fB$MEND\fP is ghon be set to
+the strang matched n' ta tha indicez of tha beginnin n' end of the
+string, respectively\&.  This is most useful up in parameta substitutions, as
+otherwise tha strang matched is obvious\&.
+.RS
+.PP
+For example,
+.PP
+.RS
+.nf
+\fBarr=(veldt jynx grimps waqf zho buck)
+print ${arr//(#m)[aeiou]/${(U)MATCH}}\fP
+.fi
+.RE
+.PP
+forces all tha matches (i\&.e\&. all vowels) tha fuck into uppercase, printing
+`\fBvEldt jynx grImps wAqf zhO bUck\fP\&'\&.
+.PP
+Unlike backreferences, there is no speed penalty fo' rockin match
+references, other than tha extra substitutions required fo' the
+replacement strings up in cases like fuckin tha example shown\&.
+.RE
+.TP
+\fBM\fP
+Deactivate tha \fBm\fP flag, hence no references ta match data will be
+created\&.
+.TP
+\fBa\fP\fInum\fP
+Approximate matching: \fInum\fP errors is allowed up in tha strang matched by
+the pattern\&.  Da rulez fo' dis is busted lyrics bout up in tha next subsection\&.
+.TP
+\fBs\fP, \fBe\fP
+Unlike tha other flags, these have only a local effect, n' each must
+appear on its own:  `\fB(#s)\fP\&' n' `\fB(#e)\fP' is tha only valid forms\&.
+Da `\fB(#s)\fP\&' flag succeedz only all up in tha start of tha test string, n' the
+`\fB(#e)\fP\&' flag succeedz only all up in tha end of tha test string; they
+correspond ta `\fB^\fP\&' n' `\fB$\fP' up in standard regular expressions\&.  They
+are useful fo' matchin path segments up in patterns other than dem in
+filename generation (where path segments is up in any case treated
+separately)\&.  For example, `\fB*((#s)|/)test((#e)|/)*\fP\&' matches
+a path segment `\fBtest\fP\&' up in any of tha followin strings: \fBtest\fP,
+\fBtest/at/start\fP, \fBat/end/test\fP, \fBin/test/middle\fP\&.
+.RS
+.PP
+Another use is up in parameta substitution; fo' example
+`\fB${array/(#s)A*Z(#e)}\fP\&' will remove only elementz of an
+array which
+match tha complete pattern `\fBA*Z\fP\&'\&.  There is other wayz of struttin
+many operationz of dis type, however tha combination of tha substitution
+operations `\fB/\fP\&' n' `\fB//\fP' wit tha `\fB(#s)\fP' n' `\fB(#e)\fP' flags
+provides a single simple n' trippy method\&.
+.PP
+Note dat assertionz of tha form `\fB(^(#s))\fP\&' also work, i\&.e\&. match
+anywhere except all up in tha start of tha string, although dis straight-up means
+`anythang except a zero\-length portion all up in tha start of tha string\&'; you
+need ta use `\fB(""~(#s))\fP\&' ta match a zero\-length portion of tha string
+not all up in tha start\&.
+.RE
+.TP
+\fBq\fP
+A `\fBq\fP\&' n' every last muthafuckin thang up ta tha closin parenthesiz of tha globbing
+flags is ignored by tha pattern matchin code\&.  This is intended to
+support tha use of glob qualifiers, peep below\&.  Da result is that
+the pattern `\fB(#b)(*)\&.c(#q\&.)\fP\&' can be used both fo' globbing
+and for
+matchin against a string\&.  In tha forma case, tha `\fB(#q\&.)\fP\&' will be
+treated as a glob qualifier n' tha `\fB(#b)\fP\&' aint gonna be useful, while in
+the latta case tha `\fB(#b)\fP\&' is useful fo' backreferences n' the
+`\fB(#q\&.)\fP\&' is ghon be ignored\&.  Note dat colon modifiers up in tha glob
+qualifiers is also not applied up in ordinary pattern matching\&.
+.TP
+\fBu\fP
+Respect tha current locale up in determinin tha presence of multibyte
+charactas up in a pattern, provided tha shell was compiled wit 
+\fBMULTIBYTE_SUPPORT\fP\&.  This overrides tha \fBMULTIBYTE\fP
+option; tha default behaviour is taken from tha option\&.  Compare \fBU\fP\&.
+(Mnemonic: typically multibyte charactas is from Unicode up in tha UTF\-8
+encoding, although any extension of ASCII supported by tha system
+library may be used\&.)
+.TP
+\fBU\fP
+All charactas is considered ta be a single byte long\&.  Da opposite
+of \fBu\fP\&.  This overrides tha \fBMULTIBYTE\fP option\&.
+.PP
+For example, tha test strang \fBfooxx\fP can be matched by tha pattern
+\fB(#i\fP\fB)FOOXX\fP yo, but not by \fB(#l\fP\fB)FOOXX\fP,
+\fB(#i\fP\fB)FOO\fP\fB(#I\fP\fB)XX\fP or
+\fB((#i\fP\fB)FOOX\fP\fB)X\fP\&.  Da string
+\fB(#ia2\fP\fB)readme\fP specifies case\-insensitizzle matchin of
+\fBreadme\fP wit up ta two errors\&.
+.PP
+When rockin tha ksh syntax fo' groupin both \fBKSH_GLOB\fP and
+\fBEXTENDED_GLOB\fP must be set n' tha left parenthesis should be
+preceded by \fB@\fP\&.  Note also dat tha flags do not affect letters
+inside \fB[\&.\&.\&.]\fP groups, up in other lyrics \fB(#i\fP\fB)[a\-z]\fP
+still matches only lowercase letters\&.  Finally, note dat when
+examinin whole paths case\-insensitively every last muthafuckin directory must be
+searched fo' all filez which match, so dat a pattern of tha form
+\fB(#i\fP\fB)/foo/bar/\&.\&.\&.\fP is potentially slow\&.
+.PP
+.SS "Approximate Matching"
+When matchin approximately, tha shell keeps a cold-ass lil count of tha errors found,
+which cannot exceed tha number specified up in the
+\fB(#a\fP\fInum\fP\fB)\fP flags\&.  Four typez of error is recognised:
+.PP
+.PD 0
+.TP
+.PD
+1\&.
+Different characters, as up in \fBfooxbar\fP n' \fBfooybar\fP\&.
+.TP
+2\&.
+Transposizzle of characters, as up in \fBbanana\fP n' \fBabnana\fP\&.
+.TP
+3\&.
+A characta missin up in tha target string, as wit tha pattern \fBroad\fP and
+target strang \fBrod\fP\&.
+.TP
+4\&.
+An extra characta appearin up in tha target string, as wit \fBstove\fP
+and \fBstrove\fP\&.
+.PP
+Thus, tha pattern \fB(#a3\fP\fB)abcd\fP matches \fBdcba\fP, wit the
+errors occurrin by rockin tha straight-up original gangsta rule twice n' tha second once,
+groupin tha strang as \fB[d][cb][a]\fP n' \fB[a][bc][d]\fP\&.
+.PP
+Non\-literal partz of tha pattern must match exactly, includin characters
+in characta ranges: hence \fB(#a1\fP\fB)???\fP  matches strings of
+length four, by applyin rule 4 ta a empty part of tha pattern yo, but not
+stringz of length two, since all tha \fB?\fP must match\&.  Other characters
+which must match exactly is initial dots up in filenames (unless the
+\fBGLOB_DOTS\fP option is set), n' all slashes up in filenames, so that
+\fBa/bc\fP is two errors from \fBab/c\fP (the slash cannot be transposed with
+another character)\&.  Similarly, errors is counted separately for
+non\-contiguous strings up in tha pattern, so dat \fB(ab|cd\fP\fB)ef\fP
+is two errors from \fBaebf\fP\&.
+.PP
+When rockin exclusion via tha \fB~\fP operator, approximate matchin is
+treated entirely separately fo' tha excluded part n' must be activated
+separately\&.  Thus, \fB(#a1\fP\fB)README~READ_ME\fP matches
+\fBREAD\&.ME\fP but not \fBREAD_ME\fP, as tha trailin \fBREAD_ME\fP is matched
+without approximation\&.  However,
+\fB(#a1\fP\fB)README~(#a1\fP\fB)READ_ME\fP
+does not match any pattern of tha form \fBREAD\fP\fI?\fP\fBME\fP as all
+such forms is now excluded\&.
+.PP
+Apart from exclusions, there is only one overall error count; however, the
+maximum errors allowed may be altered locally, n' dis can be delimited by
+grouping\&.  For example,
+\fB(#a1\fP\fB)cat\fP\fB((#a0\fP\fB)dog\fP\fB)fox\fP
+allows one error up in total, which may not occur up in tha \fBdog\fP section, and
+the pattern
+\fB(#a1\fP\fB)cat\fP\fB(#a0\fP\fB)dog\fP\fB(#a1\fP\fB)fox\fP
+is equivalent\&.  Note dat tha point at which a error is first found is the
+crucial one fo' establishin whether ta use approximation; fo' example,
+\fB(#a1)abc(#a0)xyz\fP aint gonna match \fBabcdxyz\fP, cuz the
+error occurs all up in tha `\fBx\fP\&', where approximation is turned off\&.
+.PP
+Entire path segments may be matched approximately, so that
+`\fB(#a1)/foo/d/is/available/at/the/bar\fP\&' allows one error up in any path
+segment\&.  This is much less efficient than without tha \fB(#a1)\fP, however,
+since every last muthafuckin directory up in tha path must be scanned fo' a possible
+approximate match\&.  It be dopest ta place tha \fB(#a1)\fP afta any path
+segments which is known ta be erect\&.
+.PP
+.SS "Recursive Globbing"
+A pathname component of tha form `\fB(\fP\fIfoo\fP\fB/)#\fP\&'
+matches a path consistin of zero or mo' directories
+matchin tha pattern \fIfoo\fP\&.
+.PP
+As a gangbangin' finger-lickin' dirty-ass shorthand, `\fB**/\fP\&' is equivalent ta `\fB(*/)#\fP'; note dat this
+therefore matches filez up in tha current directory as well as
+subdirectories\&.
+Thus:
+.PP
+.RS
+.nf
+\fBls (*/)#bar\fP
+.fi
+.RE
+.PP
+or
+.PP
+.RS
+.nf
+\fBls **/bar\fP
+.fi
+.RE
+.PP
+does a recursive directory search fo' filez named `\fBbar\fP\&' (potentially
+includin tha file `\fBbar\fP\&' up in tha current directory)\&.  This form do not
+follow symbolic links; tha alternatizzle form `\fB***/\fP\&' do yo, but is
+otherwise identical\&.  Neither of these can be combined wit other forms of
+globbin within tha same path segment; up in dat case, tha `\fB*\fP\&'
+operators revert ta they usual effect\&.
+.SS "Glob Qualifiers"
+Patterns used fo' filename generation may end up in a
+list of qualifiers enclosed up in parentheses\&.
+Da qualifiers specify which filenames dat otherwise match tha given pattern
+will be banged up in tha argument list\&.
+.PP
+If tha option \fBBARE_GLOB_QUAL\fP is set, then a trailin set of parentheses
+containin no `\fB|\fP\&' or `\fB(\fP' charactas (or `\fB~\fP' if it is special)
+is taken as a set of
+glob qualifiers\&.  A glob subexpression dat would normally be taken as glob
+qualifiers, fo' example `\fB(^x)\fP\&', can be forced ta be treated as part of
+the glob pattern by doublin tha parentheses, up in dis case producing
+`\fB((^x))\fP\&'\&.
+.PP
+If tha option \fBEXTENDED_GLOB\fP is set, a gangbangin' finger-lickin' different syntax fo' glob
+qualifiers be available, namely `\fB(#qx)\fP\&' where \fBx\fP be any of tha same
+glob qualifiers used up in tha other format\&.  Da qualifiers must still appear
+at tha end of tha pattern\&.  But fuck dat shiznit yo, tha word on tha street is dat wit dis syntax multiple glob
+qualifiers may be chained together\&.  They is treated as a logical AND of
+the individual setz of flags\&.  Also, as tha syntax is unambiguous, the
+expression is ghon be treated as glob qualifiers just as long any parentheses
+contained within it is balanced; appearizzle of `\fB|\fP\&', `\fB(\fP' or
+`\fB~\fP\&' do not negate tha effect\&.  Note dat qualifiers will be
+recognised up in dis form even if a funky-ass bare glob qualifier exists all up in tha end of
+the pattern, fo' example `\fB*(#q*)(\&.)\fP\&' will recognise executable regular
+filez if both options is set; however, mixed syntax should probably be
+avoided fo' tha sake of clarity\&.  Note dat within conditions rockin the
+`\fB[[\fP\&' form tha presence of a parenthesised expression
+\fB(#q\&.\&.\&.)\fP all up in tha end of a strang indicates dat globbing
+should be performed; tha expression may include glob qualifiers yo, but
+it be also valid if it is simply \fB(#q)\fP\&.  This do
+not apply ta tha right hand side of pattern match operators as the
+syntax already has special significance\&.
+.PP
+A qualifier may be any one of tha following:
+.PP
+.PD 0
+.TP
+.PD
+\fB/\fP
+directories
+.TP
+\fBF\fP
+`full\&' (i\&.e\&. non\-empty) directories\&.  Note dat the
+opposite sense \fB(^F\fP\fB)\fP expandz ta empty directories
+and all non\-directories\&.  Use \fB(/^F\fP\fB)\fP for
+empty directories\&.
+.TP
+\fB\&.\fP
+plain files
+.TP
+\fB@\fP
+symbolic links
+.TP
+\fB=\fP
+sockets
+.TP
+\fBp\fP
+named pipes (FIFOs)
+.TP
+\fB*\fP
+executable plain filez (0100)
+.TP
+\fB%\fP
+device filez (characta or block special)
+.TP
+\fB%b\fP
+block special files
+.TP
+\fB%c\fP
+characta special files
+.TP
+\fBr\fP
+baller\-readable filez (0400)
+.TP
+\fBw\fP
+baller\-writable filez (0200)
+.TP
+\fBx\fP
+baller\-executable filez (0100)
+.TP
+\fBA\fP
+group\-readable filez (0040)
+.TP
+\fBI\fP
+group\-writable filez (0020)
+.TP
+\fBE\fP
+group\-executable filez (0010)
+.TP
+\fBR\fP
+world\-readable filez (0004)
+.TP
+\fBW\fP
+world\-writable filez (0002)
+.TP
+\fBX\fP
+world\-executable filez (0001)
+.TP
+\fBs\fP
+setuid filez (04000)
+.TP
+\fBS\fP
+setgid filez (02000)
+.TP
+\fBt\fP
+filez wit tha sticky bit (01000)
+.TP
+\fBf\fP\fIspec\fP
+filez wit access muthafuckin rights matchin \fIspec\fP\&. This \fIspec\fP may be a
+octal number optionally preceded by a `\fB=\fP\&', a `\fB+\fP', or a
+`\fB\-\fP\&'\&. If none of these charactas is given, tha behavior is the
+same as fo' `\fB=\fP\&'\&. Da octal number raps bout tha mode bits ta be
+expected, if combined wit a `\fB=\fP\&', tha value given must match the
+file\-modes exactly, wit a `\fB+\fP\&', at least tha bits up in the
+given number must be set up in tha file\-modes, n' wit a `\fB\-\fP\&', the
+bits up in tha number must not be set\&. Givin a `\fB?\fP\&' instead of a
+octal digit anywhere up in tha number ensures dat tha correspondin bits 
+in tha file\-modes is not checked, dis is only useful up in combination
+with `\fB=\fP\&'\&.
+.RS
+.PP
+If tha qualifier `\fBf\fP\&' is followed by any other characta anything
+up ta tha next matchin characta (`\fB[\fP\&', `\fB{\fP', n' `\fB<\fP' match 
+`\fB]\fP\&', `\fB}\fP', n' `\fB>\fP' respectively, any other character
+matches itself) is taken as a list of comma\-separated
+\fIsub\-spec\fPs\&. Each \fIsub\-spec\fP may be either a octal number as
+busted lyrics bout above or a list of any of tha charactas `\fBu\fP\&', `\fBg\fP',
+`\fBo\fP\&', n' `\fBa\fP', followed by a `\fB=\fP', a `\fB+\fP', or a
+`\fB\-\fP\&', followed by a list of any of tha charactas `\fBr\fP', `\fBw\fP', 
+`\fBx\fP\&', `\fBs\fP', n' `\fBt\fP', or a octal digit\&. Da first list of
+charactas specify which access muthafuckin rights is ta be checked\&. If a `\fBu\fP\&'
+is given, dem fo' tha balla of tha file is used, if a `\fBg\fP\&' is
+given, dem of tha crew is checked, a `\fBo\fP\&' means ta test them
+of other users, n' tha `\fBa\fP\&' say ta test all three groups\&. The
+`\fB=\fP\&', `\fB+\fP', n' `\fB\-\fP' again n' again n' again say how tha fuck tha modes is ta be
+checked n' have tha same meanin as busted lyrics bout fo' tha straight-up original gangsta form
+above\&. Da second list of charactas finally say which access rights
+are ta be expected: `\fBr\fP\&' fo' read access, `\fBw\fP' fo' write access, 
+`\fBx\fP\&' fo' tha right ta execute tha file (or ta search a gangbangin' finger-lickin' directory),
+`\fBs\fP\&' fo' tha setuid n' setgid bits, n' `\fBt\fP' fo' tha sticky
+bit\&.
+.PP
+Thus, `\fB*(f70?)\fP\&' gives tha filez fo' which tha balla has read,
+write, n' execute permission, n' fo' which other crew thugz have
+no rights, independent of tha permissions fo' other users\&. Da pattern
+`\fB*(f\-100)\fP\&' gives all filez fo' which tha balla do not have
+execute permission, n' `\fB*(f:gu+w,o\-rx:)\fP\&' gives tha filez fo' which 
+the balla n' tha other thugz of tha crew have at least write
+permission, n' fo' which other playas don\&'t have read or execute
+permission\&.
+.RE
+.TP
+.PD 0
+\fBe\fP\fIstring\fP
+.TP
+.PD
+\fB+\fP\fIcmd\fP
+Da \fIstring\fP is ghon be executed as shell code\&.  Da filename will be
+included up in tha list if n' only if tha code returns a zero status (usually
+the statuz of tha last command)\&.
+.RS
+.PP
+In tha straight-up original gangsta form, tha straight-up original gangsta characta afta tha `\fBe\fP\&'
+will be used as a separator n' anythang up ta tha next matchin separator
+will be taken  as tha \fIstring\fP; `\fB[\fP\&', `\fB{\fP', n' `\fB<\fP' match
+`\fB]\fP\&', `\fB}\fP', n' `\fB>\fP', respectively, while any other character
+matches itself\&. Note dat expansions must be quoted up in tha \fIstring\fP
+to prevent dem from bein expanded before globbin is done\&.
+\fIstring\fP is then executed as shell code\&.  Da strang \fBglobqual\fP
+is appended ta tha array \fBzsh_eval_context\fP tha duration of
+execution\&.
+.PP
+Durin tha execution of \fIstring\fP tha filename currently bein tested is
+available up in tha parameta \fBREPLY\fP; tha parameta may be altered to
+a strang ta be banged tha fuck into tha list instead of tha original
+filename\&.  In addition, tha parameta \fBreply\fP may be set ta a array or a
+string, which overrides tha value of \fBREPLY\fP\&.  If set ta a array, the
+latta is banged tha fuck into tha command line word by word\&.
+.PP
+For example, suppose a gangbangin' finger-lickin' directory gotz nuff a single file `\fBlonely\fP\&'\&.  Then
+the expression `\fB*(e:\&'reply=(${REPLY}{1,2})':)\fP' will cause tha lyrics
+`\fBlonely1\fP\&' n' `\fBlonely2\fP' ta be banged tha fuck into tha command line\&.  Note
+the quotin of \fIstring\fP\&.
+.PP
+Da form \fB+\fP\fIcmd\fP has tha same ol' dirty effect yo, but no delimitas appear
+around \fIcmd\fP\&.  Instead, \fIcmd\fP is taken as tha longest sequence of
+charactas followin tha \fB+\fP dat is alphanumeric or underscore\&.
+Typically \fIcmd\fP is ghon be tha name of a gangbangin' finger-lickin' dirty-ass shell function dat gotz nuff the
+appropriate test\&.  For example,
+.PP
+.RS
+.nf
+\fBnt() { [[ $REPLY \-nt $NTREF ]] }
+NTREF=reffile
+ls \-l *(+nt)\fP
+.fi
+.RE
+.PP
+lists all filez up in tha directory dat done been modified mo' recently than
+\fBreffile\fP\&.
+.RE
+.TP
+\fBd\fP\fIdev\fP
+filez on tha thang \fIdev\fP
+.TP
+\fBl\fP[\fB\-\fP|\fB+\fP]\fIct\fP
+filez havin a link count less than \fIct\fP (\fB\-\fP), pimped outa than
+\fIct\fP (\fB+\fP), or equal ta \fIct\fP
+.TP
+\fBU\fP
+filez owned by tha effectizzle user ID
+.TP
+\fBG\fP
+filez owned by tha effectizzle crew ID
+.TP
+\fBu\fP\fIid\fP
+filez owned by user ID \fIid\fP if dat be a number\&.  Otherwise,
+\fIid\fP specifies a user name: the
+characta afta tha `\fBu\fP\&' is ghon be taken as a separator n' tha string
+between it n' tha next matchin separator is ghon be taken as a user name\&.
+Da startin separators `\fB[\fP\&', `\fB{\fP', n' `\fB<\fP'
+match tha final separators `\fB]\fP\&', `\fB}\fP', n' `\fB>\fP', respectively;
+any other characta matches itself\&.  Da selected filez is them
+owned by dis user\&.  For example, `\fBu:foo:\fP\&' or `\fBu[foo]\fP' selects
+filez owned by user `\fBfoo\fP\&'\&.
+.TP
+\fBg\fP\fIid\fP
+like \fBu\fP\fIid\fP but wit crew IDs or names
+.TP
+\fBa\fP[\fBMwhms\fP][\fB\-\fP|\fB+\fP]\fIn\fP
+filez accessed exactly \fIn\fP minutes ago\&.  Filez accessed within tha last
+\fIn\fP minutes is selected rockin a wack value fo' \fIn\fP (\fB\-\fP\fIn\fP)\&.
+Filez accessed mo' than \fIn\fP minutes ago is selected by a positizzle \fIn\fP
+value (\fB+\fP\fIn\fP)\&.  Optionizzle unit specifiers `\fBM\fP\&', `\fBw\fP',
+`\fBh\fP\&', `\fBm\fP' or `\fBs\fP' (e\&.g\&. `\fBah5\fP') cause tha check ta be
+performed wit months (of 30 days), weeks, hours, minutes or seconds
+instead of days, respectively\&.  An explicit `\fBd\fP\&' fo' minutes be also
+allowed\&.
+.RS
+.PP
+Any fractionizzle part of tha difference between tha access time n' the
+current part up in tha appropriate units is ignored up in tha comparison\&.  For
+instance, `\fBecho *(ah\-5)\fP\&' would echo filez accessed within tha last
+five hours, while `\fBecho *(ah+5)\fP\&' would echo filez accessed at least
+six minutes ago, as times strictly between five n' six minutes is treated
+as five hours\&.
+.RE
+.TP
+\fBm\fP[\fBMwhms\fP][\fB\-\fP|\fB+\fP]\fIn\fP
+like tha file access qualifier, except dat it uses tha file modification
+time\&.
+.TP
+\fBc\fP[\fBMwhms\fP][\fB\-\fP|\fB+\fP]\fIn\fP
+like tha file access qualifier, except dat it uses tha file inode chizzle
+time\&.
+.TP
+\fBL\fP[\fB+\fP|\fB\-\fP]\fIn\fP
+filez less than \fIn\fP bytes (\fB\-\fP), mo' than \fIn\fP bytes (\fB+\fP), or
+exactly \fIn\fP bytes up in length\&.
+.RS
+.PP
+If dis flag is directly followed by a \fIsize specifier\fP `\fBk\fP\&' (`\fBK\fP'),
+`\fBm\fP\&' (`\fBM\fP'), or `\fBp\fP' (`\fBP\fP') (e\&.g\&. `\fBLk\-50\fP') tha check is
+performed wit kilobytes, megabytes, or blocks (of 512 bytes) instead\&.
+(On some systems additionizzle specifiers is available fo' gigabytes,
+`\fBg\fP\&' or `\fBG\fP', n' terabytes, `\fBt\fP' or `\fBT\fP'\&.) If a size specifier
+is used a gangbangin' file is regarded as "exactly" tha size if tha file size rounded up
+to tha next unit is equal ta tha test size\&.  Hence `\fB*(Lm1)\fP\&'
+matches filez from 1 byte up ta 1 Megabyte inclusive\&.  Note also that
+the set of filez "less than" tha test size only includes filez dat would
+not match tha equalitizzle test; hence `\fB*(Lm\-1)\fP\&' only matches
+filez of zero size\&.
+.RE
+.TP
+\fB^\fP
+negates all qualifiers followin it
+.TP
+\fB\-\fP
+togglez between makin tha qualifiers work on symbolic links (the
+default) n' tha filez they point to
+.TP
+\fBM\fP
+sets tha \fBMARK_DIRS\fP option fo' tha current pattern
+.TP
+\fBT\fP
+appendz a trailin qualifier mark ta tha filenames, analogous ta the
+\fBLIST_TYPES\fP option, fo' tha current pattern (overrides \fBM\fP)
+.TP
+\fBN\fP
+sets tha \fBNULL_GLOB\fP option fo' tha current pattern
+.TP
+\fBD\fP
+sets tha \fBGLOB_DOTS\fP option fo' tha current pattern
+.TP
+\fBn\fP
+sets tha \fBNUMERIC_GLOB_SORT\fP option fo' tha current pattern
+.TP
+\fBY\fP\fIn\fP
+enablez short\-circuit mode: tha pattern will expand ta at most \fIn\fP
+filenames\&.  If mo' than \fIn\fP matches exist, only tha straight-up original gangsta \fIn\fP
+matches up in directory traversal order is ghon be considered\&.
+.RS
+.PP
+Implies \fBoN\fP when no \fBo\fP\fIc\fP qualifier is used\&.
+.RE
+.TP
+\fBo\fP\fIc\fP
+specifies how tha fuck tha namez of tha filez should be sorted\&. If \fIc\fP is
+\fBn\fP they is sorted by name; if it is \fBL\fP they
+are sorted dependin on tha size (length) of tha files; if \fBl\fP
+they is sorted by tha number of links; if \fBa\fP, \fBm\fP, or \fBc\fP
+they is sorted by tha time of tha last access, modification, or
+inode chizzle respectively; if \fBd\fP, filez up in subdirectories step tha fuck up before
+those up in tha current directory at each level of tha search \-\- dis is best
+combined wit other criteria, fo' example `\fBodon\fP\&' ta sort on names for
+filez within tha same directory; if \fBN\fP, no sortin is performed\&.
+Note dat \fBa\fP, \fBm\fP, n' \fBc\fP compare
+the age against tha current time, hence tha straight-up original gangsta name up in tha list is the
+youngest file\& fo' realz. Also note dat tha modifiers \fB^\fP n' \fB\-\fP is used,
+so `\fB*(^\-oL)\fP\&' gives a list of all filez sorted by file size up in descending
+order, followin any symbolic links\&.  Unless \fBoN\fP is used, multiple order
+specifiers may occur ta resolve ties\&.
+.RS
+.PP
+Da default sortin is \fBn\fP (by name) unless tha \fBY\fP glob qualifier is used,
+in which case it is \fBN\fP (unsorted)\&.
+.PP
+\fBoe\fP n' \fBo+\fP is special cases; they is each followed by shell code,
+delimited as fo' tha \fBe\fP glob qualifier n' tha \fB+\fP glob qualifier
+respectively (see above)\&.  Da code is executed fo' each matched file with
+the parameta \fBREPLY\fP set ta tha name of tha file on entry and
+\fBglobsort\fP appended ta \fBzsh_eval_context\fP\&.  Da code
+should modify tha parameta \fBREPLY\fP up in some fashion\&.  On return, the
+value of tha parameta is used instead of tha file name as tha strang on
+which ta sort\&.  Unlike other sort operators, \fBoe\fP n' \fBo+\fP may be
+repeated yo, but note dat tha maximum number of sort operatorz of any kind
+that may step tha fuck up in any glob expression is 12\&.
+.RE
+.TP
+\fBO\fP\fIc\fP
+like `\fBo\fP\&' yo, but sorts up in descendin order; i\&.e\&. `\fB*(^oc)\fP' is the
+same as `\fB*(Oc)\fP\&' n' `\fB*(^Oc)\fP' is tha same ol' dirty as `\fB*(oc)\fP'; `\fBOd\fP'
+puts filez up in tha current directory before dem up in subdirectories at each
+level of tha search\&.
+.TP
+\fB[\fP\fIbeg\fP[\fB,\fP\fIend\fP]\fB]\fP
+specifies which of tha matched filenames should be included up in the
+returned list\&. Da syntax is tha same ol' dirty as fo' array
+subscripts\&. \fIbeg\fP n' tha optionizzle \fIend\fP may be mathematical
+expressions\& fo' realz. As up in parameta subscriptin they may be wack ta make 
+them count from tha last match backward\&. E\&.g\&.: `\fB*(\-OL[1,3])\fP\&'
+gives a list of tha namez of tha three phattest files\&.
+.TP
+\fBP\fP\fIstring\fP
+Da \fIstring\fP is ghon be prepended ta each glob match as a separate
+word\&.  \fIstring\fP is delimited up in tha same way as arguments ta the
+\fBe\fP glob qualifier busted lyrics bout above\&.  Da qualifier can be repeated;
+the lyrics is prepended separately so dat tha resultin command
+line gotz nuff tha lyrics up in tha same order they was given up in the
+list of glob qualifiers\&.
+.RS
+.PP
+A typical use fo' dis is ta prepend a option before all occurrences
+of a gangbangin' file name; fo' example, tha pattern `\fB*(P:\-f:)\fP\&' produces the
+command line arguments `\fB\-f\fP \fIfile1\fP \fB\-f\fP \fIfile2\fP \&.\&.\&.\&'
+.PP
+If tha modifier \fB^\fP be active, then \fIstring\fP is ghon be appended
+instead of prepended\&.  Prependin n' appendin is done independently
+so both can be used on tha same glob expression; fo' example by writing
+`\fB*(P:foo:^P:bar:^P:baz:)\fP\&' which produces tha command line arguments
+`\fBfoo\fP \fBbaz\fP \fIfile1\fP \fBbar\fP \&.\&.\&.\&'
+.RE
+.PP
+Mo' than one of these lists can be combined, separated by commas\&. The
+whole list matches if at least one of tha sublists matches (they are
+`or\&'ed, tha qualifiers up in tha sublists is `and'ed)\&.  Some qualifiers,
+however, affect all matches generated, independent of tha sublist in
+which they is given\&.  These is tha qualifiers `\fBM\fP\&', `\fBT\fP',
+`\fBN\fP\&', `\fBD\fP', `\fBn\fP', `\fBo\fP', `\fBO\fP' n' tha subscripts given
+in brackets (`\fB[\&.\&.\&.]\fP\&')\&.
+.PP
+If a `\fB:\fP\&' appears up in a qualifier list, tha remainder of tha expression in
+parenthesis is interpreted as a modifier (see tha section `Modifiers\&'
+in tha section `History Expansion\&')\&.  Each modifier must be introduced by a
+separate `\fB:\fP\&'\&.  Note also dat tha result afta modification do not
+have ta be a existin file\&.  Da name of any existin file can be followed
+by a modifier of tha form `\fB(:\&.\&.)\fP\&' even if no actual filename generation
+is performed, although note dat tha presence of tha parentheses
+causes tha entire expression ta be subjected ta any global pattern matching
+options like fuckin \fBNULL_GLOB\fP\&. Thus:
+.PP
+.RS
+.nf
+\fBls *(\-/)\fP
+.fi
+.RE
+.PP
+lists all directories n' symbolic links dat point ta directories,
+and
+.PP
+.RS
+.nf
+\fBls *(%W)\fP
+.fi
+.RE
+.PP
+lists all ghetto\-writable thang filez up in tha current directory, and
+.PP
+.RS
+.nf
+\fBls *(W,X)\fP
+.fi
+.RE
+.PP
+lists all filez up in tha current directory dat are
+world\-writable or ghetto\-executable, and
+.PP
+.RS
+.nf
+\fBecho /tmp/foo*(u0^@:t)\fP
+.fi
+.RE
+.PP
+outputs tha basename of all root\-owned filez beginnin wit tha string
+`\fBfoo\fP\&' up in \fB/tmp\fP, ignorin symlinks, and
+.PP
+.RS
+.nf
+\fBls *\&.*~(lex|parse)\&.[ch](^D^l1)\fP
+.fi
+.RE
+.PP
+lists all filez havin a link count of one whose names contain a thugged-out dot
+(but not dem startin wit a thugged-out dot, since \fBGLOB_DOTS\fP is explicitly
+switched off) except fo' \fBlex\&.c\fP, \fBlex\&.h\fP, \fBparse\&.c\fP n' \fBparse\&.h\fP\&.
+.PP
+.RS
+.nf
+\fBprint b*\&.pro(#q:s/pro/shmo/)(#q\&.:s/builtin/shmiltin/)\fP
+.fi
+.RE
+.PP
+demonstrates how tha fuck colon modifiers n' other qualifiers may be chained
+together\&.  Da ordinary qualifier `\fB\&.\fP\&' be applied first, then tha colon
+modifiers up in order from left ta right\&.  So if \fBEXTENDED_GLOB\fP is set and
+the base pattern matches tha regular file \fBbuiltin\&.pro\fP, tha shell will
+print `\fBshmiltin\&.shmo\fP\&'\&.

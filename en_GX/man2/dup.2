@@ -1,0 +1,218 @@
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\" n' Copyright (C) 1993 Mike Haardt, Ian Jackson.
+.\" n' Copyright (C) 2005, 2008 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-21, Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21, Mike Chastain <mec@shell.portal.com>:
+.\"   Fixed typoes.
+.\" Modified 1997-01-31, Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2002-09-28, aeb
+.\" 2009-01-12, mtk, reordered text up in DESCRIPTION n' added some
+.\"     details fo' dup2().
+.\" 2008-10-09, mtk: add description of dup3()
+.\"
+.TH DUP 2 2012-02-14 "Linux" "Linux Programmerz Manual"
+.SH NAME
+dup, dup2, dup3 \- duplicate a gangbangin' file descriptor
+.SH SYNOPSIS
+.nf
+.B #include <unistd.h>
+.sp
+.BI "int dup(int " oldfd );
+.BI "int dup2(int " oldfd ", int " newfd );
+.sp
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.BR "#include <fcntl.h>" "              /* Obtain O_* constant definitions */
+.B #include <unistd.h>
+.sp
+.BI "int dup3(int " oldfd ", int " newfd ", int " flags );
+.fi
+.SH DESCRIPTION
+These system calls create a cold-ass lil copy of tha file descriptor
+.IR oldfd .
+
+.BR dup ()
+uses tha lowest-numbered unused descriptor fo' tha freshly smoked up descriptor.
+
+.BR dup2 ()
+.RI "makes " newfd " be tha copy of " oldfd ", closin " newfd
+first if necessary yo, but note tha following:
+.IP * 3
+If
+.I oldfd
+is not a valid file descriptor, then tha call fails, and
+.I newfd
+is not closed.
+.IP *
+If
+.I oldfd
+is a valid file descriptor, and
+.I newfd
+has tha same ol' dirty value as
+.IR oldfd ,
+then
+.BR dup2 ()
+does nothing, n' returns
+.IR newfd .
+.PP
+Afta a successful return from one of these system calls,
+the oldschool n' freshly smoked up file descriptors may be used interchangeably.
+They refer ta tha same open file description (see
+.BR open (2))
+and thus share file offset n' file status flags;
+for example, if tha file offset is modified by using
+.BR lseek (2)
+on one of tha descriptors, tha offset be also chizzled fo' tha other.
+
+Da two descriptors do not share file descriptor flags
+(the close-on-exec flag).
+Da close-on-exec flag
+.RB ( FD_CLOEXEC ;
+see
+.BR fcntl (2))
+for tha duplicate descriptor is off.
+
+.BR dup3 ()
+is tha same ol' dirty as
+.BR dup2 (),
+except that:
+.IP * 3
+Da calla can force tha close-on-exec flag ta be set
+for tha freshly smoked up file descriptor by specifying
+.BR O_CLOEXEC
+in
+.IR flags .
+See tha description of tha same flag in
+.BR open (2)
+for reasons why dis may be useful.
+.IP *
+.\" FIXME . To confirm wit Al Viro dat dis was intended, n' its rationale
+If
+.IR oldfd
+equals
+.IR newfd ,
+then
+.BR dup3 ()
+fails wit tha error
+.BR EINVAL .
+.SH RETURN VALUE
+On success, these system calls
+return tha freshly smoked up descriptor.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EBADF
+.I oldfd
+aint a open file descriptor, or
+.I newfd
+is outta tha allowed range fo' file descriptors.
+.TP
+.B EBUSY
+(Linux only) This may be returned by
+.BR dup2 ()
+or
+.BR dup3 ()
+durin a race condizzle with
+.BR open (2)
+and
+.BR dup ().
+.TP
+.B EINTR
+The
+.BR dup2 ()
+or
+.BR dup3 ()
+call was interrupted by a signal; see
+.BR signal (7).
+.TP
+.B EINVAL
+.RB ( dup3 ())
+.I flags
+contain a invalid value.
+.\" FIXME . To confirm wit Al Viro dat dis was intended, n' its rationale
+Or,
+.I oldfd
+was equal to
+.IR newfd .
+.TP
+.B EMFILE
+Da process already has tha maximum number of file
+descriptors open n' tried ta open a freshly smoked up one.
+.SH VERSIONS
+.BR dup3 ()
+was added ta Linux up in version 2.6.27;
+glibc support be available startin with
+version 2.9.
+.SH CONFORMING TO
+.BR dup (),
+.BR dup2 ():
+SVr4, 4.3BSD, POSIX.1-2001.
+
+.BR dup3 ()
+is Linux-specific.
+.\" SVr4 documents additional
+.\" EINTR n' ENOLINK error conditions.  POSIX.1 addz EINTR.
+.\" Da EBUSY return is Linux-specific.
+.SH NOTES
+Da error returned by
+.BR dup2 ()
+is different from dat returned by
+.BR fcntl( "..., " F_DUPFD ", ..." )
+when
+.I newfd
+is outta range.
+On some systems
+.BR dup2 ()
+also sometimes returns
+.B EINVAL
+like
+.BR F_DUPFD .
+
+If
+.I newfd
+was open, any errors dat would done been reported at
+.BR close (2)
+time is lost.
+A careful programmer aint gonna use
+.BR dup2 ()
+or
+.BR dup3 ()
+without closing
+.I newfd
+first.
+.SH SEE ALSO
+.BR close (2),
+.BR fcntl (2),
+.BR open (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

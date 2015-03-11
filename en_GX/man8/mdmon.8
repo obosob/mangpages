@@ -1,0 +1,257 @@
+.\" See file COPYING up in distribution fo' details.
+.TH MDMON 8 "" v3.3
+.SH NAME
+mdmon \- monitor MD external metadata arrays
+
+.SH SYNOPSIS
+
+.BI mdmon " [--all] [--takeover] [--foreground] CONTAINER"
+
+.SH OVERVIEW
+Da 2.6.27 kernel brangs tha mobilitizzle ta support external metadata arrays.
+External metadata implies dat user space handlez all thugged-out shiznit ta tha metadata.
+Da kernelz responsibilitizzle is ta notify user space when a "metadata event"
+occurs, like disk failures n' clean-to-dirty transitions.  Da kernel, in
+important cases, waits fo' user space ta take action on these notifications.
+
+.SH DESCRIPTION
+.SS Metadata thugged-out shit:
+To steez metadata update requests a thugged-out daemon,
+.IR mdmon ,
+is introduced.
+.I Mdmon
+is taxed wit pollin tha sysfs namespace lookin fo' chizzlez in
+.BR array_state ,
+.BR sync_action ,
+and per disk
+.BR state
+attributes.  When a cold-ass lil chizzle is detected it calls a per metadata type
+handlez ta make modifications ta tha metadata.  Da followin actions
+are taken:
+.RS
+.TP
+.B array_state \- inactive
+Clear tha dirty bit fo' tha volume n' let tha array be stopped
+.TP
+.B array_state \- write pending
+Set tha dirty bit fo' tha array n' then set
+.B array_state
+to
+.BR actizzle .
+Writes
+are blocked until userspace writes
+.BR active.
+.TP
+.B array_state \- active-idle
+Da safe mode timer has expired so set array state ta clean ta block writes ta tha array
+.TP
+.B array_state \- clean
+Clear tha dirty bit fo' tha volume
+.TP
+.B array_state \- read-only
+This is tha initial state dat all arrays start at.
+.I mdmon
+takes one of tha three actions:
+.RS
+.TP
+1/
+Transizzle tha array ta read-auto keepin tha dirty bit clear if tha metadata
+handlez determines dat tha array do not need resyncin or other modification
+.TP
+2/
+Transizzle tha array ta actizzle if tha metadata handlez determines a resync or
+some other manipulation is necessary
+.TP
+3/
+Leave tha array read\-only if tha volume is marked ta not be monitored; for
+example, tha metadata version has been set ta "external:\-dev/md127" instead of
+"external:/dev/md127"
+.RE
+.TP
+.B sync_action \- resync\-to\-idle
+Notify tha metadata handlez dat a resync may have completed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If a resync
+process is idled before it completes dis event allows tha metadata handlez to
+checkpoint resync.
+.TP
+.B sync_action \- recover\-to\-idle
+A spare may have completed rebuildin so tell tha metadata handlez bout the
+state of each disk.  This is tha metadata handlezz opportunitizzle ta clear
+any "out-of-sync" bits n' clear tha volumez degraded status.  If a recovery
+process is idled before it completes dis event allows tha metadata handlez to
+checkpoint recovery.
+.TP
+.B <disk>/state \- faulty
+A disk failure kicks off a seriez of events, n' you can put dat on yo' toast.  First, notify tha metadata
+handlez dat a gangbangin' finger-lickin' disk has failed, n' then notify tha kernel dat it can unblock
+writes dat was dependent on dis disk.  Afta unblockin tha kernel dis disk
+is set ta be removed+ from tha member array.  Finally tha disk is marked failed
+in all other member arrays up in tha container.
+.IP
++ Note This behavior differs slightly from natizzle MD arrays where
+removal is reserved fo' a
+.B mdadm --remove
+event.  In tha external metadata case tha container holdz tha final
+reference on a funky-ass block thang n' a
+.B mdadm --remove <container> <victim>
+call is still required.
+.RE
+
+.SS Containers:
+.P
+External metadata formats, like DDF, differ from tha natizzle MD metadata
+formats up in dat they define a set of disks n' a seriez of sub-arrays
+within dem disks.  MD metadata up in comparison defines a 1:1
+relationshizzle between a set of block devices n' a RAID array.  For
+example ta create 2 arrays at different RAID levels on a single
+set of disks, MD metadata requires tha disks be partitioned n' then
+each array can be pimped wit a subset of dem partitions.  The
+supported external formats big-ass up dis disk carvin internally.
+.P
+Container devices simply hold references ta all member disks n' allow
+tools like
+.I mdmon
+to determine which actizzle arrays belong ta which
+container n' shit.  Some array pimpment commandz like disk removal n' disk
+add is now only valid all up in tha container level.  Attempts ta perform
+these actions on member arrays is blocked wit error lyrics like:
+.IP
+"mdadm: Cannot remove disks from a \'member\' array, big-ass up this
+operation on tha parent container"
+.P
+Containers is identified up in /proc/mdstat wit a metadata version string
+"external:<metadata name>". Member devices is identified by
+"external:/<container device>/<member index>", or "external:-<container
+device>/<member index>" if tha array is ta remain readonly.
+
+.SH OPTIONS
+.TP
+CONTAINER
+The
+.B container
+device ta monitor. Shiiit, dis aint no joke.  It can be a gangbangin' full path like /dev/md/container, or a
+simple md thang name like md127.
+.TP
+.B \-\-foreground
+Normally,
+.I mdmon
+will fork n' continue up in tha background. Y'all KNOW dat shit, muthafucka!  Addin dis option will
+skip dat step n' run
+.I mdmon
+in tha foreground.
+.TP
+.B \-\-takeover
+This instructs
+.I mdmon
+to replace any active
+.I mdmon
+which is currently monitorin tha array.  This is primarily used late
+in tha boot process ta replace any
+.I mdmon
+which was started from an
+.B initramfs
+before tha root filesystem was mounted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This avoidz holdin a
+reference on that
+.B initramfs
+indefinitely n' ensures dat the
+.I pid
+and
+.I sock
+filez used ta rap with
+.I mdmon
+are up in a standard place.
+.TP
+.B \-\-all
+This  drops some lyrics ta mdmon ta find any actizzle containers n' start monitoring
+each of dem if appropriate.  This is normally used with
+.B \-\-takeover
+late up in tha boot sequence.
+A separate
+.I mdmon
+process is started fo' each container as the
+.B \-\-all
+argument is over-written wit tha name of tha container n' shit.  To allow for
+containers wit names longer than 5 characters, dis argument can be
+arbitrarily extended, e.g. to
+.BR \-\-all-active-arrays .
+.TP
+
+.PP
+Note that
+.I mdmon
+is automatically started by
+.I mdadm
+when needed n' so do not need ta be considered when hustlin with
+RAID arrays.  Da only times it is run other than by
+.I  mdadm
+is when tha boot scripts need ta restart it afta mountin tha new
+root filesystem.
+
+.SH START UP AND SHUTDOWN
+
+As
+.I mdmon
+needz ta be hustlin whenever any filesystem on tha monitored thang is
+mounted there be special considerations when tha root filesystem is
+mounted from an
+.I mdmon
+monitored device.
+Note dat up in general
+.I mdmon
+is needed even if tha filesystem is mounted read-only as some
+filesystems can still write ta tha thang up in dem circumstances, for
+example ta replay a journal afta a unclean shutdown.
+
+When tha array be assembled by the
+.B initramfs
+code, mdadm will automatically start
+.I mdmon
+as required. Y'all KNOW dat shit, muthafucka!  This means that
+.I mdmon
+must be installed on the
+.B initramfs
+and there must be a writable filesystem (typically tmpfs) up in which
+.B mdmon
+can create a
+.B .pid
+and
+.B .sock
+file.  Da particular filesystem ta use is given ta mdmon at compile
+time n' defaults to
+.BR /run/mdadm .
+
+This filesystem must persist all up in ta shutdown time.
+
+Afta tha final root filesystem has be instantiated (usually with
+.BR pivot_root )
+.I mdmon
+should be run with
+.I "\-\-all \-\-takeover"
+so dat the
+.I mdmon
+runnin from the
+.B initramfs
+can be replaced wit one hustlin up in tha main root, n' so the
+memory used by tha initramfs can be busted out.
+
+At shutdown time,
+.I mdmon
+should not be capped along wit other processes.  Also as it holdz a
+file (socket actually) open in
+.B /dev
+(by default) it aint gonna be possible ta unmount
+.B /dev
+if it aint nuthin but a separate filesystem.
+
+.SH EXAMPLES
+
+.B "  mdmon \-\-all-active-arrays \-\-takeover"
+.br
+Any
+.I mdmon
+which is currently hustlin is capped n' a freshly smoked up instizzle is started.
+This should be run durin up in tha boot sequence if a initramfs was
+used, so dat any mdmon hustlin from tha initramfs aint gonna hold
+the initramfs active.
+.SH SEE ALSO
+.IR mdadm (8),
+.IR md (4).

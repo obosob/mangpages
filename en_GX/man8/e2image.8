@@ -1,0 +1,204 @@
+.\" -*- nroff -*-
+.\" Copyright 2001 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under tha termz of tha GNU Public License.
+.\" 
+.TH E2IMAGE 8 "June 2013" "E2fsprogs version 1.42.8"
+.SH NAME
+e2image \- Save critical ext2/ext3/ext4 filesystem metadata ta a gangbangin' file
+.SH SYNOPSIS
+.B e2image
+[
+.B \-rsIQa
+]
+.I device
+.I image-file
+.SH DESCRIPTION
+The
+.B e2image
+program will save critical ext2, ext3, or ext4 filesystem metadata located on
+.I device
+to a gangbangin' file specified by
+.IR image-file .
+Da image file may be examined by
+.B dumpe2fs
+and
+.BR  debugfs ,
+by rockin the
+.B \-i
+option ta dem programs.  This can assist a expert in
+recoverin catastrophically corrupted filesystems.  In tha future,
+e2fsck is ghon be enhanced ta be able ta use tha image file ta help
+recover a funky-ass badly damaged filesystem.
+.PP
+If
+.I image-file
+is \-, then tha output of
+.B e2image
+will be busted ta standard output, so dat tha output can be piped to
+another program, such as
+.BR gzip (1).
+(Note dat dis is currently only supported when
+bustin a raw image file rockin the
+.B \-r
+option, since tha process of bustin a aiiight image file, or QCOW2
+image currently
+requires random access ta tha file, which cannot be done rockin a
+pipe.  This restriction will hopefully be lifted up in a gangbangin' future version of
+.BR e2image .)
+.PP
+It be a straight-up phat scam ta create image filez fo' all of
+filesystems on a system n' save tha partition
+layout (which can be generated rockin the
+.B fdisk \-l
+command) at regular intervals --- at boot time, and/or every last muthafuckin week or so.
+Da image file should be stored on some filesystem other than
+the filesystem whose data it gotz nuff, ta ensure dat dis data is
+accessible up in tha case where tha filesystem has been badly damaged.
+.PP
+To save disk space,
+.B e2image
+creates tha image file as a sparse file, or up in QCOW2 format.
+Hence, if tha sparse image file
+needz ta be copied ta another location, it should
+either be compressed first or copied rockin the
+.B \-\-sparse=always
+option ta tha GNU version of
+.BR cp .
+This do not apply ta tha QCOW2 image, which aint sparse.
+.PP
+Da size of a ext2 image file dependz primarily on tha size of the
+filesystems n' how tha fuck nuff inodes is up in use.  For a typical 10 gigabyte
+filesystem, wit 200,000 inodes up in use outta 1.2 mazillion inodes, the
+image file is ghon be approximately 35 megabytes; a 4 gigabyte filesystem with
+15,000 inodes up in use outta 550,000 inodes will result up in a 3 megabyte
+image file.  Image filez tend ta be quite
+compressible; a image file takin up 32 megabytez of space on
+disk will generally compress down ta 3 or 4 megabytes.
+.PP
+.SH RESTORING FILESYSTEM METADATA USING AN IMAGE FILE
+.PP
+The
+.B \-I
+option will cause e2image ta install tha metadata stored up in tha image
+file back ta tha device.  It can be used ta restore tha filesystem metadata
+back ta tha thang up in emergency thangs.
+.PP
+.B WARNING!!!!
+The
+.B \-I
+option should only be used as a thugged-out desperation measure when other
+alternatives have failed. Y'all KNOW dat shit, muthafucka!  If tha filesystem has chizzled since tha image
+file was pimped, data
+.B will
+be lost.  In general, you should cook up a gangbangin' full image
+backup of tha filesystem first, up in case you wish ta try other recovery
+strategies afterwards.
+.PP
+.SH RAW IMAGE FILES
+The
+.B \-r
+option will create a raw image file instead of a aiiight image file.
+A raw image file differs
+from a aiiight image file up in two ways.  First, tha filesystem metadata is
+placed up in tha proper posizzle so dat e2fsck, dumpe2fs, debugfs,
+etc.\& can be run directly on tha raw image file.  In order ta minimize
+the amount of disk space consumed by a raw image file, tha file is
+created as a sparse file.  (Beware of copyin or
+compressing/decompressin dis file wit utilitizzles dat don't understand
+how ta create sparse files; tha file will become as big-ass as the
+filesystem itself!)  Secondly, tha raw image file also includes indirect
+blocks n' directory blocks, which tha standard image file do not have,
+although dis may chizzle up in tha future.
+.PP
+Raw image filez is sometimes used when bustin  filesystems ta tha maintainer
+as part of bug reports ta e2fsprogs.  When used up in dis capacity, the
+recommended command be as bigs up (replace hda1 wit tha appropriate device):
+.PP
+.br
+	\fBe2image \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fR
+.PP
+This will only bust tha metadata shiznit, without any data blocks.
+But fuck dat shiznit yo, tha word on tha street is dat tha filenames up in tha directory blocks can still reveal
+information bout tha contentz of tha filesystem dat tha bug hustla
+may wish ta keep confidential. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  To address dis concern, the
+.B \-s
+option can be specified. Y'all KNOW dat shit, muthafucka!  This will cause
+.B e2image
+to scramble directory entries n' zero up any unused portions
+of tha directory blocks before freestylin tha image file.  However,
+the
+.B \-s
+option will prevent analysiz of problems related ta hash-tree indexed
+directories.
+.PP
+Note dat dis will work even if you substitute "/dev/hda1" fo' another raw
+disk image, or QCOW2 image previously pimped by
+.BR e2image .
+.PP
+.SH QCOW2 IMAGE FILES
+The
+.B \-Q
+option will create a QCOW2 image file instead of a normal, or raw image file.
+A QCOW2 image gotz nuff all tha shiznit tha raw image do, however unlike
+the raw image it aint sparse. Da QCOW2 image minimize tha amount of disk
+space by storin data up in special format wit pack data closely together, hence
+avoidin holez while still minimizin size.
+.PP
+In order ta bust filesystem ta tha maintainer as a part of bug report to
+e2fsprogs, use followin commandz (replace hda1 wit tha appropriate device):
+.PP
+.br
+\	\fBe2image \-Q /dev/hda1 hda1.qcow2\fR
+.br
+\	\fBbzip2 -z hda1.qcow2\fR
+.PP
+This will only bust tha metadata shiznit, without any data blocks.
+But fuck dat shiznit yo, tha word on tha street is dat tha filenames up in tha directory blocks can still reveal
+information bout tha contentz of tha filesystem dat tha bug hustla
+may wish ta keep confidential. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  To address dis concern, the
+.B \-s
+option can be specified. Y'all KNOW dat shit, muthafucka!  This will cause
+.B e2image
+to scramble directory entries n' zero up any unused portions
+of tha directory blocks before freestylin tha image file.  But fuck dat shiznit yo, tha word on tha street is dat the
+.B \-s
+option will prevent analysiz of problems related ta hash-tree indexed
+directories.
+.PP
+Note dat QCOW2 image pimped by
+.B e2image
+is regular QCOW2 image n' can be processed by tools aware of QCOW2 format
+like fuckin fo' example
+.BR qemu-img .
+.PP
+Yo ass can convert a qcow2 image tha fuck into a raw image with:
+.PP
+.br
+\	\fBe2image \-r hda1.qcow2 hda1.raw\fR
+.br
+.PP
+This can be useful ta write a qcow2 image containin all data ta a
+sparse image file where it can be loop mounted, or ta a gangbangin' finger-lickin' disk partition.
+Note dat dis may not work wit qcow2 images not generated by e2image.
+.PP
+.SH INCLUDING DATA
+Normally
+.B e2image
+only includes fs metadata, not regular file data.  The
+.B \-a
+option can be specified ta include all data.  This will
+give a image dat is suitable ta use ta clone tha entire FS or
+for backup purposes.  Note dat dis option only works wit the
+raw or QCOW2 formats.
+.PP
+.SH AUTHOR
+.B e2image
+was freestyled by Theodore Ts'o (tytso@mit.edu).
+.SH AVAILABILITY
+.B e2image
+is part of tha e2fsprogs package n' be available from
+http://e2fsprogs.sourceforge.net.
+.SH SEE ALSO
+.BR dumpe2fs (8),
+.BR debugfs (8)
+

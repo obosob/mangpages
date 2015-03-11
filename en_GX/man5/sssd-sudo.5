@@ -1,0 +1,213 @@
+'\" t
+.\"     Title: sssd-sudo
+.\"    Author: Da SSSD upstream - http://fedorahosted.org/sssd
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 12/11/2014
+.\"    Manual: File Formats n' Conventions
+.\"    Source: SSSD
+.\"  Language: Gangsta
+.\"
+.TH "SSSD\-SUDO" "5" "12/11/2014" "SSSD" "File Formats n' Conventions"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+sssd-sudo \- Configurin sudo wit tha SSSD back end
+.SH "DESCRIPTION"
+.PP
+This manual page raps bout how tha fuck ta configure
+\fBsudo\fR(8)
+to work with
+\fBsssd\fR(8)
+and how tha fuck SSSD caches sudo rules\&.
+.SH "CONFIGURING SUDO TO COOPERATE WITH SSSD"
+.PP
+To enable SSSD as a source fo' sudo rules, add
+\fIsss\fR
+to the
+\fIsudoers\fR
+entry in
+\fBnsswitch.conf\fR(5)\&.
+.PP
+For example, ta configure sudo ta first lookup rulez up in tha standard
+\fBsudoers\fR(5)
+file (which should contain rulez dat apply ta local users) n' then up in SSSD, tha nsswitch\&.conf file should contain tha followin line:
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+sudoers: filez sss
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Mo' shiznit bout configurin tha sudoers search order from tha nsswitch\&.conf file as well as shiznit bout tha LDAP schema dat is used ta store sudo rulez up in tha directory can be found in
+\fBsudoers.ldap\fR(5)\&.
+.PP
+\fINote\fR: up in order ta use netgroups or IPA hostgroups up in sudo rules, you also need ta erectly set
+\fBnisdomainname\fR(1)
+to yo' NIS domain name (which equals ta IPA domain name when rockin hostgroups)\&.
+.SH "CONFIGURING SSSD TO FETCH SUDO RULES"
+.PP
+All configuration dat is needed on SSSD side is ta extend tha list of
+\fIskillz\fR
+with "sudo" up in [sssd] section of
+\fBsssd.conf\fR(5)\&. To speed up tha LDAP lookups, you can also set search base fo' sudo rulez using
+\fIldap_sudo_search_base\fR
+option\&.
+.PP
+Da followin example shows how tha fuck ta configure SSSD ta downlizzle sudo rulez from a LDAP server\&.
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+[sssd]
+config_file_version = 2
+skillz = nss, pam, sudo
+domains = EXAMPLE
+
+[domain/EXAMPLE]
+id_provider = ldap
+sudo_provider = ldap
+ldap_uri = ldap://example\&.com
+ldap_sudo_search_base = ou=sudoers,dc=example,dc=com
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+When tha SSSD is configured ta use IPA as tha ID provider, tha sudo provider be automatically enabled\&. Da sudo search base is configured ta use tha compat tree (ou=sudoers,$DC)\&.
+.SH "THE SUDO RULE CACHING MECHANISM"
+.PP
+Da freshest challenge, when pimpin sudo support up in SSSD, was ta ensure dat hustlin sudo wit SSSD as tha data source serves up tha same user experience n' be as fast as sudo but keeps providin da most thugged-out current set of rulez as possible\&. To satisfy these requirements, SSSD uses three kindz of thugged-out shit\&. They is referred ta as full refresh, smart-ass refresh n' rulez refresh\&.
+.PP
+The
+\fIsmart refresh\fR
+periodically downloadz rulez dat is freshly smoked up or was modified afta tha last update\&. Its primary goal is ta keep tha database growin by fetchin only lil' small-ass increments dat do not generate big-ass amountz of network traffic\&.
+.PP
+The
+\fIfull refresh\fR
+simply deletes all sudo rulez stored up in tha cache n' replaces dem wit all rulez dat is stored on tha server\&. This is used ta keep tha cache consistent by removin every last muthafuckin rule which was deleted from tha server\&. But fuck dat shiznit yo, tha word on tha street is dat full refresh may produce a shitload of traffic n' thus it should be run only occasionally dependin on tha size n' stabilitizzle of tha sudo rules\&.
+.PP
+The
+\fIrulez refresh\fR
+ensures dat our phat asses do not grant tha user mo' permission than defined\&. Well shiiiit, it is triggered each time tha user runs sudo\&. Rulez refresh will find all rulez dat apply ta dis user, check they expiration time n' redownlizzle dem if expired\&. In tha case dat any of these rulez is missin on tha server, tha SSSD will do a outta crew full refresh cuz mo' rulez (that apply ta other users) may done been deleted\&.
+.PP
+If enabled, SSSD will store only rulez dat can be applied ta dis machine\&. This means rulez dat contain one of tha followin joints in
+\fIsudoHost\fR
+attribute:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+keyword ALL
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+wildcard
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+netgroup (in tha form "+netgroup")
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+hostname or straight-up qualified domain name of dis machine
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+one of tha IP addressez of dis machine
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+one of tha IP addressez of tha network (in tha form "address/mask")
+.RE
+.PP
+There is nuff configuration options dat can be used ta adjust tha behavior\&. Please refer ta "ldap_sudo_*" in
+\fBsssd-ldap\fR(5)
+and "sudo_*" in
+\fBsssd.conf\fR(5)\&.
+.SH "SEE ALSO"
+.PP
+\fBsssd\fR(8),
+\fBsssd.conf\fR(5),
+\fBsssd-ldap\fR(5),
+\fBsssd-krb5\fR(5),
+\fBsssd-simple\fR(5),
+\fBsssd-ipa\fR(5),
+\fBsssd-ad\fR(5),
+\fBsssd-sudo\fR(5),\fBsss_cache\fR(8),
+\fBsss_debuglevel\fR(8),
+\fBsss_groupadd\fR(8),
+\fBsss_groupdel\fR(8),
+\fBsss_groupshow\fR(8),
+\fBsss_groupmod\fR(8),
+\fBsss_useradd\fR(8),
+\fBsss_userdel\fR(8),
+\fBsss_usermod\fR(8),
+\fBsss_obfuscate\fR(8),
+\fBsss_seed\fR(8),
+\fBsssd_krb5_locator_plugin\fR(8),
+\fBsss_ssh_authorizedkeys\fR(8), \fBsss_ssh_knownhostsproxy\fR(8),\fBsssd-ifp\fR(5),\fBpam_sss\fR(8)\&.
+.SH "AUTHORS"
+.PP
+\fBDa SSSD upstream \- http://fedorahosted\&.org/sssd\fR

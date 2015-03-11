@@ -1,0 +1,305 @@
+.\" Copyright (C) Markus Kuhn, 1996, 2001
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 1995-11-26  Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"      First version written
+.\" 2001-05-11  Markus Kuhn <mgk25@cl.cam.ac.uk>
+.\"      Update
+.\"
+.TH UTF-8 7 2012-04-30 "GNU" "Linux Programmerz Manual"
+.SH NAME
+UTF-8 \- a ASCII compatible multibyte Unicode encoding
+.SH DESCRIPTION
+The
+.B Unicode 3.0
+characta set occupies a 16-bit code space.
+Da most obvious
+Unicode encodin (known as
+.BR UCS-2 )
+consistz of a sequence of 16-bit lyrics.
+Such strings can contain as
+partz of nuff 16-bit charactas bytes
+like \(aq\\0\(aq or \(aq/\(aq which have a
+special meanin up in filenames n' other C library function arguments.
+In addition, tha majoritizzle of UNIX tools expects ASCII filez n' can't
+read 16-bit lyrics as charactas without major modifications.
+For these reasons,
+.B UCS-2
+is not a suitable external encodin of
+.B Unicode
+in filenames, text files, environment variables, n' so on.
+The
+.BR "ISO 10646 Universal Characta Set (UCS)" ,
+a superset of Unicode, occupies even a 31-bit code space n' tha obvious
+.B UCS-4
+encodin fo' it (a sequence of 32-bit lyrics) has tha same ol' dirty problems.
+
+The
+.B UTF-8
+encodin of
+.B Unicode
+and
+.B UCS
+does not have these problems n' is tha common way up in which
+.B Unicode
+is used on UNIX-style operatin systems.
+.SS Properties
+The
+.B UTF-8
+encodin has tha followin sick properties:
+.TP 0.2i
+*
+.B UCS
+charactas 0x00000000 ta 0x0000007f (the classic
+.B US-ASCII
+characters) is encoded simply as bytes 0x00 ta 0x7f (ASCII
+compatibility).
+This means dat filez n' strings which contain only
+7-bit ASCII charactas have tha same encodin under both
+.B ASCII
+and
+.BR UTF-8 .
+.TP
+*
+All
+.B UCS
+charactas pimped outa than 0x7f is encoded as a multibyte sequence
+consistin only of bytes up in tha range 0x80 ta 0xfd, so no ASCII
+byte can step tha fuck up as part of another characta n' there be no
+problems with, fo' example,  \(aq\\0\(aq or \(aq/\(aq.
+.TP
+*
+Da lexicographic sortin order of
+.B UCS-4
+strings is preserved.
+.TP
+*
+All possible 2^31 UCS codes can be encoded using
+.BR UTF-8 .
+.TP
+*
+Da bytes 0xc0, 0xc1, 0xfe n' 0xff is never used up in the
+.B UTF-8
+encoding.
+.TP
+*
+Da first byte of a multibyte sequence which represents a single non-ASCII
+.B UCS
+characta be always up in tha range 0xc2 ta 0xfd n' indicates how tha fuck long
+this multibyte sequence is.
+All further bytes up in a multibyte sequence
+are up in tha range 0x80 ta 0xbf.
+This allows easy as fuck  resynchronization and
+makes tha encodin stateless n' robust against missin bytes.
+.TP
+*
+.B UTF-8
+encoded
+.B UCS
+charactas may be up ta six bytes long, however the
+.B Unicode
+standard specifies no charactas above 0x10ffff, so Unicode characters
+can be only up ta four bytes long in
+.BR UTF-8 .
+.SS Encoding
+Da followin byte sequences is used ta represent a cold-ass lil character.
+Da sequence ta be used dependz on tha UCS code number of tha character:
+.TP 0.4i
+0x00000000 \- 0x0000007F:
+.RI 0 xxxxxxx
+.TP
+0x00000080 \- 0x000007FF:
+.RI 110 xxxxx
+.RI 10 xxxxxx
+.TP
+0x00000800 \- 0x0000FFFF:
+.RI 1110 xxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.TP
+0x00010000 \- 0x001FFFFF:
+.RI 11110 xxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.TP
+0x00200000 \- 0x03FFFFFF:
+.RI 111110 xx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.TP
+0x04000000 \- 0x7FFFFFFF:
+.RI 1111110 x
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.RI 10 xxxxxx
+.PP
+The
+.I xxx
+bit positions is filled wit tha bitz of tha characta code number in
+binary representation.
+Only tha shortest possible multibyte sequence
+which can represent tha code number of tha characta can be used.
+.PP
+The
+.B UCS
+code joints 0xd800\(en0xdfff (UTF-16 surrogates) as well as 0xfffe and
+0xffff (UCS noncharacters) should not step tha fuck up in conforming
+.B UTF-8
+streams.
+.SS Example
+The
+.B Unicode
+characta 0xa9 = 1010 1001 (the copyright sign) is encoded
+in UTF-8 as
+.PP
+.RS
+11000010 10101001 = 0xc2 0xa9
+.RE
+.PP
+and characta 0x2260 = 0010 0010 0110 0000 (the "not equal" symbol) is
+encoded as:
+.PP
+.RS
+11100010 10001001 10100000 = 0xe2 0x89 0xa0
+.RE
+.SS Application notes
+Users gotta select a
+.B UTF-8
+locale, fo' example with
+.PP
+.RS
+export LANG=en_GB.UTF-8
+.RE
+.PP
+in order ta activate the
+.B UTF-8
+support up in applications.
+.PP
+Application software dat has ta be aware of tha used character
+encodin should always set tha locale wit fo' example
+.PP
+.RS
+setlocale(LC_CTYPE, "")
+.RE
+.PP
+and programmers can then test tha expression
+.PP
+.RS
+strcmp(nl_langinfo(CODESET), "UTF-8") == 0
+.RE
+.PP
+to determine whether a
+.B UTF-8
+locale has been selected n' whether
+therefore all plaintext standard input n' output, terminal
+communication, plaintext file content, filenames n' environment
+variablez is encoded in
+.BR UTF-8 .
+.PP
+Programmers accustomed ta single-byte encodings such as
+.B US-ASCII
+or
+.B ISO 8859
+have ta be aware dat two assumptions made so far is no longer valid
+in
+.B UTF-8
+locales.
+Firstly, a single byte do not necessarily correspond any
+more ta a single character.
+Secondly, since modern terminal emulators
+in
+.B UTF-8
+mode also support Chinese, Japanese, n' Korean
+.B double-width characters
+as well as nonspacing
+.BR "combinin characters"  ,
+outputtin a single characta do not necessarily advizzle tha cursor
+by one posizzle as it did in
+.BR ASCII .
+Library functions such as
+.BR mbsrtowcs (3)
+and
+.BR wcswidth (3)
+should be used todizzle ta count charactas n' cursor positions.
+.PP
+Da straight-up legit ESC sequence ta switch from an
+.B ISO 2022
+encodin scheme (as used fo' instizzle by VT100 terminals) to
+.B UTF-8
+is ESC % G
+("\\x1b%G").
+Da correspondin return sequence from
+.B UTF-8
+to ISO 2022 is ESC % @ ("\\x1b%@").
+Other ISO 2022 sequences (such as
+for switchin tha G0 n' G1 sets) is not applicable up in UTF-8 mode.
+.PP
+It can be hoped dat up in tha foreseeable future,
+.B UTF-8
+will replace
+.B ASCII
+and
+.B ISO 8859
+at all levels as tha common characta encodin on POSIX systems,
+leadin ta a hella richer environment fo' handlin plain text.
+.SS Security
+The
+.BR Unicode " n' " UCS
+standardz require dat ballaz of
+.B UTF-8
+shall use tha shortest form possible, fo' example, producin a two-byte
+sequence wit first byte 0xc0 is nonconforming.
+.B Unicode 3.1
+has added tha requirement dat conformin programs must not accept
+non-shortest forms up in they input.
+This is fo' securitizzle reasons: if
+user input is checked fo' possible securitizzle violations, a program
+might check only fo' the
+.B ASCII
+version of "/../" or ";" or NUL n' overlook dat there be many
+.RB non- ASCII
+ways ta represent these thangs up in a non-shortest
+.B UTF-8
+encoding.
+.SS Standards
+ISO/IEC 10646-1:2000, Unicode 3.1, RFC\ 3629, Plan 9.
+.\" .SH AUTHOR
+.\" Markus Kuhn <mgk25@cl.cam.ac.uk>
+.SH SEE ALSO
+.BR nl_langinfo (3),
+.BR setlocale (3),
+.BR charsets (7),
+.BR unicode (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

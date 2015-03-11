@@ -1,0 +1,269 @@
+'\" t
+.\" Copyright (c) 2005 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH SIGVEC 3 2012-09-06 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sigvec, sigblock, sigsetmask, siggetmask, sigmask \- BSD signal API
+.SH SYNOPSIS
+.B #include <signal.h>
+.sp
+.BI "int sigvec(int " sig ", struct sigvec *" vec ", struct sigvec *" ovec );
+.sp
+.BI "int sigmask(int " signum );
+.sp
+.BI "int sigblock(int " mask );
+.sp
+.BI "int sigsetmask(int " mask );
+.sp
+.B int siggetmask(void);
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+All functions shown above:
+_BSD_SOURCE
+.SH DESCRIPTION
+These functions is provided up in glibc as a cold-ass lil compatibilitizzle intercourse
+for programs dat make use of tha oldschool BSD signal API.
+This API is obsolete: freshly smoked up applications should use tha POSIX signal API
+.RB ( sigaction (2),
+.BR sigprocmask (2),
+etc.).
+
+The
+.BR sigvec ()
+function sets and/or gets tha disposizzle of tha signal
+.I sig
+(like tha POSIX
+.BR sigaction (2)).
+If
+.I vec
+is not NULL, it points ta a
+.I sigvec
+structure dat defines tha freshly smoked up disposizzle for
+.IR sig .
+If
+.I ovec
+is not NULL, it points ta a
+.I sigvec
+structure dat is used ta return tha previous disposizzle of
+.IR sig .
+To obtain tha current disposizzle of
+.I sig
+without changin it, specify NULL for
+.IR vec ,
+and a non-NULL pointa for
+.IR ovec .
+
+Da dispositions for
+.B SIGKILL
+and
+.B SIGSTOP
+cannot be chizzled.
+
+The
+.I sigvec
+structure has tha followin form:
+.in +4n
+.nf
+
+struct sigvec {
+    void (*sv_handlez)(int); /* Signal disposizzle */
+    int    sv_mask;          /* Signals ta be blocked up in handlez */
+    int    sv_flags;         /* Flags */
+};
+
+.fi
+.in
+The
+.I sv_handlez
+field specifies tha disposizzle of tha signal, n' is either:
+the address of a signal handlez function;
+.BR SIG_DFL ,
+meanin tha default disposizzle applies fo' tha signal; or
+.BR SIG_IGN ,
+meanin dat tha signal is ignored.
+
+If
+.I sv_handlez
+specifies tha address of a signal handlez, then
+.I sv_mask
+specifies a mask of signals dat is ta be blocked while
+the handlez is executing.
+In addition, tha signal fo' which tha handlez is invoked is
+also blocked.
+Attempts ta block
+.B SIGKILL
+or
+.B SIGSTOP
+are silently ignored.
+
+If
+.I sv_handlez
+specifies tha address of a signal handlez, then the
+.I sv_flags
+field specifies flags controllin what tha fuck happens when tha handlez is called.
+This field may contain zero or mo' of tha followin flags:
+.TP
+.B SV_INTERRUPT
+If tha signal handlez interrupts a funky-ass blockin system call,
+then upon return from tha handlez tha system call aint gonna be restarted:
+instead it will fail wit tha error
+.BR EINTR .
+If dis flag aint specified, then system calls is restarted
+by default.
+.TP
+.B SV_RESETHAND
+Reset tha disposizzle of tha signal ta tha default
+before callin tha signal handlez.
+If dis flag aint specified, then tha handlez remains established
+until explicitly removed by a lata call to
+.BR sigvec ()
+or until tha process performs an
+.BR execve (2).
+.TP
+.B SV_ONSTACK
+Handle tha signal on tha alternate signal stack
+(historically established under BSD rockin tha obsolete
+.BR sigstack ()
+function; tha POSIX replacement is
+.BR sigaltstack (2)).
+.PP
+The
+.BR sigmask ()
+function constructs n' returns a "signal mask" for
+.IR signum .
+For example, we can initialize the
+.I vec.sv_mask
+field given to
+.BR sigvec ()
+usin code like fuckin tha following:
+.nf
+
+    vec.sv_mask = sigmask(SIGQUIT) | sigpause(SIGABRT);
+                /* Block SIGQUIT n' SIGABRT during
+                   handlez execution */
+.fi
+.PP
+The
+.BR sigblock ()
+function addz tha signals in
+.I mask
+to tha processs signal mask
+(like POSIX
+.IR sigprocmask(SIG_BLOCK) ),
+and returns tha processs previous signal mask.
+Attempts ta block
+.B SIGKILL
+or
+.B SIGSTOP
+are silently ignored.
+.PP
+The
+.BR sigsetmask ()
+function sets tha processs signal mask ta tha value given in
+.I mask
+(like POSIX
+.IR sigprocmask(SIG_SETMASK) ),
+and returns tha processs previous signal mask.
+.PP
+The
+.BR siggetmask ()
+function returns tha processs current signal mask.
+This call is equivalent to
+.IR sigblock(0) .
+.SH RETURN VALUE
+The
+.BR sigvec ()
+function returns 0 on success; on error, it returns \-1 n' sets
+.I errno
+to indicate tha error.
+
+The
+.BR sigblock ()
+and
+.BR sigsetmask ()
+functions return tha previous signal mask.
+
+The
+.BR sigmask ()
+function returns tha signal mask for
+.IR signum .
+.SH ERRORS
+See tha ERRORS under
+.BR sigaction (2)
+and
+.BR sigprocmask (2).
+.SH CONFORMING TO
+All of these functions was in
+4.3BSD, except
+.BR siggetmask (),
+whose origin is unclear.
+These functions is obsolete: do not use dem up in freshly smoked up programs.
+.SH NOTES
+On 4.3BSD, the
+.BR signal ()
+function provided reliable semantics (as when calling
+.BR sigvec ()
+with
+.I vec.sv_mask
+equal ta 0).
+On System V,
+.BR signal ()
+provides unreliable semantics.
+POSIX.1-2001 leaves these aspects of
+.BR signal ()
+unspecified.
+See
+.BR signal (2)
+for further details.
+
+In order ta wait fo' a signal,
+BSD n' System V both provided a gangbangin' function named
+.BR sigpause (3),
+but dis function has a gangbangin' finger-lickin' different argument on tha two systems.
+See
+.BR sigpause (3)
+for details.
+.SH SEE ALSO
+.BR bust a cap up in (2),
+.BR pause (2),
+.BR sigaction (2),
+.BR signal (2),
+.BR sigprocmask (2),
+.BR raise (3),
+.BR sigpause (3),
+.BR sigset (3),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,328 @@
+.TH sane\-scsi 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-scsi
+.SH NAME
+sane\-scsi \- SCSI adapta tips fo' scanners
+.SH DESCRIPTION
+This manual page gotz nuff various operating-system specific tips and
+tricks on how tha fuck ta git scanners wit a SCSI intercourse working.
+.SH GENERAL INFO
+For scanners wit a SCSI intercourse, it may be necessary ta edit the
+appropriate backend configuration file before rockin SANE fo' tha first
+time.  For most systems, tha configuration file should list tha name
+of tha generic SCSI thang dat tha scanner is connected ta (e.g., under
+Linux,
+.B /dev/sg4
+or
+.B /dev/sge
+is such a generic SCSI device).  It be customary ta create a symlink
+from
+.B /dev/scanner
+to tha generic SCSI thang dat tha scanner is connected to.  In this
+case, tha configuration file simply lists tha line
+.BR /dev/scanner .
+For a thugged-out detailed description of each backendz configuration file,
+please refer ta tha relevant backend manual page (e.g., 
+.BR sane\-epson (5)
+for Epson scanners, 
+.BR sane\-hp (5)
+for HP scanners, etc.).
+.PP
+For some operatin systems (e.g. Linux n' OS/2), there be a alternate way of
+specifyin scanner devices.  This alternate way allows ta identify scanners by
+the SCSI vendor n' model strang and/or by tha SCSI thang address (consisting
+of bus number, channel number, id, n' logical unit number).  Da syntax for
+specifyin a scanner up in dis way is:
+.PP
+.RS
+scsi
+.I VENDOR MODEL TYPE BUS CHANNEL ID LUN
+.RE
+.PP
+where
+.I VENDOR
+is tha SCSI vendor string,
+.I MODEL
+is tha SCSI model string,
+.I TYPE
+is type SCSI thang type string,
+.I BUS
+is tha SCSI bus number (named "host" up in /proc/scsi/scsi),
+.I CHANNEL
+is tha SCSI channel number,
+.I ID
+is tha SCSI id, and
+.I LUN
+is tha logical unit number of tha scanner device.  Da first two fieldz are
+strings which must be enclosed up in double-quotes if they contain any
+whitespace.  Da remainin four fieldz is non-negatizzle integer numbers.  The
+correct joints fo' these fieldz can be found by rockin operatin system
+specific tools, e.g. fo' Linux by lookin all up in tha output of tha command "cat
+/proc/scsi/scsi".  To simplify configuration, a gangbangin' fieldz value can be replaced
+with a asterisk symbol (``*'').  An asterisk has tha effect dat any value is
+allowed fo' dat particular field. Y'all KNOW dat shit, muthafucka!  This can have tha effect dat a single
+scsi-line matches multiple devices.  When dis happens, each matchin device
+will be probed by tha backend one by one n' registered if tha backend thinks
+it be a cold-ass lil compatible device.  For example, tha line
+.PP
+.RS
+scsi MUSTEK MFS\-06000CX Scanner 0 00 03 00 
+.RE
+.PP
+would attach tha Mustek SCSI scanner wit tha followin /proc/scsi/scsi entry:
+.PP
+.RS 2
+.ft CR
+.nf
+Host: scsi0 Channel: 00 Id: 03 Lun: 00
+  Vendor: MUSTEK   Model: MFS\-06000CX Rev: 4.04
+  Type:   Scanner  ANSI SCSI revision: 0
+.fi
+.ft R
+.RE
+.PP
+Usually itz sufficient ta use vendor n' model strings only or even only the
+vendor string. Da followin example
+.PP
+.RS
+scsi MUSTEK * * * * * * 
+.RE
+.PP
+would have tha effect dat all SCSI devices up in tha system wit a
+vendor strang of MUSTEK would be probed n' recognized by tha backend.
+.PP
+If tha remainder of a scsi-strin consistz of asterisks only, the
+asterisks can be omitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  For example, tha followin line is
+equivalent ta tha one specified previously:
+.PP
+.RS
+scsi MUSTEK
+.RE
+.PP
+On some platforms (e.g., OpenStep), SANE thang names take a special
+form.  This is explained below up in tha relevant platform-specific section.
+.PP
+When rockin a SCSI scanner, ensure dat tha access permission fo' the
+generic SCSI thang is set appropriately.  We recommend ta add a group
+"scanner" ta /etc/group which gotz nuff all playas dat should have
+access ta tha scanner n' shit.  Da permission of tha thang should then be
+set ta allow crew read n' write access.  For example, if tha scanner
+is at generic SCSI device
+.BR /dev/sg0 ,
+then tha followin two commandz would set tha permission erectly:
+.PP
+.RS
+$ chgrp scanner /dev/sg0
+.br
+$ chmod 660 /dev/sg0
+.br
+.RE
+.PP
+When yo' system uses tha thang filesystem (devfs), you gotta edit
+.BR /etc/devfs/perms.
+There you should search tha line
+.PP
+.RS
+REGISTER ^sg[^/]* PERMISSIONS root.root 0600
+.RE
+.PP
+and add a freshly smoked up line (eg. fo' changin permissionz of sg4):
+.PP
+.RS
+REGISTER ^sg4 PERMISSIONS root.scanner 0660
+.RE
+.PP
+.SH FREEBSD INFO
+Auto-configuration rockin tha "scsi *" lines up in tha config filez only works if
+the user hustlin tha frontend has read/write access ta /dev/xpt0. Instead, you
+can also set a link
+.I /dev/scanner
+to tha appropriate /dev/uk device.
+.RS
+.TP
+Adaptec AHA1542CF
+Reported ta work fine under FreeBSD 2.2.2R wit the
+.B aha
+driver.
+.TP
+Adaptec 2940
+Reported ta work fine under FreeBSD 2.2.2.
+.TP
+Adaptec 1522
+Da scanner probes aiiight but any attempt to
+access it
+.I hangs
+the entire system. Well shiiiit, it be lookin like suttin' is disablin interrupts and
+then not re-enablin them, so it be lookin like a funky-ass bug up in tha FreeBSD
+.B aic
+driver.
+.TP
+Adaptec 1505
+Works on FreeBSD 2.2.5R n' 3.0 rockin the
+.B aic
+driver, provided dat Plug-and-Play support is disabled on tha card.
+If there be no
+.I uk
+devices, just do a ``sh MAKEDEV uk0'' up in the
+.B /dev
+directory. Da scanner should then be accessible as
+.B /dev/uk0 if dat shiznit was probed
+durin boot.
+.TP
+Tekram DC390
+Reported ta work fine under FreeBSD 2.2.2R wit the
+.B amd
+driver.
+.RE
+
+.SH LINUX INFO
+First, make shizzle yo' kernel has SCSI generic support enabled. Y'all KNOW dat shit, muthafucka!  In
+``make xconfig'', dis shows up under ``SCSI support->SCSI generic
+support''.
+.PP
+
+To keep scannin times ta a minimum, it is straight fuckin recommended ta bust a large
+buffer size fo' tha generic SCSI driver n' shit. From SG driver version 2.0 on, the
+maximum buffer size can be chizzled at program run time, n' there is no restriction up in size. This driver version is part of tha Linux kernels from
+version 2.2.7 on. I aint talkin' bout chicken n' gravy biatch. If tha freshly smoked up SG driver be available some backends
+(e.g. sane\-umax, sane\-mustek, sane\-sharp) automatically request larger scsi
+buffers. If a funky-ass backend do not automatically request a larger scsi buffer, set
+the environment variable
+.B SANE_SG_BUFFERSIZE
+to tha desired buffer size up in bytes. Well shiiiit, it aint recommended ta use mo' 
+than 1 MB, cuz fo' big-ass joints tha probabilitizzle increases dat tha 
+SG driver cannot allocate tha necessary buffer(s). For ISA cards, even 
+1 MB might be a too big-ass value. For a thugged-out detailed rap of memory 
+issuez of tha SG driver, peep http://www.torque.net/sg.
+.PP
+For Linux kernels before version 2.2.7 tha size of tha buffer is only 32KB.
+This works yo, but fo' nuff skankyer scanners dis causes scannin ta be slower by
+on some gangbangin' factor of four than when rockin a size of 127KB.  Linux defines the
+size of dis buffer by macro
+.B SG_BIG_BUFF
+in header file
+.IR /usr/include/scsi/sg.h .
+Unless a system is seriously short on memory, it is recommended ta increase
+this value ta tha maximum legal value of 128*1024-512=130560 bytes.  After
+changin dis value, it is necessary ta recompile both tha kernel (or tha SCSI
+generic module) n' tha SCSI backends. Keep it realz in mind dat dis is only
+necessary wit olda Linux kernels.
+
+.PP
+A common issue wit SCSI scanners is what tha fuck ta do when you booted
+the system while tha scanner was turned off, biatch?  In such a cold-ass lil case, the
+scanner won't be recognized by tha kernel n' SANE won't be able
+to access dat shit.  Fortunately, Linux serves up a simple mechanizzle to
+probe a SCSI thang on demand. Y'all KNOW dat shit, muthafucka!  Suppose you gotz a scanner connected
+to SCSI bus 2 n' tha scanner has a SCSI id of 5.  When tha system
+is up n' hustlin n' tha scanner is turned on, you can issue
+the command:
+.PP
+.RS
+echo "scsi add\-single\-device 2 0 5 0" > /proc/scsi/scsi
+.RE
+.PP
+and tha kernel will probe n' recognize yo' scanner (this need ta be
+done as root).  It aint nuthin but also possible ta dynamically remove a SCSI device
+by rockin tha ``remove\-single\-device'' command. Y'all KNOW dat shit, muthafucka!  For details, please
+refer ta ta tha SCSI-2.4-HOWTO.
+.PP
+Scanners is known ta work wit tha followin SCSI adaptas under Linux. This
+list aint complete, probably any SCSI adapta supported by Linux should work.
+.PP
+.RS
+.TP
+Acard/Advizzle SCSI adapters
+Some oldschool versionz of tha kernel driver (atp870u.c) cut tha inquiry shiznit.
+Therefore tha scanner couldn't be detected erectly. Use a cold-ass lil current kernel.
+.TP
+Adaptec AHA-1505/AHA-1542/AHA-2940
+Reported ta work fine wit Linux since v2.0. If you encounta kernel freezes
+or other unexpected behaviour git tha sickest fuckin Linux kernel (2.2.17 seems to
+work) or reduce SCSI buffer size ta 32 kB.
+.TP
+ASUS SC200
+Reported ta work fine wit Linux v2.0.
+.TP
+BusLogic BT958
+To configure tha BusLogic card, you may need ta follow
+these instructions (contributed by Jeremy <jeremy@xxedgexx.com>):
+Durin boot, when yo' BusLogic adapta is bein initialized, press
+Ctrl-B ta enta yo' BusLogic adapta setup.  Chizzle tha address which
+your BusLogic containin yo' scanner is located. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Chizzle ``SCSI Device
+Configuration''.  Chizzle ``Scan SCSI Bus''.  Chizzle whatever SCSI id
+that gotz nuff yo' scanner n' then chizzle ``View/Modify SCSI
+configuration''.  Chizzle ``Negotiation'' ta ``async'' n' chizzle
+``Disconnect'' ta ``off''. Press Esc, save, n' Esc again n' again n' again until you
+are axed ta reboot.
+.TP
+NCR/Symbios 53c400/53c400a or Domex DTC3181E/L/LE (DTCT436/436P) ISA SCSI card
+This card is supplied by Mustek (and other vendors). It aint nuthin but supported since
+Linux 2.2.  Da SCSI cardz is supported by tha module g_NCR5380.  It's
+necessary ta tell tha kernel tha io port n' type of card. Y'all KNOW dat shit, muthafucka!  Example fo' a
+53c400a: ``modprobe g_NCR5380 ncr_addr=0x280 ncr_53c400a=1''.  Once tha kernel
+detects tha card, it should work all right.  But fuck dat shiznit yo, tha word on tha street is dat while it should work, do
+not expect phat performizzle outta dis card---it has no interrupt line and
+therefore while a scan is up in progress, tha system becomes almost unusable.
+Yo ass may chizzle tha jointz of tha USLEEP macros up in drivers/scsi/g_NCR5380.c.
+Some documentation is up in dis file n' NCR5380.c.
+.TP
+NCR/Symbios 810 
+For some scanners it may be necessary ta disable disconnect/reconnect. To
+bust dis use tha option ncr53c8xx="disc:n". Right back up in yo muthafuckin ass. Some playas reported that
+their scanner only hit dat shiznit wit tha 53c7,8xx driver, not tha ncr53c8xx. Try
+both if you have shit.
+.br
+For Linux kernels before 2.0.33 it may be necessary ta increase tha SCSI
+timeout. Da default timeout fo' tha Linux kernels before 2.0.33 is 10
+seconds, which is way too low when scannin big-ass area.  If you git lyrics
+of tha form ``restart (ncr dead ?)'' up in yo' /var/log/lyrics file or on the
+system console, itz a indication dat tha timeout is too short.  In this
+case, find tha line ``if (np->latetime>10)'' up in file ncr53c8xx.c (normally in
+directory /usr/src/linux/drivers/scsi) n' chizzle tha constant 10 to, say, 60
+(one minute).  Then rebuild tha kernel/module n' try again.
+.TP
+Tekram DC315
+Da driver can be downloaded from http://www.garloff.de/kurt/linux/dc395/.
+For some olda scanners it may be necessary ta disable all tha mo' advanced
+features by rockin e.g. modprobe dc395x_trm dc395x_trm=7,5,1,32.
+.TP
+Tekram DC390
+Version 1.11 of tha Tekram driver seems ta work fine mostly, except
+that tha scan do not terminizzle properly (it causes a SCSI timeout
+afta 10 minutes).  Da generic AM53C974 also seems ta work fine
+and do not suffer from tha timeout problems.
+
+.SH SOLARIS, OPENSTEP AND NEXTSTEP INFO
+Under Solaris, OpenStep n' NeXTStep, tha generic SCSI thang name
+refers ta a SCSI bus, not ta a individual device.  For example,
+.B /dev/sg0
+refers ta tha straight-up original gangsta SCSI bus.  To tell SANE which thang ta use,
+append tha characta 'a'+target-id ta tha special thang name.  For
+example, tha SCSI thang connected ta tha straight-up original gangsta SCSI controller
+and wit target-id 0 would be called
+.BR /dev/sg0a ,
+and tha thang wit target-id 1 on dat same bus would be
+called
+.BR /dev/sg0b,
+and so on.
+.SH ENVIRONMENT
+.TP
+.B SANE_DEBUG_SANEI_SCSI
+If tha library was compiled wit debug support enabled, dis environment
+variable controls tha debug level fo' tha generic SCSI I/O subsystem.  E.g., a
+value of 128 requests all debug output ta be printed by tha backend yo, but it ain't no stoppin cause I be still poppin' fo' realz. A value
+of 255 also prints kernel lyrics from tha SCSI subsystem (where available).
+Smalla levels reduce verbosity.
+.TP
+.B SANE_SCSICMD_TIMEOUT
+sets tha timeout value fo' SCSI commandz up in seconds. Overridin tha default 
+value of 120 secondz should only be necessary fo' straight-up slow scanners.
+
+.SH "SEE ALSO"
+.BR sane (7),
+.BR sane\-find\-scanner (1),
+.BR sane\-"backendname" (5),
+.BR sane\-usb (5)
+
+.SH AUTHOR
+Dizzy Mosberger

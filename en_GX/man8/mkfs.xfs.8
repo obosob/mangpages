@@ -1,0 +1,817 @@
+.TH mkfs.xfs 8
+.SH NAME
+mkfs.xfs \- construct a XFS filesystem
+.SH SYNOPSIS
+.B mkfs.xfs
+[
+.B \-b
+.I block_size
+] [
+.B \-m
+.I global_metadata_options
+] [
+.B \-d
+.I data_section_options
+] [
+.B \-f
+] [
+.B \-i
+.I inode_options
+] [
+.B \-l
+.I log_section_options
+] [
+.B \-n
+.I naming_options
+] [
+.B \-p
+.I protofile
+] [
+.B \-q
+] [
+.B \-r
+.I realtime_section_options
+] [
+.B \-s
+.I sector_size
+] [
+.B \-L
+.I label
+] [
+.B \-N
+] [
+.B \-K
+]
+.I device
+.br
+.B mkfs.xfs \-V
+.SH DESCRIPTION
+.B mkfs.xfs
+constructs a XFS filesystem by freestylin on a special
+file rockin tha joints found up in tha argumentz of tha command line.
+It be invoked automatically by
+.BR mkfs (8)
+when it is given the
+.B \-t xfs
+option.
+.PP
+In its simplest (and most commonly used form), tha size of the
+filesystem is determined from tha disk driver n' shit.  As a example, ta make
+a filesystem wit a internal log on tha straight-up original gangsta partizzle on tha first
+SCSI disk, use:
+.IP
+.B mkfs.xfs /dev/sda1
+.PP
+Da metadata log can be placed on another thang ta reduce tha number
+of disk seeks.  To create a gangbangin' filesystem on tha straight-up original gangsta partizzle on the
+first SCSI disk wit a 10000 block log located on tha straight-up original gangsta partition
+on tha second SCSI disk, use:
+.RS
+.HP
+.B mkfs.xfs\ \-l\ logdev=/dev/sdb1,size=10000b /dev/sda1
+.RE
+.PP
+Each of the
+.I option
+elements up in tha argument list above can be given as multiple comma-separated
+suboptions if multiple suboptions apply ta tha same option.
+Equivalently, each main option can be given multiple times with
+different suboptions.
+For example,
+.B \-l internal,size=10000b
+and
+.B \-l internal \-l size=10000b
+are equivalent.
+.PP
+In tha descriptions below, sizes is given up in sectors, bytes, blocks,
+kilobytes, megabytes, gigabytes, etc.
+Sizes is treated as hexadecimal if prefixed by 0x or 0X,
+octal if prefixed by 0, or decimal otherwise.
+Da followin lists possible multiplication suffixes:
+.RS
+.PD 0
+.HP
+.BR s "\ \-\ multiply by sector size (default = 512, peep " \-s
+option below).
+.HP
+.BR b "\ \-\ multiply by filesystem block size (default = 4K, peep " \-b
+option below).
+.HP
+.BR k "\ \-\ multiply by one kilobyte (1,024 bytes)."
+.HP
+.BR m "\ \-\ multiply by one megabyte (1,048,576 bytes)."
+.HP
+.BR g "\ \-\ multiply by one gigabyte (1,073,741,824 bytes)."
+.HP
+.BR t "\ \-\ multiply by one terabyte (1,099,511,627,776 bytes)."
+.HP
+.BR p "\ \-\ multiply by one petabyte (1,024 terabytes)."
+.HP
+.BR e "\ \-\ multiply by one exabyte (1,048,576 terabytes)."
+.PD
+.SH OPTIONS
+.TP
+.BI \-b " block_size_options"
+This option specifies tha fundamenstrual block size of tha filesystem.
+Da valid
+.I block_size_options
+are:
+.BI log= value
+or
+.BI size= value
+and only one can be supplied.
+Da block size is specified either as a funky-ass base two logarithm value with
+.BR log= ,
+or up in bytes with
+.BR size= .
+Da default value is 4096 bytes (4 KiB), tha minimum is 512, n' the
+maximum is 65536 (64 KiB).
+XFS on Linux currently only supports pagesize or smalla blocks.
+.TP
+.BI \-m " global_metadata_options"
+These options specify metadata format options dat either apply ta tha entire
+filesystem or aren't easily characterised by a specific functionalitizzle group. The
+valid
+.I global_metadata_options
+are:
+.RS 1.2i
+.TP
+.BI crc= value
+This is used ta create a gangbangin' filesystem which maintains n' checks CRC shiznit
+in all metadata objects on disk. Da value is either 0 ta disable tha feature,
+or 1 ta enable tha use of CRCs.
+.IP
+CRCs enable enhanced error detection cuz of hardware issues, whilst tha format
+changes also improves crash recovery algorithms n' tha mobilitizzle of various tools
+to validate n' repair metadata corruptions when they is found. Y'all KNOW dat shit, muthafucka!  Da CRC
+algorithm used is CRC32c, so tha overhead is dependent on CPU architecture as
+some CPUs have hardware acceleration of dis algorithm.  Typically tha overhead
+of calculatin n' checkin tha CRCs aint noticable up in aiiight operation.
+.IP
+By default,
+.B mkfs.xfs
+will not enable metadata CRCs.
+.TP
+.BI finobt= value
+This option enablez tha use of a separate free inode btree index up in each
+allocation group. Da value is either 0 ta disable tha feature, or 1 ta create
+a free inode btree up in each allocation group.
+.IP
+Da free inode btree mirrors tha existin allocated inode btree index which
+indexes both used n' free inodes. Da free inode btree do not index used
+inodes, allowin faster, mo' consistent inode allocation performizzle as
+filesystems age.
+.IP
+By default,
+.B mkfs.xfs
+will not create free inode btrees. This feature be also currently only available
+for filesystems pimped wit the
+.B \-m crc=1
+option set.
+.RE
+.TP
+.BI \-d " data_section_options"
+These options specify tha location, size, n' other parametaz of the
+data section of tha filesystem. Da valid
+.I data_section_options
+are:
+.RS 1.2i
+.TP
+.BI agcount= value
+This is used ta specify tha number of allocation groups. Da data section
+of tha filesystem is divided tha fuck into allocation crews ta improve the
+performizzle of XFS. Mo' allocation crews imply dat mo' parallelism
+can be  bigged up  when allocatin blocks n' inodes. Da minimum
+allocation crew size is 16 MiB; tha maximum size is just under 1 TiB.
+Da data section of tha filesystem is divided into
+.I value
+allocation crews (default value is scaled automatically based
+on tha underlyin thang size).
+.TP
+.BI agsize= value
+This be a alternatizzle ta rockin the
+.B agcount
+suboption. I aint talkin' bout chicken n' gravy biatch. The
+.I value
+is tha desired size of tha allocation crew expressed up in bytes
+(usually rockin the
+.BR m " or " g
+suffixes).
+This value must be a multiple of tha filesystem block size, and
+must be at least 16MiB, n' no mo' than 1TiB, n' may
+be automatically adjusted ta properly align wit tha stripe geometry.
+The
+.B agcount
+and
+.B agsize
+suboptions is mutually exclusive.
+.TP
+.BI name= value
+This can be used ta specify tha name of tha special file containing
+the filesystem. In dis case, tha log section must be specified as
+.B internal
+(with a size, peep the
+.B \-l
+option below) n' there can be no real-time section.
+.TP
+.BI file[= value ]
+This is used ta specify dat tha file given by the
+.B name
+suboption be a regular file. The
+.I value
+is either 0 or 1, wit 1 signifyin dat tha file is regular. Shiiit, dis aint no joke. This
+suboption is used only ta cook up a gangbangin' filesystem image. If the
+.I value
+is omitted then 1 be assumed.
+.TP
+.BI size= value
+This is used ta specify tha size of tha data section. I aint talkin' bout chicken n' gravy biatch. This suboption
+is required if
+.B \-d file[=1]
+is given. I aint talkin' bout chicken n' gravy biatch. Otherwise, it is only needed if tha filesystem should occupy
+less space than tha size of tha special file.
+.TP
+.BI sunit= value
+This is used ta specify tha stripe unit fo' a RAID thang or a
+logical volume. The
+.I value
+has ta be specified up in 512-byte block units, n' you can put dat on yo' toast. Use the
+.B su
+suboption ta specify tha stripe unit size up in bytes. This suboption
+ensures dat data allocations is ghon be stripe unit aligned when the
+current end of file is bein extended n' tha file size is larger
+than 512KiB fo' realz. Also inode allocations n' tha internal log will be
+stripe unit aligned.
+.TP
+.BI su= value
+This be a alternatizzle ta using
+.B sunit.
+The
+.B su
+suboption is used ta specify tha stripe unit fo' a RAID thang or a
+striped logical volume. The
+.I value
+has ta be specified up in bytes, (usually rockin the
+.BR m " or " g
+suffixes). This
+.I value
+must be a multiple of tha filesystem block size.
+.TP
+.BI swidth= value
+This is used ta specify tha stripe width fo' a RAID thang or a
+striped logical volume. The
+.I value
+has ta be specified up in 512-byte block units, n' you can put dat on yo' toast. Use the
+.B sw
+suboption ta specify tha stripe width size up in bytes.
+This suboption is required if
+.B \-d sunit
+has been specified n' it has ta be a multiple of the
+.B \-d sunit
+suboption.
+.TP
+.BI sw= value
+suboption be a alternatizzle ta using
+.B swidth.
+The
+.B sw
+suboption is used ta specify tha stripe width fo' a RAID thang or
+striped logical volume. The
+.I value
+is expressed as a multiplier of tha stripe unit,
+usually tha same as tha number of stripe thugz up in tha logical
+volume configuration, or data disks up in a RAID device.
+.IP
+When a gangbangin' filesystem is pimped on a logical volume device,
+.B mkfs.xfs
+will automatically query tha logical volume fo' appropriate
+.B sunit
+and
+.B swidth
+values.
+.TP
+.BI noalign
+This option disablez automatic geometry detection n' creates tha filesystem
+without stripe geometry alignment even if tha underlyin storage thang provides
+this shiznit.
+.RE
+.TP
+.B \-f
+Force overwrite when a existin filesystem is detected on tha device.
+By default,
+.B mkfs.xfs
+will not write ta tha thang if it suspects dat there be a gangbangin' filesystem
+or partizzle table on tha thang already.
+.TP
+.BI \-i " inode_options"
+This option specifies tha inode size of tha filesystem, n' other
+inode allocation parameters.
+Da XFS inode gotz nuff a gangbangin' fixed-size part n' a variable-size part.
+Da variable-size part, whose size be affected by dis option, can contain:
+directory data, fo' lil' small-ass directories;
+attribute data, fo' lil' small-ass attribute sets;
+symbolic link data, fo' lil' small-ass symbolic links;
+the extent list fo' tha file, fo' filez wit a lil' small-ass number of extents;
+and tha root of a tree describin tha location of extents fo' tha file,
+for filez wit a big-ass number of extents.
+.IP
+Da valid
+.I inode_options
+are:
+.RS 1.2i
+.TP
+.BI size= value " | log=" value " | perblock=" value
+Da inode size is specified either as a
+.I value
+in bytes with
+.BR size= ,
+a base two logarithm
+.I value
+with
+.BR log= ,
+or as tha number fittin up in a gangbangin' filesystem block with
+.BR perblock= .
+Da minimum (and default)
+.I value
+is 256 bytes.
+Da maximum
+.I value
+is 2048 (2 KiB) subject ta tha restriction that
+the inode size cannot exceed one half of tha filesystem block size.
+.IP
+XFS uses 64-bit inode numbers internally; however, tha number of
+significant bits up in a inode number
+is affected by filesystem geometry.  In
+practice, filesystem size n' inode size is tha predominant factors.
+Da Linux kernel (on 32 bit hardware platforms) n' most applications
+cannot currently handle inode numbers pimped outa than 32 dope bits,
+so if no inode size is given on tha command line,
+.B mkfs.xfs
+will attempt ta chizzle a size
+such dat inode numbers is ghon be < 32 bits, n' you can put dat on yo' toast.  If a inode size
+is specified, or if a gangbangin' filesystem is sufficiently large,
+.B mkfs.xfs
+will warn if dis will create inode numbers > 32 significant
+bits.
+.TP
+.BI maxpct= value
+This specifies tha maximum cementage of space up in tha filesystem that
+can be allocated ta inodes. Da default
+.I value
+is 25% fo' filesystems under 1TB, 5% fo' filesystems under 50TB n' 1%
+for filesystems over 50TB.
+.IP
+In tha default inode allocation mode, inode blocks is chosen such
+that inode numbers aint gonna exceed 32 bits, which restricts tha inode
+blocks ta tha lower portion of tha filesystem. Da data block
+allocator will avoid these low blocks ta accommodate tha specified
+maxpct, so a high value may result up in a gangbangin' filesystem wit not a god damn thang but
+inodes up in a thugged-out dope portion of tha lower blockz of tha filesystem.
+(This restriction aint present when tha filesystem is mounted with
+the
+.I "inode64"
+option on 64-bit platforms).
+.IP
+Settin tha value ta 0 means dat essentially all of tha filesystem
+can become inode blocks, subject ta inode32 restrictions.
+.IP
+This value can be modified with
+.IR xfs_growfs(8) .
+.TP
+.BI align[= value ]
+This is used ta specify dat inode allocation is or aint aligned. Y'all KNOW dat shit, muthafucka! The
+.I value
+is either 0 or 1, wit 1 signifyin dat inodes is allocated aligned.
+If the
+.I value
+is omitted, 1 be assumed. Y'all KNOW dat shit, muthafucka! Da default is dat inodes is aligned.
+Aligned inode access is normally mo' efficient than unaligned access;
+alignment must be established all up in tha time tha filesystem is pimped,
+since inodes is allocated at dat time.
+This option can be used ta turn off inode alignment when the
+filesystem need ta be mountable by a version of IRIX
+that aint gots tha inode alignment feature
+(any release of IRIX before 6.2, n' IRIX 6.2 without XFS patches).
+.TP
+.BI attr= value
+This is used ta specify tha version of extended attribute inline
+allocation policy ta be used. Y'all KNOW dat shit, muthafucka!  By default, dis is 2, which uses an
+efficient algorithm fo' managin tha available inline inode space
+between attribute n' extent data.
+.IP
+Da previous version 1, which has fixed regions fo' attribute and
+extent data, is kept fo' backwardz compatibilitizzle wit kernels older
+than version 2.6.16.
+.TP
+.BI projid32bit[= value ]
+This is used ta enable 32bit quota project identifiers. The
+.I value
+is either 0 or 1, wit 1 signifyin dat 32bit projid is ta be enabled.
+If tha value is omitted, 1 be assumed. Y'all KNOW dat shit, muthafucka!  (This default chizzled
+in release version 3.2.0.)
+.RE
+.TP
+.BI \-l " log_section_options"
+These options specify tha location, size, n' other parametaz of the
+log section of tha filesystem. Da valid
+.I log_section_options
+are:
+.RS 1.2i
+.TP
+.BI internal[= value ]
+This is used ta specify dat tha log section be a piece of tha data
+section instead of bein another thang or logical volume. The
+.I value
+is either 0 or 1, wit 1 signifyin dat tha log is internal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. If the
+.I value
+is omitted, 1 be assumed.
+.TP
+.BI logdev= device
+This is used ta specify dat tha log section should reside on the
+.I device
+separate from tha data section. I aint talkin' bout chicken n' gravy biatch. The
+.B internal=1
+and
+.B logdev
+options is mutually exclusive.
+.TP
+.BI size= value
+This is used ta specify tha size of tha log section.
+.IP
+If tha log is contained within tha data section and
+.B size
+aint specified,
+.B mkfs.xfs
+will try ta select a suitable log size depending
+on tha size of tha filesystem.  Da actual logsize dependz on the
+filesystem block size n' tha directory block size.
+.IP
+Otherwise, the
+.B size
+suboption is only needed if tha log section of tha filesystem
+should occupy less space than tha size of tha special file. The
+.I value
+is specified up in bytes or blocks, wit a
+.B b
+suffix meanin multiplication by tha filesystem block size, as
+busted lyrics bout above. Da overridin minimum value fo' size is 512 blocks.
+With some combinationz of filesystem block size, inode size,
+and directory block size, tha minimum log size is larger than 512 blocks.
+.TP
+.BI version= value
+This specifies tha version of tha log. Da current default is 2,
+which allows fo' larger log buffer sizes, as well as supporting
+stripe-aligned log writes (see tha sunit n' su options, below).
+.IP
+Da previous version 1, which is limited ta 32k log buffers n' do
+not support stripe-aligned writes, is kept fo' backwardz compatibility
+with straight-up oldschool 2.4 kernels.
+.TP
+.BI sunit= value
+This specifies tha alignment ta be used fo' log writes. The
+.I value
+has ta be specified up in 512-byte block units, n' you can put dat on yo' toast. Use the
+.B su
+suboption ta specify tha log stripe unit size up in bytes.
+Log writes is ghon be aligned on dis boundary,
+and rounded up ta dis boundary.
+This gives major improvements up in performizzle on some configurations
+like fuckin software RAID5 when the
+.B sunit
+is specified as tha filesystem block size.
+Da equivalent byte value must be a multiple of tha filesystem block
+size. Version 2 logs is automatically selected if tha log
+.B sunit
+suboption is specified.
+.IP
+The
+.B su
+suboption be a alternatizzle ta using
+.B sunit.
+.TP
+.BI su= value
+This is used ta specify tha log stripe. The
+.I value
+has ta be specified up in bytes, (usually rockin the
+.BR s " or " b
+suffixes). This value must be a multiple of tha filesystem block size.
+Version 2 logs is automatically selected if tha log
+.B su
+suboption is specified.
+.TP
+.BI lazy-count= value
+This chizzlez tha method of loggin various persistent counters
+in tha superblock.  Under metadata intensive workloads, these
+countas is updated n' logged frequently enough dat tha superblock
+updates become a serialization point up in tha filesystem. The
+.I value
+can be either 0 or 1.
+.IP
+With
+.BR lazy-count=1 ,
+the superblock aint modified or logged on every last muthafuckin chizzle of the
+persistent counters. Instead, enough shiznit is kept in
+other partz of tha filesystem ta be able ta maintain tha persistent
+counta joints without needed ta keep dem up in tha superblock.
+This gives dope improvements up in performizzle on some configurations.
+Da default
+.I value
+is 1 (on) so you must specify
+.B lazy-count=0
+if you wanna disable dis feature fo' olda kernels which don't support
+it.
+.RE
+.TP
+.BI \-n " naming_options"
+These options specify tha version n' size parametas fo' tha naming
+(directory) area of tha filesystem. Da valid
+.I naming_options
+are:
+.RS 1.2i
+.TP
+.BI size= value " | log=" value
+Da block size is specified either as a
+.I value
+in bytes with
+.BR size= ,
+or as a funky-ass base two logarithm
+.I value
+.RB "with " log= .
+Da block size must be a juice of 2 n' cannot be less than the
+filesystem block size.
+Da default size
+.I value
+for version 2 directories is 4096 bytes (4 KiB),
+unless tha filesystem block size is larger than 4096,
+in which case tha default
+.I value
+is tha filesystem block size.
+For version 1 directories tha block size is tha same ol' dirty as the
+filesystem block size.
+.TP
+.BI version= value
+Da namin (directory) version
+.I value
+can be either 2 or 'ci', defaultin ta 2 if unspecified.
+With version 2 directories, tha directory block size can be
+any juice of 2 size from tha filesystem block size up ta 65536.
+.IP
+The
+.B version=ci
+option enablez ASCII only case-insensitizzle filename lookup n' version
+2 directories. Put ya muthafuckin choppers up if ya feel dis! Filenames is case-preserving, dat is, tha names
+are stored up in directories rockin tha case they was pimped with.
+.IP
+Note: Version 1 directories is not supported.
+.TP
+.BI ftype= value
+This feature allows tha inode type ta be stored up in tha directory
+structure so dat the
+.BR readdir (3)
+and
+.BR getdents (2)
+do not need ta look up tha inode ta determine tha inode type.
+
+The
+.I value
+is either 0 or 1, wit 1 signifiyin dat filetype shiznit
+will be stored up in tha directory structure. Da default value is 0.
+
+When CRCs is enabled via
+.B \-m crc=1,
+the ftype functionalitizzle be always enabled. Y'all KNOW dat shit, muthafucka! This feature can not be turned
+off fo' such filesystem configurations.
+.IP
+.RE
+.TP
+.BI \-p " protofile"
+If tha optional
+.BI \-p " protofile"
+argument is given,
+.B mkfs.xfs
+uses
+.I protofile
+as a prototype file n' takes its directions from dat file.
+Da blocks n' inodes specifiers up in the
+.I protofile
+are provided fo' backwardz compatibilitizzle yo, but is otherwise unused.
+Da syntax of tha protofile is defined by a fuckin shitload of tokens separated
+by spaces or newlines. Note dat tha line numbers is not part of the
+syntax but is meant ta help you up in tha followin rap of tha file
+contents.
+.nf
+.sp .8v
+.in +5
+\f71       /stand/\f1\f2diskboot\f1\f7
+2       4872 110
+3       d\-\-777 3 1
+4       usr     d\-\-777 3 1
+5       sh      \-\-\-755 3 1 /bin/sh
+6       ken     d\-\-755 6 1
+7               $
+8       b0      b\-\-644 3 1 0 0
+9       c0      c\-\-644 3 1 0 0
+10      fifo    p\-\-644 3 1
+11      slink   l\-\-644 3 1 /a/symbolic/link
+12      :  This be a cold-ass lil comment line
+13      $
+14      $\f1
+.in -5
+.fi
+.IP
+Line 1 be a thugged-out dummy string.
+(Dat shiznit was formerly tha bootfilename.)
+It be present fo' backward
+compatibility; boot blocks is not used on SGI systems.
+.IP
+Note dat some strang of charactas must be present as tha straight-up original gangsta line of
+the proto file ta cause it ta be parsed erectly; tha value
+of dis strang is immaterial since it is ignored.
+.IP
+Line 2 gotz nuff two numeric joints (formerly tha numberz of blocks n' inodes).
+These is also merely fo' backward compatibility: two numeric joints must
+appear at dis point fo' tha proto file ta be erectly parsed,
+but they joints is immaterial since they is ignored.
+.IP
+Da lines 3 all up in 11 specify tha filez n' directories you want to
+include up in dis filesystem. Line 3 defines the
+root directory. Other directories and
+filez dat you want up in tha filesystem
+are indicated by lines 4 all up in 6 and
+lines 8 all up in 10. Line 11 gotz nuff
+symbolic link syntax.
+.IP
+Notice tha dollar sign
+.RB ( $ )
+syntax on line 7. This syntax directs the
+.B mkfs.xfs
+command ta terminizzle tha branch of tha filesystem it
+is currently on n' then continue
+from tha directory specified by
+the next line, up in dis case line 8.
+It must be tha last character
+on a line.
+Da colon
+on line 12 introduces a cold-ass lil comment; all charactas up until the
+followin newline is ignored.
+Note dat dis means you cannot
+have a gangbangin' file up in a prototype file whose name gotz nuff a cold-ass lil colon.
+The
+.B $
+on lines 13 n' 14 end tha process, since no additional
+specifications follow.
+.IP
+File justifications provide tha following:
+.IP
+  * file mode
+.br
+  * user ID
+.br
+  * crew ID
+.br
+  * tha filez beginnin contents
+.P
+.IP
+A 6-characta strang defines tha mode for
+a file. Da first characta of dis string
+defines tha file type. Da characta range
+for dis first characta is
+.B \-bcdpl.
+A file may be a regular file, a funky-ass block special file,
+a characta special file, directory files, named
+pipes (first-in, first up files), n' symbolic
+links.
+Da second characta of tha mode strang is
+used ta specify setuserID mode, up in which case
+it is
+.BR u .
+If setuserID mode aint specified, tha second characta is
+.BR \- .
+Da third characta of tha mode strang is
+used ta specify tha setgroupID mode, up in which
+case it is
+.BR g .
+If setgroupID mode aint specified, tha third characta is
+.BR \- .
+Da remainin charactaz of tha mode strang are
+a three digit octal number n' shit. This octal number
+defines tha baller, group, n' other read, write,
+and execute permissions fo' tha file, respectively.
+For mo' shiznit on file permissions, peep the
+.BR chmod (1)
+command.
+.IP
+Peepin tha mode characta strang is two
+decimal number tokens dat specify tha user n' crew IDs
+of tha filez baller.
+.IP
+In a regular file, tha next token specifies the
+pathname from which tha contents n' size of the
+file is copied.
+In a funky-ass block or characta special file, tha next token
+are two decimal numbers dat specify tha major n' minor
+device numbers.
+When a gangbangin' file be a symbolic link, tha next token
+specifies tha contentz of tha link.
+
+When tha file be a gangbangin' finger-lickin' directory, the
+.B mkfs.xfs
+command creates tha entries
+.B dot
+(.) and
+.B dot-dot
+(..) n' then readz tha list of names n' file justifications
+in a recursive manner fo' all of tha entries
+in tha directory fo' realz. A scan of tha protofile is
+always terminated wit tha dollar (
+.B $
+) token.
+.TP
+.B \-q
+Quiet option. I aint talkin' bout chicken n' gravy biatch. Normally
+.B mkfs.xfs
+prints tha parametaz of tha filesystem
+to be constructed;
+the
+.B \-q
+flag suppresses all dis bullshit.
+.TP
+.BI \-r " realtime_section_options"
+These options specify tha location, size, n' other parametaz of the
+real-time section of tha filesystem. Da valid
+.I realtime_section_options
+are:
+.RS 1.2i
+.TP
+.BI rtdev= device
+This is used ta specify the
+.I device
+which should contain tha real-time section of tha filesystem.
+Da suboption value is tha name of a funky-ass block device.
+.TP
+.BI extsize= value
+This is used ta specify tha size of tha blocks up in tha real-time
+section of tha filesystem. This
+.I value
+must be a multiple of tha filesystem block size. Da minimum allowed
+size is tha filesystem block size or 4 KiB (whichever is larger); the
+default size is tha stripe width fo' striped volumes or 64 KiB for
+non-striped volumes; tha maximum allowed size is 1 GiB. Da real-time
+extent size should be carefully chosen ta match tha parametaz of the
+physical media used.
+.TP
+.BI size= value
+This is used ta specify tha size of tha real-time section.
+This suboption is only needed if tha real-time section of the
+filesystem should occupy less space than tha size of tha partition
+or logical volume containin tha section.
+.TP
+.BI noalign
+This option disablez stripe size detection, enforcin a realtime thang wit no
+stripe geometry.
+.RE
+.TP
+.BI \-s " sector_size"
+This option specifies tha fundamenstrual sector size of tha filesystem.
+The
+.I sector_size
+is specified either as a value up in bytes with
+.BI size= value
+or as a funky-ass base two logarithm value with
+.BI log= value.
+Da default
+.I sector_size
+is 512 bytes. Da minimum value fo' sector size is
+512; tha maximum is 32768 (32 KiB). The
+.I sector_size
+must be a juice of 2 size n' cannot be made larger than the
+filesystem block size.
+.TP
+.BI \-L " label"
+Set tha filesystem
+.IR label .
+XFS filesystem labels can be at most 12 charactas long; if
+.I label
+is longer than 12 characters,
+.B mkfs.xfs
+will not proceed wit bustin tha filesystem.  Refer ta the
+.BR mount "(8) n' " xfs_admin (8)
+manual entries fo' additionizzle shiznit.
+.TP
+.B \-N
+Causes tha file system parametas ta be printed up without straight-up
+bustin tha file system.
+.TP
+.B \-K
+Do not attempt ta discard blocks at mkfs time.
+.TP
+.B \-V
+Prints tha version number n' exits.
+.SH SEE ALSO
+.BR xfs (5),
+.BR mkfs (8),
+.BR mount (8),
+.BR xfs_info (8),
+.BR xfs_admin (8).
+.SH BUGS
+With a prototype file, it aint possible ta specify hard links.

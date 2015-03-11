@@ -1,0 +1,380 @@
+'\" t
+.\"     Title: drm-memory
+.\"    Author: Dizzy Herrmann <dh.herrmann@googlemail.com>
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: September 2012
+.\"    Manual: Direct Renderin Manager
+.\"    Source: libdrm
+.\"  Language: Gangsta
+.\"
+.TH "DRM\-MEMORY" "7" "September 2012" "libdrm" "Direct Renderin Manager"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+drm-memory, drm-mm, drm-gem, drm-ttm \- DRM Memory Management
+.SH "SYNOPSIS"
+.sp
+.ft B
+.nf
+#include <xf86drm\&.h>
+.fi
+.ft
+.SH "DESCRIPTION"
+.PP
+Many modern high\-end GPUs come wit they own memory managers\&. They even include nuff muthafuckin different caches dat need ta be synchronized durin access\&. Textures, framebuffers, command buffers n' mo' need ta be stored up in memory dat can be accessed quickly by tha GPU\&. Therefore, memory pimpment on GPUs is highly driver\- n' hardware\-dependent\&.
+.PP
+But fuck dat shiznit yo, tha word on tha street is dat there be nuff muthafuckin frameworks up in tha kernel dat is used by mo' than one driver\&. These can be used fo' trivial mode\-settin without requirin driver\-dependent code\&. But fo' hardware\-accelerated renderin you need ta read tha manual pages fo' tha driver you wanna work with\&.
+.SS "Dumb\-Buffers"
+.PP
+Almost all in\-kernel DRM hardware drivers support a API called
+\fIDumb\-Buffers\fR\&. This API allows ta create bufferz of arbitrary size dat can be used fo' scanout\&. These buffers can be memory mapped via
+\fBmmap\fR(2)
+so you can render tha fuck into dem on tha CPU\&. But fuck dat shiznit yo, tha word on tha street is dat GPU access ta these buffers is often not possible\&. Therefore, they is fine fo' simple tasks but not suitable fo' complex compositions n' renderings\&.
+.PP
+The
+\fBDRM_IOCTL_MODE_CREATE_DUMB\fR
+ioctl can be used ta create a thugged-out dumb buffer\&. Da kernel will return a 32bit handle dat can be used ta manage tha buffer wit tha DRM API\&. Yo ass can create framebuffers with
+\fBdrmModeAddFB\fR(3)
+and use it fo' mode\-settin n' scanout\&. To access tha buffer, you first need ta retrieve tha offset of tha buffer\&. The
+\fBDRM_IOCTL_MODE_MAP_DUMB\fR
+ioctl requests tha DRM subsystem ta prepare tha buffer fo' memory\-mappin n' returns a gangbangin' fake\-offset dat can be used with
+\fBmmap\fR(2)\&.
+.PP
+The
+\fBDRM_IOCTL_MODE_CREATE_DUMB\fR
+ioctl takes as argument a structure of type
+struct drm_mode_create_dumb:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_mode_create_dumb {
+	__u32 height;
+	__u32 width;
+	__u32 bpp;
+	__u32 flags;
+
+	__u32 handle;
+	__u32 pitch;
+	__u64 size;
+};
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da fields
+\fIheight\fR,
+\fIwidth\fR,
+\fIbpp\fR
+and
+\fIflags\fR
+have ta be provided by tha caller\&. Da other fieldz is filled by tha kernel wit tha return joints\&.
+\fIheight\fR
+and
+\fIwidth\fR
+are tha dimensionz of tha rectangular buffer dat is pimped\&.
+\fIbpp\fR
+is tha number of bits\-per\-pixel n' must be a multiple of
+8\&. Yo ass most commonly wanna pass
+32
+here\&. The
+\fIflags\fR
+field is currently unused n' must be zeroed\&. Different flags ta modify tha behavior may be added up in tha future\& fo' realz. Afta callin tha ioctl, the
+\fIhandle\fR,
+\fIpitch\fR
+and
+\fIsize\fR
+fieldz is filled by tha kernel\&.
+\fIhandle\fR
+is a 32bit gem handle dat identifies tha buffer\&. This is used by nuff muthafuckin other calls dat take a gem\-handle or memory\-buffer as argument\&. The
+\fIpitch\fR
+field is tha pitch (or stride) of tha freshly smoked up buffer\&. Most drivers use 32bit or 64bit aligned stride\-values\&. The
+\fIsize\fR
+field gotz nuff tha absolute size up in bytez of tha buffer\&. This can normally also be computed with
+\fI(height * pitch + width) * bpp / 4\fR\&.
+.PP
+To prepare tha buffer for
+\fBmmap\fR(2)
+you need ta use the
+\fBDRM_IOCTL_MODE_MAP_DUMB\fR
+ioctl\&. Well shiiiit, it takes as argument a structure of type
+struct drm_mode_map_dumb:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_mode_map_dumb {
+	__u32 handle;
+	__u32 pad;
+
+	__u64 offset;
+};
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Yo ass need ta put tha gem\-handle dat was previously retrieved via
+\fBDRM_IOCTL_MODE_CREATE_DUMB\fR
+into the
+\fIhandle\fR
+field\&. The
+\fIpad\fR
+field is unused paddin n' must be zeroed\& fo' realz. Afta completion, the
+\fIoffset\fR
+field will contain a offset dat can be used with
+\fBmmap\fR(2)
+on tha DRM file\-descriptor\&.
+.PP
+If you don\*(Aqt need yo' dumb\-buffer, no mo', you gotta destroy it with
+\fBDRM_IOCTL_MODE_DESTROY_DUMB\fR\&. If you close tha DRM file\-descriptor, all open dumb\-buffers is automatically destroyed\&. This ioctl takes as argument a structure of type
+struct drm_mode_destroy_dumb:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_mode_destroy_dumb {
+	__u32 handle;
+};
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Yo ass only need ta put yo' handle tha fuck into the
+\fIhandle\fR
+field\& fo' realz. Afta dis call, tha handle is invalid n' may be reused fo' freshly smoked up buffers by tha dumb\-API\&.
+.SS "TTM"
+.PP
+\fITTM\fR
+standz for
+\fITranslation Table Manager\fR
+and be a generic memory\-manager provided by tha kernel\&. Well shiiiit, it do not provide a cold-ass lil common user\-space API so you need ta peep each driver intercourse if you wanna use it\&. Right back up in yo muthafuckin ass. See fo' instizzle tha radeon manpages fo' mo' shiznit on memory\-management wit radeon n' TTM\&.
+.SS "GEM"
+.PP
+\fIGEM\fR
+standz for
+\fIGraphics Execution Manager\fR
+and be a generic DRM memory\-management framework up in tha kernel, dat is used by nuff different drivers\&. Gem is designed ta manage graphics memory, control access ta tha graphics thang execution context n' handle essentially NUMA environment unique ta modern graphics hardware\&. Gem allows multiple applications ta share graphics thang resources without tha need ta constantly reload tha entire graphics card\&. Data may be shared between multiple applications wit gem ensurin dat tha erect memory synchronization occurs\&.
+.PP
+Gem serves up simple mechanizzlez ta manage graphics data n' control execution flow within tha linux DRM subsystem\&. But fuck dat shiznit yo, tha word on tha street is dat gem aint a cold-ass lil complete framework dat is straight-up driver independent\&. Instead, if serves up nuff functions dat is shared between nuff drivers yo, but each driver has ta implement most of memory\-management wit driver\-dependent ioctls\&. This manpage tries ta describe tha semantics (and if it applies, tha syntax) dat is shared between all drivers dat use gem\&.
+.PP
+All GEM APIs is defined as
+\fBioctl\fR(2)
+on tha DRM file descriptor\& fo' realz. An application must be authorized via
+\fBdrmAuthMagic\fR(3)
+to tha current DRM\-Masta ta access tha GEM subsystem\& fo' realz. A driver dat do not support gem will return
+\fBENODEV\fR
+for all these ioctls\&. Invalid object handlez return
+\fBEINVAL\fR
+and invalid object names return
+\fBENOENT\fR\&.
+.PP
+Gem serves up explicit memory pimpment primitives\&. Right back up in yo muthafuckin ass. System pages is allocated when tha object is pimped, either as tha fundamenstrual storage fo' hardware where system memory is used by tha graphics processor directly, or as backin store fo' graphics\-processor resident memory\&.
+.PP
+Objects is referenced from user\-space rockin handles\&. These are, fo' all intents n' purposes, equivalent ta file descriptors but avoid tha overhead\&. Newer kernel drivers also support the
+\fBdrm-prime\fR(7)
+infrastructure which can return real file\-descriptor fo' gem\-handlez rockin tha linux dma\-buf API\&. Objects may be published wit a name so dat other applications n' processes can access them\&. Da name remains valid as long as tha object exists\&. Gem\-objects is reference counted up in tha kernel\&. Da object is only destroyed when all handlez from user\-space was closed\&.
+.PP
+Gem\-buffers cannot be pimped wit a generic API\&. Each driver serves up its own API ta create gem\-buffers\&. Right back up in yo muthafuckin ass. See fo' example
+\fBDRM_I915_GEM_CREATE\fR,
+\fBDRM_NOUVEAU_GEM_NEW\fR
+or
+\fBDRM_RADEON_GEM_CREATE\fR\&. Each of these ioctls returns a gem\-handle dat can be passed ta different generic ioctls\&. The
+\fIlibgbm\fR
+library from the
+\fImesa3D\fR
+distribution tries ta provide a thugged-out driver\-independent API ta create gbm buffers n' retrieve a gbm\-handle ta them\&. Well shiiiit, it allows ta create buffers fo' different use\-cases includin scanout, rendering, cursors n' CPU\-access\&. Right back up in yo muthafuckin ass. See tha libgbm library fo' mo' shiznit or peep tha driver\-dependent man\-pages (for example
+\fBdrm-intel\fR(7)
+or
+\fBdrm-radeon\fR(7))\&.
+.PP
+Gem\-buffers can be closed wit the
+\fBDRM_IOCTL_GEM_CLOSE\fR
+ioctl\&. Well shiiiit, it takes as argument a structure of type
+struct drm_gem_close:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_gem_close {
+	__u32 handle;
+	__u32 pad;
+};
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+The
+\fIhandle\fR
+field is tha gem\-handle ta be closed\&. The
+\fIpad\fR
+field is unused padding\&. Well shiiiit, it must be zeroed\& fo' realz. Afta dis call tha gem handle cannot be used by dis process no mo' n' may be reused fo' freshly smoked up gem objects by tha gem API\&.
+.PP
+If you wanna share gem\-objects between different processes, you can create a name fo' dem n' pass dis name ta other processes which can then open dis gem\-object\&. Names is currently 32bit integer IDs n' have no special protection\&. That is, if you put a name on yo' gem\-object, every last muthafuckin other client dat has access ta tha DRM thang n' be authenticated via
+\fBdrmAuthMagic\fR(3)
+to tha current DRM\-Master, can
+\fIguess\fR
+the name n' open or access tha gem\-object\&. If you want mo' fine\-grained access control, you can use tha new
+\fBdrm-prime\fR(7)
+API ta retrieve file\-descriptors fo' gem\-handles\&. To create a name fo' a gem\-handle, you use the
+\fBDRM_IOCTL_GEM_FLINK\fR
+ioctl\&. Well shiiiit, it takes as argument a structure of type
+struct drm_gem_flink:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_gem_flink {
+	__u32 handle;
+	__u32 name;
+};
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Yo ass gotta put yo' handle tha fuck into the
+\fIhandle\fR
+field\& fo' realz. Afta completion, tha kernel has put tha freshly smoked up unique name tha fuck into the
+\fIname\fR
+field\&. Yo ass can now pass dis name ta other processes which can then import tha name wit the
+\fBDRM_IOCTL_GEM_OPEN\fR
+ioctl\&. Well shiiiit, it takes as argument a structure of type
+struct drm_gem_open:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_gem_open {
+	__u32 name;
+
+	__u32 handle;
+	__u32 size;
+};
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Yo ass gotta fill up in the
+\fIname\fR
+field wit tha name of tha gem\-object dat you wanna open\&. Da kernel will fill up in the
+\fIhandle\fR
+and
+\fIsize\fR
+fieldz wit tha freshly smoked up handle n' size of tha gem\-object\&. Yo ass can now access tha gem\-object via tha handle as if you pimped it wit tha gem API\&.
+.PP
+Besides generic buffer pimpment, tha GEM API do not provide any generic access\&. Each driver implements its own functionalitizzle on top of dis API\&. This includes execution\-buffers, GTT pimpment, context creation, CPU access, GPU I/O n' more\&. Da next higher\-level API is
+\fIOpenGL\fR\&. Right back up in yo muthafuckin ass. So if you wanna use mo' GPU features, you should use the
+\fImesa3D\fR
+library ta create OpenGL contexts on DRM devices\&. This do
+\fInot\fR
+require any windowing\-system like X11 yo, but can also be done on raw DRM devices\&. But fuck dat shiznit yo, tha word on tha street is dat dis is beyond tha scope of dis man\-page\&. Yo ass may gotz a peep other mesa3D manpages, includin libgbm n' libEGL\&. 2D software\-renderin (renderin wit tha CPU) can be  bigged up  wit tha dumb\-buffer\-API up in a thugged-out driver\-independent fashion, however, fo' hardware\-accelerated 2D or 3D renderin you must use OpenGL\& fo' realz. Any other API dat tries ta abstract tha driver\-internals ta access GEM\-execution\-buffers n' other GPU internals, would simply reinvent OpenGL so it aint provided\&. But if you need mo' detailed shiznit fo' a specific driver, you may gotz a look tha fuck into tha driver\-manpages, including
+\fBdrm-intel\fR(7),
+\fBdrm-radeon\fR(7)
+and
+\fBdrm-nouveau\fR(7)\&. But fuck dat shiznit yo, tha word on tha street is dat the
+\fBdrm-prime\fR(7)
+infrastructure n' tha generic gem API as busted lyrics bout here allow display\-managers ta handle graphics\-buffers n' render\-clients without any deeper knowledge of tha GPU dat is used\&. Mo'over, it allows ta move objects between GPUs n' implement complex display\-servers dat don\*(Aqt do any renderin on they own\&. Right back up in yo muthafuckin ass. See its man\-page fo' mo' shiznit\&.
+.SH "EXAMPLES"
+.PP
+This section includes examplez fo' basic memory\-management tasks\&.
+.SS "Dumb\-Buffers"
+.PP
+This examplez shows how tha fuck ta create a thugged-out dumb\-buffer via tha generic DRM API\&. This is driver\-independent (as long as tha driver supports dumb\-buffers) n' serves up memory\-mapped buffers dat can be used fo' scanout\&. This example creates a gangbangin' full\-HD 1920x1080 buffer wit 32 bits\-per\-pixel n' a cold-ass lil color\-depth of 24 bits\&. Da buffer is then bound ta a gangbangin' framebuffer which can be used fo' scanout wit tha KMS API (see
+\fBdrm-kms\fR(7))\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+struct drm_mode_create_dumb creq;
+struct drm_mode_destroy_dumb dreq;
+struct drm_mode_map_dumb mreq;
+uint32_t fb;
+int ret;
+void *map;
+
+/* create dumb buffer */
+memset(&creq, 0, sizeof(creq));
+creq\&.width = 1920;
+creq\&.height = 1080;
+creq\&.bpp = 32;
+ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq);
+if (ret < 0) {
+	/* buffer creation failed; peep "errno" fo' mo' error codes */
+	\&.\&.\&.
+}
+/* creq\&.pitch, creq\&.handle n' creq\&.size is filled by dis ioctl with
+ * tha axed joints n' can be used now\&. */
+
+/* create framebuffer object fo' tha dumb\-buffer */
+ret = drmModeAddFB(fd, 1920, 1080, 24, 32, creq\&.pitch, creq\&.handle, &fb);
+if (ret) {
+	/* frame buffer creation failed; peep "errno" */
+	\&.\&.\&.
+}
+/* tha framebuffer "fb" can now used fo' scanout wit KMS */
+
+/* prepare buffer fo' memory mappin */
+memset(&mreq, 0, sizeof(mreq));
+mreq\&.handle = creq\&.handle;
+ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq);
+if (ret) {
+	/* DRM buffer preparation failed; peep "errno" */
+	\&.\&.\&.
+}
+/* mreq\&.offset now gotz nuff tha freshly smoked up offset dat can be used wit mmap() */
+
+/* big-ass up actual memory mappin */
+map = mmap(0, creq\&.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, mreq\&.offset);
+if (map == MAP_FAILED) {
+	/* memory\-mappin failed; peep "errno" */
+	\&.\&.\&.
+}
+
+/* clear tha framebuffer ta 0 */
+memset(map, 0, creq\&.size);
+.fi
+.if n \{\
+.RE
+.\}
+.SH "REPORTING BUGS"
+.PP
+Bugs up in dis manual should be reported ta http://bugs\&.freedesktop\&.org under tha "Mesa" product, wit "Other" or "libdrm" as tha component\&.
+.SH "SEE ALSO"
+.PP
+\fBdrm\fR(7),
+\fBdrm-kms\fR(7),
+\fBdrm-prime\fR(7),
+\fBdrmAvailable\fR(3),
+\fBdrmOpen\fR(3),
+\fBdrm-intel\fR(7),
+\fBdrm-radeon\fR(7),
+\fBdrm-nouveau\fR(7)

@@ -1,0 +1,1095 @@
+.TH SMTPD 8 
+.ad
+.fi
+.SH NAME
+smtpd
+\-
+Postfix SMTP server
+.SH "SYNOPSIS"
+.na
+.nf
+\fBsmtpd\fR [generic Postfix daemon options]
+
+\fBsendmail -bs\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da SMTP server accepts network connection requests
+and performs zero or mo' SMTP transactions per connection.
+Each received message is piped all up in tha \fBcleanup\fR(8)
+daemon, n' is placed tha fuck into tha \fBincoming\fR queue as one
+single queue file.  For dis mode of operation, tha program
+expects ta be run from tha \fBmaster\fR(8) process manager.
+
+Alternatively, tha SMTP server be can run up in stand-alone
+mode; dis is traditionally obtained wit "\fBsendmail
+-bs\fR".  When tha SMTP server runs stand-alone wit non
+$\fBmail_baller\fR privileges, it receives mail even while
+the mail system aint hustlin, deposits lyrics directly
+into tha \fBmaildrop\fR queue, n' disablez tha SMTP server's
+access policies fo' realz. Az of Postfix version 2.3, tha SMTP server
+refuses ta receive mail from tha network when it runs with
+non $\fBmail_baller\fR privileges.
+
+Da SMTP server implements a variety of policies fo' connection
+requests, n' fo' parametas given ta \fBHELO, ETRN, MAIL FROM, VRFY\fR
+and \fBRCPT TO\fR commands. They is detailed below n' up in the
+\fBmain.cf\fR configuration file.
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da SMTP server is moderately security-sensitive. Well shiiiit, it talks ta SMTP
+clients n' ta DNS servers on tha network. Da SMTP server can be
+run chrooted at fixed low privilege.
+.SH "STANDARDS"
+.na
+.nf
+RFC 821 (SMTP protocol)
+RFC 1123 (Host requirements)
+RFC 1652 (8bit-MIME transport)
+RFC 1869 (SMTP steez extensions)
+RFC 1870 (Message size declaration)
+RFC 1985 (ETRN command)
+RFC 2034 (SMTP enhanced status codes)
+RFC 2554 (AUTH command)
+RFC 2821 (SMTP protocol)
+RFC 2920 (SMTP pipelining)
+RFC 3207 (STARTTLS command)
+RFC 3461 (SMTP DSN extension)
+RFC 3463 (Enhanced status codes)
+RFC 3848 (ESMTP transmission types)
+RFC 4409 (Message submission)
+RFC 4954 (AUTH command)
+RFC 5321 (SMTP protocol)
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+
+Dependin on tha settin of tha \fBnotify_classes\fR parameter,
+the postmasta is notified of bounces, protocol problems,
+policy violations, n' of other shit.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Changes ta \fBmain.cf\fR is picked up automatically, as \fBsmtpd\fR(8)
+processes run fo' only a limited amount of time. Use tha command
+"\fBpostfix reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.SH "COMPATIBILITY CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da followin parametas work round implementation errors up in other
+software, and/or allow you ta override standardz up in order ta prevent
+undesirable use.
+.ad
+.fi
+.IP "\fBbroken_sasl_auth_clients (no)\fR"
+Enable inter-operabilitizzle wit remote SMTP clients dat implement a obsolete
+version of tha AUTH command (RFC 4954).
+.IP "\fBdisable_vrfy_command (no)\fR"
+Disable tha SMTP VRFY command.
+.IP "\fBsmtpd_noop_commandz (empty)\fR"
+List of commandz dat tha Postfix SMTP server replies ta wit "250
+Ok", without bustin any syntax checks n' without changin state.
+.IP "\fBstrict_rfc821_envelopes (no)\fR"
+Require dat addresses received up in SMTP MAIL FROM n' RCPT TO
+commandz is enclosed wit <>, n' dat dem addresses do
+not contain RFC 822 steez comments or phrases.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBresolve_null_domain (no)\fR"
+Resolve a address dat endz up in tha "@" null domain as if the
+local hostname was specified, instead of rejectin tha address as
+invalid.
+.IP "\fBsmtpd_reject_unlisted_sender (no)\fR"
+Request dat tha Postfix SMTP server rejects mail from unknown
+sender addresses, even when no explicit reject_unlisted_sender
+access restriction is specified.
+.IP "\fBsmtpd_sasl_exceptions_networks (empty)\fR"
+What remote SMTP clients tha Postfix SMTP server aint gonna offer
+AUTH support to.
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBsmtpd_discard_ehlo_keyword_address_maps (empty)\fR"
+Lookup tables, indexed by tha remote SMTP client address, with
+case insensitizzle listz of EHLO keywordz (pipelining, starttls, auth,
+etc.) dat tha Postfix SMTP server aint gonna bust up in tha EHLO response
+to a
+remote SMTP client.
+.IP "\fBsmtpd_discard_ehlo_keywordz (empty)\fR"
+A case insensitizzle list of EHLO keywordz (pipelining, starttls,
+auth, etc.) dat tha Postfix SMTP server aint gonna bust up in tha EHLO
+response
+to a remote SMTP client.
+.IP "\fBsmtpd_delay_open_until_valid_rcpt (yes)\fR"
+Postpone tha start of a SMTP mail transaction until a valid
+RCPT TO command is received.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBsmtpd_tls_always_issue_session_idz (yes)\fR"
+Force tha Postfix SMTP server ta issue a TLS session id, even
+when TLS session cachin is turned off (smtpd_tls_session_cache_database
+is empty).
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBtcp_windowsize (0)\fR"
+An optionizzle workaround fo' routas dat break TCP window scaling.
+.PP
+Available up in Postfix version 2.7 n' later:
+.IP "\fBsmtpd_command_filta (empty)\fR"
+A mechanizzle ta transform commandz from remote SMTP clients.
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBsmtpd_per_record_deadline (normal: no, overload: yes)\fR"
+Change tha behavior of tha smtpd_timeout time limit, from a
+time limit per read or write system call, ta a time limit ta send
+or receive a cold-ass lil complete record (an SMTP command line, SMTP response
+line, SMTP message content line, or TLS protocol message).
+.SH "ADDRESS REWRITING CONTROLS"
+.na
+.nf
+.ad
+.fi
+See tha ADDRESS_REWRITING_README document fo' a thugged-out detailed
+rap of Postfix address rewriting.
+.IP "\fBreceive_override_options (empty)\fR"
+Enable or disable recipient validation, built-in content
+filtering, or address mapping.
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBlocal_header_rewrite_clients (permit_inet_interfaces)\fR"
+Rewrite message header addresses up in mail from these clients and
+update incomplete addresses wit tha domain name up in $myorigin or
+$mydomain; either don't rewrite message headaz from other clients
+at all, or rewrite message headaz n' update incomplete addresses
+with tha domain specified up in tha remote_header_rewrite_domain
+parameter.
+.SH "BEFORE-SMTPD PROXY AGENT"
+.na
+.nf
+.ad
+.fi
+Available up in Postfix version 2.10 n' later:
+.IP "\fBsmtpd_upstream_proxy_protocol (empty)\fR"
+Da name of tha proxy protocol used by a optionizzle before-smtpd
+proxy agent.
+.IP "\fBsmtpd_upstream_proxy_timeout (5s)\fR"
+Da time limit fo' tha proxy protocol specified wit the
+smtpd_upstream_proxy_protocol parameter.
+.SH "AFTER QUEUE EXTERNAL CONTENT INSPECTION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Az of version 1.0, Postfix can be configured ta bust freshly smoked up mail to
+an external content filta AFTER tha mail is queued. Y'all KNOW dat shit, muthafucka! This content
+filta is sposed ta fuckin inject mail back tha fuck into a (Postfix or other)
+MTA fo' further delivery. Right back up in yo muthafuckin ass. See tha FILTER_README document fo' details.
+.IP "\fBcontent_filta (empty)\fR"
+Afta tha message is queued, bust tha entire message ta the
+specified \fItransport:destination\fR.
+.SH "BEFORE QUEUE EXTERNAL CONTENT INSPECTION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Az of version 2.1, tha Postfix SMTP server can be configured
+to bust incomin mail ta a real-time SMTP-based content filter
+BEFORE mail is queued. Y'all KNOW dat shit, muthafucka!  This content filta is sposed ta fuckin inject
+mail back tha fuck into Postfix.  See tha SMTPD_PROXY_README document for
+details on how tha fuck ta configure n' operate dis feature.
+.IP "\fBsmtpd_proxy_filta (empty)\fR"
+Da hostname n' TCP port of tha mail filterin proxy server.
+.IP "\fBsmtpd_proxy_ehlo ($myhostname)\fR"
+How tha fuck tha Postfix SMTP server announces itself ta tha proxy filter.
+.IP "\fBsmtpd_proxy_options (empty)\fR"
+List of options dat control how tha fuck tha Postfix SMTP server
+communicates wit a funky-ass before-queue content filter.
+.IP "\fBsmtpd_proxy_timeout (100s)\fR"
+Da time limit fo' connectin ta a proxy filta n' fo' bustin  or
+receivin shiznit.
+.SH "BEFORE QUEUE MILTER CONTROLS"
+.na
+.nf
+.ad
+.fi
+Az of version 2.3, Postfix supports tha Sendmail version 8
+Milta (mail filter) protocol. These content filtas run
+outside Postfix. They can inspect tha SMTP command stream
+and tha message content, n' can request modifications before
+mail is queued. Y'all KNOW dat shit, muthafucka! For details peep tha MILTER_README document.
+.IP "\fBsmtpd_miltas (empty)\fR"
+A list of Milta (mail filter) applications fo' freshly smoked up mail that
+arrives via tha Postfix \fBsmtpd\fR(8) server.
+.IP "\fBmilter_protocol (6)\fR"
+Da mail filta protocol version n' optionizzle protocol extensions
+for communication wit a Milta application; prior ta Postfix 2.6
+the default protocol is 2.
+.IP "\fBmilter_default_action (tempfail)\fR"
+Da default action when a Milta (mail filter) application is
+unavailable or mis-configured.
+.IP "\fBmilter_macro_daemon_name ($myhostname)\fR"
+Da {daemon_name} macro value fo' Milta (mail filter) applications.
+.IP "\fBmilter_macro_v ($mail_name $mail_version)\fR"
+Da {v} macro value fo' Milta (mail filter) applications.
+.IP "\fBmilter_connect_timeout (30s)\fR"
+Da time limit fo' connectin ta a Milta (mail filter)
+application, n' fo' negotiatin protocol options.
+.IP "\fBmilter_command_timeout (30s)\fR"
+Da time limit fo' bustin  a SMTP command ta a Milta (mail
+filter) application, n' fo' receivin tha response.
+.IP "\fBmilter_content_timeout (300s)\fR"
+Da time limit fo' bustin  message content ta a Milta (mail
+filter) application, n' fo' receivin tha response.
+.IP "\fBmilter_connect_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta completion of a SMTP connection.
+.IP "\fBmilter_helo_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha SMTP HELO or EHLO command.
+.IP "\fBmilter_mail_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha SMTP MAIL FROM command.
+.IP "\fBmilter_rcpt_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha SMTP RCPT TO command.
+.IP "\fBmilter_data_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta version 4 or higher Milta (mail
+filter) applications afta tha SMTP DATA command.
+.IP "\fBmilter_unknown_command_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta version 3 or higher Milta (mail
+filter) applications afta a unknown SMTP command.
+.IP "\fBmilter_end_of_header_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha end of tha message header.
+.IP "\fBmilter_end_of_data_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha message end-of-data.
+.SH "GENERAL CONTENT INSPECTION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da followin parametas is applicable fo' both built-in
+and external content filters.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBreceive_override_options (empty)\fR"
+Enable or disable recipient validation, built-in content
+filtering, or address mapping.
+.SH "EXTERNAL CONTENT INSPECTION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da followin parametas is applicable fo' both before-queue
+and after-queue content filtering.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtpd_authorized_xforward_hosts (empty)\fR"
+What remote SMTP clients is allowed ta use tha XFORWARD feature.
+.SH "SASL AUTHENTICATION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Postfix SASL support (RFC 4954) can be used ta authenticate remote
+SMTP clients ta tha Postfix SMTP server, n' ta authenticate the
+Postfix SMTP client ta a remote SMTP server.
+See tha SASL_README document fo' details.
+.IP "\fBbroken_sasl_auth_clients (no)\fR"
+Enable inter-operabilitizzle wit remote SMTP clients dat implement a obsolete
+version of tha AUTH command (RFC 4954).
+.IP "\fBsmtpd_sasl_auth_enable (no)\fR"
+Enable SASL authentication up in tha Postfix SMTP server.
+.IP "\fBsmtpd_sasl_local_domain (empty)\fR"
+Da name of tha Postfix SMTP serverz local SASL authentication
+realm.
+.IP "\fBsmtpd_sasl_security_options (noanonymous)\fR"
+Postfix SMTP server SASL securitizzle options; az of Postfix 2.3
+the list of available
+features dependz on tha SASL server implementation dat is selected
+with \fBsmtpd_sasl_type\fR.
+.IP "\fBsmtpd_sender_login_maps (empty)\fR"
+Optionizzle lookup table wit tha SASL login names dat own sender
+(MAIL FROM) addresses.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtpd_sasl_exceptions_networks (empty)\fR"
+What remote SMTP clients tha Postfix SMTP server aint gonna offer
+AUTH support to.
+.PP
+Available up in Postfix version 2.1 n' 2.2:
+.IP "\fBsmtpd_sasl_application_name (smtpd)\fR"
+Da application name dat tha Postfix SMTP server uses fo' SASL
+server initialization.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBsmtpd_sasl_authenticated_header (no)\fR"
+Report tha SASL authenticated user name up in tha \fBsmtpd\fR(8) Received
+message header.
+.IP "\fBsmtpd_sasl_path (smtpd)\fR"
+Implementation-specific shiznit dat tha Postfix SMTP server
+passes all up in to
+the SASL plug-in implementation dat is selected with
+\fBsmtpd_sasl_type\fR.
+.IP "\fBsmtpd_sasl_type (cyrus)\fR"
+Da SASL plug-in type dat tha Postfix SMTP server should use
+for authentication.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBcyrus_sasl_config_path (empty)\fR"
+Search path fo' Cyrus SASL application configuration files,
+currently used only ta locate tha $smtpd_sasl_path.conf file.
+.SH "STARTTLS SUPPORT CONTROLS"
+.na
+.nf
+.ad
+.fi
+Detailed shiznit bout STARTTLS configuration may be
+found up in tha TLS_README document.
+.IP "\fBsmtpd_tls_security_level (empty)\fR"
+Da SMTP TLS securitizzle level fo' tha Postfix SMTP server; when
+a non-empty value is specified, dis overrides tha obsolete parameters
+smtpd_use_tls n' smtpd_enforce_tls.
+.IP "\fBsmtpd_sasl_tls_security_options ($smtpd_sasl_security_options)\fR"
+Da SASL authentication securitizzle options dat tha Postfix SMTP
+server uses fo' TLS encrypted SMTP sessions.
+.IP "\fBsmtpd_starttls_timeout (see 'postconf -d' output)\fR"
+Da time limit fo' Postfix SMTP server write n' read operations
+durin TLS startup n' shutdown handshake procedures.
+.IP "\fBsmtpd_tls_CAfile (empty)\fR"
+A file containin (PEM format) CA certificatez of root CAs trusted
+to sign either remote SMTP client certificates or intermediate CA
+certificates.
+.IP "\fBsmtpd_tls_CApath (empty)\fR"
+A directory containin (PEM format) CA certificatez of root CAs
+trusted ta sign either remote SMTP client certificates or intermediate CA
+certificates.
+.IP "\fBsmtpd_tls_always_issue_session_idz (yes)\fR"
+Force tha Postfix SMTP server ta issue a TLS session id, even
+when TLS session cachin is turned off (smtpd_tls_session_cache_database
+is empty).
+.IP "\fBsmtpd_tls_ask_ccert (no)\fR"
+Ask a remote SMTP client fo' a cold-ass lil client certificate.
+.IP "\fBsmtpd_tls_auth_only (no)\fR"
+When TLS encryption is optionizzle up in tha Postfix SMTP server, do
+not announce or accept SASL authentication over unencrypted
+connections.
+.IP "\fBsmtpd_tls_ccert_verifydepth (9)\fR"
+Da verification depth fo' remote SMTP client certificates.
+.IP "\fBsmtpd_tls_cert_file (empty)\fR"
+File wit tha Postfix SMTP server RSA certificate up in PEM format.
+.IP "\fBsmtpd_tls_exclude_ciphers (empty)\fR"
+List of ciphers or cipher types ta exclude from tha SMTP server
+cipher list at all TLS securitizzle levels.
+.IP "\fBsmtpd_tls_dcert_file (empty)\fR"
+File wit tha Postfix SMTP server DSA certificate up in PEM format.
+.IP "\fBsmtpd_tls_dh1024_param_file (empty)\fR"
+File wit DH parametas dat tha Postfix SMTP server should
+use wit EDH ciphers.
+.IP "\fBsmtpd_tls_dh512_param_file (empty)\fR"
+File wit DH parametas dat tha Postfix SMTP server should
+use wit EDH ciphers.
+.IP "\fBsmtpd_tls_dkey_file ($smtpd_tls_dcert_file)\fR"
+File wit tha Postfix SMTP server DSA private key up in PEM format.
+.IP "\fBsmtpd_tls_key_file ($smtpd_tls_cert_file)\fR"
+File wit tha Postfix SMTP server RSA private key up in PEM format.
+.IP "\fBsmtpd_tls_loglevel (0)\fR"
+Enable additionizzle Postfix SMTP server loggin of TLS activity.
+.IP "\fBsmtpd_tls_mandatory_ciphers (medium)\fR"
+Da minimum TLS cipher grade dat tha Postfix SMTP server will
+use wit mandatory TLS encryption.
+.IP "\fBsmtpd_tls_mandatory_exclude_ciphers (empty)\fR"
+Additionizzle list of ciphers or cipher types ta exclude from the
+Postfix SMTP server cipher list at mandatory TLS securitizzle levels.
+.IP "\fBsmtpd_tls_mandatory_protocols (!SSLv2)\fR"
+Da SSL/TLS protocols accepted by tha Postfix SMTP server with
+mandatory TLS encryption.
+.IP "\fBsmtpd_tls_received_header (no)\fR"
+Request dat tha Postfix SMTP server produces Received:  message
+headaz dat include shiznit bout tha protocol n' cipher used,
+as well as tha remote SMTP client CommonName n' client certificate issuer
+CommonName.
+.IP "\fBsmtpd_tls_req_ccert (no)\fR"
+With mandatory TLS encryption, require a trusted remote SMTP client
+certificate up in order ta allow TLS connections ta proceed.
+.IP "\fBsmtpd_tls_session_cache_database (empty)\fR"
+Name of tha file containin tha optionizzle Postfix SMTP server
+TLS session cache.
+.IP "\fBsmtpd_tls_session_cache_timeout (3600s)\fR"
+Da expiration time of Postfix SMTP server TLS session cache
+information.
+.IP "\fBsmtpd_tls_wrappermode (no)\fR"
+Run tha Postfix SMTP server up in tha non-standard "wrapper" mode,
+instead of rockin tha STARTTLS command.
+.IP "\fBtls_daemon_random_bytes (32)\fR"
+Da number of pseudo-random bytes dat a \fBsmtp\fR(8) or \fBsmtpd\fR(8)
+process requests from tha \fBtlsmgr\fR(8) server up in order ta seed its
+internal pseudo random number generator (PRNG).
+.IP "\fBtls_high_cipherlist (ALL:!EXPORT:!LOW:!MEDIUM:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "HIGH" grade ciphers.
+.IP "\fBtls_medium_cipherlist (ALL:!EXPORT:!LOW:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "MEDIUM" or higher grade ciphers.
+.IP "\fBtls_low_cipherlist (ALL:!EXPORT:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "LOW" or higher grade ciphers.
+.IP "\fBtls_export_cipherlist (ALL:+RC4:@STRENGTH)\fR"
+Da OpenSSL cipherlist fo' "EXPORT" or higher grade ciphers.
+.IP "\fBtls_null_cipherlist (eNULL:!aNULL)\fR"
+Da OpenSSL cipherlist fo' "NULL" grade ciphers dat provide
+authentication without encryption.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBsmtpd_tls_fingerprint_digest (md5)\fR"
+Da message digest algorithm ta construct remote SMTP
+client-certificate
+fingerprints or hood key fingerprints (Postfix 2.9 n' later)
+for \fBcheck_ccert_access\fR n' \fBpermit_tls_clientcerts\fR.
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBsmtpd_tls_protocols (empty)\fR"
+List of TLS protocols dat tha Postfix SMTP server will exclude
+or include wit opportunistic TLS encryption.
+.IP "\fBsmtpd_tls_ciphers (export)\fR"
+Da minimum TLS cipher grade dat tha Postfix SMTP server
+will use wit opportunistic TLS encryption.
+.IP "\fBsmtpd_tls_eccert_file (empty)\fR"
+File wit tha Postfix SMTP server ECDSA certificate up in PEM format.
+.IP "\fBsmtpd_tls_eckey_file ($smtpd_tls_eccert_file)\fR"
+File wit tha Postfix SMTP server ECDSA private key up in PEM format.
+.IP "\fBsmtpd_tls_eecdh_grade (see 'postconf -d' output)\fR"
+Da Postfix SMTP server securitizzle grade fo' ephemeral elliptic-curve
+Diffie-Hellman (EECDH) key exchange.
+.IP "\fBtls_eecdh_strong_curve (prime256v1)\fR"
+Da elliptic curve used by tha Postfix SMTP server fo' sensibly
+strong
+ephemeral ECDH key exchange.
+.IP "\fBtls_eecdh_ultra_curve (secp384r1)\fR"
+Da elliptic curve used by tha Postfix SMTP server fo' maximally
+strong
+ephemeral ECDH key exchange.
+.PP
+Available up in Postfix version 2.8 n' later:
+.IP "\fBtls_preempt_cipherlist (no)\fR"
+With SSLv3 n' later, use tha Postfix SMTP serverz cipher
+preference order instead of tha remote clientz cipher preference
+order.
+.IP "\fBtls_disable_workaroundz (see 'postconf -d' output)\fR"
+List or bit-mask of OpenSSL bug work-aroundz ta disable.
+.SH "OBSOLETE STARTTLS CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da followin configuration parametas exist fo' compatibility
+with Postfix versions before 2.3. Right back up in yo muthafuckin ass. Support fo' these will
+be removed up in a gangbangin' future release.
+.IP "\fBsmtpd_use_tls (no)\fR"
+Opportunistic TLS: announce STARTTLS support ta remote SMTP clients,
+but do not require dat clients use TLS encryption.
+.IP "\fBsmtpd_enforce_tls (no)\fR"
+Mandatory TLS: announce STARTTLS support ta remote SMTP clients,
+and require dat clients use TLS encryption.
+.IP "\fBsmtpd_tls_cipherlist (empty)\fR"
+Obsolete Postfix < 2.3 control fo' tha Postfix SMTP server TLS
+cipher list.
+.SH "VERP SUPPORT CONTROLS"
+.na
+.nf
+.ad
+.fi
+With VERP steez delivery, each recipient of a message receives a
+customized copy of tha message wit his/her own recipient address
+encoded up in tha envelope sender address.  Da VERP_README file
+raps bout configuration n' operation detailz of Postfix support
+for variable envelope return path addresses.  VERP steez delivery
+is axed wit tha SMTP XVERP command or wit tha "sendmail
+-V" command-line option n' be available up in Postfix version 1.1
+and later.
+.IP "\fBdefault_verp_delimitas (+=)\fR"
+Da two default VERP delimita characters.
+.IP "\fBverp_delimiter_filta (-=+)\fR"
+Da charactas Postfix accepts as VERP delimita charactas on the
+Postfix \fBsendmail\fR(1) command line n' up in SMTP commands.
+.PP
+Available up in Postfix version 1.1 n' 2.0:
+.IP "\fBauthorized_verp_clients ($mynetworks)\fR"
+What remote SMTP clients is allowed ta specify tha XVERP command.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtpd_authorized_verp_clients ($authorized_verp_clients)\fR"
+What remote SMTP clients is allowed ta specify tha XVERP command.
+.SH "TROUBLE SHOOTING CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da DEBUG_README document raps bout how tha fuck ta debug partz of the
+Postfix mail system. Da methodz vary from makin tha software log
+a shitload of detail, ta hustlin some daemon processes under control of
+a call tracer or debugger.
+.IP "\fBdebug_peer_level (2)\fR"
+Da increment up in verbose loggin level when a remote client or
+server matches a pattern up in tha debug_peer_list parameter.
+.IP "\fBdebug_peer_list (empty)\fR"
+Optionizzle list of remote client or server hostname or network
+address patterns dat cause tha verbose loggin level ta increase
+by tha amount specified up in $debug_peer_level.
+.IP "\fBerror_notice_recipient (postmaster)\fR"
+Da recipient of postmasta notifications bout mail delivery
+problems dat is caused by policy, resource, software or protocol
+errors.
+.IP "\fBinternal_mail_filter_classes (empty)\fR"
+What categoriez of Postfix-generated mail is subject to
+before-queue content inspection by non_smtpd_milters, header_checks
+and body_checks.
+.IP "\fBnotify_classes (resource, software)\fR"
+Da list of error classes dat is reported ta tha postmaster.
+.IP "\fBsmtpd_reject_foota (empty)\fR"
+Optionizzle shiznit dat be appended afta each Postfix SMTP
+server
+4XX or 5XX response.
+.IP "\fBsoft_bounce (no)\fR"
+Safety net ta keep mail queued dat would otherwise be returned to
+the sender.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtpd_authorized_xclient_hosts (empty)\fR"
+What remote SMTP clients is allowed ta use tha XCLIENT feature.
+.PP
+Available up in Postfix version 2.10 n' later:
+.IP "\fBsmtpd_log_access_permit_actions (empty)\fR"
+Enable loggin of tha named "permit" actions up in SMTP server
+access lists.
+.SH "KNOWN VERSUS UNKNOWN RECIPIENT CONTROLS"
+.na
+.nf
+.ad
+.fi
+Az of Postfix version 2.0, tha SMTP server rejects mail for
+unknown recipients, n' you can put dat on yo' toast. This prevents tha mail queue from cloggin up
+with undeliverable MAILER-DAEMON lyrics fo' realz. Additionizzle shiznit
+on dis topic is up in tha LOCAL_RECIPIENT_README n' ADDRESS_CLASS_README
+documents.
+.IP "\fBshow_user_unknown_table_name (yes)\fR"
+Display tha name of tha recipient table up in tha "User unknown"
+responses.
+.IP "\fBcanonical_maps (empty)\fR"
+Optionizzle address mappin lookup tablez fo' message headaz and
+envelopes.
+.IP "\fBrecipient_canonical_maps (empty)\fR"
+Optionizzle address mappin lookup tablez fo' envelope n' header
+recipient addresses.
+.PP
+Parametas concernin known/unknown local recipients:
+.IP "\fBmydestination ($myhostname, localhost.$mydomain, localhost)\fR"
+Da list of domains dat is served up via tha $local_transport
+mail delivery transport.
+.IP "\fBinet_interfaces (all)\fR"
+Da network intercourse addresses dat dis mail system receives
+mail on.
+.IP "\fBproxy_interfaces (empty)\fR"
+Da network intercourse addresses dat dis mail system receives mail
+on by way of a proxy or network address translation unit.
+.IP "\fBinet_protocols (all)\fR"
+Da Internizzle protocols Postfix will attempt ta use when making
+or acceptin connections.
+.IP "\fBlocal_recipient_maps (proxy:unix:passwd.byname $alias_maps)\fR"
+Lookup tablez wit all names or addressez of local recipients:
+a recipient address is local when its domain matches $mydestination,
+$inet_interfaces or $proxy_interfaces.
+.IP "\fBunknown_local_recipient_reject_code (550)\fR"
+Da numerical Postfix SMTP server response code when a recipient
+address is local, n' $local_recipient_maps specifies a list of
+lookup tablez dat do not match tha recipient.
+.PP
+Parametas concernin known/unknown recipientz of relay destinations:
+.IP "\fBrelay_domains ($mydestination)\fR"
+What destination domains (and subdomains thereof) dis system
+will relay mail to.
+.IP "\fBrelay_recipient_maps (empty)\fR"
+Optionizzle lookup tablez wit all valid addresses up in tha domains
+that match $relay_domains.
+.IP "\fBunknown_relay_recipient_reject_code (550)\fR"
+Da numerical Postfix SMTP server reply code when a recipient
+address matches $relay_domains, n' relay_recipient_maps specifies
+a list of lookup tablez dat do not match tha recipient address.
+.PP
+Parametas concernin known/unknown recipients up in virtual alias
+domains:
+.IP "\fBvirtual_alias_domains ($virtual_alias_maps)\fR"
+Postfix is final destination fo' tha specified list of virtual
+alias domains, dat is, domains fo' which all addresses is aliased
+to addresses up in other local or remote domains.
+.IP "\fBvirtual_alias_maps ($virtual_maps)\fR"
+Optionizzle lookup tablez dat alias specific mail addresses or domains
+to other local or remote address.
+.IP "\fBunknown_virtual_alias_reject_code (550)\fR"
+Da Postfix SMTP server reply code when a recipient address matches
+$virtual_alias_domains, n' $virtual_alias_maps specifies a list
+of lookup tablez dat do not match tha recipient address.
+.PP
+Parametas concernin known/unknown recipients up in virtual mailbox
+domains:
+.IP "\fBvirtual_mailbox_domains ($virtual_mailbox_maps)\fR"
+Postfix is final destination fo' tha specified list of domains;
+mail is served up via tha $virtual_transhiznit mail delivery transport.
+.IP "\fBvirtual_mailbox_maps (empty)\fR"
+Optionizzle lookup tablez wit all valid addresses up in tha domains that
+match $virtual_mailbox_domains.
+.IP "\fBunknown_virtual_mailbox_reject_code (550)\fR"
+Da Postfix SMTP server reply code when a recipient address matches
+$virtual_mailbox_domains, n' $virtual_mailbox_maps specifies a list
+of lookup tablez dat do not match tha recipient address.
+.SH "RESOURCE AND RATE CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da followin parametas limit resource usage by tha SMTP
+server and/or control client request rates.
+.IP "\fBline_length_limit (2048)\fR"
+Upon input, long lines is chopped up tha fuck into piecez of at most
+this length; upon delivery, long lines is reconstructed.
+.IP "\fBqueue_minfree (0)\fR"
+Da minimal amount of free space up in bytes up in tha queue file system
+that is needed ta receive mail.
+.IP "\fBmessage_size_limit (10240000)\fR"
+Da maximal size up in bytez of a message, includin envelope shiznit.
+.IP "\fBsmtpd_recipient_limit (1000)\fR"
+Da maximal number of recipients dat tha Postfix SMTP server
+accepts per message delivery request.
+.IP "\fBsmtpd_timeout (normal: 300s, overload: 10s)\fR"
+Da time limit fo' bustin  a Postfix SMTP server response n' for
+receivin a remote SMTP client request.
+.IP "\fBsmtpd_history_flush_threshold (100)\fR"
+Da maximal number of lines up in tha Postfix SMTP server command history
+before it is flushed upon receipt of EHLO, RSET, or end of DATA.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBsmtpd_peername_lookup (yes)\fR"
+Attempt ta look up tha remote SMTP client hostname, n' verify that
+the name matches tha client IP address.
+.PP
+Da per SMTP client connection count n' request rate limits are
+implemented up in co-operation wit tha \fBanvil\fR(8) service, and
+are available up in Postfix version 2.2 n' later.
+.IP "\fBsmtpd_client_connection_count_limit (50)\fR"
+How tha fuck nuff simultaneous connections any client be allowed to
+make ta dis service.
+.IP "\fBsmtpd_client_connection_rate_limit (0)\fR"
+Da maximal number of connection attempts any client be allowed to
+make ta dis steez per time unit.
+.IP "\fBsmtpd_client_message_rate_limit (0)\fR"
+Da maximal number of message delivery requests dat any client is
+allowed ta make ta dis steez per time unit, regardless of whether
+or not Postfix straight-up accepts dem lyrics.
+.IP "\fBsmtpd_client_recipient_rate_limit (0)\fR"
+Da maximal number of recipient addresses dat any client be allowed
+to bust ta dis steez per time unit, regardless of whether or not
+Postfix straight-up accepts dem recipients.
+.IP "\fBsmtpd_client_event_limit_exceptions ($mynetworks)\fR"
+Clients dat is excluded from smtpd_client_*_count/rate_limit
+restrictions.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBsmtpd_client_new_tls_session_rate_limit (0)\fR"
+Da maximal number of freshly smoked up (i.e., uncached) TLS sessions dat a
+remote SMTP client be allowed ta negotiate wit dis steez per
+time unit.
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBsmtpd_per_record_deadline (normal: no, overload: yes)\fR"
+Change tha behavior of tha smtpd_timeout time limit, from a
+time limit per read or write system call, ta a time limit ta send
+or receive a cold-ass lil complete record (an SMTP command line, SMTP response
+line, SMTP message content line, or TLS protocol message).
+.SH "TARPIT CONTROLS"
+.na
+.nf
+.ad
+.fi
+When a remote SMTP client make errors, tha Postfix SMTP server
+can bang delays before responding. This can help ta slow down
+run-away software.  Da behavior is controlled by a error counter
+that counts tha number of errors within a SMTP session dat a
+client make without deliverin mail.
+.IP "\fBsmtpd_error_sleep_time (1s)\fR"
+With Postfix version 2.1 n' later: tha SMTP server response delay after
+a client has made mo' than $smtpd_soft_error_limit errors, and
+fewer than $smtpd_hard_error_limit errors, without deliverin mail.
+.IP "\fBsmtpd_soft_error_limit (10)\fR"
+Da number of errors a remote SMTP client be allowed ta make without
+deliverin mail before tha Postfix SMTP server slows down all its
+responses.
+.IP "\fBsmtpd_hard_error_limit (normal: 20, overload: 1)\fR"
+Da maximal number of errors a remote SMTP client be allowed to
+make without deliverin mail.
+.IP "\fBsmtpd_junk_command_limit (normal: 100, overload: 1)\fR"
+Da number of junk commandz (NOOP, VRFY, ETRN or RSET) dat a remote
+SMTP client can bust before tha Postfix SMTP server starts to
+increment tha error counta wit each junk command.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtpd_recipient_overshoot_limit (1000)\fR"
+Da number of recipients dat a remote SMTP client can bust in
+excess of tha limit specified wit $smtpd_recipient_limit, before
+the Postfix SMTP server increments tha per-session error count
+for each excess recipient.
+.SH "ACCESS POLICY DELEGATION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Az of version 2.1, Postfix can be configured ta delegate access
+policy decisions ta a external server dat runs outside Postfix.
+See tha file SMTPD_POLICY_README fo' mo' shiznit.
+.IP "\fBsmtpd_policy_service_max_idle (300s)\fR"
+Da time afta which a idle SMTPD policy steez connection is
+closed.
+.IP "\fBsmtpd_policy_service_max_ttl (1000s)\fR"
+Da time afta which a actizzle SMTPD policy steez connection is
+closed.
+.IP "\fBsmtpd_policy_service_timeout (100s)\fR"
+Da time limit fo' connectin to, freestylin ta or receivin from a
+delegated SMTPD policy server.
+.SH "ACCESS CONTROLS"
+.na
+.nf
+.ad
+.fi
+Da SMTPD_ACCESS_README document gives a introduction ta all the
+SMTP server access control features.
+.IP "\fBsmtpd_delay_reject (yes)\fR"
+Wait until tha RCPT TO command before evaluating
+$smtpd_client_restrictions, $smtpd_helo_restrictions and
+$smtpd_sender_restrictions, or wait until tha ETRN command before
+evaluatin $smtpd_client_restrictions n' $smtpd_helo_restrictions.
+.IP "\fBparent_domain_matches_subdomains (see 'postconf -d' output)\fR"
+What Postfix features match subdomainz of "domain.tld" automatically,
+instead of requirin a explicit ".domain.tld" pattern.
+.IP "\fBsmtpd_client_restrictions (empty)\fR"
+Optionizzle restrictions dat tha Postfix SMTP server applies up in the
+context of a cold-ass lil client connection request.
+.IP "\fBsmtpd_helo_required (no)\fR"
+Require dat a remote SMTP client introduces itself wit tha HELO
+or EHLO command before bustin  tha MAIL command or other commands
+that require EHLO negotiation.
+.IP "\fBsmtpd_helo_restrictions (empty)\fR"
+Optionizzle restrictions dat tha Postfix SMTP server applies up in the
+context of a cold-ass lil client HELO command.
+.IP "\fBsmtpd_sender_restrictions (empty)\fR"
+Optionizzle restrictions dat tha Postfix SMTP server applies up in the
+context of a cold-ass lil client MAIL FROM command.
+.IP "\fBsmtpd_recipient_restrictions (see 'postconf -d' output)\fR"
+Optionizzle restrictions dat tha Postfix SMTP server applies up in the
+context of a cold-ass lil client RCPT TO command, afta smtpd_relay_restrictions.
+.IP "\fBsmtpd_etrn_restrictions (empty)\fR"
+Optionizzle restrictions dat tha Postfix SMTP server applies up in the
+context of a cold-ass lil client ETRN command.
+.IP "\fBallow_untrusted_routin (no)\fR"
+Forward mail wit sender-specified routin (user[@%!]remote[@%!]site)
+from untrusted clients ta destinations matchin $relay_domains.
+.IP "\fBsmtpd_restriction_classes (empty)\fR"
+User-defined aliases fo' crewz of access restrictions.
+.IP "\fBsmtpd_null_access_lookup_key (<>)\fR"
+Da lookup key ta be used up in SMTP \fBaccess\fR(5) tablez instead of the
+null sender address.
+.IP "\fBpermit_mx_backup_networks (empty)\fR"
+Restrict tha use of tha permit_mx_backup SMTP access feature to
+only domains whose primary MX hosts match tha listed networks.
+.PP
+Available up in Postfix version 2.0 n' later:
+.IP "\fBsmtpd_data_restrictions (empty)\fR"
+Optionizzle access restrictions dat tha Postfix SMTP server applies
+in tha context of tha SMTP DATA command.
+.IP "\fBsmtpd_expansion_filta (see 'postconf -d' output)\fR"
+What charactas is allowed up in $name expansionz of RBL reply
+templates.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsmtpd_reject_unlisted_sender (no)\fR"
+Request dat tha Postfix SMTP server rejects mail from unknown
+sender addresses, even when no explicit reject_unlisted_sender
+access restriction is specified.
+.IP "\fBsmtpd_reject_unlisted_recipient (yes)\fR"
+Request dat tha Postfix SMTP server rejects mail fo' unknown
+recipient addresses, even when no explicit reject_unlisted_recipient
+access restriction is specified.
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBsmtpd_end_of_data_restrictions (empty)\fR"
+Optionizzle access restrictions dat tha Postfix SMTP server
+applies up in tha context of tha SMTP END-OF-DATA command.
+.PP
+Available up in Postfix version 2.10 n' later:
+.IP "\fBsmtpd_relay_restrictions (permit_mynetworks, reject_unauth_destination)\fR"
+Access restrictions fo' mail relay control dat tha Postfix
+SMTP server applies up in tha context of tha RCPT TO command, before
+smtpd_recipient_restrictions.
+.SH "SENDER AND RECIPIENT ADDRESS VERIFICATION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Postfix version 2.1 introduces sender n' recipient address verification.
+This feature is implemented by bustin  probe email lyrics that
+are not straight-up delivered.
+This feature be axed via tha reject_unverified_sender and
+reject_unverified_recipient access restrictions.  Da status of
+verification probes is maintained by tha \fBverify\fR(8) server.
+See tha file ADDRESS_VERIFICATION_README fo' shiznit
+about how tha fuck ta configure n' operate tha Postfix sender/recipient
+address verification service.
+.IP "\fBaddress_verify_poll_count (normal: 3, overload: 1)\fR"
+How tha fuck nuff times ta query tha \fBverify\fR(8) steez fo' tha completion
+of a address verification request up in progress.
+.IP "\fBaddress_verify_poll_delay (3s)\fR"
+Da delay between queries fo' tha completion of a address
+verification request up in progress.
+.IP "\fBaddress_verify_sender ($double_bounce_sender)\fR"
+Da sender address ta use up in address verification probes; prior
+to Postfix 2.5 tha default was "postmaster".
+.IP "\fBunverified_sender_reject_code (450)\fR"
+Da numerical Postfix SMTP server response code when a recipient
+address is rejected by tha reject_unverified_sender restriction.
+.IP "\fBunverified_recipient_reject_code (450)\fR"
+Da numerical Postfix SMTP server response when a recipient address
+is rejected by tha reject_unverified_recipient restriction.
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBunverified_sender_defer_code (450)\fR"
+Da numerical Postfix SMTP server response code when a sender address
+probe fails cuz of a temporary error condition.
+.IP "\fBunverified_recipient_defer_code (450)\fR"
+Da numerical Postfix SMTP server response when a recipient address
+probe fails cuz of a temporary error condition.
+.IP "\fBunverified_sender_reject_reason (empty)\fR"
+Da Postfix SMTP serverz reply when rejectin mail with
+reject_unverified_sender.
+.IP "\fBunverified_recipient_reject_reason (empty)\fR"
+Da Postfix SMTP serverz reply when rejectin mail with
+reject_unverified_recipient.
+.IP "\fBunverified_sender_tempfail_action ($reject_tempfail_action)\fR"
+Da Postfix SMTP serverz action when reject_unverified_sender
+fails cuz of a temporary error condition.
+.IP "\fBunverified_recipient_tempfail_action ($reject_tempfail_action)\fR"
+Da Postfix SMTP serverz action when reject_unverified_recipient
+fails cuz of a temporary error condition.
+.PP
+Available wit Postfix 2.9 n' later:
+.IP "\fBaddress_verify_sender_ttl (0s)\fR"
+Da time between chizzlez up in tha time-dependent portion of address
+verification probe sender addresses.
+.SH "ACCESS CONTROL RESPONSES"
+.na
+.nf
+.ad
+.fi
+Da followin parametas control numerical SMTP reply codes
+and/or text responses.
+.IP "\fBaccess_map_reject_code (554)\fR"
+Da numerical Postfix SMTP server response code for
+an \fBaccess\fR(5) map "reject" action.
+.IP "\fBdefer_code (450)\fR"
+Da numerical Postfix SMTP server response code when a remote SMTP
+client request is rejected by tha "defer" restriction.
+.IP "\fBinvalid_hostname_reject_code (501)\fR"
+Da numerical Postfix SMTP server response code when tha client
+HELO or EHLO command parameta is rejected by tha reject_invalid_helo_hostname
+restriction.
+.IP "\fBmaps_rbl_reject_code (554)\fR"
+Da numerical Postfix SMTP server response code when a remote SMTP
+client request is blocked by tha reject_rbl_client, reject_rhsbl_client,
+reject_rhsbl_reverse_client, reject_rhsbl_sender or
+reject_rhsbl_recipient restriction.
+.IP "\fBnon_fqdn_reject_code (504)\fR"
+Da numerical Postfix SMTP server reply code when a cold-ass lil client request
+is rejected by tha reject_non_fqdn_helo_hostname, reject_non_fqdn_sender
+or reject_non_fqdn_recipient restriction.
+.IP "\fBplaintext_reject_code (450)\fR"
+Da numerical Postfix SMTP server response code when a request
+is rejected by tha \fBreject_plaintext_session\fR restriction.
+.IP "\fBreject_code (554)\fR"
+Da numerical Postfix SMTP server response code when a remote SMTP
+client request is rejected by tha "reject" restriction.
+.IP "\fBrelay_domains_reject_code (554)\fR"
+Da numerical Postfix SMTP server response code when a cold-ass lil client
+request is rejected by tha reject_unauth_destination recipient
+restriction.
+.IP "\fBunknown_address_reject_code (450)\fR"
+Da numerical Postfix SMTP server response code when a sender or
+recipient address is rejected by tha reject_unknown_sender_domain
+or reject_unknown_recipient_domain restriction.
+.IP "\fBunknown_client_reject_code (450)\fR"
+Da numerical Postfix SMTP server response code when a cold-ass lil client
+without valid address <=> name mappin is rejected by the
+reject_unknown_client_hostname restriction.
+.IP "\fBunknown_hostname_reject_code (450)\fR"
+Da numerical Postfix SMTP server response code when tha hostname
+specified wit tha HELO or EHLO command is rejected by the
+reject_unknown_helo_hostname restriction.
+.PP
+Available up in Postfix version 2.0 n' later:
+.IP "\fBdefault_rbl_reply (see 'postconf -d' output)\fR"
+Da default Postfix SMTP server response template fo' a request dat is
+rejected by a RBL-based restriction.
+.IP "\fBmulti_recipient_bounce_reject_code (550)\fR"
+Da numerical Postfix SMTP server response code when a remote SMTP
+client request is blocked by tha reject_multi_recipient_bounce
+restriction.
+.IP "\fBrbl_reply_maps (empty)\fR"
+Optionizzle lookup tablez wit RBL response templates.
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBaccess_map_defer_code (450)\fR"
+Da numerical Postfix SMTP server response code for
+an \fBaccess\fR(5) map "defer" action, includin "defer_if_permit"
+or "defer_if_reject".
+.IP "\fBreject_tempfail_action (defer_if_permit)\fR"
+Da Postfix SMTP serverz action when a reject-type restriction
+fails cuz of a temporary error condition.
+.IP "\fBunknown_helo_hostname_tempfail_action ($reject_tempfail_action)\fR"
+Da Postfix SMTP serverz action when reject_unknown_helo_hostname
+fails cuz of a temporary error condition.
+.IP "\fBunknown_address_tempfail_action ($reject_tempfail_action)\fR"
+Da Postfix SMTP serverz action when reject_unknown_sender_domain
+or reject_unknown_recipient_domain fail cuz of a temporary error
+condition.
+.SH "MISCELLANEOUS CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdaemon_timeout (18000s)\fR"
+How tha fuck much time a Postfix daemon process may take ta handle a
+request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBcommand_directory (see 'postconf -d' output)\fR"
+Da location of all postfix administratizzle commands.
+.IP "\fBdouble_bounce_sender (double-bounce)\fR"
+Da sender address of postmasta notifications dat is generated
+by tha mail system.
+.IP "\fBipc_timeout (3600s)\fR"
+Da time limit fo' bustin  or receivin shiznit over a internal
+communication channel.
+.IP "\fBmail_name (Postfix)\fR"
+Da mail system name dat is displayed up in Received: headers, in
+the SMTP greetin banner, n' up in bounced mail.
+.IP "\fBmail_balla (postfix)\fR"
+Da UNIX system account dat owns tha Postfix queue n' most Postfix
+daemon processes.
+.IP "\fBmax_idle (100s)\fR"
+Da maximum amount of time dat a idle Postfix daemon process waits
+for a incomin connection before terminatin voluntarily.
+.IP "\fBmax_use (100)\fR"
+Da maximal number of incomin connections dat a Postfix daemon
+process will steez before terminatin voluntarily.
+.IP "\fBmyhostname (see 'postconf -d' output)\fR"
+Da internizzle hostname of dis mail system.
+.IP "\fBmynetworks (see 'postconf -d' output)\fR"
+Da list of "trusted" remote SMTP clients dat have mo' privileges than
+"strangers".
+.IP "\fBmyorigin ($myhostname)\fR"
+Da domain name dat locally-posted mail appears ta come
+from, n' dat locally posted mail is served up to.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBqueue_directory (see 'postconf -d' output)\fR"
+Da location of tha Postfix top-level queue directory.
+.IP "\fBrecipient_delimita (empty)\fR"
+Da separator between user names n' address extensions (user+foo).
+.IP "\fBsmtpd_banner ($myhostname ESMTP $mail_name)\fR"
+Da text dat bigs up tha 220 status code up in tha SMTP greeting
+banner.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBsmtpd_forbidden_commandz (CONNECT, GET, POST)\fR"
+List of commandz dat cause tha Postfix SMTP server ta immediately
+terminizzle tha session wit a 221 code.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBsmtpd_client_port_loggin (no)\fR"
+Enable loggin of tha remote SMTP client port up in addizzle to
+the hostname n' IP address.
+.SH "SEE ALSO"
+.na
+.nf
+anvil(8), connection/rate limiting
+cleanup(8), message canonicalization
+tlsmgr(8), TLS session n' PRNG pimpment
+trivial-rewrite(8), address resolver
+verify(8), address verification service
+postconf(5), configuration parameters
+master(5), generic daemon options
+master(8), process manager
+syslogd(8), system logging
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+ADDRESS_CLASS_README, blockin unknown hosted or relay recipients
+ADDRESS_REWRITING_README Postfix address manipulation
+FILTER_README, external after-queue content filter
+LOCAL_RECIPIENT_README, blockin unknown local recipients
+MILTER_README, before-queue mail filta applications
+SMTPD_ACCESS_README, built-in access policies
+SMTPD_POLICY_README, external policy server
+SMTPD_PROXY_README, external before-queue content filter
+SASL_README, Postfix SASL howto
+TLS_README, Postfix STARTTLS howto
+VERP_README, Postfix XVERP extension
+XCLIENT_README, Postfix XCLIENT extension
+XFORWARD_README, Postfix XFORWARD extension
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA
+
+SASL support originally by:
+Till Franke
+SuSE Rhein/Main AG
+65760 Eschborn, Germany
+
+TLS support originally by:
+Lutz Jaenicke
+BTU Cottbus
+Allgemeine Elektrotechnik
+Universitaetsplatz 3-4
+D-03044 Cottbus, Germany
+
+Revised TLS support by:
+Victor Duchovni
+Morgan Stanley

@@ -1,0 +1,340 @@
+'\" t
+.\"     Title: gitdiffcore
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 10/25/2014
+.\"    Manual: Git Manual
+.\"    Source: Git 1.9.3
+.\"  Language: Gangsta
+.\"
+.TH "GITDIFFCORE" "7" "10/25/2014" "Git 1\&.9\&.3" "Git Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+gitdiffcore \- Tweakin diff output
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIgit diff\fR *
+.fi
+.sp
+.SH "DESCRIPTION"
+.sp
+Da diff commandz \fIgit diff\-index\fR, \fIgit diff\-files\fR, n' \fIgit diff\-tree\fR can be holla'd at ta manipulate differences they find up in unconventionizzle ways before showin \fIdiff\fR output\&. Da manipulation is collectively called "diffcore transformation"\&. This short note raps bout what tha fuck they is n' how tha fuck ta use dem ta produce \fIdiff\fR output dat is easier ta KNOW than tha conventionizzle kind\&.
+.SH "THE CHAIN OF OPERATION"
+.sp
+Da \fIgit diff\-*\fR crew works by first comparin two setz of files:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fIgit diff\-index\fR
+compares contentz of a "tree" object n' tha hustlin directory (when
+\fI\-\-cached\fR
+flag aint used) or a "tree" object n' tha index file (when
+\fI\-\-cached\fR
+flag is used);
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fIgit diff\-files\fR
+compares contentz of tha index file n' tha hustlin directory;
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fIgit diff\-tree\fR
+compares contentz of two "tree" objects;
+.RE
+.sp
+In all of these cases, tha commandz theyselves first optionally limit tha two setz of filez by any pathspecs given on they command\-lines, n' compare correspondin paths up in tha two resultin setz of files\&.
+.sp
+Da pathspecs is used ta limit tha ghetto diff operates in\&. They remove tha filepairs outside tha specified setz of pathnames\&. E\&.g\&. If tha input set of filepairs included:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 100644 bcd1234\&.\&.\&. 0123456\&.\&.\&. M junkfile
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+but tha command invocation was git diff\-filez myfile, then tha junkfile entry would be removed from tha list cuz only "myfile" is under consideration\&.
+.sp
+Da result of comparison is passed from these commandz ta what tha fuck is internally called "diffcore", up in a gangbangin' format similar ta what tha fuck is output when tha \-p option aint used\&. E\&.g\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+in\-place edit  :100644 100644 bcd1234\&.\&.\&. 0123456\&.\&.\&. M file0
+create         :000000 100644 0000000\&.\&.\&. 1234567\&.\&.\& fo' realz. A file4
+delete         :100644 000000 1234567\&.\&.\&. 0000000\&.\&.\&. D file5
+unmerged       :000000 000000 0000000\&.\&.\&. 0000000\&.\&.\&. U file6
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Da diffcore mechanizzle is fed a list of such comparison thangs up in dis biatch (each of which is called "filepair", although at dis point each of dem talks on some single file), n' transforms such a list tha fuck into another list\&. There is currently 5 such transformations:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+diffcore\-break
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+diffcore\-rename
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+diffcore\-merge\-broken
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+diffcore\-pickaxe
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+diffcore\-order
+.RE
+.sp
+These is applied up in sequence\&. Da set of filepairs \fIgit diff\-*\fR commandz find is used as tha input ta diffcore\-break, n' tha output from diffcore\-break is used as tha input ta tha next transformation\&. Da final result is then passed ta tha output routine n' generates either diff\-raw format (see Output format sectionz of tha manual fo' \fIgit diff\-*\fR commands) or diff\-patch format\&.
+.SH "DIFFCORE-BREAK: FOR SPLITTING UP "COMPLETE REWRITES""
+.sp
+Da second transformation up in tha chain is diffcore\-break, n' is controlled by tha \-B option ta tha \fIgit diff\-*\fR commands\&. This is used ta detect a gangbangin' filepair dat represents "complete rewrite" n' break such filepair tha fuck into two filepairs dat represent delete n' create\&. E\&.g\&. If tha input contained dis filepair:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 100644 bcd1234\&.\&.\&. 0123456\&.\&.\&. M file0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and if it detects dat tha file "file0" is straight-up rewritten, it chizzlez it to:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 000000 bcd1234\&.\&.\&. 0000000\&.\&.\&. D file0
+:000000 100644 0000000\&.\&.\&. 0123456\&.\&.\& fo' realz. A file0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+For tha purpose of breakin a gangbangin' filepair, diffcore\-break examines tha extent of chizzlez between tha contentz of tha filez before n' afta modification (i\&.e\&. tha contents dat have "bcd1234\&..." n' "0123456\&..." as they SHA\-1 content ID, up in tha above example)\&. Da amount of deletion of original gangsta contents n' insertion of freshly smoked up material is added together, n' if it exceedz tha "break score", tha filepair is fucked up tha fuck into two\&. Da break score defaults ta 50% of tha size of tha smalla of tha original gangsta n' tha result (i\&.e\&. if tha edit shrinks tha file, tha size of tha result is used; if tha edit lengthens tha file, tha size of tha original gangsta is used), n' can be customized by givin a number afta "\-B" option (e\&.g\&. "\-B75" ta tell it ta use 75%)\&.
+.SH "DIFFCORE-RENAME: FOR DETECTION RENAMES AND COPIES"
+.sp
+This transformation is used ta detect renames n' copies, n' is controlled by tha \-M option (to detect renames) n' tha \-C option (to detect copies as well) ta tha \fIgit diff\-*\fR commands\&. If tha input contained these filepairs:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 000000 0123456\&.\&.\&. 0000000\&.\&.\&. D fileX
+:000000 100644 0000000\&.\&.\&. 0123456\&.\&.\& fo' realz. A file0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and tha contentz of tha deleted file fileX is similar enough ta tha contentz of tha pimped file file0, then rename detection merges these filepairs n' creates:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 100644 0123456\&.\&.\&. 0123456\&.\&.\&. R100 fileX file0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+When tha "\-C" option is used, tha original gangsta contentz of modified files, n' deleted filez (and also unmodified files, if tha "\-\-find\-copies\-harder" option is used) is considered as muthafuckaz of tha source filez up in rename/copy operation\&. If tha input was like these filepairs, dat rap on some modified file fileY n' a newly pimped file file0:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 100644 0123456\&.\&.\&. 1234567\&.\&.\&. M fileY
+:000000 100644 0000000\&.\&.\&. bcd3456\&.\&.\& fo' realz. A file0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+the original gangsta contentz of fileY n' tha resultin contentz of file0 is compared, n' if they is similar enough, they is chizzled to:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+:100644 100644 0123456\&.\&.\&. 1234567\&.\&.\&. M fileY
+:100644 100644 0123456\&.\&.\&. bcd3456\&.\&.\&. C100 fileY file0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+In both rename n' copy detection, tha same "extent of chizzles" algorithm used up in diffcore\-break is used ta determine if two filez is "similar enough", n' can be customized ta bust a similaritizzle score different from tha default of 50% by givin a number afta tha "\-M" or "\-C" option (e\&.g\&. "\-M8" ta tell it ta use 8/10 = 80%)\&.
+.sp
+Note\&. When tha "\-C" option is used wit \-\-find\-copies\-harder option, \fIgit diff\-*\fR commandz feed unmodified filepairs ta diffcore mechanizzle as well as modified ones\&. This lets tha copy detector consider unmodified filez as copy source muthafuckas all up in tha expense of makin it slower\&. Without \-\-find\-copies\-harder, \fIgit diff\-*\fR commandz can detect copies only if tha file dat was copied happened ta done been modified up in tha same chizzleset\&.
+.SH "DIFFCORE-MERGE-BROKEN: FOR PUTTING "COMPLETE REWRITES" BACK TOGETHER"
+.sp
+This transformation is used ta merge filepairs fucked up by diffcore\-break, n' not transformed tha fuck into rename/copy by diffcore\-rename, back tha fuck into a single modification\&. This always runs when diffcore\-break is used\&.
+.sp
+For tha purpose of mergin fucked up filepairs back, it uses a gangbangin' finger-lickin' different "extent of chizzles" computation from tha ones used by diffcore\-break n' diffcore\-rename\&. Well shiiiit, it counts only tha deletion from tha original, n' do not count insertion\&. If you removed only 10 lines from a 100\-line document, even if you added 910 freshly smoked up lines ta cook up a freshly smoked up 1000\-line document, you did not do a cold-ass lil complete rewrite\&. diffcore\-break breaks such a cold-ass lil case up in order ta help diffcore\-rename ta consider such filepairs as muthafucka of rename/copy detection yo, but if filepairs fucked up dat way was not matched wit other filepairs ta create rename/copy, then dis transformation merges dem back tha fuck into tha original gangsta "modification"\&.
+.sp
+Da "extent of chizzles" parameta can be tweaked from tha default 80% (that is, unless mo' than 80% of tha original gangsta material is deleted, tha fucked up pairs is merged back tha fuck into a single modification) by givin a second number ta \-B option, like these:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\-B50/60 (give 50% "break score" ta diffcore\-break, use 60% fo' diffcore\-merge\-broken)\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\-B/60 (the same as above, since diffcore\-break defaults ta 50%)\&.
+.RE
+.sp
+Note dat earlier implementation left a gangbangin' fucked up pair as a separate creation n' deletion patches\&. This was a unnecessary hack n' tha sickest fuckin implementation always merges all tha fucked up pairs back tha fuck into modifications yo, but tha resultin patch output is formatted differently fo' easier review up in case of such a cold-ass lil complete rewrite by showin tha entire contentz of oldschool version prefixed wit \fI\-\fR, followed by tha entire contentz of freshly smoked up version prefixed wit \fI+\fR\&.
+.SH "DIFFCORE-PICKAXE: FOR DETECTING ADDITION/DELETION OF SPECIFIED STRING"
+.sp
+This transformation limits tha set of filepairs ta dem dat chizzle specified strings between tha preimage n' tha postimage up in a cold-ass lil certain way\&. \-S<block of text> n' \-G<regular expression> options is used ta specify different ways these strings is sought\&.
+.sp
+"\-S<block of text>" detects filepairs whose preimage n' postimage have different number of occurrencez of tha specified block of text\&. By definition, it aint gonna detect in\-file moves\& fo' realz. Also, when a cold-ass lil chizzleset moves a gangbangin' file wholesale without affectin tha bangin-ass string, diffcore\-rename kicks up in as usual, n' \-S omits tha filepair (since tha number of occurrencez of dat strang didn\(cqt chizzle up in dat rename\-detected filepair)\&. When used wit \-\-pickaxe\-regex, treat tha <block of text> as a extended POSIX regular expression ta match, instead of a literal string\&.
+.sp
+"\-G<regular expression>" (mnemonic: grep) detects filepairs whose textual diff has a added or a thugged-out deleted line dat matches tha given regular expression\&. This means dat it will detect in\-file (or what tha fuck rename\-detection considaz tha same ol' dirty file) moves, which is noise\&. Da implementation runs diff twice n' greps, n' dis can be like expensive\&.
+.sp
+When \-S or \-G is used without \-\-pickaxe\-all, only filepairs dat match they respectizzle criterion is kept up in tha output\&. When \-\-pickaxe\-all is used, if even one filepair matches they respectizzle criterion up in a cold-ass lil chizzleset, tha entire chizzleset is kept\&. This behavior is designed ta make reviewin chizzlez up in tha context of tha whole chizzleset easier\&.
+.SH "DIFFCORE-ORDER: FOR SORTING THE OUTPUT BASED ON FILENAMES"
+.sp
+This is used ta reorder tha filepairs accordin ta tha user\(cqs (or project\(cqs) taste, n' is controlled by tha \-O option ta tha \fIgit diff\-*\fR commands\&.
+.sp
+This takes a text file each of whose lines be a gangbangin' finger-lickin' dirty-ass shell glob pattern\&. Filepairs dat match a glob pattern on a earlier line up in tha file is output before ones dat match a lata line, n' filepairs dat do not match any glob pattern is output last\&.
+.sp
+As a example, a typical orderfile fo' tha core Git probably would be lookin like this:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+README
+Makefile
+Documentation
+*\&.h
+*\&.c
+t
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.sp
+\fBgit-diff\fR(1), \fBgit-diff-files\fR(1), \fBgit-diff-index\fR(1), \fBgit-diff-tree\fR(1), \fBgit-format-patch\fR(1), \fBgit-log\fR(1), \fBgitglossary\fR(7), \m[blue]\fBDa Git User\(cqs Manual\fR\m[]\&\s-2\u[1]\d\s+2
+.SH "GIT"
+.sp
+Part of tha \fBgit\fR(1) suite\&.
+.SH "NOTES"
+.IP " 1." 4
+Da Git User\(cqs Manual
+.RS 4
+\%file:///usr/share/doc/git/user-manual.html
+.RE

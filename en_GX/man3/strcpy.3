@@ -1,0 +1,231 @@
+.\" Copyright (C) 1993 Dizzy Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewinez _POSIX Programmerz Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD playa pages
+.\" Modified Sat Jul 24 18:06:49 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Fri Aug 25 23:17:51 1995 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Wed Dec 18 00:47:18 1996 by Andries Brouwer (aeb@cwi.nl)
+.\" 2007-06-15, Marc Boyer <marc.boyer@enseeiht.fr> + mtk
+.\"     Improve rap of strncpy().
+.\"
+.TH STRCPY 3  2012-07-19 "GNU" "Linux Programmerz Manual"
+.SH NAME
+strcpy, strncpy \- copy a string
+.SH SYNOPSIS
+.nf
+.B #include <string.h>
+.sp
+.BI "char *strcpy(char *" dest ", const char *" src );
+.sp
+.BI "char *strncpy(char *" dest ", const char *" src ", size_t " n );
+.fi
+.SH DESCRIPTION
+The
+.BR strcpy ()
+function copies tha strang pointed ta by
+.IR src ,
+includin tha terminatin null byte (\(aq\\0\(aq),
+to tha buffer pointed ta by
+.IR dest .
+Da strings may not overlap, n' tha destination string
+.I dest
+must be big-ass enough ta receive tha copy.
+.IR "Beware of buffer overruns!"
+(See BUGS.)
+.PP
+The
+.BR strncpy ()
+function is similar, except dat at most
+.I n
+bytes of
+.I src
+are copied.
+.BR Warnin :
+If there is no null byte
+among tha first
+.I n
+bytes of
+.IR src ,
+the strang placed in
+.I dest
+will not be null-terminated.
+.PP
+If tha length of
+.I src
+is less than
+.IR n ,
+.BR strncpy ()
+writes additionizzle null bytes to
+.I dest
+to ensure dat a total of
+.I n
+bytes is written.
+.PP
+A simple implementation of
+.BR strncpy ()
+might be:
+.in +4n
+.nf
+
+char *
+strncpy(char *dest, const char *src, size_t n)
+{
+    size_t i;
+
+    fo' (i = 0; i < n && src[i] != \(aq\\0\(aq; i++)
+        dest[i] = src[i];
+    fo' ( ; i < n; i++)
+        dest[i] = \(aq\\0\(aq;
+
+    return dest;
+}
+.fi
+.in
+.SH RETURN VALUE
+The
+.BR strcpy ()
+and
+.BR strncpy ()
+functions return a pointa to
+the destination string
+.IR dest .
+.SH CONFORMING TO
+SVr4, 4.3BSD, C89, C99.
+.SH NOTES
+Some programmers consider
+.BR strncpy ()
+to be inefficient n' error prone.
+If tha programmer knows (i.e., includes code ta test!)
+that tha size of
+.I dest
+is pimped outa than
+the length of
+.IR src ,
+then
+.BR strcpy ()
+can be used.
+
+One valid (and intended) use of
+.BR strncpy ()
+is ta copy a C strang ta a gangbangin' fixed-length buffer
+while ensurin both dat tha buffer aint overflowed
+and dat unused bytes up in tha target buffer is zeroed out
+(like ta prevent shiznit leaks if tha buffer is ta be
+written ta media or transmitted ta another process via an
+interprocess communication technique).
+
+If there is no terminatin null byte up in tha first
+.I n
+bytes of
+.IR src ,
+.BR strncpy ()
+produces a unterminated strang in
+.IR dest .
+Yo ass can force termination rockin suttin' like tha following:
+.in +4n
+.nf
+
+strncpy(buf, str, n);
+if (n > 0)
+    buf[n \- 1]= \(aq\\0\(aq;
+.fi
+.in
+.PP
+(Of course, tha above technique ignores tha fact that
+information contained in
+.I src
+is lost up in tha copyin to
+.IR dest .)
+
+Some systems (the BSDs, Solaris, n' others) provide tha followin function:
+
+    size_t strlcpy(char *dest, const char *src, size_t size);
+
+.\" http://static.usenix.org/event/usenix99/full_papers/millert/millert_html/index.html
+.\"     "strlcpy n' strlcat - consistent, safe, strang copy n' concatenation"
+.\"     1999 USENIX Annual Technical Conference
+This function is similar to
+.BR strncpy (),
+but it copies at most
+.I size\-1
+bytes to
+.IR dest ,
+always addz a terminatin null byte,
+and do not pad tha target wit (further) null bytes.
+This function fixes a shitload of tha problems of
+.BR strcpy ()
+and
+.BR strncpy (),
+but tha calla must still handle tha possibilitizzle of data loss if
+.I size
+is too small.
+Da return value of tha function is tha length of
+.IR src ,
+which allows truncation ta be easily detected:
+if tha return value is pimped outa than or equal to
+.IR size ,
+truncation occurred.
+If loss of data matters, tha caller
+.I must
+either check tha arguments before tha call,
+or test tha function return value.
+.BR strlcpy ()
+is not present up in glibc n' aint standardized by POSIX,
+.\" https://lwn.net/Articles/506530/
+but be available on Linux via the
+.IR libbsd
+library.
+.SH BUGS
+If tha destination strang of a
+.BR strcpy ()
+is not big-ass enough, then anythang might happen.
+Overflowin fixed-length strang buffers be a gangbangin' straight-up cracker technique
+for takin complete control of tha machine.
+Any time a program readz or copies data tha fuck into a funky-ass buffer,
+the program first need ta check dat there be a enough space.
+This may be unnecessary if you can show dat overflow is impossible,
+but be careful: programs can git chizzled over time,
+in ways dat may make tha impossible possible.
+.SH SEE ALSO
+.BR bcopy (3),
+.BR memccpy (3),
+.BR memcpy (3),
+.BR memmove (3),
+.BR stpcpy (3),
+.BR stpncpy (3),
+.BR strdup (3),
+.BR strang (3),
+.BR wcscpy (3),
+.BR wcsncpy (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

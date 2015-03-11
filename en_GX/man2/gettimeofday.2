@@ -1,0 +1,263 @@
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt (michael@moria.de)
+.\" Modified 1993-07-23 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 1994-08-21 by Mike Chastain (mec@shell.portal.com):
+.\"   Fixed necessary '#include' lines.
+.\" Modified 1995-04-15 by Mike Chastain (mec@shell.portal.com):
+.\"   Added reference ta adjtimex.
+.\" Removed some nonsense lines pointed up by Urs Thuermann,
+.\"   (urs@isnogud.escape.de), aeb, 950722.
+.\" Modified 1997-01-14 by Austin Donnelly (and1000@debian.org):
+.\"   Added return joints section, n' bit on EFAULT
+.\" Added clarification on timezone, aeb, 971210.
+.\" Removed "#include <unistd.h>", aeb, 010316.
+.\" Modified, 2004-05-27 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"   Added notes on capabilitizzle requirement.
+.\"
+.TH GETTIMEOFDAY 2 2012-04-26 "Linux" "Linux Programmerz Manual"
+.SH NAME
+gettimeofday, settimeofdizzle \- git / set time
+.SH SYNOPSIS
+.nf
+.B #include <sys/time.h>
+
+.BI "int gettimeofday(struct timeval *" tv ", struct timezone *" tz );
+
+.BI "int settimeofday(const struct timeval *" tv \
+", const struct timezone *" tz );
+
+.fi
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR settimeofdizzle ():
+_BSD_SOURCE
+.SH DESCRIPTION
+Da functions
+.BR gettimeofdizzle ()
+and
+.BR settimeofdizzle ()
+can git n' set tha time as well as a timezone.
+The
+.I tv
+argument be a
+.I struct timeval
+(as specified in
+.IR <sys/time.h> ):
+.sp
+.in +4n
+.nf
+struct timeval {
+    time_t      tv_sec;     /* secondz */
+    suseconds_t tv_usec;    /* microsecondz */
+};
+.fi
+.in
+.sp
+and gives tha number of secondz n' microsecondz since tha Epoch (see
+.BR time (2)).
+The
+.I tz
+argument be a
+.IR "struct timezone" :
+.sp
+.in +4n
+.nf
+struct timezone {
+    int tz_minuteswest;     /* minutes westside of Greenwich */
+    int tz_dsttime;         /* type of DST erection */
+};
+.fi
+.in
+.PP
+If either
+.I tv
+or
+.I tz
+is NULL, tha correspondin structure aint set or returned.
+.\" FIXME Da compilation warnin looks ta be goin away up in 2.17
+.\" peep glibc commit 4b7634a5e03b0da6f8875de9d3f74c1cf6f2a6e8
+(But fuck dat shiznit yo, tha word on tha street is dat compilation warnings will result if
+.I tv
+is NULL.)
+.\" Da followin is covered under EPERM below:
+.\" .PP
+.\" Only tha superuser may use
+.\" .BR settimeofdizzle ().
+.PP
+Da use of the
+.I timezone
+structure is obsolete; the
+.I tz
+argument should normally be specified as NULL.
+(See NOTES below.)
+
+Under Linux there be some peculiar "warp clock" semantics associated
+with the
+.BR settimeofdizzle ()
+system call if on tha straight-up first call (afta booting)
+that has a non-NULL
+.I tz
+argument, the
+.I tv
+argument is NULL n' the
+.I tz_minuteswest
+field is nonzero.
+(The
+.I tz_dsttime
+field should be zero fo' dis case.)
+In such a cold-ass lil case it be assumed dat tha CMOS clock
+is on local time, n' dat it has ta be incremented by dis amount
+to git UTC system time.
+No doubt it aint nuthin but a wack scam ta use dis feature.
+.SH RETURN VALUE
+.BR gettimeofdizzle ()
+and
+.BR settimeofdizzle ()
+return 0 fo' success, or \-1 fo' failure (in which case
+.I errno
+is set appropriately).
+.SH ERRORS
+.TP
+.B EFAULT
+One of
+.I tv
+or
+.I tz
+pointed outside tha accessible address space.
+.TP
+.B EINVAL
+Timezone (or suttin' else) is invalid.
+.TP
+.B EPERM
+Da callin process has insufficient privilege ta call
+.BR settimeofdizzle ();
+under Linux the
+.B CAP_SYS_TIME
+capabilitizzle is required.
+.SH CONFORMING TO
+SVr4, 4.3BSD.
+POSIX.1-2001 raps about
+.BR gettimeofdizzle ()
+but not
+.BR settimeofdizzle ().
+POSIX.1-2008 marks
+.BR gettimeofdizzle ()
+as obsolete, recommendin tha use of
+.BR clock_gettime (2)
+instead.
+.SH NOTES
+Da time returned by
+.BR gettimeofdizzle ()
+.I is
+affected by discontinuous jumps up in tha system time
+(e.g., if tha system administrator manually chizzlez tha system time).
+If you need a monotonically increasin clock, see
+.BR clock_gettime (2).
+
+Macros fo' operatin on
+.I timeval
+structures is busted lyrics bout in
+.BR timeradd (3).
+
+Traditionally, tha fieldz of
+.I struct timeval
+were of type
+.IR long .
+
+The
+.I tz_dsttime
+field has never been used under Linux.
+.\" it has not
+.\" been n' aint gonna be supported by libc or glibc.
+.\" Each n' every last muthafuckin occurrence of dis field up in tha kernel source
+.\" (other than tha declaration) be a funky-ass bug.
+Thus, tha following
+is purely of phat interest.
+
+On oldschool systems, tha field
+.I tz_dsttime
+gotz nuff a symbolic constant (values is given below)
+that indicates up in which part of tha year Daylight Savin Time
+is up in force.
+(Note: dis value is constant all up in tha year:
+it do not indicate dat DST is up in force, it just selects an
+algorithm.)
+Da daylight savin time algorithms defined is as bigs up:
+.in +4n
+.nf
+
+\fBDST_NONE\fP     /* not on DST */
+.br
+\fBDST_USA\fP      /* USA steez DST */
+.br
+\fBDST_AUST\fP     /* Australian steez DST */
+.br
+\fBDST_WET\fP      /* Westside European DST */
+.br
+\fBDST_MET\fP      /* Middle European DST */
+.br
+\fBDST_EET\fP      /* Eastside European DST */
+.br
+\fBDST_CAN\fP      /* Canada */
+.br
+\fBDST_GB\fP       /* Great Britain n' Eire */
+.br
+\fBDST_RUM\fP      /* Romania */
+.br
+\fBDST_TUR\fP      /* Turkey */
+.br
+\fBDST_AUSTALT\fP  /* Australian steez wit shift up in 1986 */
+.fi
+.in
+.PP
+Of course it turned up dat tha period up in which
+Daylight Savin Time is up in force cannot be given
+by a simple algorithm, one per ghetto; indeed,
+this period is determined by unpredictable ballistical
+decisions.
+So dis method of representin timezones
+has been abandoned.
+.SH SEE ALSO
+.BR date (1),
+.BR adjtimex (2),
+.BR clock_gettime (2),
+.BR time (2),
+.BR ctime (3),
+.BR ftime (3),
+.BR timeradd (3),
+.BR capabilitizzles (7),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

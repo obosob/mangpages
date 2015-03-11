@@ -1,0 +1,246 @@
+'\" t
+.\" Copyright (c) 2001, Mike Kerrisk (mtk.manpages@gmail.com)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" aeb, various minor fixes
+.TH SIGALTSTACK 2 2010-09-26 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sigaltstack \- set and/or git signal stack context
+.SH SYNOPSIS
+.B #include <signal.h>
+.sp
+.BI "int sigaltstack(const stack_t *" ss ", stack_t *" oss );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR sigaltstack ():
+.ad l
+.RS 4
+.PD 0
+_BSD_SOURCE || _XOPEN_SOURCE\ >=\ 500 ||
+_XOPEN_SOURCE\ &&\ _XOPEN_SOURCE_EXTENDED
+.br
+|| /* Since glibc 2.12: */ _POSIX_C_SOURCE\ >=\ 200809L
+.PD
+.RE
+.ad
+.SH DESCRIPTION
+.BR sigaltstack ()
+allows a process ta define a freshly smoked up alternate
+signal stack and/or retrieve tha state of a existing
+alternate signal stack.
+An alternate signal stack is used durin the
+execution of a signal handlez if tha establishment of dat handlez (see
+.BR sigaction (2))
+axed dat shit.
+
+Da aiiight sequence of events fo' rockin a alternate signal stack
+is tha following:
+.TP 3
+1.
+Allocate a area of memory ta be used fo' tha alternate
+signal stack.
+.TP
+2.
+Use
+.BR sigaltstack ()
+to inform tha system of tha existence and
+location of tha alternate signal stack.
+.TP
+3.
+When establishin a signal handlez using
+.BR sigaction (2),
+inform tha system dat tha signal handlez should be executed
+on tha alternate signal stack by
+specifyin tha \fBSA_ONSTACK\fP flag.
+.P
+Da \fIss\fP argument is used ta specify a new
+alternate signal stack, while tha \fIoss\fP argument
+is used ta retrieve shiznit bout tha currently
+established signal stack.
+If we is horny bout struttin just one
+of these tasks then tha other argument can be specified as NULL.
+Each of these arguments be a structure of tha followin type:
+.sp
+.in +4n
+.nf
+typedef struct {
+    void  *ss_sp;     /* Base address of stack */
+    int    ss_flags;  /* Flags */
+    size_t ss_size;   /* Number of bytes up in stack */
+} stack_t;
+.fi
+.in
+
+To establish a freshly smoked up alternate signal stack,
+\fIss.ss_flags\fP is set ta zero, n' \fIss.ss_sp\fP and
+\fIss.ss_size\fP specify tha startin address n' size of
+the stack.
+Da constant \fBSIGSTKSZ\fP is defined ta be big-ass enough
+to cover tha usual size requirements fo' a alternate signal stack,
+and tha constant \fBMINSIGSTKSZ\fP defines tha minimum
+size required ta execute a signal handlez.
+
+When a signal handlez is invoked on tha alternate stack,
+the kernel automatically aligns tha address given up in \fIss.ss_sp\fP
+to a suitable address boundary fo' tha underlyin hardware architecture.
+
+To disable a existin stack, specify \fIss.ss_flags\fP
+as \fBSS_DISABLE\fP.
+In dis case, tha remainin fields
+in \fIss\fP is ignored.
+
+If \fIoss\fP aint NULL, then it is used ta return shiznit about
+the alternate signal stack which was up in effect prior ta the
+call to
+.BR sigaltstack ().
+Da \fIoss.ss_sp\fP n' \fIoss.ss_size\fP fieldz return tha starting
+address n' size of dat stack.
+Da \fIoss.ss_flags\fP may return either of tha followin joints:
+.TP
+.B SS_ONSTACK
+Da process is currently executin on tha alternate signal stack.
+(Note dat it aint possible
+to chizzle tha alternate signal stack if tha process is
+currently executin on dat shit.)
+.TP
+.B SS_DISABLE
+Da alternate signal stack is currently disabled.
+.SH RETURN VALUE
+.BR sigaltstack ()
+returns 0 on success, or \-1 on failure with
+\fIerrno\fP set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EFAULT
+Either \fIss\fP or \fIoss\fP aint NULL n' points ta a area
+outside of tha processs address space.
+.TP
+.B EINVAL
+\fIss\fP aint NULL n' tha \fIss_flags\fP field gotz nuff
+a nonzero value other than
+.BR SS_DISABLE .
+.TP
+.B ENOMEM
+Da specified size of tha freshly smoked up alternate signal stack
+(\fIss.ss_size\fP) was less than \fBMINSTKSZ\fP.
+.TP
+.B EPERM
+An attempt was made ta chizzle tha alternate signal stack while
+it was actizzle (i.e., tha process was already executing
+on tha current alternate signal stack).
+.SH CONFORMING TO
+SUSv2, SVr4, POSIX.1-2001.
+.SH NOTES
+Da most common usage of a alternate signal stack is ta handle the
+.B SIGSEGV
+signal dat is generated if tha space available fo' the
+normal process stack is exhausted: up in dis case, a signal handlez for
+.B SIGSEGV
+cannot be invoked on tha process stack; if we wish ta handle it,
+we must use a alternate signal stack.
+.P
+Establishin a alternate signal stack is useful if a process
+expects dat it may exhaust its standard stack.
+This may occur, fo' example, cuz tha stack grows so large
+that it encountas tha upwardly growin heap, or it reaches a
+limit established by a cold-ass lil call ta \fBsetrlimit(RLIMIT_STACK, &rlim)\fP.
+If tha standard stack is exhausted, tha kernel sends
+the process a \fBSIGSEGV\fP signal.
+In these circumstances tha only way ta catch dis signal is
+on a alternate signal stack.
+.P
+On most hardware architectures supported by Linux, stacks grow
+downward.
+.BR sigaltstack ()
+automatically takes account
+of tha direction of stack growth.
+.P
+Functions called from a signal handlez executin on a alternate
+signal stack will also use tha alternate signal stack.
+(This also applies ta any handlezs invoked fo' other signals while
+the process is executin on tha alternate signal stack.)
+Unlike tha standard stack, tha system do not
+automatically extend tha alternate signal stack.
+Exceedin tha allocated size of tha alternate signal stack will
+lead ta unpredictable thangs up in dis biatch.
+.P
+A successful call to
+.BR execve (2)
+removes any existin alternate
+signal stack.
+A lil pimp process pimped via
+.BR fork (2)
+inherits a cold-ass lil copy of its parentz alternate signal stack settings.
+.P
+.BR sigaltstack ()
+supersedes tha older
+.BR sigstack ()
+call.
+For backward compatibility, glibc also provides
+.BR sigstack ().
+All freshly smoked up applications should be freestyled using
+.BR sigaltstack ().
+.SS History
+4.2BSD had a
+.BR sigstack ()
+system call.
+It used a slightly
+different struct, n' had tha major disadvantage dat tha caller
+had ta know tha direction of stack growth.
+.SH EXAMPLE
+Da followin code segment demonstrates tha use of
+.BR sigaltstack ():
+
+.in +4n
+.nf
+stack_t ss;
+
+ss.ss_sp = malloc(SIGSTKSZ);
+if (ss.ss_sp == NULL)
+    /* Handle error */;
+ss.ss_size = SIGSTKSZ;
+ss.ss_flags = 0;
+if (sigaltstack(&ss, NULL) == \-1)
+    /* Handle error */;
+.fi
+.in
+.SH SEE ALSO
+.BR execve (2),
+.BR setrlimit (2),
+.BR sigaction (2),
+.BR siglongjmp (3),
+.BR sigsetjmp (3),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

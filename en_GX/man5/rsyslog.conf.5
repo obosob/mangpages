@@ -1,0 +1,771 @@
+.\" rsyslog.conf - rsyslogd(8) configuration file
+.\" Copyright 2003-2008 Rainer Gerhardz n' Adiscon GmbH.
+.\" 
+.\" This file is part of tha rsyslog  package, a enhanced system log daemon.
+.\" 
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under tha termz of tha GNU General Public License as published by
+.\" tha Jacked Software Foundation; either version 2 of tha License, or
+.\" (at yo' option) any lata version.
+.\" 
+.\" This program is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\" 
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public License
+.\" along wit dis program; if not, write ta tha Jacked Software
+.\" Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
+.\"
+.TH RSYSLOG.CONF 5 "22 October 2012" "Version 7.2.0" "Linux System Administration"
+.SH NAME
+rsyslog.conf \- rsyslogd(8) configuration file
+.SH DESCRIPTION
+The
+.I rsyslog.conf
+file is tha main configuration file fo' the
+.BR rsyslogd (8)
+which logs system lyrics on *nix systems.  This file specifies rules
+for logging.  For special features peep the
+.BR rsyslogd (8)
+manpage. Rsyslog.conf is backward-compatible wit sysklogdz syslog.conf file. Right back up in yo muthafuckin ass. So if you migrate
+from sysklogd you can rename it n' it should work.
+
+.B Note dat dis version of rsyslog ships wit extensive documentation up in html format.
+This is provided up in tha ./doc subdirectory n' probably
+in a separate package if you installed rsyslog via a packagin system.
+To use rsyslogz advanced features, you
+.B need
+to peep tha html documentation, cuz tha playa pages only cover
+basic aspectz of operation.
+
+
+.SH MODULES
+
+Rsyslog has a modular design. I aint talkin' bout chicken n' gravy biatch. Consequently, there be a growin number
+of modules. Right back up in yo muthafuckin ass. See tha html documentation fo' they full description.
+
+.TP
+.I omsnmp
+SNMP trap output module
+.TP
+.I omgssapi
+Output module fo' GSS-enabled syslog
+.TP
+.I ommysql
+Output module fo' MySQL
+.TP
+.I omrelp
+Output module fo' tha reliable RELP protocol (prevents message loss). 
+For details, peep below at imrelp n' tha html documentation.
+It can be used like this:
+.IP
+*.*  :omrelp:server:port
+.IP
+*.*  :omrelp:192.168.0.1:2514 # actual sample
+.TP
+.I ompgsql
+Output module fo' PostgreSQL
+.TP
+.I omlibdbi
+Generic database output module (Firebird/Interbase, MS SQL, Sybase,
+SQLite, Ingres, Oracle, mSQL)
+.TP
+.I imfile
+Input module fo' text files
+.TP
+.I imudp
+Input plugin fo' UDP syslog. Replaces tha deprecated -r option. I aint talkin' bout chicken n' gravy biatch. Can be
+used like this:
+.IP
+$ModLoad imudp
+.IP
+$UDPServerRun 514
+.TP
+.I imtcp
+Input plugin fo' plain TCP syslog. Replaces tha deprecated -t
+option. I aint talkin' bout chicken n' gravy biatch. Can be used like this:
+.IP
+$ModLoad imtcp
+.IP
+$InputTCPServerRun 514
+.TP
+.TP
+.I imrelp
+Input plugin fo' tha RELP protocol. RELP can be used instead
+of UDP or plain TCP syslog ta provide reliable delivery of
+syslog lyrics. Please note dat plain TCP syslog do NOT
+provide truly reliable delivery, wit it lyrics may be lost
+when there be a cold-ass lil connection problem or tha server shuts down.
+RELP prevents message loss up in dem cases.
+It can be used like this:
+.IP
+$ModLoad imrelp
+.IP
+$InputRELPServerRun 2514
+.TP
+.I imgssapi
+Input plugin fo' plain TCP n' GSS-enable syslog
+.TP
+.I immark
+Support fo' mark lyrics
+.TP
+.I imklog
+Kernel logging. To include kernel log lyrics, you need ta do
+.IP
+$ModLoad imklog
+
+Please note dat tha klogd daemon is no longer necessary n' consequently
+no longer provided by tha rsyslog package.
+.TP
+.I imuxsock
+Unix sockets, includin tha system log socket. Yo ass need ta specify
+.IP
+$ModLoad imuxsock
+
+in order ta receive log lyrics from local system processes. This
+config directizzle should only left up if you know exactly what tha fuck you
+are bustin.
+
+
+.SH BASIC STRUCTURE
+
+Lines startin wit a hash mark ('#') n' empty lines is ignored. Y'all KNOW dat shit, muthafucka! 
+Rsyslog.conf should contain followin sections (sorted by recommended order up in file):
+
+.TP
+Global directives
+Global directives set some global propertizzlez of whole rsyslog daemon, fo' example size of main
+message queue ($MainMessageQueueSize), loadin external modulez ($ModLoad) n' so on.
+All global directives need ta be specified on a line by they own n' must start wit 
+a dollar-sign. I aint talkin' bout chicken n' gravy biatch. Da complete list of global directives can be found up in html documentation up in doc 
+directory or online on wizzy pages.
+
+.TP
+Templates
+Templates allow you ta specify format of tha logged message. They is also used fo' dynamic 
+file name generation. I aint talkin' bout chicken n' gravy biatch. They gotta be defined before they is used up in rules. For mo' info 
+about templates peep TEMPLATES section of dis manpage.
+
+.TP
+Output channels
+Output channels provide a umbrella fo' any type of output dat tha user might want. 
+They gotta be defined before they is used up in rules. For mo' info bout output channels
+see OUTPUT CHANNELS section of dis manpage.
+
+.TP
+Rulez (selector + action)
+Every rule line consistz of two fields, a selector field n' a action field. Y'all KNOW dat shit, muthafucka! These 
+two fieldz is separated by one or mo' spaces or tabs. Da selector field specifies 
+a pattern of facilitizzles n' prioritizzles belongin ta tha specified action.
+
+.SH SELECTORS
+
+Da selector field itself again n' again n' again consistz of two parts, a gangbangin' facilitizzle n' a
+priority, separated by a period ('.'). Both parts is case insensitizzle n' can
+also be specified as decimal numbers yo, but don't do that, you done been warned.
+Both facilitizzles n' prioritizzles is busted lyrics bout up in syslog(3). Da names mentioned
+below correspond ta tha similar LOG_-values up in /usr/include/syslog.h.
+
+Da facilitizzle is one of tha followin keywords: auth, authpriv, cron, daemon,
+kern, lpr, mail, mark, hype, securitizzle (same as auth), syslog, user, uucp and
+local0 all up in local7. Da keyword securitizzle should not be used no mo' n' mark
+is only fo' internal use n' therefore should not be used up in applications.
+Anyway, you may wanna specify n' redirect these lyrics here, so peek-a-boo, clear tha way, I be comin' thru fo'sho. Da facility
+specifies tha subsystem dat produced tha message, i.e. all mail programs log
+with tha mail facilitizzle (LOG_MAIL) if they log rockin syslog.
+
+Da prioritizzle is one of tha followin keywords, up in ascendin order: debug, info,
+notice, warning, warn (same as warning), err, error (same as err), crit, alert,
+emerg, panic (same as emerg). Da keywordz error, warn n' panic is deprecated
+and should not be used no mo'. Da prioritizzle defines tha severitizzle of tha message.
+
+Da behavior of tha original gangsta BSD syslogd is dat all lyrics of tha specified
+prioritizzle n' higher is logged accordin ta tha given action. I aint talkin' bout chicken n' gravy biatch. Rsyslogd behaves
+the same yo, but has some extensions.
+
+In addizzle ta tha above mentioned names tha rsyslogd(8) understandz the
+followin extensions: An asterisk ('*') standz fo' all facilitizzles or all
+priorities, dependin on where it is used (before or afta tha period). The
+keyword none standz fo' no prioritizzle of tha given facility.
+
+Yo ass can specify multiple facilitizzles wit tha same prioritizzle pattern up in one
+statement rockin tha comma (',') operator. Shiiit, dis aint no joke. Yo ass may specify as much facilitizzles as
+you want. Remember dat only tha facilitizzle part from such a statement is taken, a
+prioritizzle part would be skipped.
+
+Multiple selectors may be specified fo' a single action rockin tha semicolon
+(';') separator. Shiiit, dis aint no joke. Remember dat each selector up in tha selector field is capable
+to overwrite tha precedin ones. Usin dis behavior you can exclude some
+prioritizzles from tha pattern.
+
+Rsyslogd has a syntax extension ta tha original gangsta BSD source, dat make its use
+more intuitively. Yo ass may precede every last muthafuckin prioritizzle wit a equals sign ('=') to
+specify only dis single prioritizzle n' not any of tha above. Yo ass may also (both
+is valid, too) precede tha prioritizzle wit a exclamation mark ('!') ta ignore
+all dat priorities, either exact dis one or dis n' any higher priority. If
+you use both extensions than tha exclamation mark must occur before tha equals
+sign, just use it intuitively.
+
+.SH ACTIONS
+Da action field of a rule raps bout what tha fuck ta do wit tha message. In general, message content 
+is freestyled ta a kind of "logfile". But also other actions might be done, like freestylin ta a 
+database table or forwardin ta another host.
+
+.SS Regular file
+Typically lyrics is logged ta real files. Da file has ta be specified wit full pathname, 
+beginnin wit a slash ('/').
+
+.B Example:
+.RS
+*.*     /var/log/traditionalfile.log;RSYSLOG_TraditionalFileFormat      # log ta a gangbangin' file up in tha traditionizzle format
+.RE
+
+Note: if you wanna use high-precision timestamps up in yo' log files,
+just remove tha ";RSYSLOG_TraditionalFormat". That will select tha default
+template, which, if not chizzled, uses RFC 3339 timestamps.
+
+.B Example:
+.RS
+*.*     /var/log/file.log # log ta a gangbangin' file wit RFC3339 timestamps
+.RE
+
+.SS Named pipes
+This version of rsyslogd(8) has support fo' loggin output ta named pipes (fifos) fo' realz. A fifo or 
+named pipe can be used as a thugged-out destination fo' log lyrics by prependin a pipe symbol ('|') 
+to tha name of tha file. This is handy fo' debugging. Note dat tha fifo must be pimped wit 
+the mkfifo(1) command before rsyslogd(8) is started.
+
+.SS Terminal n' console
+If tha file you specified be a tty, special tty-handlin is done, same wit /dev/console.
+
+.SS Remote machine
+There is three ways ta forward message: tha traditionizzle UDP transport, which is mad
+lossy but standard, tha plain TCP based transhiznit which loses lyrics only durin certain
+situations but is widely available n' tha RELP transhiznit which do not lose lyrics
+but is currently available only as part of rsyslogd 3.15.0 n' above.
+
+To forward lyrics ta another host via UDP, prepend tha hostname wit tha at sign ("@").
+To forward it via plain tcp, prepend two at signs ("@@"). To forward via RELP, prepend the
+strin ":omrelp:" up in front of tha hostname.
+
+.B Example:
+.RS
+*.* @192.168.0.1
+.RE
+.sp
+In tha example above, lyrics is forwarded via UDP ta tha machine 192.168.0.1, tha destination 
+port defaults ta 514. Cuz of tha nature of UDP, yo big-ass booty is ghon probably lose some lyrics up in transit.
+If you expect high traffic volume, you can expect ta lose a like noticeable number of lyrics
+(the higher tha traffic, tha mo' likely n' severe is message loss).
+
+.B If you wanna prevent message loss, use RELP:
+.RS
+*.* :omrelp:192.168.0.1:2514
+.RE
+.sp
+Note dat a port number was given as there is no standard port fo' relp.
+
+Keep it realz in mind dat you need ta load tha erect input n' output plugins (see "Modules" above).
+
+Please note dat rsyslogd offers a variety of options up in regardin ta remote
+forwarding. For full details, please peep tha html documentation.
+
+.SS List of users
+Usually critical lyrics is also pimped up ta ``root'' on dat machine. You
+can specify a list 
+of playas dat shall git tha message by simply freestylin ":omusrmsg:" followed
+by tha login name. Yo ass may specify mo' than one 
+user by separatin dem wit commas (','). If they logged up in they
+get tha message (for example: ":omusrmsg:root,user1,user2").
+
+.SS Everyone logged on
+Emergency lyrics often git all up in all playas currently online ta notify dem dat suttin' strange 
+is goin down wit tha system. To specify dis wall(1)-feature use a ":omusrmsg:*".
+
+.SS Database table
+This allows loggin of tha message ta a thugged-out database table.
+By default, a MonitorWare-compatible schema is required fo' dis ta work. Yo ass can 
+create dat schema wit tha createDB.SQL file dat came wit tha rsyslog package. Yo ass can also
+use any other schema of yo' likin - you just need ta define a proper template n' assign dis 
+template ta tha action.
+
+See tha html documentation fo' further details on database logging.
+
+.SS Discard
+If tha discard action is carried out, tha received message is immediately discarded. Y'all KNOW dat shit, muthafucka! Discard 
+can be highly effectizzle if you wanna filta up some buggin lyrics dat otherwise would 
+fill yo' log files. To do that, place tha discard actions early up in yo' log files. 
+This often skits well wit property-based filters, givin you pimped out freedom up in specifyin 
+what you do not want.
+
+Discard is just tha single tilde characta wit no further parameters.
+.sp
+.B Example:
+.RS
+*.*   ~      # discardz every last muthafuckin thang.
+.RE
+
+
+.SS Output channel
+Bindz a output channel definizzle (see there fo' details) ta dis action. I aint talkin' bout chicken n' gravy biatch. Output channel actions 
+must start wit a $-sign, e.g. if you wanna bind yo' output channel definizzle "mychannel"
+to tha action, use "$mychannel". Output channels support template definitions like all all other 
+actions.
+
+.SS Shell execute
+This executes a program up in a subshell. Da program is passed tha template-generated message as tha 
+only command line parameter n' shit. Rsyslog waits until tha program terminates n' only then continues ta run.
+
+.B Example:
+.RS
+^program-to-execute;template
+.RE
+
+Da program-to-execute can be any valid executable. Well shiiiit, it receives tha template strang as a single parameta 
+(argv[1]).
+
+.SH FILTER CONDITIONS
+Rsyslog offers three different types "filta conditions":
+.sp 0
+   * "traditional" severitizzle n' facilitizzle based selectors
+.sp 0
+   * property-based filters
+.sp 0
+   * expression-based filters
+.RE
+
+.SS Selectors
+.B Selectors is tha traditionizzle way of filterin syslog lyrics. 
+They done been kept up in rsyslog wit they original gangsta syntax, cuz it is well-known, highly 
+effectizzle n' also needed fo' compatibilitizzle wit stock syslogd configuration files. If you just 
+need ta filta based on prioritizzle n' facility, you should do dis wit selector lines. They is 
+not second-class playa hatas up in rsyslog n' offer tha dopest performizzle fo' dis thang.
+
+.SS Property-Based Filters
+Property-based filtas is unique ta rsyslogd. Y'all KNOW dat shit, muthafucka! They allow ta filta on any property, like HOSTNAME, 
+syslogtag n' msg. 
+
+A property-based filta must start wit a cold-ass lil colon up in column 0. This  drops some lyrics ta rsyslogd dat it is tha freshly smoked up 
+filta type. Da colon must be followed by tha property name, a cold-ass lil comma, tha name of tha compare 
+operation ta carry out, another comma n' then tha value ta compare against. This value must be quoted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. 
+There can be spaces n' tabs between tha commas. Property names n' compare operations is 
+case-sensitive, so "msg" works, while "MSG" be a invalid property name. In brief, tha syntax be as bigs up:
+.sp
+.RS
+:property, [!]compare-operation, "value"
+.RE
+
+Da followin compare-operations is currently supported:
+.sp
+.RS
+.B gotz nuff
+.RS
+Checks if tha strang provided up in value is contained up in tha property
+.RE
+.sp
+.B isequal
+.RS
+Compares tha "value" strang provided n' tha property contents, n' you can put dat on yo' toast. These two joints must be exactly equal ta match. 
+.RE
+.sp
+.B startswith
+.RS
+Checks if tha value is found exactly all up in tha beginnin of tha property value
+.RE
+.sp
+.B regex
+.RS 
+Compares tha property against tha provided regular expression.
+.RE
+
+.SS Expression-Based Filters
+See tha html documentation fo' dis feature.
+
+
+.SH TEMPLATES
+
+Every output up in rsyslog uses templates - dis holdz legit fo' files, user 
+lyrics n' so on. I aint talkin' bout chicken n' gravy biatch. Templates compatible wit tha stock syslogd 
+formats is hardcoded tha fuck into rsyslogd. Y'all KNOW dat shit, muthafucka! If no template is specified, we use 
+one of these hardcoded templates. Right back up in yo muthafuckin ass. Search fo' "template_" up in syslogd.c n' 
+you will find tha hardcoded ones.
+
+A template consistz of a template directive, a name, tha actual template text 
+and optionizzle options fo' realz. A sample is:
+
+.RS
+.B $template MyTemplateName,"\\\\7Text %property% some mo' text\\\\n",<options>
+.RE
+
+Da "$template" is tha template directive. Well shiiiit, it  drops some lyrics ta rsyslog dat dis line 
+gotz nuff a template. Da backslash be a escape character n' shit. For example, \\7 rings tha 
+bell (this be a ASCII value), \\n be a freshly smoked up line. Da set up in rsyslog be a lil' bit restricted 
+currently.
+
+All text up in tha template is used literally, except fo' thangs within cement 
+signs. These is propertizzles n' allow you access ta tha contentz of tha syslog 
+message. Propertizzles is accessed via tha property replacer n' it can fo' example
+pick a substrin or do date-specific formatting. Mo' on dis is tha PROPERTY REPLACER
+section of dis manpage.
+
+To escape:
+.sp 0
+   % = \\%
+.sp 0
+   \\ = \\\\ --> '\\' is used ta escape (as up in C)
+.sp 0
+$template TraditionalFormat,"%timegenerated% %HOSTNAME% %syslogtag%%msg%\\n"
+
+Propertizzles can be accessed by tha property replacer (see there fo' details).
+
+.B Please note dat templates can also by used ta generate selector lines wit dynamic file names.
+For example, if you wanna split syslog lyrics from different hosts 
+to different filez (one per host), you can define tha followin template:
+
+.RS
+.B $template DynFile,"/var/log/system-%HOSTNAME%.log"
+.RE
+    
+This template can then be used when definin a output selector line. Well shiiiit, it will 
+result up in suttin' like "/var/log/system-localhost.log"
+
+.SS Template options
+Da <options> part is optional. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Well shiiiit, it carries options influencin tha template as whole. 
+See details below. Be shizzle NOT ta fuck up template options wit property options - tha 
+lata ones is processed by tha property replacer n' apply ta a SINGLE property, only 
+(and not tha whole template).
+
+Template options is case-insensitive. Currently defined are:
+
+.RS
+.TP 
+sql
+format tha strang suitable fo' a SQL statement up in MySQL format. This will replace single 
+quotes ("'") n' tha backslash characta by they backslash-escaped counterpart 
+("\'" n' "\\") inside each field. Y'all KNOW dat shit, muthafucka! Please note dat up in MySQL configuration, tha NO_BACKSLASH_ESCAPES 
+mode must be turned off fo' dis format ta work (this is tha default).
+
+.TP 
+stdsql
+format tha strang suitable fo' a SQL statement dat is ta be busted ta a standards-compliant 
+sql server n' shit. This will replace single quotes ("'") by two single quotes ("''") inside each field. Y'all KNOW dat shit, muthafucka! 
+Yo ass must use stdsql together wit MySQL if up in MySQL configuration tha NO_BACKSLASH_ESCAPES 
+is turned on.
+.RE
+
+Either the
+.B sql
+or 
+.B stdsql 
+option 
+.B MUST 
+be specified when a template is used fo' freestylin ta a thugged-out database, 
+otherwise injection might occur. Shiiit, dis aint no joke. Please note dat cuz of tha fucked up fact 
+that nuff muthafuckin vendors have violated tha sql standard n' introduced they own 
+escape methods, it is impossible ta git a single option bustin all tha work.  
+So you yo ass must make shizzle yo ass is rockin tha right format.
+.B If you chizzle tha wack one, yo ass is still vulnerable ta sql injection.
+
+Please note dat tha database writa *checks* dat tha sql option is present 
+in tha template. If it aint present, tha write database action is disabled. Y'all KNOW dat shit, muthafucka! 
+This is ta guard you against accidental forgettin it n' then becomin 
+vulnerable ta SQL injection. I aint talkin' bout chicken n' gravy biatch. Da sql option can also be useful wit filez - 
+especially if you wanna import dem tha fuck into a thugged-out database on another machine fo' 
+performizzle reasons. But fuck dat shiznit yo, tha word on tha street is dat do NOT use it if you aint gots a real need fo' 
+it - among others, it takes some toll on tha processin time. Not much yo, but on 
+a straight-up busy system you might notice it ;)
+
+Da default template fo' tha write ta database action has tha sql option set. 
+
+.SS Template examples
+Please note dat tha samplez is split across multiple lines fo' realz. A template MUST 
+NOT straight-up be split across multiple lines.
+
+A template dat resemblez traditionizzle syslogd file output:
+.sp
+.RS
+$template TraditionalFormat,"%timegenerated% %HOSTNAME%
+.sp 0
+%syslogtag%%msg:::drop-last-lf%\\n"
+.RE
+
+A template dat  drops some lyrics ta you a lil mo' bout tha message:
+.sp
+.RS
+$template precise,"%syslogpriority%,%syslogfacility%,%timegenerated%,%HOSTNAME%,
+.sp 0
+%syslogtag%,%msg%\\n"
+.RE
+
+A template fo' RFC 3164 format:
+.sp
+.RS
+$template RFC3164fmt,"<%PRI%>%TIMESTAMP% %HOSTNAME% %syslogtag%%msg%"
+.RE
+
+A template fo' tha format traditionally used fo' user lyrics:
+.sp
+.RS
+$template usermsg," XXXX%syslogtag%%msg%\\n\\r"
+.RE
+
+And a template wit tha traditionizzle wall-message format:
+.sp
+.RS
+$template wallmsg,"\\r\\n\\7Message from syslogd@%HOSTNAME% at %timegenerated%"
+.RE
+
+.B A template dat can be used fo' freestylin ta a thugged-out database (please note tha SQL template option)
+.sp
+.RS
+.ad l
+$template MySQLInsert,"insert iut, message, receivedat joints
+('%iut%', '%msg:::UPPERCASE%', '%timegenerated:::date-mysql%')
+into systemevents\\r\\n", SQL
+
+NOTE 1: This template is embedded tha fuck into core application under name 
+.B StdDBFmt
+, so you don't need ta define dat shit.
+.sp
+NOTE 2: Yo ass gotta have MySQL module installed ta use dis template.
+.ad
+.RE
+
+.SH OUTPUT CHANNELS
+
+Output Channels is a freshly smoked up concept first introduced up in rsyslog 0.9.0 fo' realz. Az of dis writing, 
+it is most likely dat they is ghon be replaced by suttin' different up in tha future.
+So if you use them, be prepared ta chizzle you configuration file syntax when you upgrade 
+to a lata release.
+
+Output channels is defined via a $outchannel directive. It aint nuthin but syntax be as bigs up:
+.sp
+.RS
+.B $outchannel name,file-name,max-size,action-on-max-size
+.RE
+
+name is tha name of tha output channel (not tha file), file-name is tha file name ta be 
+written to, max-size tha maximum allowed size n' action-on-max-size a cold-ass lil command ta be issued 
+when tha max size is reached. Y'all KNOW dat shit, muthafucka! This command always has exactly one parameter n' shit. Da binary is 
+that part of action-on-max-size before tha straight-up original gangsta space, its parameta is every last muthafuckin thang behind 
+that space.
+
+Keep it realz in mind dat $outchannel just defines a cold-ass lil channel wit "name". Well shiiiit, it do not activate dat shit. 
+To do so, you must bust a selector line (see below). That selector line includes tha channel 
+name plus ":omfile:$" up in front of it fo' realz. A sample might be:
+.sp
+.RS
+*.* :omfile:$mychannel
+.RE
+
+.SH PROPERTY REPLACER
+Da property replacer be a cold-ass lil core component up in rsyslogdz output system fo' realz. A syslog message has 
+a number of well-defined propertizzles (see below). Each of dis propertizzles can be accessed n' 
+manipulated by tha property replacer n' shit. With it, it is easy as fuck  ta use only part of a property value 
+or manipulate tha value, e.g. by convertin all charactas ta lower case.
+
+.SS Accessin Properties
+Syslog message propertizzles is used inside templates. They is accessed by puttin dem between 
+percent signs. Propertizzles can be modified by tha property replacer n' shit. Da full syntax be as bigs up:
+.sp
+.RS
+.B %propname:fromChar:toChar:options%
+.RE
+
+propname is tha name of tha property ta access. 
+.B It be case-sensitive.
+
+.SS Available Properties
+.TP
+.B msg
+the MSG part of tha message (aka "the message" ;))
+.TP
+.B rawmsg
+the message exactly as dat shiznit was received from tha socket. Right back up in yo muthafuckin ass. Should be useful fo' debugging.
+.TP
+.B HOSTNAME
+hostname from tha message
+.TP
+.B FROMHOST
+hostname of tha system tha message was received from (in a relay chain, dis is tha system immediately 
+in front of our asses n' not necessarily tha original gangsta sender)
+.TP
+.B syslogtag
+TAG from tha message
+.TP
+.B programname
+the "static" part of tha tag, as defined by BSD syslogd. Y'all KNOW dat shit, muthafucka! For example, when TAG is "named[12345]", 
+programname is "named".
+.TP
+.B PRI
+PRI part of tha message - undecoded (single value)
+.TP
+.B PRI-text
+the PRI part of tha message up in a textual form (e.g. "syslog.info")
+.TP
+.B IUT
+the monitorware InfoUnitType - used when rappin' ta a MonitorWare backend (also fo' phpLogCon)
+.TP
+.B syslogfacility
+the facilitizzle from tha message - up in numerical form
+.TP
+.B syslogfacility-text
+the facilitizzle from tha message - up in text form
+.TP
+.B syslogseverity
+severitizzle from tha message - up in numerical form
+.TP
+.B syslogseverity-text
+severitizzle from tha message - up in text form
+.TP
+.B timegenerated
+timestamp when tha message was RECEIVED fo' realz. Always up in high resolution
+.TP
+.B timereported
+timestamp from tha message. Resolution dependz on what tha fuck was provided up in tha message (in most cases, only seconds)
+.TP
+.B TIMESTAMP
+alias fo' timereported
+.TP
+.B PROTOCOL-VERSION
+Da contentz of tha PROTOCOL-VERSION field from IETF draft draft-ietf-syslog-protocol
+.TP
+.B STRUCTURED-DATA
+Da contentz of tha STRUCTURED-DATA field from IETF draft draft-ietf-syslog-protocol
+.TP
+.B APP-NAME
+Da contentz of tha APP-NAME field from IETF draft draft-ietf-syslog-protocol
+.TP
+.B PROCID
+Da contentz of tha PROCID field from IETF draft draft-ietf-syslog-protocol
+.TP
+.B MSGID
+Da contentz of tha MSGID field from IETF draft draft-ietf-syslog-protocol
+.TP
+.B $NOW
+Da current date stamp up in tha format YYYY-MM-DD
+.TP
+.B $YEAR
+Da current year (4-digit)
+.TP
+.B $MONTH
+Da current month (2-digit)
+.TP
+.B $DAY
+Da current dizzle of tha month (2-digit)
+.TP
+.B $HOUR
+Da current minute up in military (24 hour) time (2-digit)
+.TP
+.B $MINUTE
+Da current minute (2-digit)
+
+.P
+Propertizzles startin wit a $-sign is so-called system properties. Put ya muthafuckin choppers up if ya feel dis! These do NOT stem from tha 
+message but is rather internally-generated.
+
+.SS Characta Positions
+FromChar n' toChar is used ta build substrings. They specify tha offset within tha strang dat 
+should be copied. Y'all KNOW dat shit, muthafucka! Offset countin starts at 1, so if you need ta obtain tha straight-up original gangsta 2 charactaz of 
+the message text, you can use dis syntax: "%msg:1:2%". If you do not wish ta specify from n' to, 
+but you wanna specify options, you still need ta include tha colons. For example, if you would 
+like ta convert tha full message text ta lower case, use "%msg:::lowercase%". If you wanna 
+extract from a posizzle until tha end of tha string, you can place a thugged-out dollar-sign ("$") up in toChar 
+(e.g. %msg:10:$%, which will extract from posizzle 10 ta tha end of tha string).
+
+There be also support fo' 
+.B regular expressions.
+To use them, you need ta place a "R" tha fuck into FromChar. Shiiit, dis aint no joke. 
+This  drops some lyrics ta rsyslog dat a regular expression instead of position-based extraction is desired. Y'all KNOW dat shit, muthafucka! Da 
+actual regular expression 
+.B must 
+then be provided up in toChar. Shiiit, dis aint no joke. Da regular expression must be followed 
+by tha strang "--end". Well shiiiit, it denotes tha end of tha regular expression n' aint gonna become part of dat shit. 
+If yo ass is rockin regular expressions, tha property replacer will return tha part of tha property text 
+that matches tha regular expression. I aint talkin' bout chicken n' gravy biatch fo' realz. An example fo' a property replacer sequence wit a regular 
+expression is: "%msg:R:.*Sev:. \\(.*\\) \\[.*--end%"
+
+Also, extraction can be done based on so-called "fields". To do so, place a "F" tha fuck into FromChar fo' realz. A field 
+in its current definizzle be anythang dat is delimited by a thugged-out delimita character n' shit. Da delimita by 
+default is TAB (US-ASCII value 9). But fuck dat shiznit yo, tha word on tha street is dat if can be chizzled ta any other US-ASCII characta by 
+specifyin a cold-ass lil comma n' tha decimal US-ASCII value of tha delimita immediately afta tha "F". For example, 
+to use comma (",") as a thugged-out delimiter, use dis field specifier: "F,44".  If yo' syslog data is delimited, 
+this be a quicker way ta extract than via regular expressions (actually, a *much* quicker way). Field 
+countin starts at 1. Field zero be accepted yo, but will always lead ta a "field not found" error. Shiiit, dis aint no joke. Da same 
+happens if a gangbangin' field number higher than tha number of fieldz up in tha property is requested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da field number 
+must be placed up in tha "ToChar" parameter n' shiznit fo' realz. An example where tha 3rd field (delimited by TAB) from tha msg 
+property is extracted be as bigs up: "%msg:F:3%". Da same example wit semicolon as delimita is 
+"%msg:F,59:3%".
+
+Please note dat tha special charactas "F" n' "R" is case-sensitive. Only upper case works, lower case 
+will return a error. Shiiit, dis aint no joke. There is no white spaces permitted inside tha sequence (that will lead ta error 
+lyrics n' will NOT provide tha intended result).
+
+.SS Property Options
+Property options is case-insensitive. Currently, tha followin options is defined:
+.TP
+uppercase
+convert property ta lowercase only
+.TP
+lowercase
+convert property text ta uppercase only
+.TP
+drop-last-lf
+Da last LF up in tha message (if any), is dropped. Y'all KNOW dat shit, muthafucka! Especially useful fo' PIX.
+.TP
+date-mysql
+format as mysql date
+.TP
+date-rfc3164
+format as RFC 3164 date
+.TP
+date-rfc3339
+format as RFC 3339 date
+.TP
+escape-cc
+replace control charactas (ASCII value 127 n' joints less then 32) wit a escape sequence. Da sequence is "#<charval>" where charval is tha 3-digit decimal value of tha control character n' shit. For example, a tabulator would be replaced by "#009".
+.TP
+space-cc
+replace control charactas by spaces
+.TP
+drop-cc
+drop control charactas - tha resultin strang will neither contain control characters, escape sequences nor any other replacement characta like space.
+
+.SH QUEUED OPERATIONS
+Rsyslogd supports queued operations ta handle offline outputs
+(like remote syslogdz or database servers bein down). When hustlin in
+queued mode, rsyslogd buffers lyrics ta memory n' optionally ta disk
+(on a as-needed basis). Queues survive rsyslogd restarts.
+
+It be highly suggested ta use remote forwardin n' database writing
+in queued mode, only.
+
+To learn mo' bout queued operations, peep tha html documentation.
+
+.SH FILES
+.PD 0
+.TP
+.I /etc/rsyslog.conf
+Configuration file for
+.B rsyslogd
+
+.SH SEE ALSO
+.BR rsyslogd (8),
+.BR logger (1),
+.BR syslog (3)
+
+Da complete documentation can be found up in tha doc folda of tha rsyslog distribution or online at
+
+.RS
+.B    http://www.rsyslog.com/doc
+
+.RE
+Please note dat tha playa page reflects only a subset of tha configuration options. Be shizzle ta read
+the html documentation fo' all features n' details. This is especially vital if you plan ta set
+up a more-then-extremely-simple system.
+
+.SH AUTHORS
+.B rsyslogd
+is taken from sysklogd sources, which done been heavily modified
+by Rainer Gerhardz (rgerhards@adiscon.com) n' others.

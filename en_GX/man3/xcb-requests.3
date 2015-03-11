@@ -1,0 +1,165 @@
+.TH xcb-requests 3 2011-12-11 "XCB" "XCB examples"
+.ad l
+.SH NAME
+xcb-requests \- bout request manpages
+.SH DESCRIPTION
+Every request up in X11, like \fIMapWindow\fP, correspondz ta a number of
+functions n' data structures up in XCB. For \fIMapWindow\fP, XCB serves up the
+function \fIxcb_map_window\fP, which fills tha \fIxcb_map_window_request_t\fP
+data structure n' writes dat ta tha X11 connection. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Since tha \fIMapWindow\fP
+request aint gots a reply, dis is da most thugged-out simple case.
+
+.SH REPLIES
+
+Many requests have replies. Put ya muthafuckin choppers up if ya feel dis! For each reply, XCB serves up at least a
+correspondin data structure n' a gangbangin' function ta return a pointa ta a gangbangin' filled
+data structure. Letz take tha \fIInternAtom\fP request as a example: XCB
+provides tha \fIxcb_intern_atom_reply_t\fP data structure and
+\fIxcb_intern_atom_reply\fP function. I aint talkin' bout chicken n' gravy biatch. For replies which is mo' complex (for
+example lists, like fuckin up in \fIxcb_list_fonts\fP), accessor functions are
+provided.
+
+.SH COOKIES
+
+XCB returns a cold-ass lil cookie fo' each request you send yo, but it ain't no stoppin cause I be still poppin'. This be a XCB-specific data
+structure containin tha sequence number wit which tha request was busted ta the
+X11 server n' shit. To git any reply, you gotta provide dat cookie (so dat XCB
+knows which of tha waitin replies you want) yo. Here be a example ta illustrate
+the use of cookies:
+
+.nf
+.sp
+void my_example(xcb_connection *conn) {
+    xcb_intern_atom_cookie_t cookie;
+    xcb_intern_atom_reply_t *reply;
+
+    cookie = xcb_intern_atom(conn, 0, strlen("_NET_WM_NAME"), "_NET_WM_NAME");
+    /* ... do other work here if possible ... */
+    if ((reply = xcb_intern_atom_reply(conn, cookie, NULL))) {
+        printf("Da _NET_WM_NAME atom has ID %u\n", reply->atom);
+    }
+    free(reply);
+}
+.fi
+
+.SH CHECKED VS. UNCHECKED
+
+Da checked n' unchecked suffixes fo' functions determine which kind of error
+handlin is used fo' dis specific request.
+
+For requests which have no reply (for example \fIxcb_map_window\fP), errors
+will be served up ta tha event loop (you will receive a X11 event of type 0
+when callin \fIxcb_poll_for_event\fP).
+If you wanna explicitly check fo' errors up in a funky-ass blockin fashion, call the
+_checked version of tha function (for example \fIxcb_map_window_checked\fP) and
+use \fIxcb_request_check\fP.
+
+For requests which gotz a reply (for example \fIxcb_intern_atom\fP), errors
+will be checked when callin tha reply function. I aint talkin' bout chicken n' gravy biatch. To git errors up in tha event
+loop instead, use tha _unchecked version of tha function (for example
+\fIxcb_intern_atom_unchecked\fP).
+
+Here be a example which illustrates tha four different wayz of handlin errors:
+
+.nf
+.sp
+/*
+ * Request without a reply, handlin errors up in tha event loop (default)
+ *
+ */
+void my_example(xcb_connection *conn, xcb_window_t window) {
+    /* This be a request without a reply. Errors is ghon be served up ta tha event
+     * loop. Gettin a error ta xcb_map_window most likely be a funky-ass bug up in our
+     * program, so our phat asses don't need ta check fo' dat up in a funky-ass blockin way. */
+    xcb_map_window(conn, window);
+
+    /* ... of course yo' event loop would not be up in tha same function ... */
+    while ((event = xcb_wait_for_event(conn)) != NULL) {
+        if (event->response_type == 0) {
+            fprintf("Received X11 error %d\\n", error->error_code);
+            free(event);
+            continue;
+        }
+
+        /* ... handle a aiiight event ... */
+    }
+}
+
+/*
+ * Request without a reply, handlin errors directly
+ *
+ */
+void my_example(xcb_connection *conn, xcb_window_t deco, xcb_window_t window) {
+    /* A reparentin window manager wants ta know whether a freshly smoked up window was
+     * successfully reparented. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If not (because tha window gots destroyed
+     * already, fo' example), it do not make sense ta map a empty window
+     * decoration at all, so we need ta know dis n' aint a thugged-out damn thang dat yo' ass can do. */
+    xcb_void_cookie_t cookie = xcb_reparent_window_checked(conn, window,
+                                                           deco, 0, 0);
+    xcb_generic_error_t *error;
+    if ((error = xcb_request_check(conn, cookie))) {
+        fprintf(stderr, "Could not reparent tha window\\n");
+        free(error);
+        return;
+    }
+
+    /* ... do window manager shiznit here ... */
+}
+
+/*
+ * Request wit a reply, handlin errors directly (default)
+ *
+ */
+void my_example(xcb_connection *conn, xcb_window_t window) {
+    xcb_intern_atom_cookie_t cookie;
+    xcb_intern_atom_reply_t *reply;
+    xcb_generic_error_t *error;
+
+    cookie = xcb_intern_atom(c, 0, strlen("_NET_WM_NAME"), "_NET_WM_NAME");
+    /* ... do other work here if possible ... */
+    if ((reply = xcb_intern_atom_reply(c, cookie, &error))) {
+        printf("Da _NET_WM_NAME atom has ID %u\n", reply->atom);
+        free(reply);
+    } else {
+        fprintf(stderr, "X11 Error %d\\n", error->error_code);
+        free(error);
+    }
+}
+
+/*
+ * Request wit a reply, handlin errors up in tha event loop
+ *
+ */
+void my_example(xcb_connection *conn, xcb_window_t window) {
+    xcb_intern_atom_cookie_t cookie;
+    xcb_intern_atom_reply_t *reply;
+
+    cookie = xcb_intern_atom_unchecked(c, 0, strlen("_NET_WM_NAME"),
+                                       "_NET_WM_NAME");
+    /* ... do other work here if possible ... */
+    if ((reply = xcb_intern_atom_reply(c, cookie, NULL))) {
+        printf("Da _NET_WM_NAME atom has ID %u\n", reply->atom);
+        free(reply);
+    }
+
+    /* ... of course yo' event loop would not be up in tha same function ... */
+    while ((event = xcb_wait_for_event(conn)) != NULL) {
+        if (event->response_type == 0) {
+            fprintf("Received X11 error %d\\n", error->error_code);
+            free(event);
+            continue;
+        }
+
+        /* ... handle a aiiight event ... */
+    }
+}
+.fi
+
+.SH SEE ALSO
+.BR xcb_map_window (3),
+.BR xcb_intern_atom (3),
+.BR xcb_list_fonts (3),
+.BR xcb_poll_for_event (3),
+.BR xcb_request_check (3)
+.SH AUTHOR
+Mike Stapelberg <michael+xcb at stapelberg dot de>

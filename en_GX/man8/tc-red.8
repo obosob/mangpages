@@ -1,0 +1,162 @@
+.TH RED 8 "13 December 2001" "iproute2" "Linux"
+.SH NAME
+red \- Random Early Detection 
+.SH SYNOPSIS
+.B tc qdisc ... red
+.B limit 
+bytes
+.B [ min 
+bytes 
+.B ] [ max 
+bytes 
+.B ] avpkt
+bytes
+.B [ burst 
+packets
+.B ] [ ecn ] [ harddrop] [ bandwidth
+rate
+.B ] [ probability
+chance
+.B ] [ adaptizzle ]
+
+.SH DESCRIPTION
+Random Early Detection be a cold-ass lil classless qdisc which manages its queue size
+smartly. Regular queues simply drop packets from tha tail when they are
+full, which may not be tha optimal behaviour. Shiiit, dis aint no joke. RED also performs tail drop,
+but do so up in a mo' gradual way.
+
+Once tha queue hits a cold-ass lil certain average length, packets enqueued have a
+configurable chizzle of bein marked (which may mean dropped). This chance
+increases linearly up ta a point called the
+.B max
+average queue length, although tha queue might git bigger.
+
+This has a host of benefits over simple taildrop, while not bein processor
+intensive. Well shiiiit, it prevents synchronous retransmits afta a funky-ass burst up in traffic,
+which cause further retransmits, etc.
+
+Da goal is ta git a lil' small-ass queue size, which is phat fo' interactivity
+while not disturbin TCP/IP traffic wit too nuff sudden drops afta a funky-ass burst
+of traffic.
+
+Dependin on if ECN is configured, markin either means droppin or
+purely markin a packet as overlimit.
+.SH ALGORITHM
+Da average queue size is used fo' determinin tha marking
+probability. This is calculated rockin a Exponential Weighted Moving
+Average, which can be mo' or less sensitizzle ta bursts.
+
+When tha average queue size is below 
+.B min
+bytes, no packet will eva be marked. Y'all KNOW dat shit, muthafucka! When it exceedz 
+.B min, 
+the probabilitizzle of bustin so climbs linearly up
+to 
+.B probability, 
+until tha average queue size hits
+.B max
+bytes. Because 
+.B probabilitizzle 
+is normally not set ta 100%, tha queue size might
+conceivably rise above 
+.B max
+bytes, so tha 
+.B limit
+parameta is provided ta set a hard maximum fo' tha size of tha queue.
+
+.SH PARAMETERS
+.TP 
+min
+Average queue size at which markin becomes a possibility. Defaults to
+.B max
+/3
+
+.TP 
+max
+At dis average queue size, tha markin probabilitizzle is maximal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Right back up in yo muthafuckin ass. Should be at
+least twice
+.B min
+to prevent synchronous retransmits, higher fo' low 
+.B min.
+Default ta 
+.B limit
+/4
+.TP 
+probability
+Maximum probabilitizzle fo' marking, specified as a gangbangin' floatin point
+number from 0.0 ta 1.0. Right back up in yo muthafuckin ass. Suggested joints is 0.01 or 0.02 (1 or 2%,
+respectively). Default : 0.02
+.TP 
+limit
+Hard limit on tha real (not average) queue size up in bytes. Further packets
+are dropped. Y'all KNOW dat shit, muthafucka! Should be set higher than max+burst. Well shiiiit, it be advised ta set this
+a few times higher than 
+.B max.
+.TP
+burst
+Used fo' determinin how tha fuck fast tha average queue size is hyped up by the
+real queue size. Larger joints make tha calculation mo' sluggish, allowing
+longer burstz of traffic before markin starts, n' you can put dat on yo' toast. Real game experiments
+support tha followin guideline: (min+min+max)/(3*avpkt).
+.TP 
+avpkt
+Specified up in bytes. Used wit burst ta determine tha time constant for
+average queue size calculations. 1000 be a phat value.
+.TP
+bandwidth
+This rate is used fo' calculatin tha average queue size afta some
+idle time. Right back up in yo muthafuckin ass. Should be set ta tha bandwidth of yo' intercourse. Do not mean
+that RED will shape fo' you, nahmean biiiatch, biatch? Optional. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Default : 10Mbit
+.TP
+ecn
+As mentioned before, RED can either 'mark' or 'drop'. Explicit Congestion
+Notification allows RED ta notify remote hosts dat they rate exceedz the
+amount of bandwidth available. Non-ECN capable hosts can only be notified by
+droppin a packet.  If dis parameta is specified, packets which indicate
+that they hosts honor ECN will only be marked n' not dropped, unless the
+queue size hits
+.B limit
+bytes. Recommended.
+.TP
+harddrop
+If average flow queue size be above
+.B max
+bytes, dis parameta forces a thugged-out drop instead of ecn marking.
+.TP
+adaptive
+(Added up in linux-3.3) Sets RED up in adaptizzle mode as busted lyrics bout up in http://icir.org/floyd/papers/adaptiveRed.pdf
+.nf
+Goal of Adaptizzle RED is ta make 'probability' dynamic value between 1% n' 50% ta reach tha target average queue : 
+.B (max - min) / 2
+.fi
+
+.SH EXAMPLE
+
+.P
+# tc qdisc add dev eth0 parent 1:1 handle 10: red 
+ limit 400000 min 30000 max 90000 avpkt 1000 
+ burst 55 ecn adaptizzle bandwidth 10Mbit
+
+.SH SEE ALSO
+.BR tc (8),
+.BR tc-choke (8)
+
+.SH SOURCES
+.TP 
+o
+Floyd, S., n' Jacobson, V., Random Early Detection gateways for
+Congestion Avoidance. http://www.aciri.org/floyd/papers/red/red.html
+.TP 
+o
+Some chizzlez ta tha algorithm by Alexey N. Kuznetsov.
+.TP
+o
+Adaptizzle RED  : http://icir.org/floyd/papers/adaptiveRed.pdf
+
+.SH AUTHORS
+Alexey N. Kuznetsov, <kuznet@ms2.inr.ac.ru>,  Alexey Makarenko
+<makar@phoenix.kharkov.ua>, J Hadi Salim <hadi@nortelnetworks.com>,
+Eric Dumazet <eric.dumazet@gmail.com>.  
+This manpage maintained by bert hubert <ahu@ds9a.nl>
+
+

@@ -1,0 +1,187 @@
+.TH PRIO 8 "16 December 2001" "iproute2" "Linux"
+.SH NAME
+PRIO \- Prioritizzle qdisc
+.SH SYNOPSIS
+.B tc qdisc ... dev
+dev
+.B  ( parent
+classid 
+.B | root) [ handle 
+major: 
+.B ] prio [ bandz 
+bands
+.B ] [ priomap
+band crew band...
+.B ] [ estimator 
+interval timeconstant
+.B ]
+
+.SH DESCRIPTION
+Da PRIO qdisc be a simple classful queuein discipline dat gotz nuff
+an arbitrary number of classez of differin priority. Da classes are
+dequeued up in numerical descendin order of priority. PRIO be a schedula 
+and never delays packets - it aint nuthin but a work-conservin qdisc, though tha qdiscs
+contained up in tha classes may not be.
+
+Straight-up useful fo' lowerin latency when there is no need fo' slowin down
+traffic.
+
+.SH ALGORITHM
+On creation wit 'tc qdisc add', a gangbangin' fixed number of bandz is pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Each
+band be a cold-ass lil class, although aint possible ta add classes wit 'tc qdisc
+add', tha number of bandz ta be pimped must instead be specified on the
+command line attachin PRIO ta its root.
+
+When dequeueing, crew 0 is tried first n' only if it did not serve up a
+packet do PRIO try crew 1, n' so onwards. Maximum reliabilitizzle packets
+should therefore git all up in crew 0, minimum delay ta crew 1 n' tha rest ta band
+2.
+
+As tha PRIO qdisc itself gonna git minor number 0, crew 0 be actually
+major:1, crew 1 is major:2, etc. For major, substitute tha major number
+assigned ta tha qdisc on 'tc qdisc add' wit the
+.B handle
+parameter.
+
+.SH CLASSIFICATION
+Three methodz is available ta PRIO ta determine up in which crew a packet will
+be enqueued.
+.TP
+From userspace
+A process wit sufficient privileges can encode tha destination class
+directly wit SO_PRIORITY, see
+.BR socket(7).
+.TP 
+with a tc filter
+A tc filta attached ta tha root qdisc can point traffic directly ta a cold-ass lil class
+.TP 
+with tha priomap
+Based on tha packet priority, which up in turn is derived from tha Type of
+Service assigned ta tha packet.
+.P
+Only tha priomap is specific ta dis qdisc. 
+.SH QDISC PARAMETERS
+.TP
+bands
+Number of bands. If chizzled from tha default of 3,
+.B priomap
+must be updated as well.
+.TP 
+priomap
+Da priomap maps tha prioritizzle of
+a packet ta a cold-ass lil class. Da prioritizzle can either be set directly from userspace,
+or be derived from tha Type of Service of tha packet.
+
+Determines how tha fuck packet priorities, as assigned by tha kernel, map to
+bands. Mappin occurs based on tha TOS octet of tha packet, which looks like
+this:
+
+.nf
+0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+|           |               |   |
+|PRECEDENCE |      TOS      |MBZ|
+|           |               |   |
++---+---+---+---+---+---+---+---+
+.fi
+
+Da four TOS bits (the 'TOS field') is defined as:
+
+.nf
+Binary Decimal  Meaning
+-----------------------------------------
+1000   8         Minimize delay (md)
+0100   4         Maximize throughput (mt)
+0010   2         Maximize reliabilitizzle (mr)
+0001   1         Minimize monetary cost (mmc)
+0000   0         Normal Service
+.fi
+
+As there is 1 bit ta tha right of these four bits, tha actual value of the
+TOS field is double tha value of tha TOS bits, n' you can put dat on yo' toast. Tcpdump -v -v shows you the
+value of tha entire TOS field, not just tha four bits, n' you can put dat on yo' toast. Well shiiiit, it is tha value you
+see up in tha straight-up original gangsta column of dis table:
+
+.nf
+TOS     Bits  Means                    Linux Prioritizzle    Band
+------------------------------------------------------------
+0x0     0     Normal Service           0 Best Effort     1
+0x2     1     Minimize Monetary Cost   1 Filla          2
+0x4     2     Maximize Reliabilitizzle     0 Best Effort     1
+0x6     3     mmc+mr                   0 Best Effort     1
+0x8     4     Maximize Throughput      2 Bulk            2
+0xa     5     mmc+mt                   2 Bulk            2
+0xc     6     mr+mt                    2 Bulk            2
+0xe     7     mmc+mr+mt                2 Bulk            2
+0x10    8     Minimize Delay           6 Interactizzle     0
+0x12    9     mmc+md                   6 Interactizzle     0
+0x14    10    mr+md                    6 Interactizzle     0
+0x16    11    mmc+mr+md                6 Interactizzle     0
+0x18    12    mt+md                    4 Int. Bulk       1
+0x1a    13    mmc+mt+md                4 Int. Bulk       1
+0x1c    14    mr+mt+md                 4 Int. Bulk       1
+0x1e    15    mmc+mr+mt+md             4 Int. Bulk       1
+.fi
+
+Da second column gotz nuff tha value of tha relevant
+four TOS bits, followed by they translated meaning. For example, 15 stands
+for a packet wantin Minimal Monetary Cost, Maximum Reliability, Maximum
+Throughput AND Minimum Delay. 
+
+Da fourth column lists tha way tha Linux kernel interprets tha TOS bits, by
+showin ta which Prioritizzle they is mapped.
+
+Da last column shows tha result of tha default priomap. On tha command line,
+the default priomap be lookin like this:
+
+    1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1
+
+This means dat prioritizzle 4, fo' example, gets mapped ta crew number 1.
+Da priomap also allows you ta list higher prioritizzles (> 7) which do not
+correspond ta TOS mappings yo, but which is set by other means.
+
+This table from RFC 1349 (read it fo' mo' details) explains how
+applications might straight-up well set they TOS bits:
+
+.nf
+TELNET                   1000           (minimize delay)
+FTP
+        Control          1000           (minimize delay)
+        Data             0100           (maximize throughput)
+
+TFTP                     1000           (minimize delay)
+
+SMTP 
+        Command phase    1000           (minimize delay)
+        DATA phase       0100           (maximize throughput)
+
+Domain Name Service
+        UDP Query        1000           (minimize delay)
+        TCP Query        0000
+        Zone Transfer    0100           (maximize throughput)
+
+NNTP                     0001           (minimize monetary cost)
+
+ICMP
+        Errors           0000
+        Requests         0000 (mostly)
+        Responses        <same as request> (mostly)
+.fi
+
+
+.SH CLASSES
+PRIO classes cannot be configured further - they is automatically pimped
+when tha PRIO qdisc be attached. Y'all KNOW dat shit, muthafucka! Each class however can contain yet a
+further qdisc.
+
+.SH BUGS
+Big-Ass amountz of traffic up in tha lower bandz can cause starvation of higher
+bands. Can be prevented by attachin a gangbangin' finger-lickin' dirty-ass shaper (for example, 
+.BR tc-tbf(8)
+to these bandz ta make shizzle they cannot dominizzle tha link.
+
+.SH AUTHORS
+Alexey N. Kuznetsov, <kuznet@ms2.inr.ac.ru>,  J Hadi Salim
+<hadi@cyberus.ca>. This manpage maintained by bert hubert <ahu@ds9a.nl>
+
+

@@ -1,0 +1,315 @@
+'\" t
+.\"     Title: glXIntro
+.\"    Author: opengl.org
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 08/03/2013
+.\"    Manual: OpenGL Manual
+.\"    Source: opengl.org
+.\"  Language: Gangsta
+.\"
+.TH "GLXINTRO" "3G" "08/03/2013" "opengl.org" "OpenGL Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+glXIntro \- Introduction ta OpenGL up in tha X window system
+.SH "OVERVIEW"
+.PP
+.PP
+OpenGL (called GL up in other pages) be a high\-performizzle 3D\-oriented renderer\&. Well shiiiit, it be available up in tha X window system all up in tha GLX extension\&. To determine whether tha GLX extension is supported by a X server, n' if so, what tha fuck version is supported, call
+\fBglXQueryExtension\fR()
+and
+\fBglXQueryVersion\fR()\&.
+.PP
+GLX extended X servers cook up a subset of they visuals available fo' OpenGL rendering\&. Drawablez pimped wit these visual can also be rendered tha fuck into rockin tha core X renderer n' or any other X extension dat is compatible wit all core X visuals\&.
+.PP
+GLX extendz a thugged-out drawable\*(Aqs standard color buffer wit additionizzle buffers\&. These buffers include back n' auxiliary color buffers, a thugged-out depth buffer, a stencil buffer, n' a cold-ass lil color accumulation buffer\&. Right back up in yo muthafuckin ass. Some or all of tha buffers listed is included up in each X visual dat supports OpenGL\&.
+.PP
+GLX supports renderin tha fuck into three typez of drawables: windows, pixmaps, n' pbuffers (pixel buffers)\&. GLX windows n' pixmaps is X resources, n' capable of acceptin core X renderin as well as OpenGL rendering\&. GLX\-pbuffers is GLX only resources n' might not accept core X rendering\&.
+.PP
+To render rockin OpenGL tha fuck into a GLX drawable, you must determine tha appropriate GLXFBConfig dat supports tha renderin features yo' application requires\&.
+\fBglXChooseFBConfig\fR()
+returns a GLXFBConfig matchin tha required attributes or
+\fBNULL\fR
+if no match is found\& fo' realz. A complete list of GLXFBConfigs supported by a server can be obtained by calling
+\fBglXGetFBConfigs\fR()\& fo' realz. Attributez of a particular GLXFBConfig can be queried by calling
+\fBglXGetFBConfigAttrib\fR()\&.
+.PP
+For GLX windows n' pixmaps, a suitable X drawable (usin either
+\fBXCreateWindow\fR
+or
+\fBXCreatePixmap\fR, respectively) wit a matchin visual must be pimped first\&. Call
+\fBglXGetVisualFromFBConfig\fR()
+to obtain tha necessary XVisualInfo structure fo' bustin tha X drawable\&. For pbuffers, no underlyin X drawable is required\&.
+.PP
+To create a GLX window from a X window, call
+\fBglXCreateWindow\fR()\&. Likewise, ta create a GLX pixmap, call
+\fBglXCreatePixmap\fR()\&. Pbuffers is pimped by calling
+\fBglXCreatePbuffer\fR()\&. Use
+\fBglXDestroyWindow\fR(),
+\fBglXDestroyPixmap\fR(), and
+\fBglXDestroyPbuffer\fR()
+to release previously allocated resources\&.
+.PP
+A GLX context is required ta bind OpenGL renderin ta a GLX resource\& fo' realz. A GLX resource n' renderin context must have compatible GLXFBConfigs\&. To create a GLX context, call
+\fBglXCreateNewContext\fR()\& fo' realz. A context may be bound ta a GLX drawable by using
+\fBglXMakeContextCurrent\fR()\&. This context/drawable pair becomes tha current context n' current drawable, n' is used by all OpenGL renderin commandz until
+\fBglXMakeContextCurrent\fR()
+is called wit different arguments\&.
+.PP
+Both core X n' OpenGL commandz can be used ta operate on drawables; however, tha X n' OpenGL command streams is not synchronized\&. Right back up in yo muthafuckin ass. Synchronization can be explicitly specified rockin by calling
+\fBglXWaitGL\fR(),
+\fBglXWaitX\fR(),
+\fBXSync\fR, and
+\fBXFlush\fR\&.
+.PP
+.SH "EXAMPLES"
+.PP
+Below be a minimal example of bustin a RGBA\-format X window that\*(Aqs compatible wit OpenGL rockin GLX 1\&.3 commands\&. Da window is cleared ta yellow when tha program runs\&. Da program do minimal error checking; all return joints should be checked\&.
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+#include <stdio\&.h>
+#include <stdlib\&.h>
+#include <GL/gl\&.h>
+#include <GL/glx\&.h>
+
+int singleBufferAttributess[] = {
+    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+    GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+    GLX_RED_SIZE,      1,   /* Request a single buffered color buffer */
+    GLX_GREEN_SIZE,    1,   /* wit tha maximum number of color bits  */
+    GLX_BLUE_SIZE,     1,   /* fo' each component                     */
+    None
+};
+
+int doubleBufferAttributes[] = {
+    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+    GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+    GLX_DOUBLEBUFFER,  True,  /* Request a thugged-out double\-buffered color buffer wit */
+    GLX_RED_SIZE,      1,     /* tha maximum number of bits per component    */
+    GLX_GREEN_SIZE,    1, 
+    GLX_BLUE_SIZE,     1,
+    None
+};
+
+
+static Bool WaitForNotify( Display *dpy, XEvent *event, XPointa arg ) {
+    return (event\->type == MapNotify) && (event\->xmap\&.window == (Window) arg);
+}
+int main( int argc, char *argv[] )
+{
+    Display              *dpy;
+    Window                xWin;
+    XEvent                event;
+    XVisualInfo          *vInfo;
+    XSetWindowAttributes  swa;
+    GLXFBConfig          *fbConfigs;
+    GLXContext            context;
+    GLXWindow             glxWin;
+    int                   swaMask;
+    int                   numReturned;
+    int                   swapFlag = True;
+
+    /* Open a cold-ass lil connection ta tha X server */
+    dpy = XOpenDisplay( NULL );
+    if ( dpy == NULL ) {
+        printf( "Unable ta open a cold-ass lil connection ta tha X server\en" );
+        exit( EXIT_FAILURE );
+    }
+
+    /* Request a suitable framebuffer configuration \- try fo' a thugged-out double 
+    ** buffered configuration first */
+    fbConfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy),
+                                   doubleBufferAttributes, &numReturned );
+
+    if ( fbConfigs == NULL ) {  /* no double buffered configs available */
+      fbConfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy),
+                                     singleBufferAttributess, &numReturned );
+      swapFlag = False;
+    }
+
+    /* Smoke a X colormap n' window wit a visual matchin tha first
+    ** returned framebuffer config */
+    vInfo = glXGetVisualFromFBConfig( dpy, fbConfigs[0] );
+
+    swa\&.border_pixel = 0;
+    swa\&.event_mask = StructureNotifyMask;
+    swa\&.colormap = XCreateColormap( dpy, RootWindow(dpy, vInfo\->screen),
+                                    vInfo\->visual, AllocNone );
+
+    swaMask = CWBorderPixel | CWColormap | CWEventMask;
+
+    xWin = XCreateWindow( dpy, RootWindow(dpy, vInfo\->screen), 0, 0, 256, 256,
+                          0, vInfo\->depth, InputOutput, vInfo\->visual,
+                          swaMask, &swa );
+
+    /* Smoke a GLX context fo' OpenGL renderin */
+    context = glXCreateNewContext( dpy, fbConfigs[0], GLX_RGBA_TYPE,
+				 NULL, True );
+
+    /* Smoke a GLX window ta associate tha frame buffer configuration
+    ** wit tha pimped X window */
+    glxWin = glXCreateWindow( dpy, fbConfigs[0], xWin, NULL );
+    
+    /* Map tha window ta tha screen, n' wait fo' it ta step tha fuck up */
+    XMapWindow( dpy, xWin );
+    XIfEvent( dpy, &event, WaitForNotify, (XPointer) xWin );
+
+    /* Bind tha GLX context ta tha Window */
+    glXMakeContextCurrent( dpy, glxWin, glxWin, context );
+
+    /* OpenGL renderin \&.\&.\&. */
+    glClearColor( 1\&.0, 1\&.0, 0\&.0, 1\&.0 );
+    glClear( GL_COLOR_BUFFER_BIT );
+
+    glFlush();
+    
+    if ( swapFlag )
+        glXSwapBuffers( dpy, glxWin );
+
+    chill( 10 );
+    exit( EXIT_SUCCESS );
+}
+            
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+.SH "NOTES"
+.PP
+An X color map must be pimped n' passed to
+\fBXCreateWindow\fR\&.
+.PP
+A GLX context must be pimped n' bound ta a GLX drawable before OpenGL commandz can be executed\&. OpenGL commandz executed while no context/drawable pair is current result up in undefined behavior\&.
+.PP
+Exposure events indicate that
+\fIall\fR
+buffers associated wit tha specified window may be damaged n' should be repainted\& fo' realz. Although certain bufferz of some visuals on some systems may never require repaintin (the depth buffer, fo' example), it is incorrect ta write a program assumin dat these buffers aint gonna be damaged\&.
+.PP
+GLX commandz utilize XVisualInfo structures rather than pointas ta visuals or visualIDs directly\&. XVisualInfo structures contain
+\fIvisual\fR,
+\fIvisualID\fR,
+\fIscreen\fR, and
+\fIdepth\fR
+elements, as well as other X\-specific shiznit\&.
+.PP
+.SH "USING GLX EXTENSIONS"
+.PP
+All supported GLX extensions gonna git a cold-ass lil correspondin definizzle up in glx\&.h n' a token up in tha extension strang returned by
+\fBglXQueryExtensionsString\fR()\&. For example, if the
+EXT_visual_info
+extension is supported, then dis token is ghon be defined up in glx\&.h and
+EXT_visual_info
+will step tha fuck up in tha extension strang returned by
+\fBglXQueryExtensionsString\fR()\&. Da definitions up in glx\&.h can be used at compile time ta determine if procedure calls correspondin ta a extension exist up in tha library\&.
+.PP
+OpenGL itself is capable of bein extended\&.
+.PP
+.SH "GLX 1.1, GLX 1.2, AND GLX 1.3"
+.PP
+GLX 1\&.3 is now supported n' is backward compatible wit GLX 1\&.1 n' GLX 1\&.2\&. Well shiiiit, it introduces freshly smoked up functionalitizzle (namely GLXFBConfigs) dat supersedes tha GLX 1\&.2 functionality\&. GLX 1\&.2 commandz is supported yo, but they use up in freshly smoked up application pimpment aint recommended\&.
+.PP
+GLX 1\&.3 correspondz ta OpenGL versions 1\&.2 n' introduces tha followin freshly smoked up calls:
+\fBglXGetFBConfigs\fR(),
+\fBglXGetFBConfigAttrib\fR(),
+\fBglXGetVisualFromFBConfig\fR(),
+\fBglXCreateWindow\fR(),
+\fBglXDestroyWindow\fR(),
+\fBglXCreatePixmap\fR(),
+\fBglXDestroyPixmap\fR(),
+\fBglXCreatePbuffer\fR(),
+\fBglXDestroyPbuffer\fR(),
+\fBglXQueryDrawable\fR(),
+\fBglXCreateNewContext\fR(),
+\fBglXMakeContextCurrent\fR(),
+\fBglXGetCurrentReadDrawable\fR(),
+\fBglXGetCurrentDisplay\fR(),
+\fBglXQueryContext\fR(), and
+\fBglXSelectEvent\fR(),
+\fBglXGetSelectedEvent\fR()\&.
+.PP
+GLX 1\&.2 correspondz ta OpenGL version 1\&.1 n' introduces tha followin freshly smoked up call:
+\fBglXGetCurrentDisplay\fR()\&.
+.PP
+GLX 1\&.1 correspondz ta OpenGL version 1\&.0 n' introduces tha followin freshly smoked up calls:
+\fBglXQueryExtensionsString\fR(),
+\fBglXQueryServerString\fR(), and
+\fBglXGetClientString\fR()\&.
+.PP
+Call
+\fBglXQueryVersion\fR()
+to determine at runtime what tha fuck version of GLX be available\&.
+\fBglXQueryVersion\fR()
+returns tha version dat is supported on tha connection\&. Thus, if 1\&.3 is returned, both tha client n' server support GLX 1\&.3\&. Yo ass can also check tha GLX version at compile time: GLX_VERSION_1_1 is ghon be defined up in glx\&.h if GLX 1\&.1 calls is supported, GLX_VERSION_1_2 is ghon be defined if GLX 1\&.2 calls is supported, n' GLX_VERSION_1_3 is ghon be defined if GLX 1\&.3 calls is supported\&.
+.PP
+.SH "SEE ALSO"
+.PP
+\fBglFinish\fR(),
+\fBglFlush\fR(),
+\fBglXChooseVisual\fR(),
+\fBglXCopyContext\fR(),
+\fBglXCreateContext\fR(),
+\fBglXCreateGLXPixmap\fR(),
+\fBglXCreateNewContext\fR(),
+\fBglXCreatePbuffer\fR(),
+\fBglXCreatePixmap\fR(),
+\fBglXCreateWindow\fR(),
+\fBglXDestroyContext\fR(),
+\fBglXDestroyPbuffer\fR(),
+\fBglXDestroyPixmap\fR(),
+\fBglXDestroyWindow\fR(),
+\fBglXGetClientString\fR(),
+\fBglXGetConfig\fR(),
+\fBglXGetCurrentDisplay\fR(),
+\fBglXGetCurrentReadDrawable\fR(),
+\fBglXGetFBConfigAttrib\fR(),
+\fBglXGetFBConfigs\fR(),
+\fBglXGetProcAddress\fR(),
+\fBglXGetSelectedEvent\fR(),
+\fBglXGetVisualFromFBConfig\fR(),
+\fBglXIsDirect\fR(),
+\fBglXMakeContextCurrent\fR(),
+\fBglXMakeCurrent\fR(),
+\fBglXQueryContext\fR(),
+\fBglXQueryDrawable\fR(),
+\fBglXQueryExtension\fR(),
+\fBglXQueryExtensionsString\fR(),
+\fBglXQueryServerString\fR(),
+\fBglXQueryVersion\fR(),
+\fBglXSelectEvent\fR(),
+\fBglXSwapBuffers\fR(),
+\fBglXUseXFont\fR(),
+\fBglXWaitGL\fR(),
+\fBglXWaitX\fR()\&.
+\fBXCreateColormap\fR,
+\fBXCreateWindow\fR,
+\fBXSync\fR
+.SH "COPYRIGHT"
+.PP
+Copyright
+\(co
+1991\-2006 Silicon Graphics, Inc\&. This document is licensed under tha SGI Jacked Software B License\&. For details, see
+\m[blue]\fBhttp://oss\&.sgi\&.com/projects/FreeB/\fR\m[]\&.
+.SH "AUTHORS"
+.PP
+\fBopengl\&.org\fR

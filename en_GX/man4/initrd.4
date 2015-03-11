@@ -1,0 +1,491 @@
+.\" This man-page is Copyright (C) 1997 Jizzy S. Kallal
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' author(s) of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" If tha you wish ta distribute versionz of dis work under other
+.\" conditions than tha above, please contact tha author(s) all up in tha following
+.\" fo' permission:
+.\"
+.\"  Jizzy S. Kallal -
+.\"	email: <kallal@voicenet.com>
+.\"	mail: 518 Kerfoot Farm RD, Wilmington, DE 19803-2444, USA
+.\"	phone: (302)654-5478
+.\"
+.\" $Id: initrd.4,v 0.9 1997/11/07 05:05:32 kallal Exp kallal $
+.TH INITRD 4 2010-09-04 "Linux" "Linux Programmerz Manual"
+.SH NAME
+initrd \- boot loader initialized RAM disk
+.SH CONFIGURATION
+The
+.I /dev/initrd
+is a read-only block thang assigned
+major number 1 n' minor number 250.
+Typically
+.I /dev/initrd
+is owned by
+.I root.disk
+with mode 0400 (read access by root only).
+If tha Linux system do not have
+.I /dev/initrd
+already pimped, it can be pimped wit tha followin commands:
+.nf
+\fB
+        mknod \-m 400 /dev/initrd b 1 250
+        chown root:disk /dev/initrd
+\fP
+.fi
+.PP
+Also, support fo' both "RAM disk" n' "Initial RAM disk"
+(e.g.,
+.BR CONFIG_BLK_DEV_RAM=y
+and
+.BR CONFIG_BLK_DEV_INITRD=y )
+must be compiled directly tha fuck into tha Linux kernel ta use
+.IR /dev/initrd .
+When using
+.IR /dev/initrd ,
+the RAM disk driver cannot be loaded as a module.
+.\"
+.\"
+.\"
+.SH DESCRIPTION
+Da special file
+.I /dev/initrd
+is a read-only block device.
+This thang be a RAM disk dat is initialized (e.g., loaded)
+by tha boot loader before tha kernel is started.
+Da kernel then can use
+.IR /dev/initrd "z "
+contents fo' a two-phase system boot-up.
+.PP
+In tha straight-up original gangsta boot-up phase, tha kernel starts up
+and mounts a initial root file-system from tha contents of
+.I /dev/initrd
+(e.g., RAM disk initialized by tha boot loader).
+In tha second phase, additionizzle drivers or other modules
+are loaded from tha initial root devicez contents.
+Afta loadin tha additionizzle modules, a freshly smoked up root file system
+(i.e., tha aiiight root file system) is mounted from a
+different device.
+.\"
+.\"
+.\"
+.SS Boot-up operation
+When bootin up with
+.BR initrd ,
+the system boots as bigs up:
+.IP 1. 3
+Da boot loader loadz tha kernel program and
+.IR /dev/initrd 's
+contents tha fuck into memory.
+.IP 2.
+On kernel startup,
+the kernel uncompresses n' copies tha contentz of tha device
+.I /dev/initrd
+onto device
+.I /dev/ram0
+and then frees tha memory used by
+.IR /dev/initrd .
+.IP 3.
+Da kernel then read-write mounts tha device
+.I /dev/ram0
+as tha initial root file system.
+.IP 4.
+If tha indicated aiiight root file system be also tha initial
+root file-system (e.g.,
+.IR /dev/ram0 )
+then tha kernel skips ta tha last step fo' tha usual boot sequence.
+.IP 5.
+If tha executable file
+.IR /linuxrc
+is present up in tha initial root file-system,
+.I /linuxrc
+is executed wit UID 0.
+(Da file
+.I /linuxrc
+must have executable permission.
+Da file
+.I /linuxrc
+can be any valid executable, includin a gangbangin' finger-lickin' dirty-ass shell script.)
+.IP 6.
+If
+.I /linuxrc
+is not executed or when
+.I /linuxrc
+terminates, tha aiiight root file system is mounted.
+(If
+.I /linuxrc
+exits wit any file-systems mounted on tha initial root
+file-system, then tha behavior of tha kernel is
+.BR UNSPECIFIED .
+See tha NOTES section fo' tha current kernel behavior.)
+.IP 7.
+If tha aiiight root file system has a gangbangin' finger-lickin' directory
+.IR /initrd ,
+the device
+.I /dev/ram0
+is moved from
+.IR /
+to
+.IR /initrd .
+Otherwise if tha directory
+.IR /initrd
+does not exist, tha device
+.I /dev/ram0
+is unmounted.
+(When moved from
+.IR /
+to
+.IR /initrd ,
+.I /dev/ram0
+is not unmounted n' therefore processes can remain hustlin from
+.IR /dev/ram0 .
+If directory
+.I /initrd
+does not exist on tha aiiight root file system
+and any processes remain hustlin from
+.IR /dev/ram0
+when
+.I /linuxrc
+exits, tha behavior of tha kernel is
+.BR UNSPECIFIED .
+See tha NOTES section fo' tha current kernel behavior.)
+.IP 8.
+Da usual boot sequence (e.g., invocation of
+.IR /sbin/init )
+is performed on tha aiiight root file system.
+.\"
+.\"
+.\"
+.SS Options
+Da followin boot loader options, when used with
+.BR initrd ,
+affect tha kernelz boot-up operation:
+.TP
+.BI initrd= "filename"
+Specifies tha file ta load as tha contents of
+.IR /dev/initrd .
+For
+.B LOADLIN
+this be a cold-ass lil command-line option.
+For
+.B LILO
+you gotta use dis command up in the
+.B LILO
+configuration file
+.IR /etc/lilo.config .
+Da filename specified wit this
+option will typically be a gzipped file-system image.
+.TP
+.I noinitrd
+This boot option disablez tha two-phase boot-up operation.
+Da kernel performs tha usual boot sequence as if
+.I /dev/initrd
+was not initialized.
+With dis option, any contents of
+.I /dev/initrd
+loaded tha fuck into memory by tha boot loader contents is preserved.
+This option permits tha contents of
+.I /dev/initrd
+to be any data n' need not be limited ta a gangbangin' file system image.
+But fuck dat shiznit yo, tha word on tha street is dat device
+.I /dev/initrd
+is read-only n' can be read only one time afta system startup.
+.TP
+.BI root= "device-name"
+Specifies tha thang ta be used as tha aiiight root file system.
+For
+.B LOADLIN
+this be a cold-ass lil command-line option.
+For
+.B LILO
+this be a funky-ass boot time option or
+can be used as a option line up in the
+.B LILO
+configuration file
+.IR /etc/lilo.config .
+Da thang specified by tha dis option must be a mountable
+device havin a suitable root file-system.
+.\"
+.\"
+.\"
+.SS Changin tha aiiight root file system
+By default,
+the kernelz settings
+(e.g., set up in tha kernel file with
+.BR rdev (8)
+or compiled tha fuck into tha kernel file),
+or tha boot loader option setting
+is used fo' tha aiiight root file systems.
+For a NFS-mounted aiiight root file system, one has ta use the
+.B nfs_root_name
+and
+.B nfs_root_addrs
+boot options ta give tha NFS settings.
+For mo' shiznit on NFS-mounted root peep tha kernel documentation file
+.BR Documentation/filesystems/nfsroot.txt .
+For mo' shiznit on settin tha root file system peep also the
+.BR LILO
+and
+.BR LOADLIN
+documentation.
+.PP
+It be also possible fo' the
+.I /linuxrc
+executable ta chizzle tha aiiight root device.
+For
+.I /linuxrc
+to chizzle tha aiiight root device,
+.IR /proc
+must be mounted.
+Afta mounting
+.IR /proc ,
+.I /linuxrc
+changes tha aiiight root thang by freestylin tha fuck into tha proc files
+.IR /proc/sys/kernel/real-root-dev ,
+.IR /proc/sys/kernel/nfs-root-name ,
+and
+.IR /proc/sys/kernel/nfs-root-addrs .
+For a physical root device, tha root thang is chizzled by having
+.I /linuxrc
+write tha freshly smoked up root file system thang number into
+.IR /proc/sys/kernel/real-root-dev .
+For a NFS root file system, tha root thang is chizzled by having
+.I /linuxrc
+write tha NFS settin tha fuck into files
+.IR /proc/sys/kernel/nfs-root-name
+and
+.I /proc/sys/kernel/nfs-root-addrs
+and then freestylin 0xff (e.g., tha pseudo-NFS-device number) tha fuck into file
+.IR /proc/sys/kernel/real-root-dev .
+For example, tha followin shell command line would chizzle
+the aiiight root thang to
+.IR /dev/hdb1 :
+.nf
+
+    echo 0x365 >/proc/sys/kernel/real-root-dev
+
+.fi
+For a NFS example, tha followin shell command lines would chizzle the
+normal root thang ta tha NFS directory
+.I /var/nfsroot
+on a local networked NFS server wit IP number 193.8.232.7 fo' a system with
+IP number 193.8.232.2 n' named "idefix":
+.nf
+
+    echo /var/nfsroot >/proc/sys/kernel/nfs-root-name
+    echo 193.8.232.2:193.8.232.7::255.255.255.0:idefix \\
+        >/proc/sys/kernel/nfs-root-addrs
+    echo 255 >/proc/sys/kernel/real-root-dev
+.fi
+
+.BR Note :
+Da use of
+.I /proc/sys/kernel/real-root-dev
+to chizzle tha root file system is obsolete.
+See tha Linux kernel source file
+.I Documentation/initrd.txt
+as well as
+.BR pivot_root (2)
+and
+.BR pivot_root (8)
+for shiznit on tha modern method of changin tha root file system.
+.\" FIXME tha manual page should describe tha pivot_root mechanism.
+.\"
+.\"
+.\"
+.SS Usage
+Da main motivation fo' implementing
+.B initrd
+was ta allow fo' modular kernel configuration at system installation.
+.PP
+A possible system installation scenario be as bigs up:
+.IP 1. 3
+Da loader program boots from floppy or other media wit a minimal kernel
+(e.g., support for
+.IR /dev/ram ,
+.IR /dev/initrd ,
+and tha ext2 file-system) n' loads
+.IR /dev/initrd
+with a gzipped version of tha initial file-system.
+.IP 2.
+Da executable
+.I /linuxrc
+determines what tha fuck is needed ta (1) mount tha aiiight root file-system
+(i.e., thang type, thang drivers, file system) n' (2) the
+distribution media (e.g., CD-ROM, network, tape, ...).
+This can be done by askin tha user, by auto-probing,
+or by rockin a hybrid approach.
+.IP 3.
+Da executable
+.I /linuxrc
+loadz tha necessary modulez from tha initial root file-system.
+.IP 4.
+Da executable
+.I /linuxrc
+creates n' populates tha root file system.
+(At dis stage tha aiiight root file system do not gotta be a
+completed system yet.)
+.IP 5.
+Da executable
+.IR /linuxrc
+sets
+.IR /proc/sys/kernel/real-root-dev ,
+unmount
+.IR /proc ,
+the aiiight root file system n' any other file
+systems it has mounted, n' then terminates.
+.IP 6.
+Da kernel then mounts tha aiiight root file system.
+.IP 7.
+Now dat tha file system be accessible n' intact,
+the boot loader can be installed.
+.IP 8.
+Da boot loader is configured ta load into
+.I /dev/initrd
+a file system wit tha set of modulez dat was used ta brang up tha system.
+(e.g., Device
+.I /dev/ram0
+can be modified, then unmounted, n' finally, tha image is freestyled from
+.I /dev/ram0
+to a gangbangin' file.)
+.IP 9.
+Da system is now bootable n' additionizzle installation tasks can be
+performed.
+.PP
+Da key role of
+.I /dev/initrd
+in tha above is ta reuse tha configuration data durin aiiight system operation
+without requirin initial kernel selection, a big-ass generic kernel or,
+recompilin tha kernel.
+.PP
+A second scenario is fo' installations where Linux runs on systems with
+different hardware configurations up in a single administratizzle network.
+In such cases, it may be desirable ta use only a lil' small-ass set of kernels
+(ideally only one) n' ta keep tha system-specific part of configuration
+information as lil' small-ass as possible.
+In dis case, create a cold-ass lil common file
+with all needed modules.
+Then, only the
+.I /linuxrc
+file or a gangbangin' file executed by
+.I /linuxrc
+would be different.
+.PP
+A third scenario is mo' convenient recovery disks.
+Because shiznit like tha location of tha root file-system
+partizzle aint needed at boot time, tha system loaded from
+.I /dev/initrd
+can bust a gangbangin' finger-lickin' dialog and/or auto-detection followed by a
+possible sanitizzle check.
+.PP
+Last but not least, Linux distributions on CD-ROM may use
+.B initrd
+for easy as fuck  installation from tha CD-ROM.
+Da distribution can use
+.B LOADLIN
+to directly load
+.I /dev/initrd
+from CD-ROM without tha need of any floppies.
+Da distribution could also use a
+.B LILO
+boot floppy n' then bootstrap a funky-ass bigger RAM disk via
+.IR /dev/initrd
+from tha CD-ROM.
+.\"
+.\"
+.\"
+.SH FILES
+.I /dev/initrd
+.br
+.I /dev/ram0
+.br
+.I /linuxrc
+.br
+.I /initrd
+.\"
+.\"
+.\"
+.SH NOTES
+.IP 1. 3
+With tha current kernel, any file systems dat remain mounted when
+.I /dev/ram0
+is moved from
+.I /
+to
+.I /initrd
+continue ta be accessible.
+But fuck dat shiznit yo, tha word on tha street is dat the
+.I /proc/mounts
+entries is not updated.
+.IP 2.
+With tha current kernel, if directory
+.I /initrd
+does not exist, then
+.I /dev/ram0
+will
+.B not
+be straight-up unmounted if
+.I /dev/ram0
+is used by any process or has any file-system mounted on dat shit.
+If
+.IR /dev/ram0
+is
+.B not
+fully unmounted, then
+.I /dev/ram0
+will remain up in memory.
+.IP 3.
+Users of
+.I /dev/initrd
+should not depend on tha behavior give up in tha above notes.
+Da behavior may chizzle up in future versionz of tha Linux kernel.
+.\"
+.\"
+.\"
+.\" .SH AUTHORS
+.\" Da kernel code fo' device
+.\" .BR initrd
+.\" was freestyled by Werner Almesberger <almesber@lrc.epfl.ch> and
+.\" Hans Lermen <lermen@elserv.ffm.fgan.de>.
+.\" Da code for
+.\" .BR initrd
+.\" was added ta tha baseline Linux kernel up in pimpment version 1.3.73.
+.SH SEE ALSO
+.BR chown (1),
+.BR mknod (1),
+.BR ram (4),
+.BR freeramdisk (8),
+.BR rdev (8)
+
+.I Documentation/initrd.txt
+in tha Linux kernel source tree, tha LILO documentation,
+the LOADLIN documentation, tha SYSLINUX documentation
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,378 @@
+.\" Copyright (C) 1997 Andries Brouwer (aeb@cwi.nl)
+.\" n' Copyright (C) 2006, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Additions from Slick Rick Gooch <rgooch@atnf.CSIRO.AU> n' aeb, 971207
+.\" 2006-03-13, mtk, Added ppoll() + various other rewordings
+.\" 2006-07-01, mtk, Added POLLRDHUP + various other wordin and
+.\"	formattin chizzles.
+.\"
+.TH POLL 2 2013-07-30 "Linux" "Linux Programmerz Manual"
+.SH NAME
+poll, ppoll \- wait fo' some event on a gangbangin' file descriptor
+.SH SYNOPSIS
+.nf
+.B #include <poll.h>
+.sp
+.BI "int poll(struct pollfd *" fdz ", nfds_t " nfdz ", int " timeout );
+.sp
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <poll.h>
+.sp
+.BI "int ppoll(struct pollfd *" fdz ", nfds_t " nfdz ", "
+.BI "        const struct timespec *" timeout_ts ", const sigset_t *" sigmask );
+.fi
+.SH DESCRIPTION
+.BR poll ()
+performs a similar task to
+.BR select (2):
+it waits fo' one of a set of file descriptors ta become ready
+to big-ass up I/O.
+
+Da set of file descriptors ta be monitored is specified up in the
+.I fds
+argument, which be a array of structurez of tha followin form:
+.in +4n
+.nf
+
+struct pollfd {
+    int   fd;         /* file descriptor */
+    short events;     /* axed events */
+    short revents;    /* returned events */
+};
+.in
+.fi
+.PP
+Da calla should specify tha number of shit up in the
+.I fds
+array in
+.IR nfdz .
+
+Da field
+.I fd
+gotz nuff a gangbangin' file descriptor fo' a open file.
+If dis field is negative, then tha corresponding
+.I events
+field is ignored n' the
+.I revents
+field returns zero.
+(This serves up a easy as fuck  way of ignorin a
+file descriptor fo' a single
+.BR poll ()
+call: simply negate the
+.I fd
+field.)
+
+Da field
+.I events
+is a input parameter, a lil' bit mask specifyin tha events tha application
+is horny bout fo' tha file descriptor
+.IR fd .
+If dis field is specified as zero,
+then all events is ignored for
+.IR fd
+and
+.I revents
+returns zero.
+
+Da field
+.I revents
+is a output parameter, filled by tha kernel wit tha events that
+actually occurred.
+Da bits returned in
+.I revents
+can include any of dem specified in
+.IR events ,
+or one of tha joints
+.BR POLLERR ,
+.BR POLLHUP ,
+or
+.BR POLLNVAL .
+(These three bits is meaningless up in the
+.I events
+field, n' is ghon be set up in the
+.I revents
+field whenever tha correspondin condizzle is true.)
+
+If none of tha events axed (and no error) has occurred fo' any
+of tha file descriptors, then
+.BR poll ()
+blocks until one of tha events occurs.
+
+The
+.I timeout
+argument specifies tha minimum number of millisecondz that
+.BR poll ()
+will block.
+(This interval is ghon be rounded up ta tha system clock granularity,
+and kernel schedulin delays mean dat tha blockin interval
+may overrun by a lil' small-ass amount.)
+Specifyin a wack value in
+.I timeout
+means a infinite timeout.
+Specifyin a
+.I timeout
+of zero causes
+.BR poll ()
+to return immediately, even if no file descriptors is ready.
+
+Da bits dat may be set/returned in
+.I events
+and
+.I revents
+are defined up in \fI<poll.h>\fP:
+.RS
+.TP
+.B POLLIN
+There is data ta read.
+.TP
+.B POLLPRI
+There is urgent data ta read (e.g., out-of-band data on TCP socket;
+pseudoterminal masta up in packet mode has peeped state chizzle up in slave).
+.TP
+.B POLLOUT
+Freestylin now aint gonna block.
+.TP
+.BR POLLRDHUP " (since Linux 2.6.17)"
+Stream socket peer closed connection,
+or shut down freestylin half of connection.
+The
+.B _GNU_SOURCE
+feature test macro must be defined
+(before including
+.I any
+header files)
+in order ta obtain dis definition.
+.TP
+.B POLLERR
+Error condizzle (output only).
+.TP
+.B POLLHUP
+Hang up (output only).
+.TP
+.B POLLNVAL
+Invalid request:
+.I fd
+not open (output only).
+.RE
+.PP
+When compilin with
+.B _XOPEN_SOURCE
+defined, one also has tha following,
+which convey no further shiznit beyond tha bits listed above:
+.RS
+.TP
+.B POLLRDNORM
+Equivalent to
+.BR POLLIN .
+.TP
+.B POLLRDBAND
+Prioritizzle crew data can be read (generally unused on Linux).
+.\" POLLRDBAND is used up in tha DECnet protocol.
+.TP
+.B POLLWRNORM
+Equivalent to
+.BR POLLOUT .
+.TP
+.B POLLWRBAND
+Prioritizzle data may be written.
+.RE
+.PP
+Linux also knows bout yo, but do not use
+.BR POLLMSG .
+.SS ppoll()
+Da relationshizzle between
+.BR poll ()
+and
+.BR ppoll ()
+is analogous ta tha relationshizzle between
+.BR select (2)
+and
+.BR pselect (2):
+like
+.BR pselect (2),
+.BR ppoll ()
+allows a application ta safely wait until either a gangbangin' file descriptor
+becomes locked n loaded or until a signal is caught.
+.PP
+Other than tha difference up in tha precision of the
+.I timeout
+argument, tha following
+.BR ppoll ()
+call:
+.nf
+
+    locked n loaded = ppoll(&fds, nfds, timeout_ts, &sigmask);
+
+.fi
+is equivalent to
+.I atomically
+executin tha followin calls:
+.nf
+
+    sigset_t origmask;
+    int timeout;
+
+    timeout = (timeout_ts == NULL) , biatch? \-1 :
+              (timeout_ts.tv_sec * 1000 + timeout_ts.tv_nsec / 1000000);
+    sigprocmask(SIG_SETMASK, &sigmask, &origmask);
+    locked n loaded = poll(&fds, nfds, timeout);
+    sigprocmask(SIG_SETMASK, &origmask, NULL);
+.fi
+.PP
+See tha description of
+.BR pselect (2)
+for a explanation of why
+.BR ppoll ()
+is necessary.
+
+If the
+.I sigmask
+argument is specified as NULL, then
+no signal mask manipulation is performed
+(and thus
+.BR ppoll ()
+differs from
+.BR poll ()
+only up in tha precision of the
+.I timeout
+argument).
+
+The
+.I timeout_ts
+argument specifies a upper limit on tha amount of time that
+.BR ppoll ()
+will block.
+This argument be a pointa ta a structure of tha followin form:
+.in +4n
+.nf
+
+struct timespec {
+    long    tv_sec;         /* secondz */
+    long    tv_nsec;        /* nanosecondz */
+};
+.fi
+.in
+
+If
+.I timeout_ts
+is specified as NULL, then
+.BR ppoll ()
+can block indefinitely.
+.SH RETURN VALUE
+On success, a positizzle number is returned; dis is
+the number of structures which have nonzero
+.I revents
+fieldz (in other lyrics, dem descriptors wit events or errors reported).
+A value of 0 indicates dat tha call timed up n' no file
+descriptors was ready.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+Da array given as argument was not contained up in tha callin program's
+address space.
+.TP
+.B EINTR
+A signal occurred before any axed event; see
+.BR signal (7).
+.TP
+.B EINVAL
+The
+.I nfds
+value exceedz the
+.B RLIMIT_NOFILE
+value.
+.TP
+.B ENOMEM
+There was no space ta allocate file descriptor tables.
+.SH VERSIONS
+The
+.BR poll ()
+system call was introduced up in Linux 2.1.23.
+On olda kernels dat lack dis system call,
+.\" library call was introduced up in libc 5.4.28
+the glibc (and tha oldschool Linux libc)
+.BR poll ()
+wrapper function serves up emulation using
+.BR select (2).
+
+The
+.BR ppoll ()
+system call was added ta Linux up in kernel 2.6.16.
+The
+.BR ppoll ()
+library call was added up in glibc 2.4.
+.SH CONFORMING TO
+.BR poll ()
+conforms ta POSIX.1-2001.
+.BR ppoll ()
+is Linux-specific.
+.\" NetBSD 3.0 has a pollts() which is like Linux ppoll().
+.SH NOTES
+Some implementations define tha nonstandard constant
+.B INFTIM
+with tha value \-1 fo' use as a
+.IR timeout
+for
+.BR poll ().
+This constant aint provided up in glibc.
+
+For a gangbangin' finger-lickin' rap of what tha fuck may happen if a gangbangin' file descriptor bein monitored by
+.BR poll ()
+is closed up in another thread, see
+.BR select (2).
+.SS Linux notes
+Da Linux
+.BR ppoll ()
+system call modifies its
+.I timeout_ts
+argument.
+But fuck dat shiznit yo, tha word on tha street is dat tha glibc wrapper function hides dis behavior
+by rockin a local variable fo' tha timeout argument that
+is passed ta tha system call.
+Thus, tha glibc
+.BR ppoll ()
+function do not modify its
+.I timeout_ts
+argument.
+.SH BUGS
+See tha rap of spurious readinizz notifications under the
+BUGS section of
+.BR select (2).
+.SH SEE ALSO
+.BR restart_syscall (2),
+.BR select (2),
+.BR select_tut (2),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,442 @@
+.TH PIPE 8 
+.ad
+.fi
+.SH NAME
+pipe
+\-
+Postfix delivery ta external command
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpipe\fR [generic Postfix daemon options] command_attributes...
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBpipe\fR(8) daemon processes requests from tha Postfix queue
+manager ta serve up lyrics ta external commands.
+This program expects ta be run from tha \fBmaster\fR(8) process
+manager.
+
+Message attributes like fuckin sender address, recipient address and
+next-hop host name can be specified as command-line macros dat are
+expanded before tha external command is executed.
+
+Da \fBpipe\fR(8) daemon thugged-out shiznit queue filez n' marks recipients
+as finished, or it informs tha queue manager dat delivery should
+be tried again n' again n' again at a lata time. Delivery status reports is sent
+to tha \fBbounce\fR(8), \fBdefer\fR(8) or \fBtrace\fR(8) daemon as
+appropriate.
+.SH "SINGLE-RECIPIENT DELIVERY"
+.na
+.nf
+.ad
+.fi
+Some destinations cannot handle mo' than one recipient per
+delivery request. Examplez is pagers or fax machines.
+In addition, multi-recipient delivery is undesirable when
+prependin a \fBDelivered-to:\fR or \fBX-Original-To:\fR
+message header.
+
+To prevent Postfix from bustin  multiple recipients per delivery
+request, specify
+.sp
+.nf
+    \fItransport\fB_destination_recipient_limit = 1\fR
+.fi
+
+in tha Postfix \fBmain.cf\fR file, where \fItransport\fR
+is tha name up in tha straight-up original gangsta column of tha Postfix \fBmaster.cf\fR
+entry fo' tha pipe-based delivery transport.
+.SH "COMMAND ATTRIBUTE SYNTAX"
+.na
+.nf
+.ad
+.fi
+Da external command attributes is given up in tha \fBmaster.cf\fR
+file all up in tha end of a steez definition. I aint talkin' bout chicken n' gravy biatch.  Da syntax be as bigs up:
+.IP "\fBchroot=\fIpathname\fR (optional)"
+Change tha process root directory n' hustlin directory to
+the named directory. This happens before switchin ta the
+privileges specified wit tha \fBuser\fR attribute, and
+before executin tha optionizzle \fBdirectory=\fIpathname\fR
+directive. Delivery is deferred up in case of failure.
+.sp
+This feature be available az of Postfix 2.3.
+.IP "\fBdirectory=\fIpathname\fR (optional)"
+Change ta tha named directory before executin tha external command.
+Da directory must be accessible fo' tha user specified wit the
+\fBuser\fR attribute (see below).
+Da default hustlin directory is \fB$queue_directory\fR.
+Delivery is deferred up in case of failure.
+.sp
+This feature be available az of Postfix 2.2.
+.IP "\fBeol=\fIstring\fR (optional, default: \fB\en\fR)"
+Da output record delimiter n' shit. Typically one would use either
+\fB\er\en\fR or \fB\en\fR. Da usual C-style backslash escape
+sequences is recognized: \fB\ea \eb \ef \en \er \et \ev
+\e\fIddd\fR (up ta three octal digits) n' \fB\e\e\fR.
+.IP "\fBflags=BDFORXhqu.>\fR (optional)"
+Optionizzle message processin flags. By default, a message is
+copied unchanged.
+.RS
+.IP \fBB\fR
+Append a funky-ass blank line all up in tha end of each message. This is required
+by some mail user agents dat recognize "\fBFrom \fR" lines only
+when preceded by a funky-ass blank line.
+.IP \fBD\fR
+Prepend a "\fBDelivered-To: \fIrecipient\fR" message header wit the
+envelope recipient address. Note: fo' dis ta work, the
+\fItransport\fB_destination_recipient_limit\fR must be 1
+(see SINGLE-RECIPIENT DELIVERY above fo' details).
+.sp
+Da \fBD\fR flag also enforces loop detection (Postfix 2.5 n' later):
+if a message already gotz nuff a \fBDelivered-To:\fR header
+with tha same recipient address, then tha message is
+returned as undeliverable. Da address comparison is case
+insensitive.
+.sp
+This feature be available az of Postfix 2.0.
+.IP \fBF\fR
+Prepend a "\fBFrom \fIsender time_stamp\fR" envelope header to
+the message content.
+This is expected by, fo' example, \fBUUCP\fR software.
+.IP \fBO\fR
+Prepend a "\fBX-Original-To: \fIrecipient\fR" message header
+with tha recipient address as given ta Postfix. Note: fo' dis to
+work, tha \fItransport\fB_destination_recipient_limit\fR must be 1
+(see SINGLE-RECIPIENT DELIVERY above fo' details).
+.sp
+This feature be available az of Postfix 2.0.
+.IP \fBR\fR
+Prepend a \fBReturn-Path:\fR message header wit tha envelope sender
+address.
+.IP \fBX\fR
+Indicate dat tha external command performs final delivery.
+This flag affects tha status reported up in "success" DSN
+(delivery status notification) lyrics, n' chizzlez it
+from "relayed" tha fuck into "delivered".
+.sp
+This feature be available az of Postfix 2.5.
+.IP \fBh\fR
+Fold tha command-line \fB$original_recipient\fR and
+\fB$recipient\fR address domain part
+(text ta tha right of tha right-most \fB@\fR character) to
+lower case; fold tha entire command-line \fB$domain\fR and
+\fB$nexthop\fR host or domain shiznit ta lower case.
+This is recommended fo' delivery via \fBUUCP\fR.
+.IP \fBq\fR
+Quote white space n' other special charactas up in tha command-line
+\fB$sender\fR, \fB$original_recipient\fR n' \fB$recipient\fR
+address localparts (text ta the
+left of tha right-most \fB@\fR character), accordin ta a 8-bit
+transparent version of RFC 822.
+This is recommended fo' delivery via \fBUUCP\fR or \fBBSMTP\fR.
+.sp
+Da result is compatible wit tha address parsin of command-line
+recipients by tha Postfix \fBsendmail\fR(1) mail submission command.
+.sp
+Da \fBq\fR flag affects only entire addresses, not tha partial
+address shiznit from tha \fB$user\fR, \fB$extension\fR or
+\fB$mailbox\fR command-line macros.
+.IP \fBu\fR
+Fold tha command-line \fB$original_recipient\fR and
+\fB$recipient\fR address localpart (text to
+the left of tha right-most \fB@\fR character) ta lower case.
+This is recommended fo' delivery via \fBUUCP\fR.
+.IP \fB.\fR
+Prepend "\fB.\fR" ta lines startin wit "\fB.\fR". This is needed
+by, fo' example, \fBBSMTP\fR software.
+.IP \fB>\fR
+Prepend "\fB>\fR" ta lines startin wit "\fBFrom \fR". This is expected
+by, fo' example, \fBUUCP\fR software.
+.RE
+.IP "\fBnull_sender\fR=\fIreplacement\fR (default: MAILER-DAEMON)"
+Replace tha null sender address (typically used fo' delivery
+status notifications) wit tha specified text
+when expandin tha \fB$sender\fR command-line macro, and
+when generatin a From_ or Return-Path: message header.
+
+If tha null sender replacement text be a non-empty string
+then it be affected by tha \fBq\fR flag fo' address quoting
+in command-line arguments.
+
+Da null sender replacement text may be empty; dis form
+is recommended fo' content filtas dat feed mail back into
+Postfix. Da empty sender address aint affected by the
+\fBq\fR flag fo' address quotin up in command-line arguments.
+.sp
+Caution: a null sender address is easily mis-parsed by
+naive software. For example, when tha \fBpipe\fR(8) daemon
+executes a cold-ass lil command such as:
+.sp
+.nf
+    \fIWrong\fR: command -f$sender -- $recipient
+.fi
+.IP
+the command will mis-parse tha -f option value when the
+sender address be a null string.  For erect parsing,
+specify \fB$sender\fR as a argument by itself:
+.sp
+.nf
+    \fIRight\fR: command -f $sender -- $recipient
+.fi
+.IP
+This feature be available az of Postfix 2.3.
+.IP "\fBsize\fR=\fIsize_limit\fR (optional)"
+Don't serve up lyrics dat exceed dis size limit (in
+bytes); return dem ta tha sender instead.
+.IP "\fBuser\fR=\fIusername\fR (required)"
+.IP "\fBuser\fR=\fIusername\fR:\fIgroupname\fR"
+Execute tha external command wit tha user ID n' crew ID of the
+specified \fIusername\fR.  Da software refuses ta execute
+commandz wit root privileges, or wit tha privilegez of the
+mail system balla n' shit. If \fIgroupname\fR is specified, the
+correspondin crew ID is used instead of tha crew ID of
+\fIusername\fR.
+.IP "\fBargv\fR=\fIcommand\fR... (required)"
+Da command ta be executed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. This must be specified as the
+last command attribute.
+Da command is executed directly, i.e. without interpretation of
+shell meta charactas by a gangbangin' finger-lickin' dirty-ass shell command interpreter.
+.sp
+In tha command argument vector, tha followin macros is recognized
+and replaced wit correspondin shiznit from tha Postfix queue
+manager delivery request.
+.sp
+In addizzle ta tha form ${\fIname\fR}, tha forms $\fIname\fR and
+$(\fIname\fR) is also recognized. Y'all KNOW dat shit, muthafucka!  Specify \fB$$\fR where a single
+\fB$\fR is wanted.
+.RS
+.IP \fB${\fBclient_address\fR}\fR
+This macro expandz ta tha remote client network address.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBclient_helo\fR}\fR
+This macro expandz ta tha remote client HELO command parameter.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBclient_hostname\fR}\fR
+This macro expandz ta tha remote client hostname.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBclient_port\fR}\fR
+This macro expandz ta tha remote client TCP port number.
+.sp
+This feature be available az of Postfix 2.5.
+.IP \fB${\fBclient_protocol\fR}\fR
+This macro expandz ta tha remote client protocol.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBdomain\fR}\fR
+This macro expandz ta tha domain portion of tha recipient
+address.  For example, wit a address \fIuser+foo@domain\fR
+the domain is \fIdomain\fR.
+.sp
+This shiznit is modified by tha \fBh\fR flag fo' case folding.
+.sp
+This feature be available az of Postfix 2.5.
+.IP \fB${\fBextension\fR}\fR
+This macro expandz ta tha extension part of a recipient address.
+For example, wit a address \fIuser+foo@domain\fR tha extension is
+\fIfoo\fR.
+.sp
+A command-line argument dat gotz nuff \fB${\fBextension\fR}\fR expands
+into as nuff command-line arguments as there be recipients.
+.sp
+This shiznit is modified by tha \fBu\fR flag fo' case folding.
+.IP \fB${\fBmailbox\fR}\fR
+This macro expandz ta tha complete local part of a recipient address.
+For example, wit a address \fIuser+foo@domain\fR tha mailbox is
+\fIuser+foo\fR.
+.sp
+A command-line argument dat gotz nuff \fB${\fBmailbox\fR}\fR
+expandz ta as nuff command-line arguments as there be recipients.
+.sp
+This shiznit is modified by tha \fBu\fR flag fo' case folding.
+.IP \fB${\fBnexthop\fR}\fR
+This macro expandz ta tha next-hop hostname.
+.sp
+This shiznit is modified by tha \fBh\fR flag fo' case folding.
+.IP \fB${\fBoriginal_recipient\fR}\fR
+This macro expandz ta tha complete recipient address before any
+address rewritin or aliasing.
+.sp
+A command-line argument dat gotz nuff
+\fB${\fBoriginal_recipient\fR}\fR expandz ta as many
+command-line arguments as there be recipients.
+.sp
+This shiznit is modified by tha \fBhqu\fR flags fo' quoting
+and case folding.
+.sp
+This feature be available az of Postfix 2.5.
+.IP \fB${\fBrecipient\fR}\fR
+This macro expandz ta tha complete recipient address.
+.sp
+A command-line argument dat gotz nuff \fB${\fBrecipient\fR}\fR
+expandz ta as nuff command-line arguments as there be recipients.
+.sp
+This shiznit is modified by tha \fBhqu\fR flags fo' quoting
+and case folding.
+.IP \fB${\fBsasl_method\fR}\fR
+This macro expandz ta tha name of tha SASL authentication
+mechanizzle up in tha AUTH command when tha Postfix SMTP server
+received tha message.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBsasl_sender\fR}\fR
+This macro expandz ta tha SASL sender name (i.e. tha original
+submitta as per RFC 4954) up in tha MAIL FROM command when
+the Postfix SMTP server received tha message.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBsasl_username\fR}\fR
+This macro expandz ta tha SASL user name up in tha AUTH command
+when tha Postfix SMTP server received tha message.
+.sp
+This feature be available az of Postfix 2.2.
+.IP \fB${\fBsender\fR}\fR
+This macro expandz ta tha envelope sender address. By default,
+the null sender address expandz ta MAILER-DAEMON; dis can
+be chizzled wit tha \fBnull_sender\fR attribute, as busted lyrics about
+above.
+.sp
+This shiznit is modified by tha \fBq\fR flag fo' quoting.
+.IP \fB${\fBsize\fR}\fR
+This macro expandz ta Postfixz scam of tha message size, which
+is a approximation of tha size of tha message as delivered.
+.IP \fB${\fBuser\fR}\fR
+This macro expandz ta tha username part of a recipient address.
+For example, wit a address \fIuser+foo@domain\fR tha username
+part is \fIuser\fR.
+.sp
+A command-line argument dat gotz nuff \fB${\fBuser\fR}\fR expands
+into as nuff command-line arguments as there be recipients.
+.sp
+This shiznit is modified by tha \fBu\fR flag fo' case folding.
+.RE
+.SH "STANDARDS"
+.na
+.nf
+RFC 3463 (Enhanced status codes)
+.SH DIAGNOSTICS
+.ad
+.fi
+Command exit status codes is sposed ta fuckin
+follow tha conventions defined up in <\fBsysexits.h\fR>.
+Exit status 0 means aiiight successful completion.
+
+In tha case of a non-zero exit status, a limited amount of
+command output is reported up in a delivery status notification.
+When tha output begins wit a 4.X.X or 5.X.X enhanced status
+code, tha status code takes precedence over tha non-zero
+exit status (Postfix version 2.3 n' later).
+
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+Corrupted message filez is marked so dat tha queue manager
+can move dem ta tha \fBcorrupt\fR queue fo' further inspection.
+.SH "SECURITY"
+.na
+.nf
+.fi
+.ad
+This program needz a thugged-out dual personalitizzle 1) ta access tha private
+Postfix queue n' IPC mechanisms, n' 2) ta execute external
+commandz as tha specified user n' shit. Well shiiiit, it is therefore securitizzle sensitive.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Changes ta \fBmain.cf\fR is picked up automatically as \fBpipe\fR(8)
+processes run fo' only a limited amount of time. Use tha command
+"\fBpostfix reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.SH "RESOURCE AND RATE CONTROLS"
+.na
+.nf
+.ad
+.fi
+In tha text below, \fItransport\fR is tha straight-up original gangsta field up in a
+\fBmaster.cf\fR entry.
+.IP "\fItransport\fB_destination_concurrency_limit ($default_destination_concurrency_limit)\fR"
+Limit tha number of parallel deliveries ta tha same destination,
+for delivery via tha named \fItransport\fR.
+Da limit is enforced by tha Postfix queue manager.
+.IP "\fItransport\fB_destination_recipient_limit ($default_destination_recipient_limit)\fR"
+Limit tha number of recipients per message delivery, fo' delivery
+via tha named \fItransport\fR.
+Da limit is enforced by tha Postfix queue manager.
+.IP "\fItransport\fB_time_limit ($command_time_limit)\fR"
+Limit tha time fo' delivery ta external command, fo' delivery via
+the named \fItransport\fR.
+Da limit is enforced by tha pipe delivery agent.
+
+Postfix 2.4 n' lata support a suffix dat specifies the
+time unit: s (seconds), m (minutes), h (hours), d (days),
+w (weeks). Da default time unit is seconds.
+.SH "MISCELLANEOUS CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdaemon_timeout (18000s)\fR"
+How tha fuck much time a Postfix daemon process may take ta handle a
+request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBdelay_logging_resolution_limit (2)\fR"
+Da maximal number of digits afta tha decimal point when logging
+sub-second delay joints.
+.IP "\fBexport_environment (see 'postconf -d' output)\fR"
+Da list of environment variablez dat a Postfix process will export
+to non-Postfix processes.
+.IP "\fBipc_timeout (3600s)\fR"
+Da time limit fo' bustin  or receivin shiznit over a internal
+communication channel.
+.IP "\fBmail_balla (postfix)\fR"
+Da UNIX system account dat owns tha Postfix queue n' most Postfix
+daemon processes.
+.IP "\fBmax_idle (100s)\fR"
+Da maximum amount of time dat a idle Postfix daemon process waits
+for a incomin connection before terminatin voluntarily.
+.IP "\fBmax_use (100)\fR"
+Da maximal number of incomin connections dat a Postfix daemon
+process will steez before terminatin voluntarily.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBqueue_directory (see 'postconf -d' output)\fR"
+Da location of tha Postfix top-level queue directory.
+.IP "\fBrecipient_delimita (empty)\fR"
+Da separator between user names n' address extensions (user+foo).
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.SH "SEE ALSO"
+.na
+.nf
+qmgr(8), queue manager
+bounce(8), delivery status reports
+postconf(5), configuration parameters
+master(5), generic daemon options
+master(8), process manager
+syslogd(8), system logging
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

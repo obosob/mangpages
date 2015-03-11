@@ -1,0 +1,782 @@
+.TH IP\-ROUTE 8 "13 Dec 2012" "iproute2" "Linux"
+.SH "NAME"
+ip-route \- routin table pimpment
+.SH "SYNOPSIS"
+.sp
+.ad l
+.in +8
+.ti -8
+.B ip
+.RI "[ " ip-OPTIONS " ]"
+.B route
+.RI " { " COMMAND " | "
+.BR help " }"
+.sp
+.ti -8
+
+.ti -8
+.BR "ip route" " { "
+.BR list " | " flush " } "
+.I  SELECTOR
+
+.ti -8
+.BR "ip route save"
+.I SELECTOR
+
+.ti -8
+.BR "ip route restore"
+
+.ti -8
+.B  ip route get
+.IR ADDRESS " [ "
+.BI from " ADDRESS " iif " STRING"
+.RB " ] [ " oif
+.IR STRING " ] [ "
+.B  tos
+.IR TOS " ]"
+
+.ti -8
+.BR "ip route" " { " add " | " del " | " chizzle " | " append " | "\
+replace " } "
+.I  ROUTE
+
+.ti -8
+.IR SELECTOR " := "
+.RB "[ " root
+.IR PREFIX " ] [ "
+.B  match
+.IR PREFIX " ] [ "
+.B  exact
+.IR PREFIX " ] [ "
+.B  table
+.IR TABLE_ID " ] [ "
+.B  proto
+.IR RTPROTO " ] [ "
+.B  type
+.IR TYPE " ] [ "
+.B  scope
+.IR SCOPE " ]"
+
+.ti -8
+.IR ROUTE " := " NODE_SPEC " [ " INFO_SPEC " ]"
+
+.ti -8
+.IR NODE_SPEC " := [ " TYPE " ] " PREFIX " ["
+.B  tos
+.IR TOS " ] [ "
+.B  table
+.IR TABLE_ID " ] [ "
+.B  proto
+.IR RTPROTO " ] [ "
+.B  scope
+.IR SCOPE " ] [ "
+.B  metric
+.IR METRIC " ]"
+
+.ti -8
+.IR INFO_SPEC " := " "NH OPTIONS FLAGS" " ["
+.B  nexthop
+.IR NH " ] ..."
+
+.ti -8
+.IR NH " := [ "
+.B  via
+.IR ADDRESS " ] [ "
+.B  dev
+.IR STRING " ] [ "
+.B  weight
+.IR NUMBER " ] " NHFLAGS
+
+.ti -8
+.IR OPTIONS " := " FLAGS " [ "
+.B  mtu
+.IR NUMBER " ] [ "
+.B  advmss
+.IR NUMBER " ] [ "
+.B  rtt
+.IR TIME " ] [ "
+.B  rttvar
+.IR TIME " ] [ "
+.B  reordering
+.IR NUMBER " ] [ "
+.B  window
+.IR NUMBER " ] [ "
+.B  cwnd
+.IR NUMBER " ] [ "
+.B  ssthresh
+.IR REALM " ] [ "
+.B  realms
+.IR REALM " ] [ "
+.B  rto_min
+.IR TIME " ] [ "
+.B  initcwnd
+.IR NUMBER " ] [ "
+.B  initrwnd
+.IR NUMBER " ] [ "
+.B  quickack
+.IR BOOL " ]"
+
+.ti -8
+.IR TYPE " := [ "
+.BR unicast " | " local " | " broadcast " | " multicast " | "\
+throw " | " unreachable " | " prohibit " | " blackhole " | " nat " ]"
+
+.ti -8
+.IR TABLE_ID " := [ "
+.BR local "| " main " | " default " | " all " |"
+.IR NUMBER " ]"
+
+.ti -8
+.IR SCOPE " := [ "
+.BR host " | " link " | " global " |"
+.IR NUMBER " ]"
+
+.ti -8
+.IR NHFLAGS " := [ "
+.BR onlink " | " pervasive " ]"
+
+.ti -8
+.IR RTPROTO " := [ "
+.BR kernel " | " boot " | " static " |"
+.IR NUMBER " ]"
+
+
+.SH DESCRIPTION
+.B ip route
+is used ta manipulate entries up in tha kernel routin tables.
+.sp
+.B Route types:
+
+.in +8
+.B unicast
+- tha route entry raps bout real paths ta tha destinations covered
+by tha route prefix.
+
+.sp
+.B unreachable
+- these destinations is unreachable.  Packets is discarded n' the
+ICMP message
+.I host unreachable
+is generated.
+Da local sendaz git an
+.I EHOSTUNREACH
+error.
+
+.sp
+.B blackhole
+- these destinations is unreachable.  Packets is discarded silently.
+Da local sendaz git an
+.I EINVAL
+error.
+
+.sp
+.B prohibit
+- these destinations is unreachable.  Packets is discarded n' the
+ICMP message
+.I communication administratively prohibited
+is generated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da local sendaz git an
+.I EACCES
+error.
+
+.sp
+.B local
+- tha destinations is assigned ta dis host.  Da packets is looped
+back n' served up locally.
+
+.sp
+.B broadcast
+- tha destinations is broadcast addresses.  Da packets is busted as
+link broadcasts.
+
+.sp
+.B throw
+- a special control route used together wit policy rules. If such a
+route is selected, lookup up in dis table is terminated pretendin that
+no route was found. Y'all KNOW dat shit, muthafucka!  Without policy routin it is equivalent ta the
+absence of tha route up in tha routin table.  Da packets is dropped
+and tha ICMP message
+.I net unreachable
+is generated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da local sendaz git an
+.I ENETUNREACH
+error.
+
+.sp
+.B nat
+- a special NAT route.  Destinations covered by tha prefix
+are considered ta be dummy (or external) addresses which require translation
+to real (or internal) ones before forwarding.  Da addresses ta translate to
+are selected wit tha attribute
+.BR "via" .
+.B Warning:
+Route NAT is no longer supported up in Linux 2.6.
+
+.sp
+.B anycast
+.RI "- " "not implemented"
+the destinations are
+.I anycast
+addresses assigned ta dis host.  They is mainly equivalent
+to
+.B local
+with one difference: such addresses is invalid when used
+as tha source address of any packet.
+
+.sp
+.B multicast
+- a special type used fo' multicast routing.  It aint present in
+normal routin tables.
+.in -8
+
+.P
+.B Route tables:
+Linux-2.x can pack routes tha fuck into nuff muthafuckin routin tablez identified
+by a number up in tha range from 1 ta 2^31 or by name from tha file
+.B /etc/iproute2/rt_tables
+By default all aiiight routes is banged tha fuck into the
+.B main
+table (ID 254) n' tha kernel only uses dis table when calculatin routes.
+Values (0, 253, 254, n' 255) is reserved fo' built-in use.
+
+.sp
+Actually, one other table always exists, which is invisible but
+even mo' blingin.  It be the
+.B local
+table (ID 255).  This table
+consistz of routes fo' local n' broadcast addresses.  Da kernel maintains
+this table automatically n' tha administrator probably need not modify it
+or even peep dat shit.
+
+Da multiple routin tablez enta tha game when
+.I policy routing
+is used.
+
+.TP
+ip route add
+add freshly smoked up route
+.TP
+ip route chizzle
+change route
+.TP
+ip route replace
+change or add freshly smoked up one
+.RS
+.TP
+.BI ta " TYPE PREFIX " (default)
+the destination prefix of tha route.  If
+.I TYPE
+is omitted,
+.B ip
+assumes type
+.BR "unicast" .
+Other joints of
+.I TYPE
+are listed above.
+.I PREFIX
+is a IP or IPv6 address optionally followed by a slash n' the
+prefix length.  If tha length of tha prefix is missing,
+.B ip
+assumes a gangbangin' full-length host route.  There be also a special
+.I PREFIX
+.B default
+- which is equivalent ta IP
+.B 0/0
+or ta IPv6
+.BR "::/0" .
+
+.TP
+.BI tos " TOS"
+.TP
+.BI dsfield " TOS"
+the Type Of Service (TOS) key.  This key has no associated mask and
+the longest match is understood as: First, compare tha TOS
+of tha route n' of tha packet.  If they is not equal, then tha packet
+may still match a route wit a zero TOS.
+.I TOS
+is either a 8 bit hexadecimal number or a identifier
+from
+.BR "/etc/iproute2/rt_dsfield" .
+
+.TP
+.BI metric " NUMBER"
+.TP
+.BI preference " NUMBER"
+the preference value of tha route.
+.I NUMBER
+is a arbitrary 32bit number.
+
+.TP
+.BI table " TABLEID"
+the table ta add dis route to.
+.I TABLEID
+may be a number or a strang from tha file
+.BR "/etc/iproute2/rt_tables" .
+If dis parameta is omitted,
+.B ip
+assumes the
+.B main
+table, wit tha exception of
+.BR local ", " broadcast " n' " nat
+routes, which is put tha fuck into the
+.B local
+table by default.
+
+.TP
+.BI dev " NAME"
+the output thang name.
+
+.TP
+.BI via " ADDRESS"
+the address of tha nexthop router n' shit.  Actually, tha sense of dis field
+dependz on tha route type.  For normal
+.B unicast
+routes it is either tha legit next hop routa or, if it aint nuthin but a gangbangin' finger-lickin' direct
+route installed up in BSD compatibilitizzle mode, it can be a local address
+of tha intercourse.  For NAT routes it is tha straight-up original gangsta address of tha block
+of translated IP destinations.
+
+.TP
+.BI src " ADDRESS"
+the source address ta prefer when bustin  ta tha destinations
+covered by tha route prefix.
+
+.TP
+.BI realm " REALMID"
+the realm ta which dis route be assigned.
+.I REALMID
+may be a number or a strang from tha file
+.BR "/etc/iproute2/rt_realms" .
+
+.TP
+.BI mtu " MTU"
+.TP
+.BI "mtu lock" " MTU"
+the MTU along tha path ta tha destination. I aint talkin' bout chicken n' gravy biatch.  If tha modifier
+.B lock
+is not used, tha MTU may be updated by tha kernel due to
+Path MTU Discovery.  If tha modifier
+.B lock
+is used, no path MTU discovery is ghon be tried, all packets
+will be busted without tha DF bit up in IPv4 case or fragmented
+to MTU fo' IPv6.
+
+.TP
+.BI window " NUMBER"
+the maximal window fo' TCP ta advertise ta these destinations,
+measured up in bytes.  It limits maximal data bursts dat our TCP
+peers is allowed ta bust ta us.
+
+.TP
+.BI rtt " TIME"
+the initial RTT ('Round Trip Time') estimate. If no suffix is
+specified tha units is raw joints passed directly ta the
+routin code ta maintain compatibilitizzle wit previous releases.
+Otherwise if a suffix of s, sec or secs is used ta specify
+secondz n' ms, msec or msecs ta specify milliseconds.
+
+
+.TP
+.BI rttvar " TIME " "(2.3.15+ only)"
+the initial RTT variizzle estimate. Values is specified as with
+.BI rtt
+above.
+
+.TP
+.BI rto_min " TIME " "(2.6.23+ only)"
+the minimum TCP Retransmission TimeOut ta use when communicatin wit this
+destination. I aint talkin' bout chicken n' gravy biatch.  Values is specified as with
+.BI rtt
+above.
+
+.TP
+.BI ssthresh " NUMBER " "(2.3.15+ only)"
+an estimate fo' tha initial slow start threshold.
+
+.TP
+.BI cwnd " NUMBER " "(2.3.15+ only)"
+the clamp fo' congestion window.  It be ignored if the
+.B lock
+flag aint used.
+
+.TP
+.BI initcwnd " NUMBER " "(2.5.70+ only)"
+the initial congestion window size fo' connections ta dis destination.
+Actual window size is dis value multiplied by tha MSS
+(``Maximal Segment Size'') fo' same connection. I aint talkin' bout chicken n' gravy biatch. Da default is
+zero, meanin ta use tha joints specified up in RFC2414.
+
+.TP
+.BI initrwnd " NUMBER " "(2.6.33+ only)"
+the initial receive window size fo' connections ta dis destination.
+Actual window size is dis value multiplied by tha MSS of tha connection.
+Da default value is zero, meanin ta use Slow Start value.
+
+.TP
+.BI quickack " BOOL " "(3.11+ only)"
+Enable or disable quick ack fo' connections ta dis destination.
+
+.TP
+.BI advmss " NUMBER " "(2.3.15+ only)"
+the MSS ('Maximal Segment Size') ta advertise ta these
+destinations when establishin TCP connections.  If it aint given,
+Linux uses a thugged-out default value calculated from tha straight-up original gangsta hop thang MTU.
+(If tha path ta these destination be asymmetric, dis guess may be wrong.)
+
+.TP
+.BI reorderin " NUMBER " "(2.3.15+ only)"
+Maximal reorderin on tha path ta dis destination.
+If it aint given, Linux uses tha value selected with
+.B sysctl
+variable
+.BR "net/ipv4/tcp_reordering" .
+
+.TP
+.BI nexthop " NEXTHOP"
+the nexthop of a multipath route.
+.I NEXTHOP
+is a cold-ass lil complex value wit its own syntax similar ta tha top level
+argument lists:
+
+.in +8
+.BI via " ADDRESS"
+- is tha nexthop router.
+.sp
+
+.BI dev " NAME"
+- is tha output device.
+.sp
+
+.BI weight " NUMBER"
+- be a weight fo' dis element of a multipath
+route reflectin its relatizzle bandwidth or quality.
+.in -8
+
+.TP
+.BI scope " SCOPE_VAL"
+the scope of tha destinations covered by tha route prefix.
+.I SCOPE_VAL
+may be a number or a strang from tha file
+.BR "/etc/iproute2/rt_scopes" .
+If dis parameta is omitted,
+.B ip
+assumes scope
+.B global
+for all gatewayed
+.B unicast
+routes, scope
+.B link
+for direct
+.BR unicast " n' " broadcast
+routes n' scope
+.BR host " fo' " local
+routes.
+
+.TP
+.BI protocol " RTPROTO"
+the routin protocol identifier of dis route.
+.I RTPROTO
+may be a number or a strang from tha file
+.BR "/etc/iproute2/rt_protos" .
+If tha routin protocol ID aint given,
+.B ip assumes protocol
+.B boot
+(i.e. it assumes tha route was added by one of mah thugs whoz ass don't
+understand what tha fuck they is bustin).  Several protocol joints have
+a fixed interpretation.
+Namely:
+
+.in +8
+.B redirect
+- tha route was installed cuz of a ICMP redirect.
+.sp
+
+.B kernel
+- tha route was installed by tha kernel durin autoconfiguration.
+.sp
+
+.B boot
+- tha route was installed durin tha bootup sequence.
+If a routin daemon starts, it will purge all of em.
+.sp
+
+.B static
+- tha route was installed by tha administrator
+to override dynamic routing. Routin daemon will respect them
+and, probably, even advertise dem ta its peers.
+.sp
+
+.B ra
+- tha route was installed by Routa Discovery protocol.
+.in -8
+
+.sp
+Da rest of tha joints is not reserved n' tha administrator is free
+to assign (or not ta assign) protocol tags.
+
+.TP
+.B onlink
+pretend dat tha nexthop is directly attached ta dis link,
+even if it do not match any intercourse prefix.
+.RE
+
+.TP
+ip route delete
+delete route
+.RS
+.B ip route del
+has tha same ol' dirty arguments as
+.BR "ip route add" ,
+but they semantics is a lil' bit different.
+
+Key joints
+.RB "(" ta ", " tos ", " preference " n' " table ")"
+select tha route ta delete.  If optionizzle attributes is present,
+.B ip
+verifies dat they coincizzle wit tha attributez of tha route ta delete.
+If no route wit tha given key n' attributes was found,
+.B ip route del
+fails.
+.RE
+
+.TP
+ip route show
+list routes
+.RS
+the command displays tha contentz of tha routin tablez or tha route(s)
+selected by some criteria.
+
+.TP
+.BI ta " SELECTOR " (default)
+only select routes from tha given range of destinations.
+.I SELECTOR
+consistz of a optionizzle modifier
+.RB "(" root ", " match " or " exact ")"
+and a prefix.
+.BI root " PREFIX"
+selects routes wit prefixes not shorta than
+.IR PREFIX "."
+F.e.
+.BI root " 0/0"
+selects tha entire routin table.
+.BI match " PREFIX"
+selects routes wit prefixes not longer than
+.IR PREFIX "."
+F.e.
+.BI match " 10.0/16"
+selects
+.IR 10.0/16 ","
+.IR 10/8 " n' " 0/0 ,
+but it do not select
+.IR 10.1/16 " n' " 10.0.0/24 .
+And
+.BI exact " PREFIX"
+(or just
+.IR PREFIX ")"
+selects routes wit dis exact prefix. If neither of these options
+are present,
+.B ip
+assumes
+.BI root " 0/0"
+i.e. it lists tha entire table.
+
+.TP
+.BI tos " TOS"
+.TP
+.BI dsfield " TOS"
+only select routes wit tha given TOS.
+
+.TP
+.BI table " TABLEID"
+show tha routes from dis table(s).  Da default settin is ta show table
+.BR main "."
+.I TABLEID
+may either be tha ID of a real table or one of tha special joints:
+.sp
+.in +8
+.B all
+- list all of tha tables.
+.sp
+.B cache
+- dump tha routin cache.
+.in -8
+
+.TP
+.B cloned
+.TP
+.B cached
+list cloned routes i.e. routes which was dynamically forked from
+other routes cuz some route attribute (f.e. MTU) was updated.
+Actually, it is equivalent to
+.BR "table cache" "."
+
+.TP
+.BI from " SELECTOR"
+the same syntax as for
+.BR ta ","
+but it bindz tha source address range rather than destinations.
+Note dat the
+.B from
+option only works wit cloned routes.
+
+.TP
+.BI protocol " RTPROTO"
+only list routez of dis protocol.
+
+.TP
+.BI scope " SCOPE_VAL"
+only list routes wit dis scope.
+
+.TP
+.BI type " TYPE"
+only list routez of dis type.
+
+.TP
+.BI dev " NAME"
+only list routes goin via dis device.
+
+.TP
+.BI via " PREFIX"
+only list routes goin via tha nexthop routas selected by
+.IR PREFIX "."
+
+.TP
+.BI src " PREFIX"
+only list routes wit preferred source addresses selected
+by
+.IR PREFIX "."
+
+.TP
+.BI realm " REALMID"
+.TP
+.BI realms " FROMREALM/TOREALM"
+only list routes wit these realms.
+.RE
+
+.TP
+ip route flush
+flush routin tables
+.RS
+this command flushes routes selected by some criteria.
+
+.sp
+Da arguments have tha same syntax n' semantics as tha arguments of
+.BR "ip route show" ,
+but routin tablez is not listed but purged. Y'all KNOW dat shit, muthafucka!  Da only difference is
+the default action:
+.B show
+dumps all tha IP main routin table but
+.B flush
+prints tha helper page.
+
+.sp
+With the
+.B -statistics
+option, tha command becomes verbose. Well shiiiit, it prints up tha number of
+deleted routes n' tha number of roundz made ta flush tha routing
+table. If tha option is given
+twice,
+.B ip route flush
+also dumps all tha deleted routes up in tha format busted lyrics bout up in the
+previous subsection.
+.RE
+
+.TP
+ip route get
+get a single route
+.RS
+this command gets a single route ta a thugged-out destination n' prints its
+contents exactly as tha kernel sees dat shit.
+
+.TP
+.BI ta " ADDRESS " (default)
+the destination address.
+
+.TP
+.BI from " ADDRESS"
+the source address.
+
+.TP
+.BI tos " TOS"
+.TP
+.BI dsfield " TOS"
+the Type Of Service.
+
+.TP
+.BI iif " NAME"
+the thang from which dis packet is sposed ta fuckin arrive.
+
+.TP
+.BI oif " NAME"
+force tha output thang on which dis packet is ghon be routed.
+
+.TP
+.B connected
+if no source address
+.RB "(option " from ")"
+was given, relookup tha route wit tha source set ta tha preferred
+address received from tha straight-up original gangsta lookup.
+If policy routin is used, it may be a gangbangin' finger-lickin' different route.
+
+.P
+Note dat dis operation aint equivalent to
+.BR "ip route show" .
+.B show
+shows existin routes.
+.B get
+resolves dem n' creates freshly smoked up clones if necessary.  Essentially,
+.B get
+is equivalent ta bustin  a packet along dis path.
+If the
+.B iif
+argument aint given, tha kernel creates a route
+to output packets towardz tha axed destination.
+This is equivalent ta pingin tha destination
+with a subsequent
+.BR "ip route ls cache" ,
+however, no packets is straight-up sent.  With the
+.B iif
+argument, tha kernel pretendz dat a packet arrived from dis intercourse
+and searches fo' a path ta forward tha packet.
+.RE
+
+.TP
+ip route save
+save routin table shiznit ta stdout
+.RS
+This command behaves like
+.BR "ip route show"
+except dat tha output is raw data suitable fo' passin to
+.BR "ip route restore" .
+.RE
+
+.TP
+ip route restore
+restore routin table shiznit from stdin
+.RS
+This command expects ta read a thugged-out data stream as returned from
+.BR "ip route save" .
+It will attempt ta restore tha routin table shiznit exactly as
+it was all up in tha time of tha save, so any translation of shiznit
+in tha stream (like fuckin thang indexes) must be done first.  Any existing
+routes is left unchanged. Y'all KNOW dat shit, muthafucka!  Any routes specified up in tha data stream that
+already exist up in tha table is ghon be ignored.
+.RE
+
+.SH EXAMPLES
+.PP
+ip ro
+.RS 4
+Show all route entries up in tha kernel.
+.RE
+.PP
+ip route add default via 192.168.1.1 dev eth0
+.RS 4
+Addz a thugged-out default route (for all addresses) via tha local gateway 192.168.1.1 dat can
+be reached on thang eth0.
+.RE
+
+.SH SEE ALSO
+.br
+.BR ip (8)
+
+.SH AUTHOR
+Original Gangsta Manpage by Michail Litvak <mci@owl.openwall.com>

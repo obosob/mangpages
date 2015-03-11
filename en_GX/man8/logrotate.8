@@ -1,0 +1,543 @@
+.TH LOGROTATE 8 "Wed Nov 5 2002" "Linux" "System Administratorz Manual"
+.SH NAME
+logrotate \(hy rotates, compresses, n' mails system logs
+.SH SYNOPSIS
+\fBlogrotate\fR [\fB\-dv\fR] [\fB\-f\fR|\fB\-\-force\fR]
+[\fB\-s\fR|\fB\-\-state \fIfile\fR] \fIconfig_file\fR ..
+.SH DESCRIPTION
+\fBlogrotate\fR is designed ta ease administration of systems dat generate
+pimpin' numberz of log files.  It allows automatic rotation, compression, 
+removal, n' mailin of log files.  Each log file may be handled everyday,
+weekly, monthly, or when it grows too large.
+.P
+Normally, \fBlogrotate\fR is run as a thugged-out everyday cron thang.  It aint gonna modify
+a log multiple times up in one dizzle unless tha criterion fo' dat log is
+based on tha logz size n' \fBlogrotate\fR is bein run multiple times
+each day, or unless tha \fB\-f\fR or \fB\-\-force\fR option is used.
+.P
+Any number of config filez may be given on tha command line. Lata config
+filez may override tha options given up in earlier files, so tha order
+in which tha \fBlogrotate\fR config filez is listed is blingin.
+Normally, a single config file which includes any other config files
+which is needed should be used. Y'all KNOW dat shit, muthafucka!  See below fo' mo' shiznit on how
+to use tha \fBinclude\fR directizzle ta accomplish all dis bullshit.  If a gangbangin' finger-lickin' directory
+is given on tha command line, every last muthafuckin file up in dat directory is used as
+a config file.
+.P
+If no command line arguments is given, \fBlogrotate\fR will print
+version n' copyright shiznit, along wit a gangbangin' finger-lickin' dirty-ass short usage summary.  If
+any errors occur while rotatin logs, \fBlogrotate\fR will exit with
+non-zero status.
+
+.SH OPTIONS
+.TP
+\fB\-?\fR, \fB\-\-help\fR
+Prints help message.
+
+.TP
+\fB\-d\fR, \fB\-\-debug\fR
+Turns on debug mode n' implies \fB-v\fR.  In debug mode, no chizzlez will
+be made ta tha logs or ta tha \fBlogrotate\fR state file.
+
+.TP
+\fB\-f\fR, \fB\-\-force\fR
+Tells \fBlogrotate\fR ta force tha rotation, even if it don't think
+this is necessary.  Sometimes dis is useful afta addin freshly smoked up entries to
+a \fBlogrotate\fR config file, or if oldschool log filez done been removed
+by hand, as tha freshly smoked up filez is ghon be pimped, n' loggin will continue
+correctly.
+
+.TP
+\fB\-m\fR, \fB\-\-mail <command>\fR
+Tells \fBlogrotate\fR which command ta use when mailin logs. This
+command should accept two arguments: 1) tha subject of tha message, and
+2) tha recipient. Da command must then read a message on standard input
+and mail it ta tha recipient. Da default mail command is \fB/bin/mail
+-s\fR.
+
+.TP
+\fB\-s\fR, \fB\-\-state <statefile>\fR
+Tells \fBlogrotate\fR ta use a alternate state file.  This is useful
+if logrotate is bein run as a gangbangin' finger-lickin' different user fo' various sets of
+log files.  Da default state file is \fI/var/lib/logrotate.status\fR.
+
+.TP
+\fB\-\-usage\fR
+Prints a gangbangin' finger-lickin' dirty-ass short usage message.
+
+.TP
++\fB\-v\fR, \fB\-\-verbose\fR
+Turns on verbose mode.
+
+.SH CONFIGURATION FILE
+
+\fBlogrotate\fR readz every last muthafuckin thang bout tha log filez it should be handling
+from tha seriez of configuration filez specified on tha command line.  Each
+configuration file can set global options (local definitions override
+global ones, n' lata definitions override earlier ones) n' specify
+logfilez ta rotate fo' realz. A simple configuration file be lookin like this:
+
+.nf
+.ta +8n
+# sample logrotate configuration file
+compress
+
+/var/log/lyrics {
+    rotate 5
+    weekly
+    postrotate
+        /usr/bin/killall \-HUP syslogd
+    endscript
+}
+
+"/var/log/httpd/access.log" /var/log/httpd/error.log {
+    rotate 5
+    mail www@my.org
+    size 100k
+    sharedscripts
+    postrotate
+        /usr/bin/killall \-HUP httpd
+    endscript
+}
+
+/var/log/news/* {
+    monthly
+    rotate 2
+    olddir /var/log/news/old
+    missingok
+    postrotate
+        bust a cap up in \-HUP `cat /var/run/inn.pid`
+    endscript
+    nocompress
+}
+
+~/log/*.log {}
+
+.fi
+
+.PP
+Da first few lines set global options; up in tha example, logs are
+compressed afta they is rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Note dat comments may appear
+anywhere up in tha config file as long as tha straight-up original gangsta non-whitespace
+characta on tha line be a #.
+
+Da next section of tha config filez defined how tha fuck ta handle tha log file
+\fI/var/log/lyrics\fR. Da log will go all up in five weekly rotations before
+bein removed. Y'all KNOW dat shit, muthafucka! Afta tha log file has been rotated (but before tha old
+version of tha log has been compressed), tha command 
+\fI/sbin/killall \-HUP syslogd\fR is ghon be executed.
+
+Da next section defines tha parametas fo' both
+\fI/var/log/httpd/access.log\fR n' \fI/var/log/httpd/error.log\fR.
+They is rotated whenever it grows over 100k up in size, n' tha oldschool logs
+filez is mailed (uncompressed) ta www@my.org afta goin all up in 5
+rotations, rather than bein removed. Y'all KNOW dat shit, muthafucka! Da \fBsharedscripts\fR means that
+the \fBpostrotate\fR script will only be run once (afta tha oldschool logs have 
+been compressed), not once fo' each log which is rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Note dat tha double
+quotes round tha straight-up original gangsta filename all up in tha beginnin of dis section allows
+logrotate ta rotate logs wit spaces up in tha name. Normal shell quotin rules
+apply, wit ', ", n' \\ charactas supported.
+
+Da next section defines tha parametas fo' all of tha filez in
+\fI/var/log/news\fR. Each file is rotated on a monthly basis.  This is
+considered a single rotation directizzle n' if errors occur fo' mo' than
+one file, tha log filez is not compressed.
+
+Da last section uses tilde expansion ta rotate log filez up in tha home
+directory of tha current user n' shit. This is only available, if yo' glob
+library supports tilde expansion. I aint talkin' bout chicken n' gravy biatch. GNU glob do support all dis bullshit.
+
+Please use wildcardz wit caution. I aint talkin' bout chicken n' gravy biatch.  If you specify *, \fBlogrotate\fR will
+rotate all files, includin previously rotated ones.  A way round this
+is ta use tha \fBolddir\fR directizzle or a mo' exact wildcard (like fuckin *.log).
+
+Here is mo' shiznit on tha directives which may be included in
+a \fBlogrotate\fR configuration file:
+
+.TP
+\fBcompress\fR
+Oldskool versionz of log filez is compressed wit \fBgzip\fR(1) by default. Right back up in yo muthafuckin ass. See also
+\fBnocompress\fR. 
+
+.TP
+\fBcompresscmd\fR
+Specifies which command ta use ta compress log files.  Da default is
+\fBgzip\fR.  See also \fBcompress\fR.
+
+.TP
+\fBuncompresscmd\fR
+Specifies which command ta use ta uncompress log files.  Da default is
+\fBgunzip\fR.
+
+.TP
+\fBcompressext\fR
+Specifies which extension ta use on compressed logfiles, if compression
+is enabled. Y'all KNOW dat shit, muthafucka!  Da default bigs up dat of tha configured compression
+command.
+
+.TP
+\fBcompressoptions\fR
+Command line options may be passed ta tha compression program, if one is
+in use.  Da default, fo' \fBgzip\fR(1), is "\-6" (biased towardz high
+compression all up in tha expense of speed).
+If you bust a gangbangin' finger-lickin' different compression command, you may need ta chizzle the
+\fBcompressoptions\fR ta match.
+
+
+.TP
+\fBcopy\fR
+Make a cold-ass lil copy of tha log file yo, but don't chizzle tha original gangsta at all.
+This option can be used, fo' instance, ta cook up a snapshot of tha current
+log file, or when some other utilitizzle need ta truncate or parse tha file.
+When dis option is used, tha \fBcreate\fR option gonna git no effect,
+as tha oldschool log file stays up in place.
+
+.TP
+\fBcopytruncate\fR
+Truncate tha original gangsta log file up in place afta bustin a cold-ass lil copy,
+instead of movin tha oldschool log file n' optionally bustin a freshly smoked up one.
+It can be used when some program cannot be holla'd at ta close its logfile
+and thus might continue freestylin (appending) ta tha previous log file alllll muthafuckin day.
+Note dat there be a straight-up lil' small-ass time slice between copyin tha file and
+truncatin it, so some loggin data might be lost.
+When dis option is used, tha \fBcreate\fR option gonna git no effect,
+as tha oldschool log file stays up in place.
+
+.TP
+\fBcreate \fImode\fR \fIballer\fR \fIgroup\fR, \fBcreate \fIballer\fR \fIgroup\fR
+Immediately afta rotation (before tha \fBpostrotate\fR script is run)
+the log file is pimped (with tha same name as tha log file just rotated).
+\fImode\fR specifies tha mode fo' tha log file up in octal (the same
+as \fBchmod\fR(2)), \fIballer\fR specifies tha user name whoz ass will own the
+log file, n' \fIgroup\fR specifies tha crew tha log file will belong
+to fo' realz. Any of tha log file attributes may be omitted, up in which case them
+attributes fo' tha freshly smoked up file will use tha same joints as tha original gangsta log
+file fo' tha omitted attributes. This option can be disabled rockin the
+\fBnocreate\fR option.
+
+.TP
+\fBdaily\fR
+Log filez is rotated every last muthafuckin day.
+
+.TP
+\fBdateext\fR
+Archive oldschool versionz of log filez addin a thugged-out date extension like YYYYMMDD
+instead of simply addin a number n' shit. Da extension may be configured using
+the \fBdateformat\fR n' \fBdateyesterday\fR options.
+
+.TP
+\fBdateformat\fR \fIformat_string\fR
+Specify tha extension fo' \fBdateext\fR rockin tha notation similar to
+\fBstrftime\fR(3) function. I aint talkin' bout chicken n' gravy biatch. Only %Y %m %d n' %s specifiers is allowed.
+Da default value is \-%Y%m%d. Y'all KNOW dat shit, muthafucka! Note dat also tha characta separatin log
+name from tha extension is part of tha dateformat string. Da system clock
+must be set past Sep 9th 2001 fo' %s ta work erectly.
+Note dat tha datestamps generated by dis format must be lexically sortable
+(i.e., first tha year, then tha month then tha day. It make me wanna hollar playa! e.g., 2001/12/01 is ok,
+but 01/12/2001 is not, since 01/11/2002 would sort lower while it is later).
+This is cuz when rockin tha \fBrotate\fR option, logrotate sorts all
+rotated filenames ta smoke up which logfilez is olda n' should be removed.
+
+.TP
+\fBdateyesterday\fR
+Use yesterdayz instead of todizzlez date ta create tha \fBdateext\fR
+extension, so dat tha rotated log file has a thugged-out date up in its name dat is
+the same as tha timestamps within dat shit.
+
+.TP
+\fBdelaycompress\fR
+Postpone compression of tha previous log file ta tha next rotation cycle.
+This only has effect when used up in combination wit \fBcompress\fR.
+It can be used when some program cannot be holla'd at ta close its logfile
+and thus might continue freestylin ta tha previous log file fo' some time.
+
+.TP
+\fBextension \fIext\fR
+Log filez wit \fIext\fR extension can keep it afta tha rotation. I aint talkin' bout chicken n' gravy biatch. 
+If compression  is  used,  tha compression extension (normally \fB.gz\fR) 
+appears afta \fIext\fR. For example you gotz a logfile named mylog.foo 
+and wanna rotate it ta mylog.1.foo.gz instead of mylog.foo.1.gz.
+
+.TP
+\fBhourly\fR
+Log filez is rotated every last muthafuckin hour. Shiiit, dis aint no joke. Note dat probably \fIlogrotate\fR is
+configured ta be run by cron everyday. Yo ass gotta chizzle dis configuration
+and run \fIlogrotate\fR hourly ta be able ta straight-up rotate logs hourly.
+
+.TP
+\fBifempty\fR
+Rotate tha log file even if it is empty, overridin tha \fBnotifempty\fR
+option (\fBifempty\fR is tha default).
+
+.TP
+\fBinclude \fIfile_or_directory\fR
+Readz tha file given as a argument as if dat shiznit was included inline
+where tha \fBinclude\fR directizzle appears. If a gangbangin' finger-lickin' directory is given,
+most of tha filez up in dat directory is read up in alphabetic order
+before processin of tha includin file continues. Da only files
+which is ignored is filez which is not regular filez (such as
+directories n' named pipes) n' filez whose names end wit one of
+the taboo extensions, as specified by tha \fBtabooext\fR directive.
+
+.TP
+\fBmail \fIaddress\fR
+When a log is rotated out-of-existence, it is mailed ta \fIaddress\fR. If
+no mail should be generated by a particular log, tha \fBnomail\fR directive
+may be used.
+
+.TP
+\fBmailfirst\fR
+When rockin tha \fBmail\fR command, mail tha just-rotated file,
+instead of tha about-to-expire file.
+
+.TP
+\fBmaillast\fR
+When rockin tha \fBmail\fR command, mail tha about-to-expire file,
+instead of tha just-rotated file (this is tha default).
+
+.TP
+\fBmaxage\fR \fIcount\fR
+Remove rotated logs olda than <count> days. Da age is only checked
+if tha logfile is ta be rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da filez is mailed ta the
+configured address if \fBmaillast\fR n' \fBmail\fR is configured.
+
+.TP
+\fBmaxsize\fR \fIsize\fR
+Log filez is rotated when they grow bigger than \fIsize\fR bytes even
+before tha additionally specified time interval (\fBdaily\fR, \fBweekly\fR,
+\fBmonthly\fR, or \fByearly\fR).  Da related \fBsize\fR option is similar
+except dat it is mutually exclusive wit tha time interval options, n' it
+causes log filez ta be rotated without regard fo' tha last rotation time.
+When \fBmaxsize\fR is used, both tha size n' timestamp of a log file are
+considered.
+
+.TP
+\fBminsize\fR  \fIsize\fR
+Log filez is rotated when they grow bigger than \fIsize\fR bytes yo, but not
+before tha additionally specified time interval (\fBdaily\fR, \fBweekly\fR,
+\fBmonthly\fR, or \fByearly\fR).  Da related \fBsize\fR option is similar
+except dat it is mutually exclusive wit tha time interval options, n' it
+causes log filez ta be rotated without regard fo' tha last rotation time.
+When \fBminsize\fR is used, both tha size n' timestamp of a log file are
+considered.
+
+.TP
+\fBmissingok\fR
+If tha log file is missing, go on ta tha next one without issuin a error
+message. Right back up in yo muthafuckin ass. See also \fBnomissingok\fR.
+
+.TP
+\fBmonthly\fR
+Log filez is rotated tha last time \fBlogrotate\fR is run up in a month
+(this is normally on tha straight-up original gangsta dizzle of tha month).
+
+.TP
+\fBnocompress\fR
+Oldskool versionz of log filez is not compressed. Y'all KNOW dat shit, muthafucka! See also \fBcompress\fR.
+
+.TP
+\fBnocopy\fR
+Do not copy tha original gangsta log file n' leave it up in place.
+(this overrides tha \fBcopy\fR option).
+
+.TP
+\fBnocopytruncate\fR
+Do not truncate tha original gangsta log file up in place afta bustin a cold-ass lil copy
+(this overrides tha \fBcopytruncate\fR option).
+
+.TP
+\fBnocreate\fR
+New log filez is not pimped (this overrides tha \fBcreate\fR option).
+
+.TP
+\fBnodelaycompress\fR
+Do not postpone compression of tha previous log file ta tha next rotation cycle
+(this overrides tha \fBdelaycompress\fR option).
+
+.TP
+\fBnodateext\fR
+Do not archive  oldschool versionz of log filez wit date extension
+(this overrides tha \fBdateext\fR option).
+
+.TP
+\fBnomail\fR
+Don't mail oldschool log filez ta any address.
+
+.TP
+\fBnomissingok\fR
+If a log file do not exist, issue a error. Shiiit, dis aint no joke. This is tha default.
+
+.TP
+\fBnoolddir\fR
+Logs is rotated up in tha same directory tha log normally resides up in (this 
+overrides tha \fBolddir\fR option).
+
+.TP
+\fBnosharedscripts\fR
+Run \fBprerotate\fR n' \fBpostrotate\fR scripts fo' every last muthafuckin log file which
+is rotated (this is tha default, n' overrides tha \fBsharedscripts\fR
+option). Da absolute path ta tha log file is passed as first argument 
+to tha script. If tha scripts exit wit error, tha remainin actions will
+not be executed fo' tha affected log only.
+
+.TP
+\fBnoshred\fR
+Do not use \fBshred\fR when deletin oldschool log files. Right back up in yo muthafuckin ass. See also \fBshred\fR. 
+
+.TP
+\fBnotifempty\fR
+Do not rotate tha log if it is empty (this overrides tha \fBifempty\fR option).
+
+.TP
+\fBolddir \fIdirectory\fR
+Logs is moved tha fuck into \fIdirectory\fR fo' rotation. I aint talkin' bout chicken n' gravy biatch. Da \fIdirectory\fR
+must be on tha same physical thang as tha log file bein rotated,
+and be assumed ta be relatizzle ta tha directory holdin tha log file
+unless a absolute path name is specified. Y'all KNOW dat shit, muthafucka! When dis option is used all
+old versionz of tha log end up in \fIdirectory\fR.  This option may be
+overridden by tha \fBnoolddir\fR option.
+
+.TP
+\fBpostrotate\fR/\fBendscript\fR
+Da lines between \fBpostrotate\fR n' \fBendscript\fR (both of which
+must step tha fuck up on lines by theyselves) is executed (usin \fB/bin/sh\fR) 
+afta tha log file is rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. These directives may only step tha fuck up inside 
+a log file definition. I aint talkin' bout chicken n' gravy biatch. Normally, tha absolute path ta tha log file is 
+passed as first argument ta tha script. If \fBsharedscripts\fR is specified, 
+whole pattern is passed ta tha script.
+See also \fBprerotate\fR. Right back up in yo muthafuckin ass. See \fBsharedscripts\fR n' \fBnosharedscripts\fR
+for error handling.
+
+.TP
+\fBprerotate\fR/\fBendscript\fR
+Da lines between \fBprerotate\fR n' \fBendscript\fR (both of which
+must step tha fuck up on lines by theyselves) is executed (usin \fB/bin/sh\fR) before 
+the log file is rotated n' only if tha log will straight-up be rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. These 
+directives may only step tha fuck up inside a log file definition. I aint talkin' bout chicken n' gravy biatch. Normally, 
+the absolute path ta tha log file is passed as first argument ta tha script.
+If  \fBsharedscripts\fR is specified, whole pattern is passed ta tha script.
+See also \fBpostrotate\fR.
+See \fBsharedscripts\fR n' \fBnosharedscripts\fR fo' error handling.
+
+.TP
+\fBfirstaction\fR/\fBendscript\fR
+Da lines between \fBfirstaction\fR n' \fBendscript\fR (both of which
+must step tha fuck up on lines by theyselves) is executed (usin \fB/bin/sh\fR) once 
+before all log filez dat match tha wildcarded pattern is rotated, before 
+prerotate script is run n' only if at least one log will straight-up be rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. 
+These directives may only step tha fuck up inside a log file definition. I aint talkin' bout chicken n' gravy biatch. Whole pattern is
+passed ta tha script as first argument. If tha script exits wit error, 
+no further processin is done. Right back up in yo muthafuckin ass. See also \fBlastaction\fR.
+
+.TP
+\fBlastaction\fR/\fBendscript\fR
+Da lines between \fBlastaction\fR n' \fBendscript\fR (both of which
+must step tha fuck up on lines by theyselves) is executed (usin \fB/bin/sh\fR) once 
+afta all log filez dat match tha wildcarded pattern is rotated, afta 
+postrotate script is run n' only if at least one log is rotated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. These 
+directives may only step tha fuck up inside a log file definition. I aint talkin' bout chicken n' gravy biatch. Whole pattern is
+passed ta tha script as first argument. If tha script exits 
+with error, just a error message is shown (as dis is tha last
+action). Right back up in yo muthafuckin ass. See also \fBfirstaction\fR.
+
+.TP
+\fBpreremove\fR/\fBendscript\fR
+Da lines between \fBpreremove\fR n' \fBendscript\fR (both of which must
+appear on lines by theyselves) is executed (usin \fB/bin/sh\fR) once just
+before removal of a log file.  Da logrotate will pass
+the name of file which is soon ta be removed. Y'all KNOW dat shit, muthafucka! See also \fBfirstaction\fR.
+
+.TP
+\fBrotate \fIcount\fR
+Log filez is rotated \fIcount\fR times before bein removed or mailed ta the
+address specified up in a \fBmail\fR directive. If \fIcount\fR is 0, oldschool versions
+are removed rather than rotated.
+
+.TP
+\fBsize \fIsize\fR
+Log filez is rotated only if they grow bigger then \fIsize\fR bytes. If
+\fIsize\fR is followed by \fIk\fR, tha size be assumed ta be up in kilobytes.
+If tha \fIM\fR is used, tha size is up in megabytes, n' if \fIG\fR is used, the
+size is up in gigabytes. Right back up in yo muthafuckin ass. So \fIsize 100\fR, \fIsize 100k\fR, \fIsize 100M\fR and
+\fIsize 100G\fR is all valid.
+
+.TP
+\fBsharedscripts\fR
+Normally, \fBprerotate\fR n' \fBpostrotate\fR scripts is run fo' each
+log which is rotated n' tha absolute path ta tha log file is passed as first 
+argument ta tha script. That means a single script may be run multiple
+times fo' log file entries which match multiple filez (like fuckin tha 
+\fI/var/log/news/*\fR example). If \fBsharedscripts\fR is specified, tha scripts
+are only run once, no matta how tha fuck nuff logs match tha wildcarded pattern, 
+and whole pattern is passed ta em.
+But fuck dat shiznit yo, tha word on tha street is dat if none of tha logs up in tha pattern require rotating, tha scripts
+will not be run at all. If tha scripts exit wit error, tha remaining
+actions aint gonna be executed fo' any logs. This option overrides the
+\fBnosharedscripts\fR option n' implies \fBcreate\fR option.
+
+.TP
+\fBshred\fR
+Delete log filez rockin \fBshred\fR \-u instead of unlink().  This should
+ensure dat logs is not readable afta they scheduled deletion; dis is
+off by default.  See also \fBnoshred\fR.
+
+.TP
+\fBshredcycles\fR \fIcount\fR
+Asks GNU \fBshred\fR(1) ta overwrite log filez \fBcount\fR times before 
+deletion. I aint talkin' bout chicken n' gravy biatch.  Without dis option, \fBshred\fRz default is ghon be used.
+
+.TP
+\fBstart \fIcount\fR
+This is tha number ta use as tha base fo' rotation. I aint talkin' bout chicken n' gravy biatch. For example, if
+you specify 0, tha logs is ghon be pimped wit a .0 extension as they are
+rotated from tha original gangsta log files.  If you specify 9, log filez will
+be pimped wit a .9, skippin 0-8.  Filez will still be rotated the
+number of times specified wit tha \fBrotate\fR directive.
+
+.TP
+\fBsu \fIuser\fR \fIgroup\fR
+Rotate log filez set under dis user n' crew instead of rockin default
+user/group (usually root). \fIuser\fR specifies tha user name used for
+rotation n' \fIgroup\fR specifies tha crew used fo' rotation. I aint talkin' bout chicken n' gravy biatch. 
+
+.TP
+\fBtabooext\fR [+] \fIlist\fR
+Da current taboo extension list is chizzled (see tha \fBinclude\fR directive
+for shiznit on tha taboo extensions). If a + precedes tha list of
+extensions, tha current taboo extension list be augmented, otherwise it
+is replaced. Y'all KNOW dat shit, muthafucka! At startup, tha taboo extension list 
+gotz nuff .rpmsave, .rpmorig, ~, .disabled, .dpkg\-old, .dpkg\-dist, .dpkg\-new, .cfsaved, .ucf\-old, .ucf\-dist, .ucf\-new, .rpmnew, .swp, .cfsaved, .rhn\-cfg\-tmp\-*
+
+.TP
+\fBweekly\fR
+Log filez is rotated if tha current weekdizzle is less than tha weekday
+of tha last rotation or if mo' than a week has passed since tha last
+rotation. I aint talkin' bout chicken n' gravy biatch. This is normally tha same as rotatin logs on tha straight-up original gangsta day
+of tha week yo, but it works betta if \fIlogrotate\fR aint run every
+night.
+
+.TP
+\fByearly\fR
+Log filez is rotated if tha current year aint tha same as tha last rotation.
+
+.SH FILES
+.PD 0
+.TP 27
+\fI/var/lib/logrotate.status\fR
+Default state file.
+.TP 27
+\fI/etc/logrotate.conf\fR
+Configuration options.
+
+.SH SEE ALSO
+.BR gzip (1)
+
+<http://fedorahosted.org/logrotate/>
+
+.SH AUTHORS
+.nf
+Erik Troan, Preston Brown, Jan Kaluza.
+
+<logrotate-baller@fedoraproject.org>
+
+.fi

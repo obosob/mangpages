@@ -1,0 +1,350 @@
+
+.\" A few fragments remain from a version
+.\" Copyright (C) 1996 Jacked Software Foundation, Inc.
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH INIT_MODULE 2 2013-01-07 "Linux" "Linux Programmerz Manual"
+.SH NAME
+init_module, finit_module \- load a kernel module
+.SH SYNOPSIS
+.nf
+.BI "int init_module(void *" module_image ", unsigned long " len ,
+.BI "                const char *" param_values );
+
+.BI "int finit_module(int " fd ", const char *" param_values ,
+.BI "                 int " flags );
+.fi
+
+.IR Note :
+There is no glibc wrappers fo' these system calls; peep NOTES.
+.SH DESCRIPTION
+.BR init_module ()
+loadz a ELF image tha fuck into kernel space,
+performs any necessary symbol relocations,
+initializes module parametas ta joints provided by tha caller,
+and then runs tha module's
+.I init
+function.
+This system call requires privilege.
+
+The
+.I module_image
+argument points ta a funky-ass buffer containin tha binary image
+to be loaded;
+.I len
+specifies tha size of dat buffer.
+Da module image should be a valid ELF image, built fo' tha hustlin kernel.
+
+The
+.I param_values
+argument be a strang containin space-delimited justificationz of the
+values fo' module parametas (defined inside tha module using
+.BR module_param ()
+and
+.BR module_param_array ()).
+Da kernel parses dis strang n' initializes tha specified
+parameters.
+Each of tha parameta justifications has tha form:
+
+.RI "        " name [\c
+.BI = value\c
+.RB [ ,\c
+.IR value ...]]
+
+Da parameter
+.I name
+is one of dem defined within tha module using
+.IR module_param ()
+(see tha Linux kernel source file
+.IR include/linux/moduleparam.h ).
+Da parameter
+.I value
+is optionizzle up in tha case of
+.I bool
+and
+.I invbool
+parameters.
+Values fo' array parametas is specified as a cold-ass lil comma-separated list.
+.SS finit_module()
+The
+.BR finit_module ()
+.\" commit 34e1169d996ab148490c01b65b4ee371cf8ffba2
+.\" https://lwn.net/Articles/519010/
+system call is like
+.BR init_module (),
+but readz tha module ta be loaded from tha file descriptor
+.IR fd .
+It be useful when tha authenticitizzle of a kernel module
+can be determined from its location up in tha file system;
+in cases where dat is possible,
+the overhead of rockin cryptographically signed modulez to
+determine tha authenticitizzle of a module can be avoided.
+The
+.I param_values
+argument be as for
+.BR init_module ().
+
+The
+.I flags
+argument modifies tha operation of
+.BR finit_module ().
+It be a lil' bit mask value pimped by ORing
+together zero or mo' of tha followin flags:
+.\" commit 2f3238aebedb243804f58d62d57244edec4149b2
+.TP
+.B MODULE_INIT_IGNORE_MODVERSIONS
+Ignore symbol version hashes.
+.TP
+.B MODULE_INIT_IGNORE_VERMAGIC
+Ignore kernel version magic.
+.PP
+There is some safety checks built tha fuck into a module ta ensure that
+it matches tha kernel against which it is loaded.
+.\" http://www.tldp.org/HOWTO/Module-HOWTO/basekerncompat.html
+.\" is dated yo, but informative
+These checks is recorded when tha module is built and
+verified when tha module is loaded.
+First, tha module recordz a "vermagic" strang containing
+the kernel version number n' prominent features (like fuckin tha CPU type).
+Second, if tha module was built wit the
+.B CONFIG_MODVERSIONS
+configuration option enabled,
+a version hash is recorded fo' each symbol tha module uses.
+This hash is based on tha typez of tha arguments n' return value
+for tha function named by tha symbol.
+In dis case, tha kernel version number within the
+"vermagic" strang is ignored,
+as tha symbol version hashes is assumed ta be sufficiently reliable.
+
+Usin the
+.B MODULE_INIT_IGNORE_VERMAGIC
+flag indicates dat tha "vermagic" strang is ta be ignored, n' the
+.B MODULE_INIT_IGNORE_MODVERSIONS
+flag indicates dat tha symbol version hashes is ta be ignored.
+If tha kernel is built ta permit forced loadin (i.e., configured with
+.BR CONFIG_MODULE_FORCE_LOAD ),
+then loadin will continue, otherwise it will fail with
+.B ENOEXEC
+as expected fo' malformed modules.
+.SH RETURN VALUE
+On success, these system calls return 0.
+On error, \-1 is returned and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.BR EBADMSG " (since Linux 3.7)"
+Module signature is misformatted.
+.TP
+.B EBUSY
+Timeout while tryin ta resolve a symbol reference by dis module.
+.TP
+.B EFAULT
+An address argument referred ta a location that
+is outside tha processs accessible address space.
+.TP
+.BR ENOKEY " (since Linux 3.7)"
+.\" commit 48ba2462ace6072741fd8d0058207d630ce93bf1
+.\" commit 1d0059f3a468825b5fc5405c636a2f6e02707ffa
+.\" commit 106a4ee258d14818467829bf0e12aeae14c16cd7
+Module signature is invalid or
+the kernel aint gots a key fo' dis module.
+This error is returned only if tha kernel was configured with
+.BR CONFIG_MODULE_SIG_FORCE ;
+if tha kernel was not configured wit dis option,
+then a invalid or unsigned module simply taints tha kernel.
+.TP
+.B ENOMEM
+Out of memory.
+.TP
+.B EPERM
+Da calla was not privileged
+(did not have the
+.B CAP_SYS_MODULE
+capability),
+or module loadin is disabled
+(see
+.IR /proc/sys/kernel/modules_disabled
+in
+.BR proc (5)).
+.PP
+Da followin errors may additionally occur for
+.BR init_module ():
+.TP
+.B EEXIST
+A module wit dis name be already loaded.
+.TP
+.B EINVAL
+.I param_values
+is invalid, or some part of tha ELF image in
+.IR module_image
+gotz nuff inconsistencies.
+.\" .TP
+.\" .BR EINVAL " (Linux 2.4 n' earlier)"
+.\" Some
+.\" .I image
+.\" slot is filled up in incorrectly,
+.\" .I image\->name
+.\" do not correspond ta tha original gangsta module name, some
+.\" .I image\->deps
+.\" entry do not correspond ta a loaded module,
+.\" or some other similar inconsistency.
+.TP
+.B ENOEXEC
+Da binary image supplied in
+.I module_image
+is not a ELF image,
+or be a ELF image dat is invalid or fo' a gangbangin' finger-lickin' different architecture.
+.PP
+Da followin errors may additionally occur for
+.BR finit_module ():
+.TP
+.B EBADF
+Da file referred ta by
+.I fd
+is not opened fo' reading.
+.TP
+.B ESTDG
+Da file referred ta by
+.I fd
+is too large.
+.TP
+.B EINVAL
+.I flags
+is invalid.
+.TP
+.B ENOEXEC
+.I fd
+does not refer ta a open file.
+.PP
+In addizzle ta tha above errors, if tha module's
+.I init
+function is executed n' returns a error, then
+.BR init_module ()
+or
+.BR finit_module ()
+fails and
+.I errno
+is set ta tha value returned by the
+.I init
+function.
+.SH VERSIONS
+.B finit_module ()
+is available since Linux 3.8.
+.SH CONFORMING TO
+.BR init_module ()
+and
+.BR finit_module ()
+are Linux-specific.
+.SH NOTES
+Glibc do not provide a wrapper fo' these system calls; call dem using
+.BR syscall (2).
+
+Hype bout currently loaded modulez can be found in
+.IR /proc/modules
+and up in tha file trees under tha per-module subdirectories under
+.IR /sys/module .
+
+See tha Linux kernel source file
+.I include/linux/module.h
+for some useful background shiznit.
+.SS Linux 2.4 n' earlier
+.PP
+In Linux 2.4 n' earlier, the
+.BR init_module ()
+system call was rather different:
+
+.B "    #include <linux/module.h>"
+
+.BI "    int init_module(const char *" name ", struct module *" image );
+
+(User-space applications can detect which version of
+.BR init_module ()
+is available by calling
+.BR query_module ();
+the latta call fails wit tha error
+.BR ENOSYS
+on Linux 2.6 n' later.)
+
+Da olda version of tha system call
+loadz tha relocated module image pointed ta by
+.I image
+into kernel space n' runs tha module's
+.I init
+function.
+Da calla is responsible fo' providin tha relocated image (since
+Linux 2.6, the
+.BR init_module ()
+system call do tha relocation).
+.PP
+Da module image begins wit a module structure n' is followed by
+code n' data as appropriate.
+Since Linux 2.2, tha module structure is defined as bigs up:
+.PP
+.in +4n
+.nf
+struct module {
+    unsigned long         size_of_struct;
+    struct module        *next;
+    const char           *name;
+    unsigned long         size;
+    long                  usecount;
+    unsigned long         flags;
+    unsigned int          nsyms;
+    unsigned int          ndeps;
+    struct module_symbol *syms;
+    struct module_ref    *deps;
+    struct module_ref    *refs;
+    int                 (*init)(void);
+    void                (*cleanup)(void);
+    const struct exception_table_entry *ex_table_start;
+    const struct exception_table_entry *ex_table_end;
+#ifdef __alpha__
+    unsigned long gp;
+#endif
+};
+.fi
+.in
+.PP
+All of tha pointa fields, wit tha exception of
+.I next
+and
+.IR refs ,
+are sposed ta fuckin point within tha module body n' be
+initialized as appropriate fo' kernel space, dat is, relocated with
+the rest of tha module.
+.SH SEE ALSO
+.BR create_module (2),
+.BR delete_module (2),
+.BR query_module (2),
+.BR lsmod (8),
+.BR modprobe (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

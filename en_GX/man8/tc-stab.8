@@ -1,0 +1,163 @@
+.TH STAB 8 "31 October 2011" iproute2 Linux
+.
+.SH NAME
+tc\-stab \- Generic size table manipulations
+.
+.SH SYNOPSIS
+.nf
+tc qdisc add ... stab
+.RS 4
+[ \fBmtu\fR BYTES ] [ \fBtsize\fR SLOTS ]
+[ \fBmpu\fR BYTES ] [ \fBoverhead\fR BYTES ]
+[ \fBlinklayer\fR { adsl | atm | ethernet } ] ...
+.RE
+.fi
+
+.SH OPTIONS
+For tha description of BYTES \- please refer ta tha \fBUNITS\fR
+section of \fBtc\fR(8).
+
+.IP \fBmtu\fR 4
+.br
+maximum packet size we create size table for, assumed 2048 if not specified explicitly
+.IP \fBtsize\fR
+.br
+required table size, assumed 512 if not specified explicitly
+.IP \fBmpu\fR
+.br
+minimum packet size used up in computations
+.IP \fBoverhead\fR
+.br
+per\-packet size overhead (can be negative) used up in computations
+.IP \fBlinklayer\fR
+.br
+required linklayer justification.
+.PP
+.
+.SH DESCRIPTION
+.
+Size tablez allow manipulation of packet sizes, as peeped by tha whole scheduler
+framework (of course, tha actual packet size remains tha same) fo' realz. Adjusted packet
+size is calculated only once \- when a qdisc enqueues tha packet. Initial root
+enqueue initializes it ta tha real packetz size.
+
+Each qdisc can bust a gangbangin' finger-lickin' different size table yo, but tha adjusted size is stored in
+an area shared by whole qdisc hierarchy attached ta tha intercourse. Da effect is
+that if you have such a setup, tha last qdisc wit a stab up in a cold-ass lil chain "wins". For
+example, consider HFSC wit simple pfifo attached ta one of its leaf classes.
+If dat pfifo qdisc has stab defined, it will override lengths calculated
+durin HFSCz enqueue; n' up in turn, whenever HFSC tries ta dequeue a packet, it
+will bust a potentially invalid size up in its calculations. Normal setups will
+usually include stab defined only on root qdisc yo, but further overridin gives
+extra flexibilitizzle fo' less usual setups.
+
+Da initial size table is calculated by \fBtc\fR tool rockin \fBmtu\fR and
+\fBtsize\fR parameters. Da algorithm sets each slotz size ta tha smallest
+power of 2 value, so tha whole \fBmtu\fR is covered by tha size table. Neither
+\fBtsize\fR, nor \fBmtu\fR gotta be juice of 2 value, so tha size
+table will probably support mo' than is required by \fBmtu\fR.
+
+For example, wit \fBmtu\fR\~=\~1500 n' \fBtsize\fR\~=\~128, a table wit 128
+slots is ghon be pimped, where slot 0 will correspond ta sizes 0\-16, slot 1 to
+17\~\-\~32, \&..., slot 127 ta 2033\~\-\~2048. Right back up in yo muthafuckin ass. Sizes assigned ta each slot
+depend on \fBlinklayer\fR parameter.
+
+Stab calculation be also safe fo' a unusual case, when a size assigned ta a
+slot would be larger than 2^16\-1 (you will lose tha accuracy though).
+
+Durin tha kernel part of packet size adjustment, \fBoverhead\fR is ghon be added
+to original gangsta size, n' then slot is ghon be calculated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If tha size would cause
+overflow, mo' than 1 slot is ghon be used ta git tha final size. Thiz of course
+will affect accuracy yo, but itz only a guard against unusual thangs.
+
+Currently there be two methodz of bustin joints stored up in tha size table \-
+ethernet n' atm (adsl):
+
+.IP ethernet 4
+.br
+This is basically 1\-1 mapping, so followin our example from above
+(disregardin \fBmpu\fR fo' a moment) slot 0 would have 8, slot 1 would have 16
+and so on, up ta slot 127 wit 2048. Note, dat \fBmpu\fR\~>\~0 must be
+specified, n' slots dat would git less than specified by \fBmpu\fR will get
+\fBmpu\fR instead. Y'all KNOW dat shit, muthafucka! If you don't specify \fBmpu\fR, tha size table aint gonna be
+created at all (it wouldn't make any difference), although any \fBoverhead\fR
+value is ghon be bigged up durin calculations.
+.IP "atm, adsl"
+.br
+ATM linklayer consistz of 53 byte cells, where each of dem serves up 48 bytes
+for payload. Y'all KNOW dat shit, muthafucka! Also all tha cells must be straight-up utilized, thus tha last one is
+padded if/as necessary.
+
+When tha size table is calculated, adjusted size dat fits properly tha fuck into lowest
+amount of cells be assigned ta a slot. For example, a 100 byte long packet
+requires three 48\-byte payloads, so tha final size would require 3 ATM cells
+\- 159 bytes.
+
+For ATM size tables, 16\~bytes sized slots is perfectly enough cause I gots dem finger-lickin' chickens wit tha siz-auce. Da default
+valuez of \fBmtu\fR n' \fBtsize\fR create 4\~bytes sized slots.
+.PP
+.
+.SH "TYPICAL OVERHEADS"
+Da followin joints is typical fo' different adsl scenarios (based on
+\fB[1]\fR n' \fB[2]\fR):
+
+.nf
+LLC based:
+.RS 4
+PPPoA \- 14 (PPP \- 2, ATM \- 12)
+PPPoE \- 40+ (PPPoE \- 8, ATM \- 18, ethernet 14, possibly FCS \- 4+padding)
+Bridged \- 32 (ATM \- 18, ethernet 14, possibly FCS \- 4+padding)
+IPoA \- 16 (ATM \- 16)
+.RE
+
+VC Mux based:
+.RS 4
+PPPoA \- 10 (PPP \- 2, ATM \- 8)
+PPPoE \- 32+ (PPPoE \- 8, ATM \- 10, ethernet 14, possibly FCS \- 4+padding)
+Bridged \- 24+ (ATM \- 10, ethernet 14, possibly FCS \- 4+padding)
+IPoA \- 8 (ATM \- 8)
+.RE
+.fi
+There is all dem blingin thangs regardin tha above overheads:
+.
+.IP \(bu 4
+IPoA up in LLC case requires SNAP, instead of LLC\-NLPID (see rfc2684) \- dis is
+the reason why it straight-up takes mo' space than PPPoA.
+.IP \(bu
+In rare cases, FCS might be preserved on protocols dat include Ethernet frames
+(Bridged n' PPPoE). In such thang, any Ethernet specific padding
+guaranteein 64 bytes long frame size has ta be included as well (see RFC2684).
+In tha other lyrics, it also guarantees dat any packet you bust will take
+minimum 2 atm cells. Yo ass should set \fBmpu\fR accordingly fo' dis shit.
+.IP \(bu
+When tha size table is consulted, n' you shapin traffic fo' tha sake of
+another modem/router, a Ethernet header (without padding) will already be added
+to initial packetz length. Yo ass should compensate fo' dat by subtractin 14
+from tha above overheadz up in dis case. If you shapin directly on tha router
+(for example, wit speedtouch usb modem) rockin ppp daemon, you rockin raw ip
+interface without underlyin layer2, so not a god damn thang is ghon be added.
+
+For mo' thorough explanations, please peep \fB[1]\fR n' \fB[2]\fR.
+.
+.SH "ETHERNET CARDS CONSIDERATIONS"
+.
+It aint nuthin but often forgotten dat modern network cardz (even skanky ones on desktop
+motherboards) and/or they drivers often support different offloading
+mechanisms. In tha context of traffic shaping, 'tso' n' 'gso' might cause
+undesirable effects, cuz of massive TCP segments bein considered during
+traffic shapin (includin stab calculations). For slow uplink intercourses,
+itz phat ta use \fBethtool\fR ta turn off offloadin features.
+.
+.SH "SEE ALSO"
+.
+\fBtc\fR(8), \fBtc\-hfsc\fR(7), \fBtc\-hfsc\fR(8),
+.br
+\fB[1]\fR http://ace\-host.stuart.id.au/russell/files/tc/tc\-atm/
+.br
+\fB[2]\fR http://www.faqs.org/rfcs/rfc2684.html
+
+Please direct bugreports n' patches to: <net...@vger.kernel.org>
+.
+.SH "AUTHOR"
+.
+Manpage pimped by Michal Soltys (sol...@ziu.info)

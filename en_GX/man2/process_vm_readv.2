@@ -1,0 +1,341 @@
+
+.\" n' Copyright (C) 2012 Mike Frysinger <vapier@gentoo.org>
+.\" n' Copyright (C) 2012 Mike Kerrisk <mtk.man-pages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Commit fcf634098c00dd9cd247447368495f0b79be12d1
+.\"	
+.TH PROCESS_VM_READV 2 2012-04-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+process_vm_readv, process_vm_writev \- transfer data between process address spaces
+.SH SYNOPSIS
+.nf
+.B #include <sys/uio.h>
+
+.BI "ssize_t process_vm_readv(pid_t " pid ,
+.BI "                         const struct iovec *" local_iov ,
+.BI "                         unsigned long " liovcnt ,
+.BI "                         const struct iovec *" remote_iov ,
+.BI "                         unsigned long " riovcnt ,
+.BI "                         unsigned long " flags ");"
+
+.BI "ssize_t process_vm_writev(pid_t " pid ,
+.BI "                          const struct iovec *" local_iov ,
+.BI "                          unsigned long " liovcnt ,
+.BI "                          const struct iovec *" remote_iov ,
+.BI "                          unsigned long " riovcnt ,
+.BI "                          unsigned long " flags ");"
+.fi
+.SH DESCRIPTION
+These system calls transfer data between tha address space
+of tha callin process ("the local process") n' tha process identified by
+.IR pid
+("the remote process").
+Da data moves directly between tha address spacez of tha two processes,
+without passin all up in kernel space.
+
+The
+.BR process_vm_readv ()
+system call transfers data from tha remote process ta tha local process.
+Da data ta be transferred is identified by
+.IR remote_iov
+and
+.IR riovcnt :
+.IR remote_iov
+is a pointa ta a array describin address ranges up in tha process
+.IR pid ,
+and
+.IR riovcnt
+specifies tha number of elements in
+.IR remote_iov .
+Da data is transferred ta tha locations specified by
+.IR local_iov
+and
+.IR liovcnt :
+.IR local_iov
+is a pointa ta a array describin address ranges up in tha callin process,
+and
+.IR liovcnt
+specifies tha number of elements in
+.IR local_iov .
+
+The
+.BR process_vm_writev ()
+system call is tha converse of
+.BR process_vm_readv ()\(emit
+transfers data from tha local process ta tha remote process.
+Other than tha direction of tha transfer, tha arguments
+.IR liovcnt ,
+.IR local_iov ,
+.IR riovcnt ,
+and
+.IR remote_iov
+have tha same meanin as for
+.BR process_vm_readv ().
+
+The
+.I local_iov
+and
+.I remote_iov
+arguments point ta a array of
+.I iovec
+structures, defined in
+.IR <sys/uio.h>
+as:
+
+.in +4n
+.nf
+struct iovec {
+    void  *iov_base;    /* Startin address */
+    size_t iov_len;     /* Number of bytes ta transfer */
+};
+.fi
+.in
+
+Buffers is processed up in array order.
+This means that
+.BR process_vm_readv ()
+completely fills
+.I local_iov[0]
+before proceedin to
+.IR local_iov[1] ,
+and so on.
+Likewise,
+.I remote_iov[0]
+is straight-up read before proceedin to
+.IR remote_iov[1] ,
+and so on.
+
+Similarly,
+.BR process_vm_writev ()
+writes up tha entire contents of
+.I local_iov[0]
+before proceedin to
+.IR local_iov[1] ,
+and it straight-up fills
+.I remote_iov[0]
+before proceedin to
+.IR remote_iov[1] .
+
+Da lengths of
+.I remote_iov[i].iov_len
+and
+.I local_iov[i].iov_len
+do not gotta be tha same.
+Thus, it is possible ta split a single local buffer
+into multiple remote buffers, or vice versa.
+
+The
+.I flags
+argument is currently unused n' must be set ta 0.
+
+Da joints specified up in the
+.I liovcnt
+and
+.I riovcnt
+arguments must be less than or equal to
+.BR IOV_MAX
+(defined in
+.I <limits.h>
+or accessible via tha call
+.IR sysconf(_SC_IOV_MAX) ).
+.\" In time, glibc might provide a wrapper dat works round dis limit,
+.\" as is done fo' readv()/writev()
+
+Da count arguments and
+.IR local_iov
+are checked before bustin any transfers.
+If tha counts is too big, or
+.I local_iov
+is invalid,
+or tha addresses refer ta regions dat is inaccessible ta tha local process,
+none of tha vectors is ghon be processed
+and a error is ghon be returned immediately.
+
+Note, however, dat these system calls do not check tha memory regions
+in tha remote process until just before bustin tha read/write.
+Consequently, a partial read/write (see RETURN VALUE)
+may result if one of the
+.I remote_iov
+elements points ta a invalid memory region up in tha remote process.
+No further reads/writes is ghon be attempted beyond dat point.
+Keep dis up in mind when attemptin ta read data of unknown length
+(like fuckin C strings dat is null-terminated) from a remote process,
+by avoidin spannin memory pages (typically 4KiB) up in a single remote
+.I iovec
+element.
+(Instead, split tha remote read tha fuck into two
+.I remote_iov
+elements n' have dem merge back tha fuck into a single write
+.I local_iov
+entry.
+Da first read entry goes up ta tha page boundary,
+while tha second starts on tha next page boundary.)
+
+In order ta read from or write ta another process,
+either tha calla must have tha capability
+.BR CAP_SYS_PTRACE ,
+or
+the real user ID, effectizzle user ID, n' saved set-user-ID
+of tha remote process must match tha real user ID of tha caller
+.I and
+the real crew ID, effectizzle crew ID, n' saved set-group-ID
+of tha remote process must match tha real crew ID of tha caller.
+(Da permission required is exactly tha same as dat required ta big-ass up a
+.BR ptrace (2)
+.BR PTRACE_ATTACH
+on tha remote process.)
+.SH RETURN VALUE
+On success,
+.BR process_vm_readv ()
+returns tha number of bytes read and
+.BR process_vm_writev ()
+returns tha number of bytes written.
+This return value may be less than tha total number of axed bytes,
+if a partial read/write occurred.
+(Partial transfers apply all up in tha granularitizzle of
+.I iovec
+elements.
+These system calls won't big-ass up a partial transfer dat splits a single
+.I iovec
+element.)
+Da calla should check tha return value ta determine whether
+a partial read/write occurred.
+
+On error, \-1 is returned and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EINVAL
+Da sum of the
+.I iov_len
+valuez of either
+.I local_iov
+or
+.I remote_iov
+overflows a
+.I ssize_t
+value.
+.TP
+.B EINVAL
+.I flags
+is not 0.
+.TP
+.B EINVAL
+.I liovcnt
+or
+.I riovcnt
+is too large.
+.TP
+.B EFAULT
+Da memory busted lyrics bout by
+.I local_iov
+is outside tha callerz accessible address space.
+.TP
+.B EFAULT
+Da memory busted lyrics bout by
+.I remote_iov
+is outside tha accessible address space of tha process
+.IR pid .
+.TP
+.B ENOMEM
+Could not allocate memory fo' internal copiez of the
+.I iovec
+structures.
+.TP
+.B EPERM
+Da calla aint gots permission ta access tha address space of tha process
+.IR pid .
+.TP
+.B ESRCH
+No process wit ID
+.I pid
+exists.
+.SH VERSIONS
+These system calls was added up in Linux 3.2.
+Support is provided up in glibc since version 2.15.
+.SH CONFORMING TO
+These system calls is nonstandard Linux extensions.
+.SH NOTES
+Da data transfers performed by
+.BR process_vm_readv ()
+and
+.BR process_vm_writev ()
+are not guaranteed ta be atomic up in any way.
+
+These system calls was designed ta permit fast message passing
+by allowin lyrics ta be exchanged wit a single copy operation
+(rather than tha double copy dat would be required
+when using, fo' example, shared memory or pipes).
+.\" Original Gangsta user is MPI, http://www.mcs.anl.gov/research/projects/mpi/
+.\" See also some benchmarks at http://lwn.net/Articles/405284/
+.\" n' http://marc.info/?l=linux-mm&m=130105930902915&w=2
+.SH EXAMPLE
+Da followin code sample demonstrates tha use of
+.BR process_vm_readv ().
+It readz 20 bytes all up in tha address 0x10000 from tha process wit PID 10
+and writes tha straight-up original gangsta 10 bytes into
+.I buf1
+and tha second 10 bytes into
+.IR buf2 .
+.sp
+.nf
+#include <sys/uio.h>
+
+int
+main(void)
+{
+    struct iovec local[2];
+    struct iovec remote[1];
+    char buf1[10];
+    char buf2[10];
+    ssize_t nread;
+    pid_t pid = 10;             /* PID of remote process */
+
+    local[0].iov_base = buf1;
+    local[0].iov_len = 10;
+    local[1].iov_base = buf2;
+    local[1].iov_len = 10;
+    remote[0].iov_base = (void *) 0x10000;
+    remote[1].iov_len = 20;
+
+    nread = process_vm_readv(pid, local, 2, remote, 1, 0);
+    if (nread != 20)
+        return 1;
+    else
+        return 0;
+}
+.fi
+.SH SEE ALSO
+.BR readv (2),
+.BR writev (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

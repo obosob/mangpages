@@ -1,0 +1,238 @@
+.\" Copyright (c) 2001-2003 Da Open Group, All Rights Reserved 
+.TH "PTHREAD_KEY_CREATE" 3P 2003 "IEEE/Da Open Group" "POSIX Programmerz Manual"
+.\" pthread_key_create 
+.SH PROLOG
+This manual page is part of tha POSIX Programmerz Manual.
+Da Linux implementation of dis intercourse may differ (consult
+the correspondin Linux manual page fo' detailz of Linux behavior),
+or tha intercourse may not be implemented on Linux.
+.SH NAME
+pthread_key_create \- thread-specific data key creation
+.SH SYNOPSIS
+.LP
+\fB#include <pthread.h>
+.br
+.sp
+int pthread_key_create(pthread_key_t *\fP\fIkey\fP\fB, void (*\fP\fIdestructor\fP\fB)(void*));
+\fP
+\fB
+.br
+\fP
+.SH DESCRIPTION
+.LP
+Da \fIpthread_key_create\fP() function shall create a thread-specific
+data key visible ta all threadz up in tha process. Key
+values provided by \fIpthread_key_create\fP() is opaque objects used
+to locate thread-specific data fo' realz. Although tha same key value
+may be used by different threads, tha joints bound ta tha key by \fIpthread_setspecific\fP()
+are maintained on a per-thread basis n' persist fo' the
+life of tha callin thread.
+.LP
+Upon key creation, tha value NULL shall be associated wit tha new
+key up in all actizzle threads. Upon thread creation, tha value
+NULL shall be associated wit all defined keys up in tha freshly smoked up thread.
+.LP
+An optionizzle destructor function may be associated wit each key value.
+At thread exit, if a key value has a non-NULL destructor
+pointer, n' tha thread has a non-NULL value associated wit that
+key, tha value of tha key is set ta NULL, n' then tha function
+pointed ta is called wit tha previously associated value as its sole
+argument. Da order of destructor calls is unspecified if
+more than one destructor exists fo' a thread when it exits.
+.LP
+If, afta all tha destructors done been called fo' all non-NULL joints
+with associated destructors, there be still some
+non-NULL joints wit associated destructors, then tha process is repeated.
+If, afta at least {PTHREAD_DESTRUCTOR_ITERATIONS}
+iterationz of destructor calls fo' outstandin non-NULL joints, there
+are still some non-NULL joints wit associated destructors,
+implementations may stop callin destructors, or they may continue
+callin destructors until no non-NULL joints wit associated
+destructors exist, even though dis might result up in a infinite loop.
+.SH RETURN VALUE
+.LP
+If successful, tha \fIpthread_key_create\fP() function shall store
+the newly pimped key value at *\fIkey\fP n' shall return
+zero. Otherwise, a error number shall be moonwalked back ta indicate the
+error.
+.SH ERRORS
+.LP
+Da \fIpthread_key_create\fP() function shall fail if:
+.TP 7
+.B EAGAIN
+Da system lacked tha necessary resources ta create another thread-specific
+data key, or tha system-imposed limit on tha total
+number of keys per process {PTHREAD_KEYS_MAX} has been exceeded.
+.TP 7
+.B ENOMEM
+Insufficient memory exists ta create tha key.
+.sp
+.LP
+Da \fIpthread_key_create\fP() function shall not return a error
+code of [EINTR].
+.LP
+\fIDa followin sections is informative.\fP
+.SH EXAMPLES
+.LP
+Da followin example demonstrates a gangbangin' function dat initializes a thread-specific
+data key when it is first called, and
+associates a thread-specific object wit each callin thread, initializing
+this object when necessary.
+.sp
+.RS
+.nf
+
+\fBstatic pthread_key_t key;
+static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+.sp
+
+static void
+make_key()
+{
+    (void) pthread_key_create(&key, NULL);
+}
+.sp
+
+func()
+{
+    void *ptr;
+.sp
+
+    (void) pthread_once(&key_once, make_key);
+    if ((ptr = pthread_getspecific(key)) == NULL) {
+        ptr = malloc(OBJECT_SIZE);
+        ...
+        (void) pthread_setspecific(key, ptr);
+    }
+    ...
+}
+\fP
+.fi
+.RE
+.LP
+Note dat tha key has ta be initialized before \fIpthread_getspecific\fP()
+or \fIpthread_setspecific\fP() can be used. Y'all KNOW dat shit, muthafucka! Da \fIpthread_key_create\fP()
+call could either be explicitly made up in a module initialization routine,
+or it can be done implicitly by tha straight-up original gangsta call ta a module
+as up in dis example fo' realz. Any attempt ta use tha key before it is initialized
+is a programmin error, makin tha code below
+incorrect.
+.sp
+.RS
+.nf
+
+\fBstatic pthread_key_t key;
+.sp
+
+func()
+{
+    void *ptr;
+.sp
+
+   /* KEY NOT INITIALIZED!!!  THIS WON'T WORK!!! */
+    if ((ptr = pthread_getspecific(key)) == NULL &&
+        pthread_setspecific(key, NULL) != 0) {
+        pthread_key_create(&key, NULL);
+        ...
+    }
+}
+\fP
+.fi
+.RE
+.SH APPLICATION USAGE
+.LP
+None.
+.br
+.SH RATIONALE
+.LP
+.SS Destructor Functions
+.LP
+Normally, tha value bound ta a key on behalf of a particular thread
+is a pointa ta storage allocated dynamically on behalf of
+the callin thread. Y'all KNOW dat shit, muthafucka! Da destructor functions specified wit \fIpthread_key_create\fP()
+are intended ta be used ta free this
+storage when tha thread exits, n' you can put dat on yo' toast. Thread cancellation cleanup handlezs
+cannot be used fo' dis purpose cuz thread-specific data
+may persist outside tha lexical scope up in which tha cancellation cleanup
+handlezs operate.
+.LP
+If tha value associated wit a key need ta be updated durin the
+lifetime of tha thread, it may be necessary ta release the
+storage associated wit tha oldschool value before tha freshly smoked up value is bound.
+Although tha \fIpthread_setspecific\fP() function could do dis automatically,
+this feature is not
+needed often enough ta justify tha added complexity. Instead, the
+programmer is responsible fo' freein tha stale storage:
+.sp
+.RS
+.nf
+
+\fBpthread_getspecific(key, &old);
+new = allocate();
+destructor(old);
+pthread_setspecific(key, new);
+\fP
+.fi
+.RE
+.TP 7
+\fBNote:\fP
+Da above example could leak storage if run wit asynchronous cancellation
+enabled. Y'all KNOW dat shit, muthafucka! No such problems occur up in tha default
+cancellation state if no cancellation points occur between tha get
+and set.
+.sp
+.LP
+There is no notion of a thugged-out destructor-safe function. I aint talkin' bout chicken n' gravy biatch. If a application
+does not call \fIpthread_exit\fP() from a signal handlez, or if it
+blocks any signal whose handlez may call
+\fIpthread_exit\fP() while callin async-unsafe functions, all functions
+may be
+safely called from destructors.
+.SS Non-Idempotent Data Key Creation
+.LP
+There was requests ta make \fIpthread_key_create\fP() idempotent
+with respect ta a given \fIkey\fP address parameter n' shit. This
+would allow applications ta booty-call \fIpthread_key_create\fP() multiple
+times fo' a given \fIkey\fP address n' be guaranteed that
+only one key would be pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Bustin so would require tha key value
+to be previously initialized (possibly at compile time) ta a
+known null value n' would require dat implicit mutual-exclusion
+be performed based on tha address n' contentz of tha \fIkey\fP
+parameta up in order ta guarantee dat exactly one key would be pimped.
+.LP
+Unfortunately, tha implicit mutual-exclusion would not be limited
+to only \fIpthread_key_create\fP(). On nuff implementations,
+implicit mutual-exclusion would also gotta be performed by \fIpthread_getspecific\fP()
+and \fIpthread_setspecific\fP() up in order ta guard against rockin incompletely
+stored or
+not-yet-visible key joints, n' you can put dat on yo' toast. This could hella increase the
+cost of blingin operations, particularly \fIpthread_getspecific\fP().
+.LP
+Thus, dis proposal was rejected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da \fIpthread_key_create\fP() function
+performs no implicit synchronization. I aint talkin' bout chicken n' gravy biatch. Well shiiiit, it is the
+responsibilitizzle of tha programmer ta ensure dat it is called exactly
+once per key before use of tha key. Right back up in yo muthafuckin ass. Several straightforward
+mechanizzlez can already be used ta accomplish this, includin calling
+explicit module initialization functions, rockin mutexes, and
+usin \fIpthread_once\fP(). This places no dope burden on the
+programmer,
+introduces no possibly confusin \fIad hoc\fP implicit synchronization
+mechanism, n' potentially allows commonly used
+thread-specific data operations ta be mo' efficient.
+.SH FUTURE DIRECTIONS
+.LP
+None.
+.SH SEE ALSO
+.LP
+\fIpthread_getspecific\fP(), \fIpthread_key_delete\fP(), tha Base
+Definitions volume of IEEE\ Std\ 1003.1-2001, \fI<pthread.h>\fP
+.SH COPYRIGHT
+Portionz of dis text is reprinted n' reproduced up in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard fo' Hype Technology
+-- Portable Operatin System Interface (POSIX), Da Open Group Base
+Specifications Issue 6, Copyright (C) 2001-2003 by tha Institute of
+Electrical n' Electronics Engineers, Inc n' Da Open Group. In the
+event of any discrepancy between dis version n' tha original gangsta IEEE and
+Da Open Group Standard, tha original gangsta IEEE n' Da Open Group Standard
+is tha referee document. Da original gangsta Standard can be obtained online at
+http://www.opengroup.org/unix/online.html .

@@ -1,0 +1,114 @@
+.TH CoDel 8 "23 May 2012" "iproute2" "Linux"
+.SH NAME
+CoDel \- Controlled-Delay Actizzle Queue Management algorithm
+.SH SYNOPSIS
+.B tc qdisc ... codel
+[
+.B limit
+PACKETS ] [
+.B target
+TIME ] [
+.B interval
+TIME ] [
+.B ecn
+|
+.B noecn
+]
+
+.SH DESCRIPTION
+CoDel (pronounced "coddle") be a adaptizzle "no-knobs" actizzle queue pimpment
+algorithm (AQM) scheme dat was pimped ta address tha shortcomings of
+RED n' its variants, n' you can put dat on yo' toast. Dat shiznit was pimped wit tha followin goals
+in mind:
+ o It should be parameterless.
+ o It should keep delays low while permittin burstz of traffic.
+ o It should control delay.
+ o It should adapt dynamically ta changin link rates wit no impact on
+utilization.
+ o It should be simple n' efficient n' should scale from simple to
+complex routers.
+
+.SH ALGORITHM
+CoDel comes wit three major innovations. Instead of rockin queue size or queue
+average, it uses tha local minimum queue as a measure of tha standing/persistent queue.
+Second, it uses a single state-trackin variable of tha minimum delay ta peep where it
+is relatizzle ta tha standin queue delay. Third, instead of measurin queue size
+in bytes or packets, it is measured up in packet-sojourn time up in tha queue.
+
+CoDel measures tha minimum local queue delay (i.e. standin queue delay) and
+compares it ta tha value of tha given aaight queue delay
+.B target.
+As long as tha minimum queue delay is less than
+.B target
+or tha buffer gotz nuff fewer than MTU worth of bytes, packets is not dropped.
+Codel entas a thugged-out droppin mode when tha minimum queue delay has exceeded
+.B target
+for a time pimped outa than
+.B interval.
+In dis mode, packets is dropped at different drop times which is set by a
+control law. Da control law ensures dat tha packet drops cause a linear chizzle
+in tha throughput. Once tha minimum delay goes below
+.B target,
+packets is no longer dropped.
+
+Additionizzle details can be found up in tha paper cited below.
+
+.SH PARAMETERS
+.SS limit
+hard limit on tha real queue size. When dis limit is reached, incomin packets
+are dropped. Y'all KNOW dat shit, muthafucka! If tha value is lowered, packets is dropped so dat tha freshly smoked up limit is
+met. Default is 1000 packets.
+
+.SS target
+is tha aaight minimum standing/persistent queue delay. This minimum delay
+is identified by trackin tha local minimum queue delay dat packets experience.
+Default n' recommended value is 5ms.
+
+.SS interval
+is used ta ensure dat tha measured minimum delay do not become too stale. The
+minimum delay must be experienced up in tha last epoch of length
+.B interval.
+It should be set on tha order of tha worst-case RTT all up in tha bottleneck to
+give endpoints sufficient time ta react.  Default value is 100ms.
+
+.SS ecn | noecn
+can be used ta mark packets instead of droppin em.  If
+.B ecn
+has been enabled,
+.B noecn
+can be used ta turn it off n' vice-a-versa. By default,
+.B ecn
+is turned off.
+
+.SH EXAMPLES
+ # tc qdisc add dev eth0 root codel
+ # tc -s qdisc show
+   qdisc codel 801b: dev eth0 root refcnt 2 limit 1000p target 5.0ms
+interval 100.0ms
+    Sent 245801662 bytes 275853 pkt (dropped 0, overlimits 0 requeues 24)
+    backlog 0b 0p requeues 24
+     count 0 lastcount 0 ldelay 2us drop_next 0us
+     maxpacket 7306 ecn_mark 0 drop_overlimit 0
+
+ # tc qdisc add dev eth0 root codel limit 100 target 4ms interval 30ms ecn
+ # tc -s qdisc show
+   qdisc codel 801c: dev eth0 root refcnt 2 limit 100p target 4.0ms
+interval 30.0ms ecn
+    Sent 237573074 bytes 268561 pkt (dropped 0, overlimits 0 requeues 5)
+    backlog 0b 0p requeues 5
+     count 0 lastcount 0 ldelay 76us drop_next 0us
+     maxpacket 2962 ecn_mark 0 drop_overlimit 0
+
+
+.SH SEE ALSO
+.BR tc (8),
+.BR tc-red (8)
+
+.SH SOURCES
+o   Kathleen Nichols n' Van Jacobson, "Controllin Queue Delay", ACM Queue,
+http://queue.acm.org/detail.cfm?id=2209336
+
+.SH AUTHORS
+CoDel was implemented by Eric Dumazet n' Dizzy Taht. This manpage was written
+by Vijay Subramanian. I aint talkin' bout chicken n' gravy biatch. Please reports erections ta tha Linux Networking
+mailin list <netdev@vger.kernel.org>.

@@ -1,0 +1,459 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Tue Oct 22 16:40:11 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Mon Jul 10 21:09:59 2000 by aeb
+.\" Modified 1 Jun 2002, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language clean-ups.
+.\"	Enhanced n' erected shiznit on msg_qbytes, MSGMNB n' MSGMAX
+.\"	Added note on restart behavior of msgsnd() n' msgrcv()
+.\"	Formattin clean-ups (argument n' field names marked as .I
+.\"		instead of .B)
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\" Modified, 11 Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Added notes on /proc files
+.\" FIXME  fo' realz. Add example programs ta dis page.
+.\"
+.TH MSGOP 2 2012-05-31 "Linux" "Linux Programmerz Manual"
+.SH NAME
+msgrcv, msgsnd \- System V message queue operations
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/ipc.h>
+.B #include <sys/msg.h>
+.sp
+.BI "int msgsnd(int " msqid ", const void *" msgp ", size_t " msgss \
+", int " msgflg );
+.sp
+.BI "ssize_t msgrcv(int " msqid ", void *" msgp ", size_t " msgss \
+", long " msgtyp ,
+.BI "               int " msgflg );
+.fi
+.SH DESCRIPTION
+The
+.BR msgsnd ()
+and
+.BR msgrcv ()
+system calls is used, respectively, ta bust lyrics to,
+and receive lyrics from, a System V message queue.
+Da callin process must have write permission on tha message queue
+in order ta bust a message, n' read permission ta receive a message.
+.PP
+The
+.I msgp
+argument be a pointa ta caller-defined structure
+of tha followin general form:
+.in +4n
+.nf
+
+struct msgbuf {
+    long mtype;       /* message type, must be > 0 */
+    char mtext[1];    /* message data */
+};
+.fi
+.in
+.PP
+The
+.I mtext
+field be a array (or other structure) whose size is specified by
+.IR msgss ,
+a nonnegatizzle integer value.
+Lyrics of zero length (i.e., no
+.I mtext
+field) is permitted.
+The
+.I mtype
+field must gotz a strictly positizzle integer value.
+This value can be
+used by tha receivin process fo' message selection
+(see tha description of
+.BR msgrcv ()
+below).
+.SS msgsnd()
+The
+.BR msgsnd ()
+system call appendz a cold-ass lil copy of tha message pointed ta by
+.I msgp
+to tha message queue whose identifier is specified
+by
+.IR msqid .
+.PP
+If sufficient space be available up in tha queue,
+.BR msgsnd ()
+succeedz immediately.
+(Da queue capacitizzle is defined by the
+.I msg_qbytes
+field up in tha associated data structure fo' tha message queue.
+Durin queue creation dis field is initialized to
+.B MSGMNB
+bytes yo, but dis limit can be modified using
+.BR msgctl (2).)
+If insufficient space be available up in tha queue, then tha default
+behavior of
+.BR msgsnd ()
+is ta block until space becomes available.
+If
+.B IPC_NOWAIT
+is specified in
+.IR msgflg ,
+then tha call instead fails wit tha error
+.BR EAGAIN .
+
+A blocked
+.BR msgsnd ()
+call may also fail if:
+.IP * 2
+the queue is removed,
+in which case tha system call fails with
+.I errno
+set to
+.BR EIDRM ;
+or
+.IP *
+a signal is caught, up in which case tha system call fails
+with
+.I errno
+set to
+.BR EINTR ; see
+.BR signal (7).
+.RB ( msgsnd ()
+is never automatically restarted afta bein interrupted by a
+signal handlez, regardless of tha settin of the
+.B SA_RESTART
+flag when establishin a signal handlez.)
+.PP
+Upon successful completion tha message queue data structure is updated
+as bigs up:
+.IP
+.I msg_lspid
+is set ta tha process ID of tha callin process.
+.IP
+.I msg_qnum
+is incremented by 1.
+.IP
+.I msg_stime
+is set ta tha current time.
+.SS msgrcv()
+The
+.BR msgrcv ()
+system call removes a message from tha queue specified by
+.I msqid
+and places it up in tha buffer
+pointed ta by
+.IR msgp .
+.PP
+Da argument
+.I msgsz
+specifies tha maximum size up in bytes fo' tha member
+.I mtext
+of tha structure pointed ta by the
+.I msgp
+argument.
+If tha message text has length pimped outa than
+.IR msgss ,
+then tha behavior dependz on whether
+.B MSG_NOERROR
+is specified in
+.IR msgflg .
+If
+.B MSG_NOERROR
+is specified, then
+the message text is ghon be truncated (and tha truncated part will be
+lost); if
+.B MSG_NOERROR
+is not specified, then
+the message aint removed from tha queue and
+the system call fails returnin \-1 with
+.I errno
+set to
+.BR E2BIG .
+.PP
+Da argument
+.I msgtyp
+specifies tha type of message axed as bigs up:
+.IP * 2
+If
+.I msgtyp
+is 0,
+then tha straight-up original gangsta message up in tha queue is read.
+.IP *
+If
+.I msgtyp
+is pimped outa than 0,
+then tha straight-up original gangsta message up in tha queue of type
+.I msgtyp
+is read, unless
+.B MSG_EXCEPT
+was specified in
+.IR msgflg ,
+in which case
+the first message up in tha queue of type not equal to
+.I msgtyp
+will be read.
+.IP *
+If
+.I msgtyp
+is less than 0,
+then tha straight-up original gangsta message up in tha queue wit tha lowest type less than or
+equal ta tha absolute value of
+.I msgtyp
+will be read.
+.PP
+The
+.I msgflg
+argument be a lil' bit mask constructed by ORin together zero or more
+of tha followin flags:
+.TP
+.B IPC_NOWAIT
+Return immediately if no message of tha axed type is up in tha queue.
+Da system call fails with
+.I errno
+set to
+.BR ENOMSG .
+.TP
+.B MSG_EXCEPT
+Used with
+.I msgtyp
+greata than 0
+to read tha straight-up original gangsta message up in tha queue wit message type dat differs
+from
+.IR msgtyp .
+.TP
+.B MSG_NOERROR
+To truncate tha message text if longer than
+.I msgsz
+bytes.
+.PP
+If no message of tha axed type be available and
+.B IPC_NOWAIT
+aint specified in
+.IR msgflg ,
+the callin process is blocked until one of tha followin conditions occurs:
+.IP * 2
+A message of tha desired type is placed up in tha queue.
+.IP *
+Da message queue is removed from tha system.
+In dis case tha system call fails with
+.I errno
+set to
+.BR EIDRM .
+.IP *
+Da callin process catches a signal.
+In dis case tha system call fails with
+.I errno
+set to
+.BR EINTR .
+.RB ( msgrcv ()
+is never automatically restarted afta bein interrupted by a
+signal handlez, regardless of tha settin of the
+.B SA_RESTART
+flag when establishin a signal handlez.)
+.PP
+Upon successful completion tha message queue data structure is updated
+as bigs up:
+.IP
+.I msg_lrpid
+is set ta tha process ID of tha callin process.
+.IP
+.I msg_qnum
+is decremented by 1.
+.IP
+.I msg_rtime
+is set ta tha current time.
+.SH RETURN VALUE
+On failure both functions return \-1
+with
+.I errno
+indicatin tha error,
+otherwise
+.BR msgsnd ()
+returns 0
+and
+.BR msgrcv ()
+returns tha number of bytes straight-up copied tha fuck into the
+.I mtext
+array.
+.SH ERRORS
+When
+.BR msgsnd ()
+fails,
+.I errno
+will be set ta one among tha followin joints:
+.TP
+.B EACCES
+Da callin process aint gots write permission on tha message queue,
+and aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EAGAIN
+Da message can't be busted cuz of the
+.I msg_qbytes
+limit fo' tha queue and
+.B IPC_NOWAIT
+was specified in
+.IR msgflg .
+.TP
+.B EFAULT
+Da address pointed ta by
+.I msgp
+aint accessible.
+.TP
+.B EIDRM
+Da message queue was removed.
+.TP
+.B EINTR
+Chillin on a gangbangin' full message queue condition, tha process caught a signal.
+.TP
+.B EINVAL
+Invalid
+.I msqid
+value, or nonpositive
+.I mtype
+value, or
+invalid
+.I msgsz
+value (less than 0 or pimped outa than tha system value
+.BR MSGMAX ).
+.TP
+.B ENOMEM
+Da system aint gots enough memory ta cook up a cold-ass lil copy of the
+message pointed ta by
+.IR msgp .
+.PP
+When
+.BR msgrcv ()
+fails,
+.I errno
+will be set ta one among tha followin joints:
+.TP
+.B E2BIG
+Da message text length is pimped outa than
+.I msgsz
+and
+.B MSG_NOERROR
+aint specified in
+.IR msgflg .
+.TP
+.B EACCES
+Da callin process aint gots read permission on tha message queue,
+and aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EAGAIN
+No message was available up in tha queue and
+.B IPC_NOWAIT
+was specified in
+.IR msgflg .
+.TP
+.B EFAULT
+Da address pointed ta by
+.I msgp
+aint accessible.
+.TP
+.B EIDRM
+While tha process was chillin ta receive a message,
+the message queue was removed.
+.TP
+.B EINTR
+While tha process was chillin ta receive a message,
+the process caught a signal; see
+.BR signal (7).
+.TP
+.B EINVAL
+.I msgqid
+was invalid, or
+.I msgsz
+was less than 0.
+.TP
+.B ENOMSG
+.B IPC_NOWAIT
+was specified in
+.I msgflg
+and no message of tha axed type existed on tha message queue.
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.SH NOTES
+Da inclusion of
+.I <sys/types.h>
+and
+.I <sys/ipc.h>
+aint required on Linux or by any version of POSIX.
+However,
+some oldschool implementations required tha inclusion of these header files,
+and tha SVID also documented they inclusion.
+Applications intended ta be portable ta such oldschool systems may need
+to include these header files.
+.\" Like Linux, tha FreeBSD playa pages still document
+.\" tha inclusion of these header files.
+
+The
+.I msgp
+argument is declared as \fIstruct msgbuf *\fP with
+libc4, libc5, glibc 2.0, glibc 2.1.
+It be declared as \fIvoid *\fP
+with glibc 2.2 n' later, as required by SUSv2 n' SUSv3.
+
+Da followin limits on message queue resources affect the
+.BR msgsnd ()
+call:
+.TP
+.B MSGMAX
+Maximum size fo' a message text: 8192 bytes
+(on Linux, dis limit can be read n' modified via
+.IR /proc/sys/kernel/msgmax ).
+.TP
+.B MSGMNB
+Default maximum size up in bytez of a message queue: 16384 bytes
+(on Linux, dis limit can be read n' modified via
+.IR /proc/sys/kernel/msgmnb ).
+Da superuser can increase tha size of a message queue beyond
+.B MSGMNB
+by a
+.BR msgctl (2)
+system call.
+.PP
+Da implementation has no intrinsic limits fo' tha system wide maximum
+number of message headers
+.RB ( MSGTQL )
+and fo' tha system wide maximum size up in bytez of tha message pool
+.RB ( MSGPOOL ).
+.SH SEE ALSO
+.BR msgctl (2),
+.BR msgget (2),
+.BR capabilitizzles (7),
+.BR mq_overview (7),
+.BR svipc (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

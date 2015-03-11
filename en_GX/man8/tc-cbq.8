@@ -1,0 +1,353 @@
+.TH CBQ 8 "16 December 2001" "iproute2" "Linux"
+.SH NAME
+CBQ \- Class Based Queueing
+.SH SYNOPSIS
+.B tc qdisc ... dev
+dev
+.B  ( parent
+classid 
+.B | root) [ handle 
+major: 
+.B ] cbq [ allot 
+bytes
+.B ] avpkt
+bytes
+.B bandwidth
+rate
+.B [ cell 
+bytes
+.B ] [ ewma
+log
+.B ] [ mpu
+bytes
+.B ] 
+
+.B tc class ... dev
+dev
+.B parent 
+major:[minor]
+.B [ classid 
+major:minor
+.B ] cbq allot
+bytes
+.B [ bandwidth 
+rate 
+.B ] [ rate 
+rate
+.B ] prio
+priority
+.B [ weight
+weight
+.B ] [ minburst 
+packets
+.B ] [ maxburst 
+packets 
+.B ] [ ewma 
+log
+.B ] [ cell
+bytes
+.B ] avpkt
+bytes
+.B [ mpu
+bytes 
+.B ] [ bounded isolated ] [ split
+handle
+.B & defmap
+defmap
+.B ] [ estimator 
+interval timeconstant
+.B ]
+
+.SH DESCRIPTION
+Class Based Queuein be a cold-ass lil classful qdisc dat implements a rich
+linksharin hierarchy of classes.  It gotz nuff shapin elements as
+well as prioritizin capabilities. Put ya muthafuckin choppers up if ya feel dis!  Shapin is performed rockin link
+idle time calculations based on tha timin of dequeue events n' 
+underlyin link bandwidth.
+
+.SH SHAPING ALGORITHM
+When shapin a 10mbit/s connection ta 1mbit/s, tha link will
+be idle 90% of tha time. If it aint, it need ta be throttled so dat it
+IS idle 90% of tha time.
+
+Durin operations, tha effectizzle idletime is measured rockin an
+exponential weighted movin average (EWMA), which considaz recent
+packets ta be exponentially mo' blingin than past ones. Da Unix
+loadaverage is calculated up in tha same way.
+
+Da calculated idle time is subtracted from tha EWMA measured one,
+the resultin number is called 'avgidle' fo' realz. A perfectly loaded link has
+an avgidle of zero: packets arrive exactly all up in tha calculated
+interval.
+
+An overloaded link has a wack avgidle n' if it gets too negative,
+CBQ throttlez n' is then 'overlimit'.
+
+Conversely, a idle link might amass a big-ass avgidle, which would then
+allow infinite bandwidths afta all dem minutez of silence. To prevent
+this, avgidle is capped at 
+.B maxidle.
+
+If overlimit, up in theory, tha CBQ could throttle itself fo' exactly the
+amount of time dat was calculated ta pass between packets, n' then
+pass one packet, n' throttle again. I aint talkin' bout chicken n' gravy biatch. Cuz of timer resolution constraints,
+this may not be feasible, peep tha 
+.B minburst
+parameta below.
+
+.SH CLASSIFICATION
+Within tha one CBQ instizzle nuff classes may exist. Each of these classes
+gotz nuff another qdisc, by default 
+.BR tc-pfifo (8).
+
+When enqueuein a packet, CBQ starts all up in tha root n' uses various methodz ta 
+determine which class should receive tha data. 
+
+In tha absence of uncommon configuration options, tha process is rather easy as fuck . 
+At each node our slick asses look fo' a instruction, n' then git all up in tha class tha 
+instruction refers our asses to. If tha class found be a funky-ass barren leaf-node (without 
+children), we enqueue tha packet there, so peek-a-boo, clear tha way, I be comin' thru fo'sho. If it aint yet a leaf node, our phat asses do 
+the whole thang over again n' again n' again startin from dat node. 
+
+Da followin actions is performed, up in order at each node we visit, until one 
+sendz our asses ta another node, or terminates tha process.
+.TP
+(i)
+Consult filtas attached ta tha class. If busted ta a leafnode, we is done. 
+Otherwise, restart.
+.TP
+(ii)
+Consult tha defmap fo' tha prioritizzle assigned ta dis packet, which dependz 
+on tha TOS bits, n' you can put dat on yo' toast. Peep if tha referral is leafless, otherwise restart.
+.TP
+(iii)
+Ask tha defmap fo' instructions fo' tha 'best effort' priority. Peep tha 
+answer fo' leafness, otherwise restart.
+.TP
+(iv)
+If none of tha above returned wit a instruction, enqueue at dis node.
+.P
+This algorithm make shizzle dat a packet always endz up somewhere, even while
+yo ass is busy buildin yo' configuration. I aint talkin' bout chicken n' gravy biatch. 
+
+For mo' details, see
+.BR tc-cbq-details(8).
+
+.SH LINK SHARING ALGORITHM
+When dequeuin fo' bustin  ta tha network device, CBQ decides which of its 
+classes is ghon be allowed ta send yo, but it ain't no stoppin cause I be still poppin'. Well shiiiit, it do so wit a Weighted Round Robin process
+in which each class wit packets gets a cold-ass lil chizzle ta bust up in turn, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Da WRR process
+starts by askin tha highest prioritizzle classes (lowest numerically - 
+highest semantically) fo' packets, n' will continue ta do so until they
+have no mo' data ta offer, up in which case tha process repeats fo' lower 
+priorities.
+
+Classes by default borrow bandwidth from they siblings fo' realz. A class can be 
+prevented from bustin so by declarin it 'bounded' fo' realz. A class can also indicate 
+its unwillingnizz ta lend up bandwidth by bein 'isolated'.
+
+.SH QDISC
+Da root of a CBQ qdisc class tree has tha followin parameters:
+
+.TP 
+parent major:minor | root
+This mandatory parameta determines tha place of tha CBQ instance, either at the
+.B root
+of a intercourse or within a existin class.
+.TP
+handle major:
+Like all other qdiscs, tha CBQ can be assigned a handle. Right back up in yo muthafuckin ass. Should consist only
+of a major number, followed by a cold-ass lil colon. I aint talkin' bout chicken n' gravy biatch. Optionizzle yo, but straight-up useful if classes
+will be generated within dis qdisc.
+.TP 
+allot bytes
+This allotment is tha 'chunkiness' of link pluggin n' is used fo' determinin packet
+transmission time tables. Da qdisc allot differs slightly from tha class allot discussed
+below. Optional. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Defaults ta a reasonable value, related ta avpkt.
+.TP
+avpkt bytes
+Da average size of a packet is needed fo' calculatin maxidle, n' be also used
+for makin shizzle 'allot' has a safe value. Mandatory.
+.TP
+bandwidth rate
+To determine tha idle time, CBQ must know tha bandwidth of yo' underlyin 
+physical intercourse, or parent qdisc. This be a vital parameter, mo' bout it
+later n' shit. Mandatory.
+.TP
+cell
+Da cell size determines he granularitizzle of packet transmission time calculations yo. Has a sensible default.
+.TP 
+mpu
+A zero sized packet may still take time ta transmit. This value is tha lower
+cap fo' packet transmission time calculations - packets smalla than dis value
+are still deemed ta have dis size. Defaults ta zero.
+.TP
+ewma log
+When CBQ need ta measure tha average idle time, it do so rockin a 
+Exponentially Weighted Movin Average which smooths up measurements into
+a movin average. Da EWMA LOG determines how tha fuck much smoothang occurs. Lower 
+values imply pimped outa sensitivity. Must be between 0 n' 31. Defaults 
+to 5.
+.P
+A CBQ qdisc do not shape outta its own accord. Y'all KNOW dat shit, muthafucka! Well shiiiit, it only need ta know certain
+parametas bout tha underlyin link fo' realz. Actual shapin is done up in classes.
+
+.SH CLASSES
+Classes gotz a host of parametas ta configure they operation.
+
+.TP 
+parent major:minor
+Place of dis class within tha hierarchy. If attached directly ta a qdisc 
+and not ta another class, minor can be omitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Mandatory.
+.TP 
+classid major:minor
+Like qdiscs, classes can be named. Y'all KNOW dat shit, muthafucka! Da major number must be equal ta the
+major number of tha qdisc ta which it belongs. Optionizzle yo, but needed if dis 
+class is goin ta have lil' thugs.
+.TP 
+weight weight
+When dequeuin ta tha intercourse, classes is tried fo' traffic up in a 
+round-robin fashion. I aint talkin' bout chicken n' gravy biatch. Classes wit a higher configured qdisc will generally
+have mo' traffic ta offer durin each round, so it make sense ta allow
+it ta dequeue mo' traffic fo' realz. All weights under a cold-ass lil class is normalized, so
+only tha ratios matter n' shit. Defaults ta tha configured rate, unless tha prioritizzle 
+of dis class is maximal, up in which case it is set ta 1.
+.TP 
+allot bytes
+Allot specifies how tha fuck nuff bytes a qdisc can dequeue
+durin each round of tha process. This parameta is weighted rockin tha 
+renormalized class weight busted lyrics bout above. Right back up in yo muthafuckin ass. Silently capped at a minimum of
+3/2 avpkt. Mandatory.
+
+.TP 
+prio priority
+In tha round-robin process, classes wit tha lowest prioritizzle field is tried 
+for packets first. Mandatory.
+
+.TP 
+avpkt
+See tha QDISC section.
+
+.TP 
+rate rate
+Maximum rate dis class n' all its lil pimps combined can bust at. Mandatory.
+
+.TP
+bandwidth rate
+This is different from tha bandwidth specified when bustin a CBQ disc! Only
+used ta determine maxidle n' offtime, which is only calculated when
+specifyin maxburst or minburst. Mandatory if specifyin maxburst or minburst.
+
+.TP 
+maxburst
+This number of packets is used ta calculate maxidle so dat when
+avgidle be at maxidle, dis number of average packets can be burst
+before avgidle drops ta 0. Right back up in yo muthafuckin ass. Set it higher ta be mo' tolerant of
+bursts, n' you can put dat on yo' toast. Yo ass can't set maxidle directly, only via dis parameter.
+
+.TP
+minburst 
+As mentioned before, CBQ need ta throttle up in case of
+overlimit. Da ideal solution is ta do so fo' exactly tha calculated
+idle time, n' pass 1 packet. But fuck dat shiznit yo, tha word on tha street is dat Unix kernels generally have a
+hard time schedulin events shorta than 10ms, so it is betta to
+throttle fo' a longer period, n' then pass minburst packets up in one
+go, n' then chill minburst times longer.
+
+Da time ta wait is called tha offtime yo. Higher jointz of minburst lead
+to mo' accurate shapin up in tha long term yo, but ta bigger bursts at
+millisecond timescales. Optional.
+
+.TP
+minidle
+If avgidle is below 0, we is overlimits n' need ta wait until
+avgidle is ghon be big-ass enough ta bust one packet. To prevent a sudden
+burst from shuttin down tha link fo' a prolonged period of time,
+avgidle is reset ta minidle if it gets too low.
+
+Minidle is specified up in wack microseconds, so 10 means that
+avgidle is capped at -10us. Optional.
+
+.TP
+bounded 
+Signifies dat dis class aint gonna borrow bandwidth from its siblings.
+.TP 
+isolated
+Means dat dis class aint gonna borrow bandwidth ta its siblings
+
+.TP 
+split major:minor & defmap bitmap[/bitmap]
+If consultin filtas attached ta a cold-ass lil class did not give a verdict, 
+CBQ can also classify based on tha packetz priority. There is 16
+prioritizzles available, numbered from 0 ta 15. 
+
+Da defmap specifies which prioritizzles dis class wants ta receive, 
+specified as a funky-ass bitmap. Da Least Significant Bit correspondz ta prioritizzle 
+zero. Da 
+.B split
+parameta  drops some lyrics ta CBQ at which class tha decision must be made, which should
+be a (grand)parent of tha class yo ass be adding.
+
+As a example, 'tc class add ... classid 10:1 cbq .. split 10:0 defmap c0'
+configures class 10:0 ta bust packets wit prioritizzles 6 n' 7 ta 10:1.
+
+Da complimentary configuration would then 
+be: 'tc class add ... classid 10:2 cbq ... split 10:0 defmap 3f'
+Which would bust all packets 0, 1, 2, 3, 4 n' 5 ta 10:1.
+.TP
+estimator interval timeconstant
+CBQ can measure how tha fuck much bandwidth each class is using, which tc filters
+can use ta classify packets with. In order ta determine tha bandwidth
+it uses a straight-up simple estimator dat measures once every
+.B interval
+microsecondz how tha fuck much traffic has passed. Y'all KNOW dat shit, muthafucka! This again n' again n' again be a EWMA, fo' which
+the time constant can be specified, also up in microseconds. Da 
+.B time constant
+correspondz ta tha sluggishnizz of tha measurement or, conversely, ta tha 
+sensitivitizzle of tha average ta short bursts yo. Higher joints mean less
+sensitivity. 
+
+.SH BUGS
+Da actual bandwidth of tha underlyin link may not be known, fo' example 
+in tha case of PPoE or PPTP connections which up in fact may bust over a 
+pipe, instead of over a physical device. CBQ is like resilient ta major
+errors up in tha configured bandwidth, probably a tha cost of coarser shaping.
+
+Default kernels rely on coarse timin shiznit fo' makin decisions. These 
+may make shapin precise up in tha long term yo, but inaccurate on second long scales.
+
+See 
+.BR tc-cbq-details(8)
+for hints on how tha fuck ta improve all dis bullshit.
+
+.SH SOURCES
+.TP
+o
+Sally Floyd n' Van Jacobson, "Link-sharin n' Resource
+Management Models fo' Packet Networks",
+IEEE/ACM Transactions on Networking, Vol.3, No.4, 1995
+
+.TP 
+o
+Sally Floyd, "Notes on CBQ n' Guaranteed Service", 1995
+
+.TP
+o
+Sally Floyd, "Notes on Class-Based Queueing: Setting
+Parameters", 1996
+
+.TP 
+o
+Sally Floyd n' Mike Speer, "Experimenstrual Results
+for Class-Based Queueing", 1998, not published.
+
+
+
+.SH SEE ALSO
+.BR tc (8)
+
+.SH AUTHOR
+Alexey N. Kuznetsov, <kuznet@ms2.inr.ac.ru>. This manpage maintained by
+bert hubert <ahu@ds9a.nl>
+
+

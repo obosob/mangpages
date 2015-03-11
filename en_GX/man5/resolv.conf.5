@@ -1,0 +1,301 @@
+.\" Copyright (c) 1986 Da Regentz of tha Universitizzle of California.
+.\" All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Redistribution n' use up in source n' binary forms is permitted
+.\" provided dat tha above copyright notice n' dis paragraph are
+.\" duplicated up in all such forms n' dat any documentation,
+.\" advertisin shit, n' other shiznit related ta such
+.\" distribution n' use acknowledge dat tha software was pimped
+.\" by tha Universitizzle of California, Berkeley.  Da name of the
+.\" Universitizzle may not be used ta endorse or promote shizzle derived
+.\" from dis software without specific prior freestyled permission.
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\" %%%LICENSE_END
+.\"
+.\"	@(#)resolver.5	5.9 (Berkeley) 12/14/89
+.\"	$Id: resolver.5,v 8.6 1999/05/21 00:01:02 vixie Exp $
+.\"
+.\" Added ndots remark by Bernhard R. Link - debian bug #182886
+.\"
+.TH RESOLV.CONF 5 2013-07-31 "" "Linux Programmerz Manual"
+.UC 4
+.SH NAME
+resolv.conf \- resolver configuration file
+.SH SYNOPSIS
+.B /etc/resolv.conf
+.SH DESCRIPTION
+The
+.I resolver
+is a set of routines up in tha C library
+that provide access ta tha Internizzle Domain Name System (DNS).
+Da resolver configuration file gotz nuff shiznit dat is read
+by tha resolver routines tha last time they is invoked by a process.
+Da file is designed ta be human readable n' gotz nuff a list of
+keywordz wit joints dat provide various typez of resolver shiznit.
+.LP
+If dis file do not exist,
+only tha name server on tha local machine is ghon be queried;
+the domain name is determined from tha hostname
+and tha domain search path is constructed from tha domain name.
+.LP
+Da different configuration options are:
+.TP
+\fBnameserver\fP Name server IP address
+Internizzle address of a name server dat tha resolver should query,
+either a IPv4 address (in dot notation),
+or a IPv6 address up in colon (and possibly dot) notation as per RFC 2373.
+Up to
+.B MAXNS
+(currently 3, peep \fI<resolv.h>\fP) name servers may be listed,
+one per keyword.
+If there be multiple servers,
+the resolver library queries dem up in tha order listed.
+If no \fBnameserver\fP entries is present,
+the default is ta use tha name server on tha local machine.
+(Da algorithm used is ta try a name server, n' if tha query times out,
+try tha next, until outta name servers,
+then repeat tryin all tha name servers
+until a maximum number of retries is made.)
+.TP
+\fBdomain\fP Local domain name.
+Most queries fo' names within dis domain can use short names
+relatizzle ta tha local domain.
+If set ta \(aq.\(aq, tha root domain is considered.
+If no \fBdomain\fP entry is present, tha domain is determined
+from tha local hostname returned by
+.BR gethostname (2);
+the domain part is taken ta be every last muthafuckin thang afta tha straight-up original gangsta \(aq.\(aq.
+Finally, if tha hostname do not contain a thugged-out domain part, tha root
+domain be assumed.
+.TP
+\fBsearch\fP Search list fo' host-name lookup.
+Da search list is normally determined from tha local domain name;
+by default, it gotz nuff only tha local domain name.
+This may be chizzled by listin tha desired domain search path
+followin tha \fIsearch\fP keyword wit spaces or tabs separating
+the names.
+Resolver queries havin fewer than
+.I ndots
+dots (default is 1) up in dem is ghon be attempted rockin each component
+of tha search path up in turn until a match is found.
+For environments wit multiple subdomains please read
+.BI "options ndots:" n
+below ta avoid man-in-the-middle attacks n' unnecessary
+traffic fo' tha root-dns-servers.
+.\" When havin a resolv.conv wit a line
+.\"  search subdomain.domain.tld domain.tld
+.\" n' bustin a hostlookup, fo' example by
+.\"  pin host.anothersubdomain
+.\" it sendz dns-requests for
+.\"  host.anothersubdomain.
+.\"  host.anothersubdomain.subdomain.domain.tld.
+.\"  host.anothersubdomain.domain.tld.
+.\" thus not only causin unnecessary traffic fo' tha root-dns-servers
+.\" but broadcastin shiznit ta tha outside n' makin man-in-the-middle
+.\" attacks possible.
+Note dat dis process may be slow n' will generate a shitload of network
+traffic if tha servers fo' tha listed domains is not local,
+and dat queries will time up if no server be available
+for one of tha domains.
+.IP
+Da search list is currently limited ta six domains
+with a total of 256 characters.
+.TP
+\fBsortlist\fP
+This option allows addresses returned by
+.BR gethostbyname (3)
+to be sorted.
+A sortlist is specified by IP-address-netmask pairs.
+Da netmask is
+optionizzle n' defaults ta tha natural netmask of tha net. Put yo muthafuckin choppers up if ya feel this!
+Da IP address
+and optionizzle network pairs is separated by slashes.
+Up ta 10 pairs may
+be specified.
+Here be a example:
+
+.in +4n
+sortlist 130.155.160.0/255.255.240.0 130.155.0.0
+.in
+.br
+.TP
+\fBoptions\fP
+Options allows certain internal resolver variablez ta be modified.
+Da syntax is
+.RS
+.IP
+\fBoptions\fP \fIoption\fP \fI...\fP
+.LP
+where \fIoption\fP is one of tha following:
+.TP
+\fBdebug\fP
+.\" Since glibc 2.2?
+sets
+.BR RES_DEBUG
+in
+.IR _res.options
+(effectizzle only if glibc was built wit debug support; see
+.BR resolver (3)).
+.TP
+.BI ndots: n
+.\" Since glibc 2.2
+sets a threshold fo' tha number of dots which
+must step tha fuck up in a name given to
+.BR res_query (3)
+(see
+.BR resolver (3))
+before a \fIinitial absolute query\fP is ghon be made.
+Da default for
+\fIn\fP is 1, meanin dat if there be any dots up in a name, tha name
+will be tried first as a absolute name before any \fIsearch list\fP
+elements is appended ta dat shit.
+Da value fo' dis option is silently capped ta 15.
+.TP
+.BI timeout: n
+.\" Since glibc 2.2
+sets tha amount of time tha resolver will wait fo' a
+response from a remote name server before retryin the
+query via a gangbangin' finger-lickin' different name server.
+Measured up in seconds,
+the default is
+.BR RES_TIMEOUT
+(currently 5, peep \fI<resolv.h>\fP).
+Da value fo' dis option is silently capped ta 30.
+.TP
+.BI attempts: n
+sets tha number of times tha resolver will bust a
+query ta its name servers before givin up n' returning
+an error ta tha callin application.
+Da default is
+.BR RES_DFLRETRY
+(currently 2, peep \fI<resolv.h>\fP).
+Da value fo' dis option is silently capped ta 5.
+.TP
+.B rotate
+.\" Since glibc 2.2
+sets
+.BR RES_ROTATE
+in
+.IR _res.options ,
+which causes round-robin selection of nameservers from among dem listed.
+This has tha effect of spreadin tha query load among all listed servers,
+rather than havin all clients try tha straight-up original gangsta listed server first every last muthafuckin time.
+.TP
+.B no-check-names
+.\" since glibc 2.2
+sets
+.BR RES_NOCHECKNAME
+in
+.IR _res.options ,
+which disablez tha modern BIND checkin of incomin hostnames and
+mail names fo' invalid charactas like fuckin underscore (_), non-ASCII,
+or control characters.
+.TP
+.B inet6
+.\" Since glibc 2.2
+sets
+.BR RES_USE_INET6
+in
+.IR _res.options .
+This has tha effect of tryin a AAAA query before a A query inside the
+.BR gethostbyname (3)
+function, n' of mappin IPv4 responses up in IPv6 "tunneled form"
+if no AAAA recordz is found but a A record set exists.
+.TP
+.BR ip6-bytestrin " (since glibc 2.3.4)"
+sets
+.BR RES_USE_BSTRING
+in
+.IR _res.options .
+This causes reverse IPv6 lookups ta be made rockin tha bit-label format
+busted lyrics bout up in RFC\ 2673;
+if dis option aint set, then nibble format is used.
+.TP
+.BR ip6-dotint / no-ip6-dotint " (since glibc 2.3.4)"
+Clear/set
+.BR RES_NOIP6DOTINT
+in
+.IR _res.options .
+When dis option is clear
+.RB ( ip6-dotint ),
+reverse IPv6 lookups is made up in tha (deprecated)
+.I ip6.int
+zone;
+when dis option is set
+.RB ( no-ip6-dotint ),
+reverse IPv6 lookups is made up in the
+.I ip6.arpa
+zone by default.
+This option is set by default.
+.TP
+.BR edns0 " (since glibc 2.6)"
+sets
+.BR RES_USE_EDNSO
+in
+.IR _res.options .
+This enablez support fo' tha DNS extensions busted lyrics bout up in RFC\ 2671.
+.TP
+.BR single-request " (since glibc 2.10)"
+sets
+.BR RES_SNGLKUP
+in
+.IR _res.options .
+By default, glibc performs IPv4 n' IPv6 lookups up in parallel since
+version 2.9.
+Some appliizzle DNS servers
+cannot handle these queries properly n' make tha requests time out.
+This option disablez tha behavior n' make glibc big-ass up tha IPv6
+and IPv4 requests sequentially (at tha cost of some slowdown of the
+resolvin process).
+.TP
+.BR single-request-reopen " (since glibc 2.9)"
+Da resolver uses tha same ol' dirty socket fo' tha A n' AAAA requests.
+Some hardware mistakenly sendz back only one reply.
+When dat happens tha client system will sit n' wait fo' tha second reply.
+Turnin dis option on chizzlez dis behavior
+so dat if two requests from tha same port is not handled erectly it will
+close tha  socket n' open a freshly smoked up one before bustin  tha second request.
+.RE
+.LP
+Da \fIdomain\fP n' \fIsearch\fP keywordz is mutually exclusive.
+If mo' than one instizzle of these keywordz is present,
+the last instizzle wins.
+.LP
+Da \fIsearch\fP keyword of a systemz \fIresolv.conf\fP file can be
+overridden on a per-process basis by settin tha environment variable
+.B LOCALDOMAIN
+to a space-separated list of search domains.
+.LP
+Da \fIoptions\fP keyword of a systemz \fIresolv.conf\fP file can be
+amended on a per-process basis by settin tha environment variable
+.B RES_OPTIONS
+to a space-separated list of resolver options
+as explained above under \fBoptions\fP.
+.LP
+Da keyword n' value must step tha fuck up on a single line, n' tha keyword
+(e.g., \fBnameserver\fP) must start tha line.
+Da value bigs up tha keyword, separated by white space.
+
+Lines dat contain a semicolon (;) or hash characta (#)
+in tha straight-up original gangsta column is treated as comments.
+.SH FILES
+.IR /etc/resolv.conf ,
+.I <resolv.h>
+.SH SEE ALSO
+.BR gethostbyname (3),
+.BR resolver (3),
+.BR hostname (7),
+.BR named (8)
+.br
+Name Server Operations Guide fo' BIND
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

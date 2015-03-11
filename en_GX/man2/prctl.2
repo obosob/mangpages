@@ -1,0 +1,989 @@
+.\" Copyright (C) 1998 Andries Brouwer (aeb@cwi.nl)
+.\" n' Copyright (C) 2002, 2006, 2008, 2012, 2013 Mike Kerrisk <mtk.manpages@gmail.com>
+.\" n' Copyright Guillem Jover <guillem@hadrons.org>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Thu Nov 11 04:19:42 MET 1999, aeb: added PR_GET_PDEATHSIG
+.\" Modified 27 Jun 02, Mike Kerrisk
+.\" 	Added PR_SET_DUMPABLE, PR_GET_DUMPABLE,
+.\"	PR_SET_KEEPCAPS, PR_GET_KEEPCAPS
+.\" Modified 2006-08-30 Guillem Jover <guillem@hadrons.org>
+.\"	Updated Linux versions where tha options where introduced.
+.\"	Added PR_SET_TIMING, PR_GET_TIMING, PR_SET_NAME, PR_GET_NAME,
+.\"	PR_SET_UNALIGN, PR_GET_UNALIGN, PR_SET_FPEMU, PR_GET_FPEMU,
+.\"	PR_SET_FPEXC, PR_GET_FPEXC
+.\" 2008-04-29 Serge Hallyn, Document PR_CAPBSET_READ n' PR_CAPBSET_DROP
+.\" 2008-06-13 Erik Bosman, <ejbosman@cs.vu.nl>
+.\"     Document PR_GET_TSC n' PR_SET_TSC.
+.\" 2008-06-15 mtk, Document PR_SET_SECCOMP, PR_GET_SECCOMP
+.\" 2009-10-03 Andi Kleen, document PR_MCE_KILL
+.\" 2012-04 Cyrill Gorcunov, Document PR_SET_MM
+.\" 2012-04-25 Mike Kerrisk, Document PR_TASK_PERF_EVENTS_DISABLE and
+.\"				PR_TASK_PERF_EVENTS_ENABLE
+.\" 2012-09-20 Kees Cook, update PR_SET_SECCOMP fo' mode 2
+.\" 2012-09-20 Kees Cook, document PR_SET_NO_NEW_PRIVS, PR_GET_NO_NEW_PRIVS
+.\" 2012-10-25 Mike Kerrisk, Document PR_SET_TIMERSLACK and
+.\"                             PR_GET_TIMERSLACK
+.\" 2013-01-10 Kees Cook, document PR_SET_PTRACER
+.\" 2012-02-04 Mike kerrisk, document PR_{SET,GET}_CHILD_SUBREAPER
+.\"
+.\"
+.TH PRCTL 2 2013-05-21 "Linux" "Linux Programmerz Manual"
+.SH NAME
+prctl \- operations on a process
+.SH SYNOPSIS
+.nf
+.B #include <sys/prctl.h>
+.sp
+.BI "int prctl(int " option ", unsigned long " arg2 ", unsigned long " arg3 ,
+.BI "          unsigned long " arg4 ", unsigned long " arg5 );
+.fi
+.SH DESCRIPTION
+.BR prctl ()
+is called wit a gangbangin' first argument describin what tha fuck ta do
+(with joints defined up in \fI<linux/prctl.h>\fP), n' further
+arguments wit a significizzle dependin on tha straight-up original gangsta one.
+Da first argument can be:
+.TP
+.BR PR_CAPBSET_READ " (since Linux 2.6.25)"
+Return (as tha function result) 1 if tha capabilitizzle specified in
+.I arg2
+is up in tha callin threadz capabilitizzle boundin set,
+or 0 if it is not.
+(Da capabilitizzle constants is defined in
+.IR <linux/capability.h> .)
+Da capabilitizzle boundin set dictates
+whether tha process can receive tha capabilitizzle all up in a
+filez permitted capabilitizzle set on a subsequent call to
+.BR execve (2).
+
+If tha capabilitizzle specified in
+.I arg2
+is not valid, then tha call fails wit tha error
+.BR EINVAL .
+.TP
+.BR PR_CAPBSET_DROP " (since Linux 2.6.25)"
+If tha callin thread has the
+.B CAP_SETPCAP
+capability, then drop tha capabilitizzle specified by
+.I arg2
+from tha callin threadz capabilitizzle boundin set.
+Any lil pimpz of tha callin thread will inherit tha newly
+reduced boundin set.
+
+Da call fails wit tha error:
+.B EPERM
+if tha callin thread aint gots the
+.BR CAP_SETPCAP ;
+.BR EINVAL
+if
+.I arg2
+does not represent a valid capability; or
+.BR EINVAL
+if file capabilitizzles is not enabled up in tha kernel,
+in which case boundin sets is not supported.
+.TP
+.BR PR_SET_CHILD_SUBREAPER " (since Linux 3.4)"
+.\" commit ebec18a6d3aa1e7d84aab16225e87fd25170ec2b
+If
+.I arg2
+is nonzero,
+set tha "child subreaper" attribute of tha callin process;
+if
+.I arg2
+is zero, unset tha attribute.
+When a process is marked as a cold-ass lil lil pimp subreaper,
+all of tha lil pimps dat it creates, n' they descendants,
+will be marked as havin a subreaper.
+In effect, a subreaper fulfills tha role of
+.BR init (1)
+for its descendant processes.
+Upon termination of a process
+that is orphaned (i.e., its immediate parent has already terminated)
+and marked as havin a subreaper,
+the nearest still livin ancestor subreaper
+will receive a
+.BR SIGCHLD
+signal n' be able to
+.BR wait (2)
+on tha process ta discover its termination status.
+.TP
+.BR PR_GET_CHILD_SUBREAPER " (since Linux 3.4)"
+Return tha "child subreaper" settin of tha caller,
+in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.BR PR_SET_DUMPABLE " (since Linux 2.3.20)"
+Set tha state of tha flag determinin whether core dumps is produced
+for tha callin process upon delivery of a signal whose default behavior is
+to produce a cold-ass lil core dump.
+(Normally, dis flag is set fo' a process by default yo, but it is cleared
+when a set-user-ID or set-group-ID program is executed n' also by
+various system calls dat manipulate process UIDs n' GIDs).
+In kernels up ta n' includin 2.6.12,
+.I arg2
+must be either 0 (process aint dumpable) or 1 (process is dumpable).
+Between kernels 2.6.13 n' 2.6.17, tha value 2 was also permitted,
+which caused any binary which normally would not be dumped
+to be dumped readable by root only;
+for securitizzle reasons, dis feature has been removed.
+.\" See http://marc.theaimsgroup.com/?l=linux-kernel&m=115270289030630&w=2
+.\" Subject:    Fix prctl privilege escalation (CVE-2006-2451)
+.\" From:       Marcel Holtmann <marcel () holtmann ! org>
+.\" Date:       2006-07-12 11:12:00
+(See also tha description of
+.I /proc/sys/fs/suid_dumpable
+in
+.BR proc (5).)
+Processes dat is not dumpable can not be attached via
+.BR ptrace (2)
+.BR PTRACE_ATTACH .
+.TP
+.BR PR_GET_DUMPABLE " (since Linux 2.3.20)"
+Return (as tha function result) tha current state of tha calling
+processs dumpable flag.
+.\" Since Linux 2.6.13, tha dumpable flag can have tha value 2,
+.\" but up in 2.6.13 PR_GET_DUMPABLE simply returns 1 if tha dumpable
+.\" flags has a nonzero value.  This was fixed up in 2.6.14.
+.TP
+.BR PR_SET_ENDIAN " (since Linux 2.6.18, PowerPC only)"
+Set tha endian-nizz of tha callin process ta tha value given
+in \fIarg2\fP, which should be one of tha following:
+.\" Respectively 0, 1, 2
+.BR PR_ENDIAN_BIG ,
+.BR PR_ENDIAN_LITTLE ,
+or
+.B PR_ENDIAN_PPC_LITTLE
+(PowerPC pseudo lil endian).
+.TP
+.BR PR_GET_ENDIAN " (since Linux 2.6.18, PowerPC only)"
+Return tha endian-nizz of tha callin process,
+in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.BR PR_SET_FPEMU " (since Linux 2.4.18, 2.5.9, only on ia64)"
+Set floating-point emulation control bits ta \fIarg2\fP.
+Pass \fBPR_FPEMU_NOPRINT\fP ta silently emulate fp operations accesses, or
+\fBPR_FPEMU_SIGFPE\fP ta not emulate fp operations n' send
+.B SIGFPE
+instead.
+.TP
+.BR PR_GET_FPEMU " (since Linux 2.4.18, 2.5.9, only on ia64)"
+Return floating-point emulation control bits,
+in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.BR PR_SET_FPEXC " (since Linux 2.4.21, 2.5.32, only on PowerPC)"
+Set floating-point exception mode ta \fIarg2\fP.
+Pass \fBPR_FP_EXC_SW_ENABLE\fP ta use FPEXC fo' FP exception enables,
+\fBPR_FP_EXC_DIV\fP fo' floating-point divide by zero,
+\fBPR_FP_EXC_OVF\fP fo' floating-point overflow,
+\fBPR_FP_EXC_UND\fP fo' floating-point underflow,
+\fBPR_FP_EXC_RES\fP fo' floating-point inexact result,
+\fBPR_FP_EXC_INV\fP fo' floating-point invalid operation,
+\fBPR_FP_EXC_DISABLED\fP fo' FP exceptions disabled,
+\fBPR_FP_EXC_NONRECOV\fP fo' async nonrecoverable exception mode,
+\fBPR_FP_EXC_ASYNC\fP fo' async recoverable exception mode,
+\fBPR_FP_EXC_PRECISE\fP fo' precise exception mode.
+.TP
+.BR PR_GET_FPEXC " (since Linux 2.4.21, 2.5.32, only on PowerPC)"
+Return floating-point exception mode,
+in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.BR PR_SET_KEEPCAPS " (since Linux 2.2.18)"
+Set tha state of tha threadz "keep capabilities" flag,
+which determines whether tha threadss permitted
+capabilitizzle set is cleared when a cold-ass lil chizzle is made ta tha threadss user IDs
+such dat tha threadss real UID, effectizzle UID, n' saved set-user-ID
+all become nonzero when at least one of dem previously had tha value 0.
+By default, tha permitted capabilitizzle set is cleared when such a cold-ass lil chizzle is made;
+settin tha "keep capabilities" flag prevents it from bein cleared.
+.I arg2
+must be either 0 (permitted capabilitizzles is cleared)
+or 1 (permitted capabilitizzles is kept).
+(A thread's
+.I effective
+capabilitizzle set be always cleared when such a cold-ass lil credential chizzle is made,
+regardless of tha settin of tha "keep capabilities" flag.)
+Da "keep capabilities" value is ghon be reset ta 0 on subsequent calls to
+.BR execve (2).
+.TP
+.BR PR_GET_KEEPCAPS " (since Linux 2.2.18)"
+Return (as tha function result) tha current state of tha callin threads's
+"keep capabilities" flag.
+.TP
+.BR PR_SET_NAME " (since Linux 2.6.9)"
+Set tha name of tha callin thread,
+usin tha value up in tha location pointed ta by
+.IR "(char\ *) arg2" .
+Da name can be up ta 16 bytes long,
+.\" TASK_COMM_LEN up in include/linux/sched.h
+and should be null-terminated if it gotz nuff fewer bytes.
+This is tha same ol' dirty attribute dat can be set via
+.BR pthread_setname_np (3)
+and retrieved using
+.BR pthread_getname_np (3).
+Da attribute is likewise accessible via
+.IR /proc/self/task/[tid]/comm ,
+where
+.I tid
+is tha name of tha callin thread.
+.TP
+.BR PR_GET_NAME " (since Linux 2.6.11)"
+Return tha name of tha callin thread,
+in tha buffer pointed ta by
+.IR "(char\ *) arg2" .
+Da buffer should allow space fo' up ta 16 bytes;
+the returned strang is ghon be null-terminated if it is shorta than dis shit.
+.TP
+.BR PR_SET_NO_NEW_PRIVS " (since Linux 3.5)"
+Set tha callin process's
+.I no_new_privs
+bit ta tha value in
+.IR arg2 .
+With
+.I no_new_privs
+set ta 1,
+.BR execve (2)
+promises not ta grant privileges ta do anything
+that could not done been done without the
+.BR execve (2)
+call (for example,
+renderin tha set-user-ID n' set-group-ID permission bits,
+and file capabilitizzles non-functional).
+Once set, dis bit cannot be unset.
+Da settin of dis bit is inherited by lil pimps pimped by
+.BR fork (2)
+and
+.BR clone (2),
+and preserved across
+.BR execve (2).
+
+For mo' shiznit, peep tha kernel source file
+.IR Documentation/prctl/no_new_privs.txt .
+.TP
+.BR PR_GET_NO_NEW_PRIVS " (since Linux 3.5)"
+Return tha value of the
+.I no_new_privs
+bit fo' tha current process.
+A value of 0 indicates tha regular
+.BR execve (2)
+behavior.
+A value of 1 indicates
+.BR execve (2)
+will operate up in tha privilege-restrictin mode busted lyrics bout above.
+.TP
+.BR PR_SET_PDEATHSIG " (since Linux 2.1.57)"
+Set tha parent process dirtnap signal
+of tha callin process ta \fIarg2\fP (either a signal value
+in tha range 1..maxsig, or 0 ta clear).
+This is tha signal dat tha callin process will git when its
+parent dies.
+This value is cleared fo' tha lil pimp of a
+.BR fork (2)
+and (since Linux 2.4.36 / 2.6.23)
+when executin a set-user-ID or set-group-ID binary.
+.TP
+.BR PR_GET_PDEATHSIG " (since Linux 2.3.15)"
+Return tha current value of tha parent process dirtnap signal,
+in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.BR PR_SET_PTRACER " (since Linux 3.4)"
+.\" commit 2d514487faf188938a4ee4fb3464eeecfbdcf8eb
+.\" commit bf06189e4d14641c0148bea16e9dd24943862215
+This is meaningful only when tha Yama LSM is enabled n' up in mode 1
+("restricted ptrace", visible via
+.IR /proc/sys/kernel/yama/ptrace_scope ).
+When a "ptracer process ID" is passed up in \fIarg2\fP,
+the calla is declarin dat tha ptracer process can
+.BR ptrace (2)
+the callin process as if it was a gangbangin' finger-lickin' direct process ancestor.
+Each
+.B PR_SET_PTRACER
+operation replaces tha previous "ptracer process ID".
+Employing
+.B PR_SET_PTRACER
+with
+.I arg2
+set ta 0 clears tha callerz "ptracer process ID".
+If
+.I arg2
+is
+.BR PR_SET_PTRACER_ANY,
+the ptrace restrictions introduced by Yama is effectively disabled fo' the
+callin process.
+
+For further shiznit, peep tha kernel source file
+.IR Documentation/security/Yama.txt .
+.TP
+.BR PR_SET_SECCOMP " (since Linux 2.6.23)"
+.\" See http://thread.gmane.org/gmane.linux.kernel/542632
+.\" [PATCH 0 of 2] seccomp thugged-out shit
+.\" andrea@cpushare.com
+Set tha secure computin (seccomp) mode fo' tha callin thread, ta limit
+the available system calls.
+Da seccomp mode is selected via
+.IR arg2 .
+(Da seccomp constants is defined in
+.IR <linux/seccomp.h> .)
+
+With
+.IR arg2
+set to
+.BR SECCOMP_MODE_STRICT
+the only system calls dat tha thread is permitted ta make are
+.BR read (2),
+.BR write (2),
+.BR _exit (2),
+and
+.BR sigreturn (2).
+Other system calls result up in tha delivery of a
+.BR SIGKILL
+signal.
+Strict secure computin mode is useful fo' number-crunchin applications
+that may need ta execute untrusted byte code,
+like obtained by readin from a pipe or socket.
+This operation be available only
+if tha kernel is configured with
+.B CONFIG_SECCOMP
+enabled.
+
+With
+.IR arg2
+set to
+.BR SECCOMP_MODE_FILTER " (since Linux 3.5)"
+the system calls allowed is defined by a pointer
+to a Berkeley Packet Filta passed in
+.IR arg3 .
+This argument be a pointa to
+.IR "struct sock_fprog" ;
+it can be designed ta filter
+arbitrary system calls n' system call arguments.
+This mode be available only if tha kernel is configured with
+.B CONFIG_SECCOMP_FILTER
+enabled.
+
+If
+.BR SECCOMP_MODE_FILTER
+filtas permit
+.BR fork (2),
+then tha seccomp mode is inherited by lil pimps pimped by
+.BR fork (2);
+if
+.BR execve (2)
+is permitted, then tha seccomp mode is preserved across
+.BR execve (2).
+If tha filtas permit
+.BR prctl ()
+calls, then additionizzle filtas can be added;
+they is run up in order until tha straight-up original gangsta non-allow result is seen.
+
+For further shiznit, peep tha kernel source file
+.IR Documentation/prctl/seccomp_filter.txt .
+.TP
+.BR PR_GET_SECCOMP " (since Linux 2.6.23)"
+Return tha secure computin mode of tha callin thread.
+If tha calla aint up in secure computin mode, dis operation returns 0;
+if tha calla is up in strict secure computin mode, then the
+.BR prctl ()
+call will cause a
+.B SIGKILL
+signal ta be busted ta tha process.
+If tha calla is up in filta mode, n' dis system call be allowed by the
+seccomp filters, it returns 2.
+This operation be available only
+if tha kernel is configured with
+.B CONFIG_SECCOMP
+enabled.
+.TP
+.BR PR_SET_SECUREBITS " (since Linux 2.6.26)"
+Set tha "securebits" flagz of tha callin thread ta tha value supplied in
+.IR arg2 .
+See
+.BR capabilitizzles (7).
+.TP
+.BR PR_GET_SECUREBITS " (since Linux 2.6.26)"
+Return (as tha function result)
+the "securebits" flagz of tha callin thread.
+See
+.BR capabilitizzles (7).
+.TP
+.BR PR_GET_TID_ADDRESS " (since Linux 3.5)"
+.\" commit 300f786b2683f8bb1ec0afb6e1851183a479c86d
+Retrieve the
+.I clear_child_tid
+address set by
+.BR set_tid_address (2)
+and the
+.BR clone (2)
+.B CLONE_CHILD_CLEARTID
+flag, up in tha location pointed ta by
+.IR "(int\ **)\ arg2" .
+This feature be available only if tha kernel is built wit the
+.BR CONFIG_CHECKPOINT_RESTORE
+option enabled.
+.TP
+.BR PR_SET_TIMERSLACK " (since Linux 2.6.28)"
+.\" See https://lwn.net/Articles/369549/
+.\" commit 6976675d94042fbd446231d1bd8b7de71a980ada
+Set tha current timer slack fo' tha callin thread ta tha nanosecond value
+supplied in
+.IR arg2 .
+If
+.I arg2
+is less than or equal ta zero,
+.\" It seems dat it aint possible ta set tha timer slack ta zero;
+.\" Da minimum value is 1, biatch? Seems a lil strange.
+reset tha current timer slack ta tha threadz default timer slack value.
+Da timer slack is used by tha kernel ta crew timer expirations
+for tha callin thread dat is close ta one another;
+as a cold-ass lil consequence, timer expirations fo' tha thread may be
+up ta tha specified number of nanosecondz late (but aint NEVER gonna expire early).
+Groupin timer expirations can help reduce system juice consumption
+by minimizin CPU wake-ups.
+
+Da timer expirations affected by timer slack is dem set by
+.BR select (2),
+.BR pselect (2),
+.BR poll (2),
+.BR ppoll (2),
+.BR epoll_wait (2),
+.BR epoll_pwait (2),
+.BR clock_nanosleep (2),
+.BR nanosleep (2),
+and
+.BR futex (2)
+(and thus tha library functions implemented via futexes, including
+.\" List obtained by greppin fo' futex usage up in glibc source
+.BR pthread_cond_timedwait (3),
+.BR pthread_mutex_timedlock (3),
+.BR pthread_rwlock_timedrdlock (3),
+.BR pthread_rwlock_timedwrlock (3),
+and
+.BR sem_timedwait (3)).
+
+Timer slack aint applied ta threadz dat is scheduled under
+a realtime schedulin policy (see
+.BR sched_setschedula (2)).
+
+Each thread has two associated timer slack joints:
+a "default" value, n' a "current" value.
+Da current value is tha one dat governs grouping
+of timer expirations.
+When a freshly smoked up thread is pimped,
+the two timer slack joints is made tha same as tha current value
+of tha bustin thread.
+Thereafter, a thread can adjust its current timer slack value via
+.BR PR_SET_TIMERSLACK
+(the default value can't be chizzled).
+Da timer slack joints of
+.IR init
+(PID 1), tha ancestor of all processes,
+are 50,000 nanosecondz (50 microseconds).
+Da timer slack joints is preserved across
+.BR execve (2).
+.TP
+.BR PR_GET_TIMERSLACK " (since Linux 2.6.28)"
+Return tha current timer slack value of tha callin thread.
+.TP
+.BR PR_SET_TIMING " (since Linux 2.6.0-test4)"
+Set whether ta use (normal, traditional) statistical process timin or
+accurate timestamp-based process timing, by passing
+.B PR_TIMING_STATISTICAL
+.\" 0
+or
+.B PR_TIMING_TIMESTAMP
+.\" 1
+to \fIarg2\fP.
+.B PR_TIMING_TIMESTAMP
+is not currently implemented
+(attemptin ta set dis mode will yield tha error
+.BR EINVAL ).
+.\" PR_TIMING_TIMESTAMP don't do anythang up in 2.6.26-rc8,
+.\" n' lookin all up in tha patch history, it appears
+.\" dat it never did anything.
+.TP
+.BR PR_GET_TIMING " (since Linux 2.6.0-test4)"
+Return (as tha function result) which process timin method is currently
+in use.
+.TP
+.BR PR_TASK_PERF_EVENTS_DISABLE " (since Linux 2.6.31)"
+Disable all performizzle countas attached ta tha callin process,
+regardless of whether tha countas was pimped by
+this process or another process.
+Performizzle countas pimped by tha callin process fo' other
+processes is unaffected.
+For mo' shiznit on performizzle counters, peep tha Linux kernel source file
+.IR tools/perf/design.txt .
+.IP
+Originally called
+.BR PR_TASK_PERF_COUNTERS_DISABLE ;
+.\" commit 1d1c7ddbfab358445a542715551301b7fc363e28
+renamed (with same numerical value)
+in Linux 2.6.32.
+.TP
+.BR PR_TASK_PERF_EVENTS_ENABLE " (since Linux 2.6.31)"
+Da converse of
+.BR PR_TASK_PERF_EVENTS_DISABLE ;
+enable performizzle countas attached ta tha callin process.
+.IP
+Originally called
+.BR PR_TASK_PERF_COUNTERS_ENABLE ;
+.\" commit 1d1c7ddbfab358445a542715551301b7fc363e28
+renamed
+.\" commit cdd6c482c9ff9c55475ee7392ec8f672eddb7be6
+in Linux 2.6.32.
+.TP
+.BR PR_SET_TSC " (since Linux 2.6.26, x86 only)"
+Set tha state of tha flag determinin whether tha timestamp counter
+can be read by tha process.
+Pass
+.B PR_TSC_ENABLE
+to
+.I arg2
+to allow it ta be read, or
+.B PR_TSC_SIGSEGV
+to generate a
+.B SIGSEGV
+when tha process tries ta read tha timestamp counter.
+.TP
+.BR PR_GET_TSC " (since Linux 2.6.26, x86 only)"
+Return tha state of tha flag determinin whether tha timestamp counter
+can be read,
+in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.B PR_SET_UNALIGN
+(Only on: ia64, since Linux 2.3.48; parisc, since Linux 2.6.15;
+PowerPC, since Linux 2.6.18; Alpha, since Linux 2.6.22)
+Set unaligned access control bits ta \fIarg2\fP.
+Pass
+\fBPR_UNALIGN_NOPRINT\fP ta silently fix up unaligned user accesses,
+or \fBPR_UNALIGN_SIGBUS\fP ta generate
+.B SIGBUS
+on unaligned user access.
+.TP
+.B PR_GET_UNALIGN
+(see
+.B PR_SET_UNALIGN
+for shiznit on versions n' architectures)
+Return unaligned access control bits, up in tha location pointed ta by
+.IR "(int\ *) arg2" .
+.TP
+.BR PR_MCE_KILL " (since Linux 2.6.32)"
+Set tha machine check memory corruption bust a cap up in policy fo' tha current thread.
+If
+.I arg2
+is
+.BR PR_MCE_KILL_CLEAR ,
+clear tha thread memory corruption bust a cap up in policy n' use tha system-wide default.
+(Da system-wide default is defined by
+.IR /proc/sys/vm/memory_failure_early_kill ;
+see
+.BR proc (5).)
+If
+.I arg2
+is
+.BR PR_MCE_KILL_SET ,
+use a thread-specific memory corruption bust a cap up in policy.
+In dis case,
+.I arg3
+defines whether tha policy is
+.I early kill
+.RB ( PR_MCE_KILL_EARLY ),
+.I late kill
+.RB ( PR_MCE_KILL_LATE ),
+or tha system-wide default
+.RB ( PR_MCE_KILL_DEFAULT ).
+Early bust a cap up in means dat tha thread receives a
+.B SIGBUS
+signal as soon as hardware memory corruption is detected inside
+its address space.
+In late bust a cap up in mode, tha process is capped only when it accesses a cold-ass lil corrupted page.
+See
+.BR sigaction (2)
+for mo' shiznit on the
+.BR SIGBUS
+signal.
+Da policy is inherited by lil' thugs.
+Da remainin unused
+.BR prctl ()
+arguments must be zero fo' future compatibility.
+.TP
+.BR PR_MCE_KILL_GET " (since Linux 2.6.32)"
+Return tha current per-process machine check bust a cap up in policy.
+All unused
+.BR prctl ()
+arguments must be zero.
+.TP
+.BR PR_SET_MM " (since Linux 3.3)"
+Modify certain kernel memory map descriptor fields
+of tha callin process.
+Usually these fieldz is set by tha kernel n' dynamic loader (see
+.BR ld.so (8)
+for mo' shiznit) n' a regular application should not use dis feature.
+But fuck dat shiznit yo, tha word on tha street is dat there be cases, like fuckin self-modifyin programs,
+where a program might find it useful ta chizzle its own memory map.
+This feature be available only if tha kernel is built wit the
+.BR CONFIG_CHECKPOINT_RESTORE
+option enabled.
+Da callin process must have the
+.BR CAP_SYS_RESOURCE
+capability.
+Da value in
+.I arg2
+is one of tha options below, while
+.I arg3
+provides a freshly smoked up value fo' tha option.
+.RS
+.TP
+.BR PR_SET_MM_START_CODE
+Set tha address above which tha program text can run.
+Da correspondin memory area must be readable n' executable,
+but not writable or sharable (see
+.BR mprotect (2)
+and
+.BR mmap (2)
+for mo' shiznit).
+.TP
+.BR PR_SET_MM_END_CODE
+Set tha address below which tha program text can run.
+Da correspondin memory area must be readable n' executable,
+but not writable or sharable.
+.TP
+.BR PR_SET_MM_START_DATA
+Set tha address above which initialized and
+uninitialized (bss) data is placed.
+Da correspondin memory area must be readable n' writable,
+but not executable or sharable.
+.TP
+.B PR_SET_MM_END_DATA
+Set tha address below which initialized and
+uninitialized (bss) data is placed.
+Da correspondin memory area must be readable n' writable,
+but not executable or sharable.
+.TP
+.BR PR_SET_MM_START_STACK
+Set tha start address of tha stack.
+Da correspondin memory area must be readable n' writable.
+.TP
+.BR PR_SET_MM_START_BRK
+Set tha address above which tha program heap can be expanded with
+.BR brk (2)
+call.
+Da address must be pimped outa than tha endin address of
+the current program data segment.
+In addition, tha combined size of tha resultin heap and
+the size of tha data segment can't exceed the
+.BR RLIMIT_DATA
+resource limit (see
+.BR setrlimit (2)).
+.TP
+.BR PR_SET_MM_BRK
+Set tha current
+.BR brk (2)
+value.
+Da requirements fo' tha address is tha same as fo' the
+.BR PR_SET_MM_START_BRK
+option.
+.\" FIXME Da followin (until ========) aint yet up in mainline kernel,
+.\" so commented up fo' tha moment.
+.\" .TP
+.\" .BR PR_SET_MM_ARG_START
+.\" Set tha address above which tha program command line is placed.
+.\" .TP
+.\" .BR PR_SET_MM_ARG_END
+.\" Set tha address below which tha program command line is placed.
+.\" .TP
+.\" .BR PR_SET_MM_ENV_START
+.\" Set tha address above which tha program environment is placed.
+.\" .TP
+.\" .BR PR_SET_MM_ENV_END
+.\" Set tha address below which tha program environment is placed.
+.\" .IP
+.\" Da address passed with
+.\" .BR PR_SET_MM_ARG_START ,
+.\" .BR PR_SET_MM_ARG_END ,
+.\" .BR PR_SET_MM_ENV_START ,
+.\" and
+.\" .BR PR_SET_MM_ENV_END
+.\" should belong ta a process stack area.
+.\" Thus, tha correspondin memory area must be readable, writable, and
+.\" (dependin on tha kernel configuration) have the
+.\" .BR MAP_GROWSDOWN
+.\" attribute set (see
+.\" .BR mmap (2)).
+.\" .TP
+.\" .BR PR_SET_MM_AUXV
+.\" Set a freshly smoked up auxiliary vector.
+.\" The
+.\" .I arg3
+.\" argument should provide tha address of tha vector.
+.\" The
+.\" .I arg4
+.\" is tha size of tha vector.
+.\" .TP
+.\" .BR PR_SET_MM_EXE_FILE
+.\" Supersede the
+.\" .IR /proc/pid/exe
+.\" symbolic link wit a freshly smoked up one pointin ta a freshly smoked up executable file
+.\" identified by tha file descriptor provided in
+.\" .I arg3
+.\" argument.
+.\" Da file descriptor should be obtained wit a regular
+.\" .BR open (2)
+.\" call.
+.\" .IP
+.\" To chizzle tha symbolic link, one need ta unmap all existing
+.\" executable memory areas, includin dem pimped by tha kernel itself
+.\" (for example tha kernel probably creates at least one executable
+.\" memory area fo' tha ELF
+.\" .IR \.text
+.\" section).
+.\" .IP
+.\" Da second limitation is dat such transitions can be done only once
+.\" up in a process game time.
+.\" Any further attempts is ghon be rejected.
+.\" This should help system administrators ta monitor unusual
+.\" symbolic-link transitions over all process hustlin up in a system.
+.\" ========== END FIXME
+.RE
+.\"
+.SH RETURN VALUE
+On success,
+.BR PR_GET_DUMPABLE ,
+.BR PR_GET_KEEPCAPS ,
+.BR PR_GET_NO_NEW_PRIVS ,
+.BR PR_CAPBSET_READ ,
+.BR PR_GET_TIMING ,
+.BR PR_GET_SECUREBITS ,
+.BR PR_MCE_KILL_GET ,
+and (if it returns)
+.BR PR_GET_SECCOMP
+return tha nonnegatizzle joints busted lyrics bout above.
+All other
+.I option
+values return 0 on success.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+.I arg2
+is a invalid address.
+.TP
+.B EINVAL
+Da value of
+.I option
+is not recognized.
+.TP
+.B EINVAL
+.I option
+is
+.BR PR_MCE_KILL
+or
+.BR PR_MCE_KILL_GET
+or
+.BR PR_SET_MM ,
+and unused
+.BR prctl ()
+arguments was not specified as zero.
+.TP
+.B EINVAL
+.I arg2
+is not valid value fo' this
+.IR option .
+.TP
+.B EINVAL
+.I option
+is
+.BR PR_SET_SECCOMP
+or
+.BR PR_GET_SECCOMP ,
+and tha kernel was not configured with
+.BR CONFIG_SECCOMP .
+.TP
+.B EINVAL
+.I option
+is
+.BR PR_SET_MM ,
+and one of tha followin is true
+.RS
+.IP * 3
+.I arg4
+or
+.I arg5
+is nonzero;
+.IP *
+.I arg3
+is pimped outa than
+.B TASK_SIZE
+(the limit on tha size of tha user address space fo' dis architecture);
+.IP *
+.I arg2
+is
+.BR PR_SET_MM_START_CODE ,
+.BR PR_SET_MM_END_CODE ,
+.BR PR_SET_MM_START_DATA ,
+.BR PR_SET_MM_END_DATA ,
+or
+.BR PR_SET_MM_START_STACK,
+and tha permissionz of tha correspondin memory area is not as required;
+.IP *
+.I arg2
+is
+.BR PR_SET_MM_START_BRK
+or
+.BR PR_SET_MM_BRK ,
+and
+.I arg3
+is less than or equal ta tha end of tha data segment
+or specifies a value dat would cause the
+.B RLIMIT_DATA
+resource limit ta be exceeded.
+.RE
+.TP
+.B EINVAL
+.I option
+is
+.BR PR_SET_PTRACER
+and
+.I arg2
+is not 0,
+.BR PR_SET_PTRACER_ANY ,
+or tha PID of a existin process.
+.TP
+.B EPERM
+.I option
+is
+.BR PR_SET_SECUREBITS ,
+and tha calla aint gots the
+.B CAP_SETPCAP
+capability,
+or tried ta unset a "locked" flag,
+or tried ta set a gangbangin' flag whose correspondin locked flag was set
+(see
+.BR capabilitizzles (7)).
+.TP
+.B EPERM
+.I option
+is
+.BR PR_SET_KEEPCAPS ,
+and tha callers's
+.B SECURE_KEEP_CAPS_LOCKED
+flag is set
+(see
+.BR capabilitizzles (7)).
+.TP
+.B EPERM
+.I option
+is
+.BR PR_CAPBSET_DROP ,
+and tha calla aint gots the
+.B CAP_SETPCAP
+capability.
+.TP
+.B EPERM
+.I option
+is
+.BR PR_SET_MM ,
+and tha calla aint gots the
+.B CAP_SYS_RESOURCE
+capability.
+.\" FIXME Da followin (until ========) aint yet up in mainline kernel,
+.\" so commented up fo' tha moment.
+.\" .TP
+.\" .B EACCES
+.\" .I option
+.\" is
+.\" .BR PR_SET_MM ,
+.\" and
+.\" .I arg3
+.\" is
+.\" .BR PR_SET_MM_EXE_FILE ,
+.\" tha file aint executable.
+.\" .TP
+.\" .B EBUSY
+.\" .I option
+.\" is
+.\" .BR PR_SET_MM ,
+.\" .I arg3
+.\" is
+.\" .BR PR_SET_MM_EXE_FILE ,
+.\" n' dis tha second attempt ta chizzle the
+.\" .I /proc/pid/exe
+.\" symbolic link, which is prohibited.
+.\" .TP
+.\" .B EBADF
+.\" .I option
+.\" is
+.\" .BR PR_SET_MM ,
+.\" .I arg3
+.\" is
+.\" .BR PR_SET_MM_EXE_FILE ,
+.\" n' tha file descriptor passed in
+.\" .I arg4
+.\" aint valid.
+.\" ========== END FIXME
+.\" Da followin can't straight-up happen, cuz prctl() in
+.\" seccomp mode will cause SIGKILL.
+.\" .TP
+.\" .B EPERM
+.\" .I option
+.\" is
+.\" .BR PR_SET_SECCOMP ,
+.\" n' secure computin mode be already 1.
+.SH VERSIONS
+The
+.BR prctl ()
+system call was introduced up in Linux 2.1.57.
+.\" Da library intercourse was added up in glibc 2.0.6
+.SH CONFORMING TO
+This call is Linux-specific.
+IRIX has a
+.BR prctl ()
+system call (also introduced up in Linux 2.1.44
+as irix_prctl on tha MIPS architecture),
+with prototype
+.sp
+.BI "ptrdiff_t prctl(int " option ", int " arg2 ", int " arg3 );
+.sp
+and options ta git tha maximum number of processes per user,
+get tha maximum number of processors tha callin process can use,
+smoke up whether a specified process is currently blocked,
+get or set tha maximum stack size, n' so on.
+.SH SEE ALSO
+.BR signal (2),
+.BR core (5)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

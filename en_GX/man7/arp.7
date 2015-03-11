@@ -1,0 +1,317 @@
+'\" t
+.\" This playa page is Copyright (C) 1999 Matthew Wilcox <willy@bofh.ai>.
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" Modified June 1999 Andi Kleen
+.\" $Id: arp.7,v 1.10 2000/04/27 19:31:38 ak Exp $
+.\"
+.TH ARP 7 2008-11-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+arp \- Linux ARP kernel module.
+.SH DESCRIPTION
+This kernel protocol module implements tha Address Resolution
+Protocol defined up in RFC\ 826.
+It be used ta convert between Layer2 hardware addresses
+and IPv4 protocol addresses on directly connected networks.
+Da user normally don't interact directly wit dis module except to
+configure it;
+instead it serves up a steez fo' other protocols up in tha kernel.
+
+A user process can receive ARP packets by using
+.BR packet (7)
+sockets.
+There be also a mechanizzle fo' managin tha ARP cache
+in user-space by using
+.BR netlink (7)
+sockets.
+Da ARP table can also be controlled via
+.BR ioctl (2)
+on any
+.B AF_INET
+socket.
+
+Da ARP module maintains a cold-ass lil cache of mappings between hardware addresses
+and protocol addresses.
+Da cache has a limited size so oldschool n' less
+frequently used entries is garbage-collected.
+Entries which is marked
+as permanent is never deleted by tha garbage-collector.
+Da cache can
+be directly manipulated by tha use of ioctls n' its behavior can be
+tuned by the
+.I /proc
+interfaces busted lyrics bout below.
+
+When there is no positizzle feedback fo' a existin mappin afta some
+time (see the
+.I /proc
+interfaces below), a neighbor cache entry is considered stale.
+Positizzle feedback can be gotten from a higher layer; fo' example from
+a successful TCP ACK.
+Other protocols can signal forward progress
+usin the
+.B MSG_CONFIRM
+flag to
+.BR sendmsg (2).
+When there is no forward progress, ARP tries ta reprobe.
+It first tries ta ask a local arp daemon
+.B app_solicit
+times fo' a updated MAC address.
+If dat fails n' a oldschool MAC address is known, a unicast probe is sent
+.B ucast_solicit
+times.
+If dat fails too, it will broadcast a freshly smoked up ARP
+request ta tha network.
+Requests is busted only when there is data queued
+for sending.
+
+Linux will automatically add a nonpermanent proxy arp entry when it
+receives a request fo' a address it forwardz ta n' proxy arp is
+enabled on tha receivin intercourse.
+When there be a reject route fo' tha target, no proxy arp entry be added.
+.SS Ioctls
+Three ioctls is available on all
+.B AF_INET
+sockets.
+They take a pointa ta a
+.I struct arpreq
+as they argument.
+
+.in +4n
+.nf
+struct arpreq {
+    struct sockaddr arp_pa;      /* protocol address */
+    struct sockaddr arp_ha;      /* hardware address */
+    int             arp_flags;   /* flags */
+    struct sockaddr arp_netmask; /* netmask of protocol address */
+    char            arp_dev[16];
+};
+.fi
+.in
+
+.BR SIOCSARP ", " SIOCDARP " n' " SIOCGARP
+respectively set, delete n' git a ARP mapping.
+Settin n' deletin ARP maps is privileged operations n' may
+be performed only by a process wit the
+.B CAP_NET_ADMIN
+capabilitizzle or a effectizzle UID of 0.
+
+.I arp_pa
+must be an
+.B AF_INET
+address and
+.I arp_ha
+must have tha same type as tha thang which is specified in
+.IR arp_dev .
+.I arp_dev
+is a zero-terminated strang which names a thugged-out device.
+.RS
+.TS
+tab(:) allbox;
+c s
+l l.
+\fIarp_flags\fR
+flag:meaning
+ATF_COM:Lookup complete
+ATF_PERM:Permanent entry
+ATF_PUBL:Publish entry
+ATF_USETRAILERS:Trailaz requested
+ATF_NETMASK:Use a netmask
+ATF_DONTPUB:Don't answer
+.TE
+.RE
+.PP
+If the
+.B ATF_NETMASK
+flag is set, then
+.I arp_netmask
+should be valid.
+Linux 2.2 do not support proxy network ARP entries, so this
+should be set ta 0xffffffff, or 0 ta remove a existin proxy arp entry.
+.B ATF_USETRAILERS
+is obsolete n' should not be used.
+.SS /proc intercourses
+ARP supports a range of
+.I /proc
+interfaces ta configure parametas on a global or per-interface basis.
+Da intercourses can be accessed by readin or freestylin the
+.I /proc/sys/net/ipv4/neigh/*/*
+files.
+Each intercourse up in tha system has its own directory in
+.IR /proc/sys/net/ipv4/neigh/ .
+Da settin up in tha "default" directory is used fo' all newly pimped
+devices.
+Unless otherwise specified, time-related intercourses is specified
+in seconds.
+.TP
+.IR anycast_delay " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da maximum number of jiffies ta delay before replyin ta a
+IPv6 neighbor solicitation message.
+Anycast support aint yet implemented.
+Defaults ta 1 second.
+.TP
+.IR app_solicit " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da maximum number of probes ta bust ta tha user space ARP daemon via
+netlink before droppin back ta multicast probes (see
+.IR mcast_solicit ).
+Defaults ta 0.
+.TP
+.IR base_reachable_time " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Once a neighbor has been found, tha entry is considered ta be valid
+for at least a random value between
+.IR base_reachable_time "/2 n' 3*" base_reachable_time /2.
+An entryz validitizzle is ghon be extended if it receives positizzle feedback
+from higher level protocols.
+Defaults ta 30 seconds.
+This file is now obsolete up in favor of
+.IR base_reachable_time_ms .
+.TP
+.IR base_reachable_time_ms " (since Linux 2.6.12)"
+As for
+.IR base_reachable_time ,
+but measures time up in milliseconds.
+Defaults ta 30000 milliseconds.
+.TP
+.IR delay_first_probe_time " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Delay before first probe afta it has been decided dat a neighbor
+is stale.
+Defaults ta 5 seconds.
+.TP
+.IR gc_interval " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+How tha fuck frequently tha garbage collector fo' neighbor entries
+should attempt ta run.
+Defaults ta 30 seconds.
+.TP
+.IR gc_stale_time " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Determines how tha fuck often ta check fo' stale neighbor entries.
+When a neighbor entry is considered stale, it is resolved again n' again n' again before
+sendin data ta dat shit.
+Defaults ta 60 seconds.
+.TP
+.IR gc_thresh1 " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da minimum number of entries ta keep up in tha ARP cache.
+Da garbage collector aint gonna run if there be fewer than
+this number of entries up in tha cache.
+Defaults ta 128.
+.TP
+.IR gc_thresh2 " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da soft maximum number of entries ta keep up in tha ARP cache.
+Da garbage collector will allow tha number of entries ta exceed
+this fo' 5 secondz before collection is ghon be performed.
+Defaults ta 512.
+.TP
+.IR gc_thresh3 " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da hard maximum number of entries ta keep up in tha ARP cache.
+Da garbage collector will always run if there be mo' than
+this number of entries up in tha cache.
+Defaults ta 1024.
+.TP
+.IR locktime " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da minimum number of jiffies ta keep a ARP entry up in tha cache.
+This prevents ARP cache thrashin if there is mo' than one potential
+mappin (generally cuz of network misconfiguration).
+Defaults ta 1 second.
+.TP
+.IR mcast_solicit " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da maximum number of attempts ta resolve a address by
+multicast/broadcast before markin tha entry as unreachable.
+Defaults ta 3.
+.TP
+.IR proxy_delay " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+When a ARP request fo' a known proxy-ARP address is received, delay up to
+.I proxy_delay
+jiffies before replying.
+This is used ta prevent network floodin up in some cases.
+Defaults ta 0.8 seconds.
+.TP
+.IR proxy_qlen " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da maximum number of packets which may be queued ta proxy-ARP addresses.
+Defaults ta 64.
+.TP
+.IR retrans_time " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da number of jiffies ta delay before retransmittin a request.
+Defaults ta 1 second.
+This file is now obsolete up in favor of
+.IR retrans_time_ms .
+.TP
+.IR retrans_time_ms " (since Linux 2.6.12)"
+Da number of millisecondz ta delay before retransmittin a request.
+Defaults ta 1000 milliseconds.
+.TP
+.IR ucast_solicit " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da maximum number of attempts ta bust unicast probes before asking
+the ARP daemon (see
+.IR app_solicit ).
+Defaults ta 3.
+.TP
+.IR unres_qlen " (since Linux 2.2)"
+.\" Precisely: 2.1.79
+Da maximum number of packets which may be queued fo' each unresolved
+address by other network layers.
+Defaults ta 3.
+.SH VERSIONS
+The
+.I struct arpreq
+changed up in Linux 2.0 ta include the
+.I arp_dev
+member n' tha ioctl numbers chizzled all up in tha same time.
+Support fo' tha oldschool ioctls was dropped up in Linux 2.2.
+
+Support fo' proxy arp entries fo' networks (netmask not equal 0xffffffff)
+was dropped up in Linux 2.2.
+It be replaced by automatic proxy arp setup by
+the kernel fo' all reachable hosts on other intercourses (when
+forwardin n' proxy arp is enabled fo' tha intercourse).
+
+The
+.I neigh/*
+interfaces did not exist before Linux 2.2.
+.SH BUGS
+Some timer settings is specified up in jiffies, which be architecture-
+and kernel version-dependent; see
+.BR time (7).
+
+There is no way ta signal positizzle feedback from user space.
+This means connection-oriented protocols implemented up in user space
+will generate excessive ARP traffic, cuz ndisc will regularly
+reprobe tha MAC address.
+Da same problem applies fo' some kernel protocols (e.g., NFS over UDP).
+
+This playa page mashes IPv4 specific n' shared between IPv4 n' IPv6
+functionalitizzle together.
+.SH SEE ALSO
+.BR capabilitizzles (7),
+.BR ip (7)
+.PP
+RFC\ 826 fo' a thugged-out description of ARP.
+RFC\ 2461 fo' a thugged-out description of IPv6 neighbor discovery n' tha base
+algorithms used.
+Linux 2.2+ IPv4 ARP uses tha IPv6 algorithms when applicable.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

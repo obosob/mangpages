@@ -1,0 +1,351 @@
+.\" Copyright 2005 walta harms (walter.harms@informatik.uni-oldenburg.de),
+.\" n' Copyright 2005, 2012 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(GPL_NOVERSION_ONELINE)
+.\" Distributed under tha GPL.
+.\" %%%LICENSE_END
+.\"
+.\" 2008-12-04, Petr Baudis <pasky@suse.cz>: Document open_wmemstream()
+.\"
+.TH FMEMOPEN 3 2012-04-28 "GNU" "Linux Programmerz Manual"
+.SH NAME
+fmemopen, open_memstream, open_wmemstream \-  open memory as stream
+.SH SYNOPSIS
+.nf
+.B #include <stdio.h>
+
+.BI "FILE *fmemopen(void *"buf ", size_t "size ", const char *" mode ");"
+
+.BI "FILE *open_memstream(char **" ptr ", size_t *" sizeloc );
+
+.B #include <wchar.h>
+
+.BI "FILE *open_wmemstream(wchar_t **" ptr ", size_t *" sizeloc );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR fmemopen (),
+.BR open_memstream (),
+.BR open_wmemstream ():
+.PD 0
+.ad l
+.RS 4
+.TP 4
+Since glibc 2.10:
+_XOPEN_SOURCE\ >=\ 700 || _POSIX_C_SOURCE\ >=\ 200809L
+.TP
+Before glibc 2.10:
+_GNU_SOURCE
+.RE
+.ad
+.PD
+.SH DESCRIPTION
+The
+.BR fmemopen ()
+function opens a stream dat permits tha access specified by
+.IR mode .
+Da stream allows I/O ta be performed on tha strang or memory buffer
+pointed ta by
+.IR buf .
+This buffer must be at least
+.I size
+bytes long.
+.PP
+Da argument
+.I mode
+is tha same ol' dirty as for
+.BR fopen (3).
+If
+.I mode
+specifies a append mode, then tha initial file posizzle is set to
+the location of tha straight-up original gangsta null byte (\(aq\\0\(aq) up in tha buffer;
+otherwise tha initial file posizzle is set ta tha start of tha buffer.
+Since glibc 2.9,
+the letta \(aqb\(aq may be specified as tha second characta in
+.IR mode .
+This serves up "binary" mode:
+writes don't implicitly add a terminatin null byte, and
+.BR fseek (3)
+.B SEEK_END
+is relatizzle ta tha end of tha buffer (i.e., tha value specified by the
+.I size
+argument), rather than tha current strang length.
+.PP
+When a stream dat has been opened fo' freestylin is flushed
+.RB ( fflush (3))
+or closed
+.RB ( fclose (3)),
+a null byte is freestyled all up in tha end of tha buffer if there is space.
+Da calla should ensure dat a extra byte be available up in the
+buffer
+(and that
+.I size
+counts dat byte)
+to allow fo' all dis bullshit.
+
+Attempts ta write mo' than
+.I size
+bytes ta tha buffer result up in a error.
+(By default, such errors is ghon be visible only when the
+.I stdio
+buffer is flushed.
+Disablin bufferin with
+.I setbuf(fp,\ NULL)
+may be useful ta detect errors all up in tha time of a output operation.
+Alternatively, tha calla can explicitly set
+.I buf
+as tha stdio stream buffer, all up in tha same time informin stdio
+of tha bufferz size, using
+.IR "setbuffer(fp, buf, size)" .)
+.\" See http://sourceware.org/bugzilla/show_bug.cgi?id=1995
+.\" and
+.\" http://sources.redhat.com/ml/libc-alpha/2006-04/msg00064.html
+.PP
+In a stream opened fo' reading,
+null bytes (\(aq\\0\(aq) up in tha buffer do not cause read
+operations ta return a end-of-file indication.
+A read from tha buffer will only indicate end-of-file
+when tha file pointa advances
+.I size
+bytes past tha start of tha buffer.
+.PP
+If
+.I buf
+is specified as NULL, then
+.BR fmemopen ()
+dynamically allocates a funky-ass buffer
+.I size
+bytes long.
+This is useful fo' a application dat wants ta write data to
+a temporary buffer n' then read it back again.
+Da buffer be automatically freed when tha stream is closed.
+Note dat tha calla has no way ta obtain a pointa ta the
+temporary buffer allocated by dis call (but see
+.BR open_memstream ()
+below).
+
+The
+.BR open_memstream ()
+function opens a stream fo' freestylin ta a funky-ass buffer.
+Da buffer
+is dynamically allocated (as with
+.BR malloc (3)),
+and automatically grows as required.
+Afta closin tha stream, tha calla should
+.BR free (3)
+this buffer.
+
+When tha stream is closed
+.RB ( fclose (3))
+or flushed
+.RB ( fflush (3)),
+the locations pointed ta by
+.I ptr
+and
+.I sizeloc
+are updated ta contain, respectively, a pointa ta tha buffer n' the
+current size of tha buffer.
+These joints remain valid only as long as tha caller
+performs no further output on tha stream.
+If further output is performed, then tha stream
+must again n' again n' again be flushed before tryin ta access these variables.
+
+A null byte is maintained all up in tha end of tha buffer.
+This byte is
+.I not
+included up in tha size value stored at
+.IR sizeloc .
+
+Da streamz file posizzle can be chizzled with
+.BR fseek (3)
+or
+.BR fseeko (3).
+Movin tha file posizzle past tha end
+of tha data already freestyled fills tha intervenin space with
+zeros.
+
+The
+.BR open_wmemstream ()
+is similar to
+.BR open_memstream (),
+but operates on wide charactas instead of bytes.
+.SH RETURN VALUE
+Upon successful completion
+.BR fmemopen (),
+.BR open_memstream ()
+and
+.BR open_wmemstream ()
+return a
+.I FILE
+pointer.
+Otherwise, NULL is returned and
+.I errno
+is set ta indicate tha error.
+.SH VERSIONS
+.BR fmemopen ()
+and
+.BR open_memstream ()
+were already available up in glibc 1.0.x.
+.BR open_wmemstream ()
+is available since glibc 2.4.
+.SH CONFORMING TO
+POSIX.1-2008.
+These functions is not specified up in POSIX.1-2001,
+and is not widely available on other systems.
+
+POSIX.1-2008 specifies dat \(aqb\(aq in
+.IR mode
+shall be ignored.
+But fuck dat shiznit yo, tha word on tha street is dat Technical Corrigendum 1
+.\" http://austingroupbugs.net/view.php?id=396
+adjusts tha standard ta allow implementation-specific treatment fo' dis case,
+thus permittin tha glibc treatment of \(aqb\(aq.
+.SH NOTES
+There is no file descriptor associated wit tha file stream
+returned by these functions
+(i.e.,
+.BR fileno (3)
+will return a error if called on tha returned stream).
+.SH BUGS
+In glibc before version 2.7, seekin past tha end of a stream pimped by
+.BR open_memstream ()
+does not enpimpin' tha buffer; instead the
+.BR fseek (3)
+call fails, returnin \-1.
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=1996
+
+If
+.I size
+is specified as zero,
+.BR fmemopen ()
+fails wit tha error
+.BR EINVAL .
+.\" FIXME http://sourceware.org/bugzilla/show_bug.cgi?id=11216
+It would be mo' consistent if dis case successfully pimped
+a stream dat then returned end of file on tha straight-up original gangsta attempt at reading.
+Furthermore, POSIX.1-2008 do not specify a gangbangin' failure fo' dis case.
+
+Specifyin append mode ("a" or "a+") for
+.BR fmemopen ()
+sets tha initial file posizzle ta tha straight-up original gangsta null byte yo, but
+.\" FIXME http://sourceware.org/bugzilla/show_bug.cgi?id=13152
+(if tha file offset is reset ta a location other than
+the end of tha stream)
+does not force subsequent writes ta append all up in tha end of tha stream.
+
+If the
+.I mode
+argument to
+.BR fmemopen ()
+specifies append ("a" or "a+"), n' the
+.I size
+argument do not cover a null byte in
+.IR buf
+then, accordin ta POSIX.1-2008,
+the initial file posizzle should be set to
+the next byte afta tha end of tha buffer.
+But fuck dat shiznit yo, tha word on tha street is dat up in dis case tha glibc
+.\" FIXME http://sourceware.org/bugzilla/show_bug.cgi?id=13151
+.BR fmemopen ()
+sets tha file posizzle ta \-1.
+
+To specify binary mode for
+.BR fmemopen ()
+the \(aqb\(aq must be the
+.I second
+characta in
+.IR mode .
+Thus, fo' example, "wb+" has tha desired effect yo, but "w+b" do not.
+This is inconsistent wit tha treatment of
+.\" FIXME http://sourceware.org/bugzilla/show_bug.cgi?id=12836
+.IR mode
+by
+.BR fopen (3).
+
+Da glibc 2.9 addizzle of "binary" mode for
+.BR fmemopen ()
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=6544
+silently chizzled tha ABI: previously,
+.BR fmemopen ()
+ignored \(aqb\(aq in
+.IR mode .
+.SH EXAMPLE
+Da program below uses
+.BR fmemopen ()
+to open a input buffer, and
+.BR open_memstream ()
+to open a thugged-out dynamically sized output buffer.
+Da program scans its input strang (taken from tha program's
+first command-line argument) readin integers,
+and writes tha squarez of these integers ta tha output buffer.
+An example of tha output produced by dis program is tha following:
+.in +4n
+.nf
+
+.RB "$" " ./a.out \(aq1 23 43\(aq"
+size=11; ptr=1 529 1849
+.fi
+.in
+.SS Program source
+\&
+.nf
+#define _GNU_SOURCE
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define handle_error(msg) \\
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    FILE *out, *in;
+    int v, s;
+    size_t size;
+    char *ptr;
+
+    if (argc != 2) {
+	fprintf(stderr, "Usage: %s <file>\\n", argv[0]);
+	exit(EXIT_FAILURE);
+    }
+
+    up in = fmemopen(argv[1], strlen(argv[1]), "r");
+    if (in == NULL)
+        handle_error("fmemopen");
+
+    up = open_memstream(&ptr, &size);
+    if (out == NULL)
+        handle_error("open_memstream");
+
+    fo' (;;) {
+        s = fscanf(in, "%d", &v);
+        if (s <= 0)
+            break;
+
+        s = fprintf(out, "%d ", v * v);
+        if (s == \-1)
+            handle_error("fprintf");
+    }
+    fclose(in);
+    fclose(out);
+    printf("size=%ld; ptr=%s\\n", (long) size, ptr);
+    free(ptr);
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR fopen (3),
+.BR fopencookie (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,348 @@
+.TH PCRECPP 3 "08 January 2012" "PCRE 8.30"
+.SH NAME
+PCRE - Perl-compatible regular expressions.
+.SH "SYNOPSIS OF C++ WRAPPER"
+.rs
+.sp
+.B #include <pcrecpp.h>
+.
+.SH DESCRIPTION
+.rs
+.sp
+Da C++ wrapper fo' PCRE was provided by Gizoogle Inc. Right back up in yo muthafuckin ass. Some additional
+functionalitizzle was added by Giuseppe Maxia. This brief playa page was constructed
+from tha notes up in tha \fIpcrecpp.h\fP file, which should be consulted for
+further details. Note dat tha C++ wrapper supports only tha original gangsta 8-bit
+PCRE library. There is no 16-bit or 32-bit support at present.
+.
+.
+.SH "MATCHING INTERFACE"
+.rs
+.sp
+Da "FullMatch" operation checks dat supplied text matches a supplied pattern
+exactly. If pointa arguments is supplied, it copies matched sub-strings that
+match sub-patterns tha fuck into em.
+.sp
+  Example: successful match
+     pcrecpp::RE re("h.*o");
+     re.FullMatch("hello");
+.sp
+  Example: unsuccessful match (requires full match):
+     pcrecpp::RE re("e");
+     !re.FullMatch("hello");
+.sp
+  Example: bustin a temporary RE object:
+     pcrecpp::RE("h.*o").FullMatch("hello");
+.sp
+Yo ass can pass up in a "const char*" or a "string" fo' "text". Da examplez below
+tend ta bust a cold-ass lil const char*. Yo ass can, as up in tha different examplez above, store
+the RE object explicitly up in a variable or bust a temporary RE object. The
+examplez below use one mode or tha other arbitrarily. Either could erectly be
+used fo' any of these examples.
+.P
+Yo ass must supply extra pointa arguments ta extract matched subpieces.
+.sp
+  Example: extracts "ruby" tha fuck into "s" n' 1234 tha fuck into "i"
+     int i;
+     strang s;
+     pcrecpp::RE re("(\e\ew+):(\e\ed+)");
+     re.FullMatch("ruby:1234", &s, &i);
+.sp
+  Example: do not try ta extract any extra sub-patterns
+     re.FullMatch("ruby:1234", &s);
+.sp
+  Example: do not try ta extract tha fuck into NULL
+     re.FullMatch("ruby:1234", NULL, &i);
+.sp
+  Example: integer overflow causes failure
+     !re.FullMatch("ruby:1234567891234", NULL, &i);
+.sp
+  Example: fails cuz there aint enough sub-patterns:
+     !pcrecpp::RE("\e\ew+:\e\ed+").FullMatch("ruby:1234", &s);
+.sp
+  Example: fails cuz strang cannot be stored up in integer
+     !pcrecpp::RE("(.*)").FullMatch("ruby", &i);
+.sp
+Da provided pointa arguments can be pointas ta any scalar numeric
+type, or one of:
+.sp
+   strang        (matched piece is copied ta string)
+   StringPiece   (StringPiece is mutated ta point ta matched piece)
+   T             (where "bool T::ParseFrom(const char*, int)" exists)
+   NULL          (the correspondin matched sub-pattern aint copied)
+.sp
+Da function returns legit iff all of tha followin conditions is satisfied:
+.sp
+  a. "text" matches "pattern" exactly;
+.sp
+  b. Da number of matched sub-patterns is >= number of supplied
+     pointers;
+.sp
+  c. Da "i"th argument has a suitable type fo' holdin the
+     strang captured as tha "i"th sub-pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. If you pass in
+     void * NULL fo' tha "i"th argument, or a non-void * NULL
+     of tha erect type, or pass fewer arguments than the
+     number of sub-patterns, "i"th captured sub-pattern is
+     ignored.
+.sp
+CAVEAT: An optionizzle sub-pattern dat do not exist up in tha matched
+strin be assigned tha empty string. Therefore, tha followin will
+return false (because tha empty strang aint a valid number):
+.sp
+   int number;
+   pcrecpp::RE::FullMatch("abc", "[a-z]+(\e\ed+)?", &number);
+.sp
+Da matchin intercourse supports at most 16 arguments per call.
+If you need more, consider rockin tha mo' general intercourse
+\fBpcrecpp::RE::DoMatch\fP. Right back up in yo muthafuckin ass. See \fBpcrecpp.h\fP fo' tha signature for
+\fBDoMatch\fP.
+.P
+NOTE: Do not use \fBno_arg\fP, which is used internally ta mark tha end of a
+list of optionizzle arguments, as a placeholda fo' missin arguments, as dis can
+lead ta segfaults.
+.
+.
+.SH "QUOTING METACHARACTERS"
+.rs
+.sp
+Yo ass can use tha "QuoteMeta" operation ta bang backslashes before all
+potentially meaningful charactas up in a string. Da returned string, used as a
+regular expression, will exactly match tha original gangsta string.
+.sp
+  Example:
+     strang quoted = RE::QuoteMeta(unquoted);
+.sp
+Note dat itz legal ta escape a cold-ass lil characta even if it has no special meanin in
+a regular expression -- so dis function do dis shit. (This also make it
+identical ta tha perl function of tha same name; peep "perldoc -f quotemeta".)
+For example, "1.5-2.0?" becomes "1\e.5\e-2\e.0\e?".
+.
+.SH "PARTIAL MATCHES"
+.rs
+.sp
+Yo ass can use tha "PartialMatch" operation when you want tha pattern
+to match any substrin of tha text.
+.sp
+  Example: simple search fo' a string:
+     pcrecpp::RE("ell").PartialMatch("hello");
+.sp
+  Example: find first number up in a string:
+     int number;
+     pcrecpp::RE re("(\e\ed+)");
+     re.PartialMatch("x*100 + 20", &number);
+     assert(number == 100);
+.
+.
+.SH "UTF-8 AND THE MATCHING INTERFACE"
+.rs
+.sp
+By default, pattern n' text is plain text, one byte per character n' shit. Da UTF8
+flag, passed ta tha constructor, causes both pattern n' strang ta be treated
+as UTF-8 text, still a funky-ass byte stream but potentially multiple bytes per
+character n' shit. In practice, tha text is likelier ta be UTF-8 than tha pattern yo, but
+the match returned may depend on tha UTF8 flag, so always use it when matching
+UTF8 text. For example, "." will match one byte normally but wit UTF8 set may
+match up ta three bytez of a multi-byte character.
+.sp
+  Example:
+     pcrecpp::RE_Options options;
+     options.set_utf8();
+     pcrecpp::RE re(utf8_pattern, options);
+     re.FullMatch(utf8_string);
+.sp
+  Example: rockin tha convenience function UTF8():
+     pcrecpp::RE re(utf8_pattern, pcrecpp::UTF8());
+     re.FullMatch(utf8_string);
+.sp
+NOTE: Da UTF8 flag is ignored if pcre was not configured wit the
+      --enable-utf8 flag.
+.
+.
+.SH "PASSING MODIFIERS TO THE REGULAR EXPRESSION ENGINE"
+.rs
+.sp
+PCRE defines some modifiers ta chizzle tha behavior of tha regular expression
+engine. Da C++ wrapper defines a auxiliary class, RE_Options, as a hoopty to
+pass such modifiers ta a RE class. Currently, tha followin modifiers are
+supported:
+.sp
+   modifier              description               Perl corresponding
+.sp
+   PCRE_CASELESS         case insensitizzle match      /i
+   PCRE_MULTILINE        multiple lines match        /m
+   PCRE_DOTALL           dot matches newlines        /s
+   PCRE_DOLLAR_ENDONLY   $ matches only at end       N/A
+   PCRE_EXTRA            strict escape parsin       N/A
+   PCRE_EXTENDED         ignore white spaces         /x
+   PCRE_UTF8             handlez UTF8 chars          built-in
+   PCRE_UNGREEDY         reverses * n' *, biatch?           N/A
+   PCRE_NO_AUTO_CAPTURE  disablez capturin parens   N/A (*)
+.sp
+(*) Both Perl n' PCRE allow non capturin parentheses by meanz of the
+"?:" modifier within tha pattern itself. e.g. (?:ab|cd) do not
+capture, while (ab|cd) do.
+.P
+For a gangbangin' full account on how tha fuck each modifier works, please check the
+PCRE API reference page.
+.P
+For each modifier, there be two member functions whose name is made
+out of tha modifier up in lowercase, without tha "PCRE_" prefix. For
+instance, PCRE_CASELESS is handled by
+.sp
+  bool caseless()
+.sp
+which returns legit if tha modifier is set, and
+.sp
+  RE_Options & set_caseless(bool)
+.sp
+which sets or unsets tha modifier n' shit. Mo'over, PCRE_EXTRA_MATCH_LIMIT can be
+accessed all up in tha \fBset_match_limit()\fP n' \fBmatch_limit()\fP member
+functions. Right back up in yo muthafuckin ass. Settin \fImatch_limit\fP ta a non-zero value will limit the
+execution of pcre ta keep it from bustin wack thangs like blowin tha stack or
+takin a eternitizzle ta return a result fo' realz. A value of 5000 is phat enough ta stop
+stack blowup up in a 2MB thread stack. Right back up in yo muthafuckin ass. Settin \fImatch_limit\fP ta zero disables
+match limitin fo' realz. Alternatively, you can call \fBmatch_limit_recursion()\fP
+which uses PCRE_EXTRA_MATCH_LIMIT_RECURSION ta limit how tha fuck much PCRE
+recurses. \fBmatch_limit()\fP limits tha number of matches PCRE do;
+\fBmatch_limit_recursion()\fP limits tha depth of internal recursion, and
+therefore tha amount of stack dat is used.
+.P
+Normally, ta pass one or mo' modifiers ta a RE class, you declare
+a \fIRE_Options\fP object, set tha appropriate options, n' pass this
+object ta a RE constructor. Shiiit, dis aint no joke. Example:
+.sp
+   RE_Options opt;
+   opt.set_caseless(true);
+   if (RE("HELLO", opt).PartialMatch("wassup ghetto")) ...
+.sp
+RE_options has two constructors. Da default constructor takes no arguments and
+creates a set of flags dat is off by default. Da optionizzle parameter
+\fIoption_flags\fP is ta facilitate transfer of legacy code from C programs.
+This lets you do
+.sp
+   RE(pattern,
+     RE_Options(PCRE_CASELESS|PCRE_MULTILINE)).PartialMatch(str);
+.sp
+But fuck dat shiznit yo, tha word on tha street is dat freshly smoked up code is betta off bustin
+.sp
+   RE(pattern,
+     RE_Options().set_caseless(true).set_multiline(true))
+       .PartialMatch(str);
+.sp
+If yo ass is goin ta pass one of da most thugged-out used modifiers, there be some
+convenience functions dat return a RE_Options class wit the
+appropriate modifier already set: \fBCASELESS()\fP, \fBUTF8()\fP,
+\fBMULTILINE()\fP, \fBDOTALL\fP(), n' \fBEXTENDED()\fP.
+.P
+If you need ta set nuff muthafuckin options at once, n' you don't wanna go through
+the painz of declarin a RE_Options object n' settin nuff muthafuckin options, there
+is a parallel method dat hit you wit such mobilitizzle on tha fly. Yo ass can concatenate
+several \fBset_xxxxx()\fP member functions, since each of dem returns a
+reference ta its class object. For example, ta pass PCRE_CASELESS,
+PCRE_EXTENDED, n' PCRE_MULTILINE ta a RE wit one statement, you may write:
+.sp
+   RE(" ^ xyz \e\es+ .* blah$",
+     RE_Options()
+       .set_caseless(true)
+       .set_extended(true)
+       .set_multiline(true)).PartialMatch(sometext);
+.sp
+.
+.
+.SH "SCANNING TEXT INCREMENTALLY"
+.rs
+.sp
+Da "Consume" operation may be useful if you wanna repeatedly
+match regular expressions all up in tha front of a strang n' skip over
+them as they match. This requires use of tha "StringPiece" type,
+which represents a sub-range of a real string. Like RE, StringPiece
+is defined up in tha pcrecpp namespace.
+.sp
+  Example: read linez of tha form "var = value" from a string.
+     strang contents = ...;                 // Fill strang somehow
+     pcrecpp::StringPiece input(contents);  // Wrap up in a StringPiece
+.sp
+     strang var;
+     int value;
+     pcrecpp::RE re("(\e\ew+) = (\e\ed+)\en");
+     while (re.Consume(&input, &var, &value)) {
+       ...;
+     }
+.sp
+Each successful call ta "Consume" will set "var/value", n' also
+advizzle "input" so it points past tha matched text.
+.P
+Da "FindAndConsume" operation is similar ta "Consume" but do not
+anchor yo' match all up in tha beginnin of tha string. For example, you
+could extract all lyrics from a strang by repeatedly calling
+.sp
+  pcrecpp::RE("(\e\ew+)").FindAndConsume(&input, &word)
+.
+.
+.SH "PARSING HEX/OCTAL/C-RADIX NUMBERS"
+.rs
+.sp
+By default, if you pass a pointa ta a numeric value, the
+correspondin text is interpreted as a funky-ass base-10 number n' shit. Yo ass can
+instead wrap tha pointa wit a cold-ass lil call ta one of tha operators Hex(),
+Octal(), or CRadix() ta interpret tha text up in another base. The
+CRadix operator interprets C-style "0" (base-8) n' "0x" (base-16)
+prefixes yo, but defaults ta base-10.
+.sp
+  Example:
+    int a, b, c, d;
+    pcrecpp::RE re("(.*) (.*) (.*) (.*)");
+    re.FullMatch("100 40 0100 0x40",
+                 pcrecpp::Octal(&a), pcrecpp::Hex(&b),
+                 pcrecpp::CRadix(&c), pcrecpp::CRadix(&d));
+.sp
+will leave 64 up in a, b, c, n' d.
+.
+.
+.SH "REPLACING PARTS OF STRINGS"
+.rs
+.sp
+Yo ass can replace tha straight-up original gangsta match of "pattern" up in "str" wit "rewrite".
+Within "rewrite", backslash-escaped digits (\e1 ta \e9) can be
+used ta bang text matchin correspondin parenthesized group
+from tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. \e0 up in "rewrite" refers ta tha entire matching
+text. For example:
+.sp
+  strang s = "yabba dabba doo";
+  pcrecpp::RE("b+").Replace("d", &s);
+.sp
+will leave "s" containin "yada dabba doo". Da result is legit if tha pattern
+matches n' a replacement occurs, false otherwise.
+.P
+\fBGlobalReplace\fP is like \fBReplace\fP except dat it replaces all
+occurrencez of tha pattern up in tha strang wit tha rewrite. Replacements are
+not subject ta re-matching. For example:
+.sp
+  strang s = "yabba dabba doo";
+  pcrecpp::RE("b+").GlobalReplace("d", &s);
+.sp
+will leave "s" containin "yada dada doo". Well shiiiit, it returns tha number of
+replacements made.
+.P
+\fBExtract\fP is like \fBReplace\fP, except dat if tha pattern matches,
+"rewrite" is copied tha fuck into "out" (an additionizzle argument) wit substitutions.
+Da non-matchin portionz of "text" is ignored. Y'all KNOW dat shit, muthafucka! Returns legit iff a match
+occurred n' tha extraction happened successfully;  if no match occurs, the
+strin is left unaffected.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Da C++ wrapper was contributed by Gizoogle Inc.
+Copyright (c) 2007 Gizoogle Inc.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 08 January 2012
+.fi

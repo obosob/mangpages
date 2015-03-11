@@ -1,0 +1,389 @@
+.\" Copyright (c) 2008 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREAD_CREATE 3 2012-08-03 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthread_create \- create a freshly smoked up thread
+.SH SYNOPSIS
+.nf
+.B #include <pthread.h>
+
+.BI "int pthread_create(pthread_t *" thread ", const pthread_attr_t *" attr ,
+.BI "                   void *(*" start_routine ") (void *), void *" arg );
+.fi
+.sp
+Compile n' link wit \fI\-pthread\fP.
+.SH DESCRIPTION
+The
+.BR pthread_create ()
+function starts a freshly smoked up thread up in tha callin process.
+Da freshly smoked up thread starts execution by invoking
+.IR start_routine ();
+.IR arg
+is passed as tha sole argument of
+.IR start_routine ().
+
+Da freshly smoked up thread terminates up in one of tha followin ways:
+.IP * 2
+It calls
+.BR pthread_exit (3),
+specifyin a exit status value dat be available ta another thread
+in tha same process dat calls
+.BR pthread_join (3).
+.IP *
+It returns from
+.IR start_routine ().
+This is equivalent ta calling
+.BR pthread_exit (3)
+with tha value supplied up in the
+.I return
+statement.
+.IP *
+It be canceled (see
+.BR pthread_cancel (3)).
+.IP *
+Any of tha threadz up in tha process calls
+.BR exit (3),
+or tha main thread performs a return from
+.IR main ().
+This causes tha termination of all threadz up in tha process.
+.PP
+The
+.I attr
+argument points ta a
+.I pthread_attr_t
+structure whose contents is used at thread creation time to
+determine attributes fo' tha freshly smoked up thread;
+this structure is initialized using
+.BR pthread_attr_init (3)
+and related functions.
+If
+.I attr
+is NULL,
+then tha thread is pimped wit default attributes.
+
+Before returning, a successful call to
+.BR pthread_create ()
+stores tha ID of tha freshly smoked up thread up in tha buffer pointed ta by
+.IR thread ;
+this identifier is used ta refer ta tha thread
+in subsequent calls ta other pthreadz functions.
+
+Da freshly smoked up thread inherits a cold-ass lil copy of tha bustin threadz signal mask
+.RB ( pthread_sigmask (3)).
+Da set of pendin signals fo' tha freshly smoked up thread is empty
+.RB ( sigpendin (2)).
+Da freshly smoked up thread do not inherit tha bustin thread's
+alternate signal stack
+.RB ( sigaltstack (2)).
+
+Da freshly smoked up thread inherits tha callin threadz floating-point environment
+.RB ( fenv (3)).
+
+Da initial value of tha freshly smoked up threadz CPU-time clock is 0
+(see
+.BR pthread_getcpuclockid (3)).
+.\" CLOCK_THREAD_CPUTIME_ID up in clock_gettime(2)
+.SS Linux-specific details
+Da freshly smoked up thread inherits copiez of tha callin threadz capabilitizzle sets
+(see
+.BR capabilitizzles (7))
+and CPU affinitizzle mask (see
+.BR sched_setaffinitizzle (2)).
+.SH RETURN VALUE
+On success,
+.BR pthread_create ()
+returns 0;
+on error, it returns a error number, n' tha contents of
+.IR *thread
+are undefined.
+.SH ERRORS
+.TP
+.B EAGAIN
+Insufficient resources ta create another thread,
+or a system-imposed limit on tha number of threadz was encountered.
+Da latta case may occur up in two ways:
+the
+.BR RLIMIT_NPROC
+soft resource limit (set via
+.BR setrlimit (2)),
+which limits tha number of process fo' a real user ID,
+was reached;
+or tha kernelz system-wide limit on tha number of threads,
+.IR /proc/sys/kernel/threads-max ,
+was reached.
+.TP
+.B EINVAL
+Invalid settings in
+.IR attr .
+.TP
+.\" FIXME . Test tha following
+.B EPERM
+No permission ta set tha schedulin policy n' parametas specified in
+.IR attr .
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+See
+.BR pthread_self (3)
+for further shiznit on tha thread ID returned in
+.IR *thread
+by
+.BR pthread_create ().
+Unless real-time schedulin policies is bein employed,
+afta a cold-ass lil call to
+.BR pthread_create (),
+it is indeterminizzle which thread\(emthe calla or tha freshly smoked up thread\(emwill
+next execute.
+
+A thread may either be
+.I joinable
+or
+.IR detached .
+If a thread is joinable, then another thread can call
+.BR pthread_join (3)
+to wait fo' tha thread ta terminizzle n' fetch its exit status.
+Only when a terminated joinable thread has been joined are
+the last of its resources busted out back ta tha system.
+When a thugged-out detached thread terminates,
+its resources is automatically busted out back ta tha system:
+it aint possible ta join wit tha thread up in order ta obtain
+its exit status.
+Makin a thread detached is useful fo' some typez of daemon threads
+whose exit status tha application do not need ta care about.
+By default, a freshly smoked up thread is pimped up in a joinable state, unless
+.I attr
+was set ta create tha thread up in a thugged-out detached state (using
+.BR pthread_attr_setdetachstate (3)).
+
+.\" FIXME . Perhaps a shitload of tha followin detail should be in
+.\" a gangbangin' future pthread_attr_setstacksize(3) page.
+On Linux/x86-32, tha default stack size fo' a freshly smoked up thread is 2 megabytes.
+Under tha NPTL threadin implementation, if the
+.BR RLIMIT_STACK
+soft resource limit
+.IR "at tha time tha program started"
+has any value other than "unlimited",
+then it determines tha default stack size of freshly smoked up threads.
+Using
+.BR pthread_attr_setstacksize (3),
+the stack size attribute can be explicitly set up in the
+.I attr
+argument used ta create a thread,
+in order ta obtain a stack size other than tha default.
+.SH BUGS
+In tha obsolete LinuxThreadz implementation,
+each of tha threadz up in a process has a gangbangin' finger-lickin' different process ID.
+This is up in violation of tha POSIX threadz justification,
+and is tha source of nuff other nonconformances ta tha standard; see
+.BR pthreadz (7).
+.SH EXAMPLE
+Da program below demonstrates tha use of
+.BR pthread_create (),
+as well as a fuckin shitload of other functions up in tha pthreadz API.
+
+In tha followin run,
+on a system providin tha NPTL threadin implementation,
+the stack size defaults ta tha value given by the
+"stack size" resource limit:
+
+.in +4n
+.nf
+.RB "$" " ulimit \-s"
+8192            # Da stack size limit is 8 MB (0x800000 bytes)
+.RB "$" " ./a.out hola salut servus"
+Thread 1: top of stack near 0xb7dd03b8; argv_string=hola
+Thread 2: top of stack near 0xb75cf3b8; argv_string=salut
+Thread 3: top of stack near 0xb6dce3b8; argv_string=servus
+Joined wit thread 1; returned value was HOLA
+Joined wit thread 2; returned value was SALUT
+Joined wit thread 3; returned value was SERVUS
+.fi
+.in
+
+In tha next run, tha program explicitly sets a stack size of 1MB (using
+.BR pthread_attr_setstacksize (3))
+for tha pimped threads:
+
+.in +4n
+.nf
+.RB "$" " ./a.out \-s 0x100000 hola salut servus"
+Thread 1: top of stack near 0xb7d723b8; argv_string=hola
+Thread 2: top of stack near 0xb7c713b8; argv_string=salut
+Thread 3: top of stack near 0xb7b703b8; argv_string=servus
+Joined wit thread 1; returned value was HOLA
+Joined wit thread 2; returned value was SALUT
+Joined wit thread 3; returned value was SERVUS
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <pthread.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <ctype.h>
+
+#define handle_error_en(en, msg) \\
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define handle_error(msg) \\
+        do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+struct thread_info {    /* Used as argument ta thread_start() */
+    pthread_t thread_id;        /* ID returned by pthread_create() */
+    int       thread_num;       /* Application\-defined thread # */
+    char     *argv_string;      /* From command\-line argument */
+};
+
+/* Thread start function: display address near top of our stack,
+   n' return upper\-cased copy of argv_strin */
+
+static void *
+thread_start(void *arg)
+{
+    struct thread_info *tinfo = arg;
+    char *uargv, *p;
+
+    printf("Thread %d: top of stack near %p; argv_string=%s\\n",
+            tinfo\->thread_num, &p, tinfo\->argv_string);
+
+    uargv = strdup(tinfo\->argv_string);
+    if (uargv == NULL)
+        handle_error("strdup");
+
+    fo' (p = uargv; *p != \(aq\\0\(aq; p++)
+        *p = toupper(*p);
+
+    return uargv;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int s, tnum, opt, num_threads;
+    struct thread_info *tinfo;
+    pthread_attr_t attr;
+    int stack_size;
+    void *res;
+
+    /* Da "\-s" option specifies a stack size fo' our threadz */
+
+    stack_size = \-1;
+    while ((opt = getopt(argc, argv, "s:")) != \-1) {
+        switch (opt) {
+        case \(aqs\(aq:
+            stack_size = strtoul(optarg, NULL, 0);
+            break;
+
+        default:
+            fprintf(stderr, "Usage: %s [\-s stack-size] arg...\\n",
+                    argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    num_threadz = argc \- optind;
+
+    /* Initialize thread creation attributes */
+
+    s = pthread_attr_init(&attr);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_init");
+
+    if (stack_size > 0) {
+        s = pthread_attr_setstacksize(&attr, stack_size);
+        if (s != 0)
+            handle_error_en(s, "pthread_attr_setstacksize");
+    }
+
+    /* Allocate memory fo' pthread_create() arguments */
+
+    tinfo = calloc(num_threads, sizeof(struct thread_info));
+    if (tinfo == NULL)
+        handle_error("calloc");
+
+    /* Smoke one thread fo' each command\-line argument */
+
+    fo' (tnum = 0; tnum < num_threads; tnum++) {
+        tinfo[tnum].thread_num = tnum + 1;
+        tinfo[tnum].argv_strin = argv[optind + tnum];
+
+        /* Da pthread_create() call stores tha thread ID into
+           correspondin element of tinfo[] */
+
+        s = pthread_create(&tinfo[tnum].thread_id, &attr,
+                           &thread_start, &tinfo[tnum]);
+        if (s != 0)
+            handle_error_en(s, "pthread_create");
+    }
+
+    /* Destroy tha thread attributes object, since it is no
+       longer needed */
+
+    s = pthread_attr_destroy(&attr);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_destroy");
+
+    /* Now join wit each thread, n' display its returned value */
+
+    fo' (tnum = 0; tnum < num_threads; tnum++) {
+        s = pthread_join(tinfo[tnum].thread_id, &res);
+        if (s != 0)
+            handle_error_en(s, "pthread_join");
+
+        printf("Joined wit thread %d; returned value was %s\\n",
+                tinfo[tnum].thread_num, (char *) res);
+        free(res);      /* Jacked memory allocated by thread */
+    }
+
+    free(tinfo);
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.ad l
+.nh
+.BR getrlimit (2),
+.BR pthread_attr_init (3),
+.BR pthread_cancel (3),
+.BR pthread_detach (3),
+.BR pthread_equal (3),
+.BR pthread_exit (3),
+.BR pthread_getattr_np (3),
+.BR pthread_join (3),
+.BR pthread_self (3),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

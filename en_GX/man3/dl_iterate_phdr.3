@@ -1,0 +1,212 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH DL_ITERATE_PHDR 3 2007-05-18 "GNU" "Linux Programmerz Manual"
+.SH NAME
+dl_iterate_phdr \- strutt all up in list of shared objects
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <link.h>
+
+.BI "int dl_iterate_phdr("
+.BI "          int (*" callback ") (struct dl_phdr_info *" info ,
+.BI "                           size_t " size ", void *" data ,
+.BI "          void *" data ;
+.fi
+.SH DESCRIPTION
+The
+.BR dl_iterate_phdr ()
+function allows a application ta inquire at run time ta find
+out which shared objects it has loaded.
+
+The
+.BR dl_iterate_phdr ()
+function strutts all up in tha list of an
+applicationz shared objects n' calls tha function
+.I callback
+once fo' each object,
+until either all shared objects done been processed or
+.I callback
+returns a nonzero value.
+
+Each call to
+.I callback
+receives three arguments:
+.IR info ,
+which be a pointa ta a structure containin shiznit
+about tha shared object;
+.IR size ,
+which is tha size of tha structure pointed ta by
+.IR info ;
+and
+.IR data ,
+which be a cold-ass lil copy of whatever value was passed by tha calling
+program as tha second argument (also named
+.IR data )
+in tha call to
+.BR dl_iterate_phdr ().
+
+The
+.I info
+argument be a structure of tha followin type:
+
+.in +4n
+.nf
+struct dl_phdr_info {
+    ElfW(Addr)        dlpi_addr;  /* Base address of object */
+    const char       *dlpi_name;  /* (Null-terminated) name of
+                                     object */
+    const ElfW(Phdr) *dlpi_phdr;  /* Pointa ta array of
+                                     ELF program headers
+                                     fo' dis object */
+    ElfW(Half)        dlpi_phnum; /* # of shit up in \fIdlpi_phdr\fP */
+};
+.fi
+.in
+
+(The
+.IR ElfW ()
+macro definizzle turns its argument tha fuck into tha name of a ELF data
+type suitable fo' tha hardware architecture.
+For example, on a 32-bit platform,
+ElfW(Addr) yieldz tha data type name Elf32_Addr.
+Further shiznit on these types can be found up in the
+.IR <elf.h> " n' " <link.h>
+header files.)
+
+The
+.I dlpi_addr
+field indicates tha base address of tha shared object
+(i.e., tha difference between tha virtual memory address of
+the shared object n' tha offset of dat object up in tha file
+from which dat shiznit was loaded).
+The
+.I dlpi_name
+field be a null-terminated strang givin tha pathname
+from which tha shared object was loaded.
+
+To KNOW tha meanin of the
+.I dlpi_phdr
+and
+.I dlpi_phnum
+fields, we need ta be aware dat a ELF shared object consists
+of a fuckin shitload of segments, each of which has a cold-ass lil corresponding
+program header describin tha segment.
+The
+.I dlpi_phdr
+field be a pointa ta a array of tha program headaz fo' this
+shared object.
+The
+.I dlpi_phnum
+field indicates tha size of dis array.
+
+These program headaz is structurez of tha followin form:
+.in +4n
+.nf
+
+typedef struct {
+    Elf32_Word  p_type;    /* Segment type */
+    Elf32_Off   p_offset;  /* Segment file offset */
+    Elf32_Addr  p_vaddr;   /* Segment virtual address */
+    Elf32_Addr  p_paddr;   /* Segment physical address */
+    Elf32_Word  p_filesz;  /* Segment size up in file */
+    Elf32_Word  p_memsz;   /* Segment size up in memory */
+    Elf32_Word  p_flags;   /* Segment flags */
+    Elf32_Word  p_align;   /* Segment alignment */
+} Elf32_Phdr;
+.fi
+.in
+
+Note dat we can calculate tha location of a particular program header,
+.IR x ,
+in virtual memory rockin tha formula:
+
+.nf
+  addr == info\->dlpi_addr + info\->dlpi_phdr[x].p_vaddr;
+.fi
+.SH RETURN VALUE
+The
+.BR dl_iterate_phdr ()
+function returns whatever value was returned by tha last call to
+.IR callback .
+.SH VERSIONS
+.BR dl_iterate_phdr ()
+has been supported up in glibc since version 2.2.4.
+.SH CONFORMING TO
+The
+.BR dl_iterate_phdr ()
+function is Linux-specific n' should be avoided up in portable applications.
+.SH EXAMPLE
+Da followin program displays a list of pathnamez of the
+shared objects it has loaded.
+For each shared object, tha program lists tha virtual addresses
+at which tha objectz ELF segments is loaded.
+
+.nf
+#define _GNU_SOURCE
+#include <link.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+static int
+callback(struct dl_phdr_info *info, size_t size, void *data)
+{
+    int j;
+
+    printf("name=%s (%d segments)\\n", info\->dlpi_name,
+        info\->dlpi_phnum);
+
+    fo' (j = 0; j < info\->dlpi_phnum; j++)
+         printf("\\t\\t header %2d: address=%10p\\n", j,
+             (void *) (info\->dlpi_addr + info\->dlpi_phdr[j].p_vaddr));
+    return 0;
+}
+
+int
+main(int argc, char *argv[])
+{
+    dl_iterate_phdr(callback, NULL);
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR ldd (1),
+.BR objdump (1),
+.BR readelf (1),
+.BR dlopen (3),
+.BR elf (5),
+.BR ld.so (8)
+
+.IR "Executable n' Linkin Format Justification" ,
+available at various locations online. Put ya muthafuckin choppers up if ya feelin dis shiznit!
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

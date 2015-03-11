@@ -1,0 +1,444 @@
+.TH cmakepolicies 1 "February 11, 2014" "cmake 2.8.12.2"
+.SH NAME
+.PP
+cmakepolicies \- Reference of CMake policies.
+
+.SH DESCRIPTION
+.PP
+Da "cmake" executable is tha CMake command\-line intercourse.  It may be used ta configure projects up in scripts, n' you can put dat on yo' toast.  Project configuration settings may be specified on tha command line wit tha \-D option. I aint talkin' bout chicken n' gravy biatch.  Da \-i option will cause cmake ta interactively prompt fo' such settings.
+
+.PP
+CMake be a cold-ass lil cross\-platform build system generator. Shiiit, dis aint no joke.  Projects specify they build process wit platform\-independent CMake listfilez included up in each directory of a source tree wit tha name CMakeLists.txt. Users build a project by rockin CMake ta generate a funky-ass build system fo' a natizzle tool on they platform.
+
+.SH POLICIES
+.TP
+.B CMP0000
+A minimum required CMake version must be specified.
+
+CMake requires dat projects specify tha version of CMake ta which they done been written. I aint talkin' bout chicken n' gravy biatch.  This policy has been put up in place so playas tryin ta build tha project may be holla'd at when they need ta update they CMake.  Specifyin a version also helps tha project build wit CMake versions newer than dat specified. Y'all KNOW dat shit, muthafucka!  Use tha cmake_minimum_required command all up in tha top of yo' main  CMakeLists.txt file:
+
+
+.nf
+  cmake_minimum_required(VERSION <major>.<minor>)
+.fi
+
+where "<major>.<minor>" is tha version of CMake you wanna support (like fuckin "2.6").  Da command will ensure dat at least tha given version of CMake is hustlin n' help newer versions be compatible wit tha project.  See documentation of cmake_minimum_required fo' details.
+
+
+Note dat tha command invocation must step tha fuck up in tha CMakeLists.txt file itself; a cold-ass lil call up in a included file aint sufficient.  But fuck dat shiznit yo, tha word on tha street is dat tha cmake_policy command may be called ta set policy CMP0000 ta OLD or NEW behavior explicitly.  Da OLD behavior is ta silently ignore tha missin invocation. I aint talkin' bout chicken n' gravy biatch.  Da NEW behavior is ta issue a error instead of a warning.  An included file may set CMP0000 explicitly ta affect how tha fuck dis policy is enforced fo' tha main CMakeLists.txt file.
+
+
+This policy was introduced up in CMake version 2.6.0.
+
+.TP
+.B CMP0001
+CMAKE_BACKWARDS_COMPATIBILITY should no longer be used.
+
+Da OLD behavior is ta check CMAKE_BACKWARDS_COMPATIBILITY n' present it ta tha user n' shit.  Da NEW behavior is ta ignore CMAKE_BACKWARDS_COMPATIBILITY straight-up.
+
+
+In CMake 2.4 n' below tha variable CMAKE_BACKWARDS_COMPATIBILITY was used ta request compatibilitizzle wit earlier versionz of CMake.  In CMake 2.6 n' above all compatibilitizzle thangs is handled by policies n' tha cmake_policy command. Y'all KNOW dat shit, muthafucka!  But fuck dat shiznit yo, tha word on tha street is dat CMake must still check CMAKE_BACKWARDS_COMPATIBILITY fo' projects freestyled fo' CMake 2.4 n' below.
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0002
+Logical target names must be globally unique.
+
+Targets names pimped wit add_executable, add_library, or add_custom_target is logical build target names.  Logical target names must be globally unique cuz:
+
+
+.nf
+  \- Unique names may be referenced unambiguously both up in CMake
+    code n' on make tool command lines.
+  \- Logical names is used by Xcode n' VS IDE generators
+    ta produce meaningful project names fo' tha targets.
+.fi
+
+Da logical name of executable n' library targets do not gotta correspond ta tha physical file names built.  Consider rockin tha OUTPUT_NAME target property ta create two targets wit tha same physical name while keepin logical names distinct.  Custom targets must simply have globally unique names (unless one uses tha global property ALLOW_DUPLICATE_CUSTOM_TARGETS wit a Makefilez generator).
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0003
+Libraries linked via full path no longer produce linker search paths.
+
+This policy affects how tha fuck libraries whose full paths is NOT known is found at link time yo, but was pimped cuz of a cold-ass lil chizzle up in how tha fuck CMake deals wit libraries whose full paths is known. I aint talkin' bout chicken n' gravy biatch.  Consider tha code
+
+
+.nf
+  target_link_libraries(myexe /path/to/libA.so)
+.fi
+
+CMake 2.4 n' below implemented linkin ta libraries whose full paths is known by splittin dem on tha link line tha fuck into separate components consistin of tha linker search path n' tha library name.  Da example code might have produced suttin' like
+
+
+.nf
+  ... \-L/path/to \-lA ...
+.fi
+
+in order ta link ta library A.  An analysis was performed ta order multiple link directories such dat tha linker would find library A up in tha desired location yo, but there be cases up in which dis do not work.  CMake versions 2.6 n' above use tha mo' reliable approach of passin tha full path ta libraries directly ta tha linker up in most cases.  Da example code now produces suttin' like
+
+
+.nf
+  ... /path/to/libA.so ....
+.fi
+
+Unfortunately dis chizzle can break code like
+
+
+.nf
+  target_link_libraries(myexe /path/to/libA.so B)
+.fi
+
+where "B" is meant ta find "/path/to/libB.so".  This code is wack cuz tha user be askin tha linker ta find library B but has not provided a linker search path (which may be added wit tha link_directories command).  But fuck dat shiznit yo, tha word on tha street is dat wit tha oldschool linkin implementation tha code would work accidentally cuz tha linker search path added fo' library A allowed library B ta be found.
+
+
+In order ta support projects dependin on linker search paths added by linkin ta libraries wit known full paths, tha OLD behavior fo' dis policy will add tha linker search paths even though they is not needed fo' they own libraries. Put ya muthafuckin choppers up if ya feel dis!  When dis policy is set ta OLD, CMake will produce a link line such as
+
+
+.nf
+  ... \-L/path/to /path/to/libA.so \-lB ...
+.fi
+
+which will allow library B ta be found as dat shiznit was previously.  When dis policy is set ta NEW, CMake will produce a link line such as
+
+
+.nf
+  ... /path/to/libA.so \-lB ...
+.fi
+
+which mo' accurately matches what tha fuck tha project specified.
+
+
+Da settin fo' dis policy used when generatin tha link line is dat up in effect when tha target is pimped by a add_executable or add_library command. Y'all KNOW dat shit, muthafucka!  For tha example busted lyrics bout above, tha code
+
+
+.nf
+  cmake_policy(SET CMP0003 OLD) # or cmake_policy(VERSION 2.4)
+  add_executable(myexe myexe.c)
+  target_link_libraries(myexe /path/to/libA.so B)
+.fi
+
+will work n' suppress tha warnin fo' dis policy.  It may also be updated ta work wit tha erected linkin approach:
+
+
+.nf
+  cmake_policy(SET CMP0003 NEW) # or cmake_policy(VERSION 2.6)
+  link_directories(/path/to) # needed ta find library B
+  add_executable(myexe myexe.c)
+  target_link_libraries(myexe /path/to/libA.so B)
+.fi
+
+Even better, library B may be specified wit a gangbangin' full path:
+
+
+.nf
+  add_executable(myexe myexe.c)
+  target_link_libraries(myexe /path/to/libA.so /path/to/libB.so)
+.fi
+
+When all shit on tha link line have known paths CMake do not check dis policy so it has no effect.
+
+
+Note dat tha warnin fo' dis policy is ghon be issued fo' at most one target.  This avoidz floodin playas wit lyrics fo' every last muthafuckin target when settin tha policy once will probably fix all targets.
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0004
+Libraries linked may not have leadin or trailin whitespace.
+
+CMake versions 2.4 n' below silently removed leadin n' trailin whitespace from libraries linked wit code like
+
+
+.nf
+  target_link_libraries(myexe " A ")
+.fi
+
+This could lead ta subtle errors up in user projects.
+
+
+Da OLD behavior fo' dis policy is ta silently remove leadin n' trailin whitespace.  Da NEW behavior fo' dis policy is ta diagnose tha existence of such whitespace as a error. Shiiit, dis aint no joke.  Da settin fo' dis policy used when checkin tha library names is dat up in effect when tha target is pimped by a add_executable or add_library command.
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0005
+Preprocessor definizzle joints is now escaped automatically.
+
+This policy determines whether or not CMake should generate escaped preprocessor definizzle joints added via add_definitions.  CMake versions 2.4 n' below assumed dat only trivial joints would be given fo' macros up in add_definitions calls.  It did not attempt ta escape non\-trivial joints like fuckin strang literals up in generated build rules.  CMake versions 2.6 n' above support escapin of most joints yo, but cannot assume tha user has not added escapes already up in a attempt ta work round limitations up in earlier versions.
+
+
+Da OLD behavior fo' dis policy is ta place definizzle joints given ta add_definitions directly up in tha generated build rulez without attemptin ta escape anything.  Da NEW behavior fo' dis policy is ta generate erect escapes fo' all natizzle build tools automatically.  See documentation of tha COMPILE_DEFINITIONS target property fo' limitationz of tha escapin implementation.
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0006
+Installin MACOSX_BUNDLE targets requires a BUNDLE DESTINATION.
+
+This policy determines whether tha install(TARGETS) command must be given a BUNDLE DESTINATION when axed ta install a target wit tha MACOSX_BUNDLE property set.  CMake 2.4 n' below did not distinguish application bundlez from aiiight executablez when installin targets, n' you can put dat on yo' toast.  CMake 2.6 serves up a BUNDLE option ta tha install(TARGETS) command dat specifies rulez specific ta application bundlez on tha Mac.  Projects should use dis option when installin a target wit tha MACOSX_BUNDLE property set.
+
+
+Da OLD behavior fo' dis policy is ta fall back ta tha RUNTIME DESTINATION if a BUNDLE DESTINATION aint given. I aint talkin' bout chicken n' gravy biatch.  Da NEW behavior fo' dis policy is ta produce a error if a funky-ass bundle target is installed without a BUNDLE DESTINATION.
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0007
+list command no longer ignores empty elements.
+
+This policy determines whether tha list command will ignore empty elements up in tha list. CMake 2.4 n' below list commandz ignored all empty elements up in tha list.  For example, a;b;;c would have length 3 n' not 4. Da OLD behavior fo' dis policy is ta ignore empty list elements, n' you can put dat on yo' toast. Da NEW behavior fo' dis policy is ta erectly count empty elements up in a list. 
+
+
+This policy was introduced up in CMake version 2.6.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0008
+Libraries linked by full\-path must gotz a valid library file name.
+
+In CMake 2.4 n' below it is possible ta write code like
+
+
+.nf
+  target_link_libraries(myexe /full/path/to/somelib)
+.fi
+
+where "somelib" is supposed ta be a valid library file name like fuckin "libsomelib.a" or "somelib.lib".  For Makefile generators dis produces a error at build time cuz tha dependency on tha full path cannot be found. Y'all KNOW dat shit, muthafucka!  For VS IDE n' Xcode generators dis used ta work by accident cuz CMake would always split off tha library directory n' ask tha linker ta search fo' tha library by name (\-lsomelib or somelib.lib).  Despite tha failure wit Makefiles, some projects have code like dis n' build only wit VS and/or Xcode.  This version of CMake prefers ta pass tha full path directly ta tha natizzle build tool, which will fail up in dis case cuz it do not name a valid library file.
+
+
+This policy determines what tha fuck ta do wit full paths dat do not step tha fuck up ta name a valid library file.  Da OLD behavior fo' dis policy is ta split tha library name from tha path n' ask tha linker ta search fo' dat shit.  Da NEW behavior fo' dis policy is ta trust tha given path n' pass it directly ta tha natizzle build tool unchanged.
+
+
+This policy was introduced up in CMake version 2.6.1.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0009
+FILE GLOB_RECURSE calls should not follow symlinks by default.
+
+In CMake 2.6.1 n' below, FILE GLOB_RECURSE calls would follow all up in symlinks, sometimes comin up wit unexpectedly big-ass result sets cuz of symlinks ta top level directories dat contain hundredz of thousandz of files.
+
+
+This policy determines whether or not ta follow symlinks encountered durin a FILE GLOB_RECURSE call. Da OLD behavior fo' dis policy is ta follow tha symlinks. Da NEW behavior fo' dis policy aint ta follow tha symlinks by default yo, but only if FOLLOW_SYMLINKS is given as a additionizzle argument ta tha FILE command.
+
+
+This policy was introduced up in CMake version 2.6.2.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0010
+Wack variable reference syntax be a error.
+
+In CMake 2.6.2 n' below, incorrect variable reference syntax like fuckin a missin close\-brace ("${FOO") was reported but did not stop processin of CMake code.  This policy determines whether a wack variable reference be a error. Shiiit, dis aint no joke.  Da OLD behavior fo' dis policy is ta warn bout tha error, leave tha strang untouched, n' continue. Da NEW behavior fo' dis policy is ta report a error.
+
+
+This policy was introduced up in CMake version 2.6.3.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0011
+Included scripts do automatic cmake_policy PUSH n' POP.
+
+In CMake 2.6.2 n' below, CMake Policy settings up in scripts loaded by tha include() n' find_package() commandz would affect tha includer n' shit.  Explicit invocationz of cmake_policy(PUSH) n' cmake_policy(POP) was required ta isolate policy chizzlez n' protect tha includer n' shit.  While some scripts intend ta affect tha policiez of they includer, most do not.  In CMake 2.6.3 n' above, include() n' find_package() by default PUSH n' POP a entry on tha policy stack round a included script yo, but provide a NO_POLICY_SCOPE option ta disable dat shit.  This policy determines whether or not ta imply NO_POLICY_SCOPE fo' compatibility.  Da OLD behavior fo' dis policy is ta imply NO_POLICY_SCOPE fo' include() n' find_package() commands.  Da NEW behavior fo' dis policy is ta allow tha commandz ta do they default cmake_policy PUSH n' POP.
+
+
+This policy was introduced up in CMake version 2.6.3.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0012
+if() recognizes numbers n' boolean constants.
+
+In CMake versions 2.6.4 n' lower tha if() command implicitly dereferenced arguments correspondin ta variables, even dem named like numbers or boolean constants, except fo' 0 n' 1.  Numbers n' boolean constants like fuckin true, false, fo'sho, no, on, off, y, n, notfound, ignore (all case insensitive) was recognized up in some cases but not all.  For example, tha code "if(TRUE)" might have evaluated as false.  Numbers like fuckin 2 was recognized only up in boolean expressions like "if(NOT 2)" (leadin ta false) but not as a single\-argument like "if(2)" (also leadin ta false). Lata versionz of CMake prefer ta treat numbers n' boolean constants literally, so they should not be used as variable names.
+
+
+Da OLD behavior fo' dis policy is ta implicitly dereference variablez named like numbers n' boolean constants, n' you can put dat on yo' toast. Da NEW behavior fo' dis policy is ta recognize numbers n' boolean constants without dereferencin variablez wit such names.
+
+
+This policy was introduced up in CMake version 2.8.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0013
+Duplicate binary directories is not allowed.
+
+CMake 2.6.3 n' below silently permitted add_subdirectory() calls ta create tha same binary directory multiple times.  Durin build system generation filez would be freestyled n' then overwritten up in tha build tree n' could lead ta strange behavior. Shiiit, dis aint no joke.  CMake 2.6.4 n' above explicitly detect duplicate binary directories. Put ya muthafuckin choppers up if ya feel dis!  CMake 2.6.4 always considaz dis case a error. Shiiit, dis aint no joke.  In CMake 2.8.0 n' above dis policy determines whether or not tha case be a error. Shiiit, dis aint no joke.  Da OLD behavior fo' dis policy is ta allow duplicate binary directories. Put ya muthafuckin choppers up if ya feel dis!  Da NEW behavior fo' dis policy is ta disallow duplicate binary directories wit a error.
+
+
+This policy was introduced up in CMake version 2.8.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0014
+Input directories must have CMakeLists.txt.
+
+CMake versions before 2.8 silently ignored missin CMakeLists.txt filez up in directories referenced by add_subdirectory() or subdirs(), treatin dem as if present but empty.  In CMake 2.8.0 n' above dis policy determines whether or not tha case be a error. Shiiit, dis aint no joke.  Da OLD behavior fo' dis policy is ta silently ignore tha problem.  Da NEW behavior fo' dis policy is ta report a error.
+
+
+This policy was introduced up in CMake version 2.8.0.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0015
+link_directories() treats paths relatizzle ta tha source dir.
+
+In CMake 2.8.0 n' lower tha link_directories() command passed relatizzle paths unchanged ta tha linker n' shit.  In CMake 2.8.1 n' above tha link_directories() command prefers ta interpret relatizzle paths wit respect ta CMAKE_CURRENT_SOURCE_DIR, which is consistent wit include_directories() n' other commands.  Da OLD behavior fo' dis policy is ta use relatizzle paths verbatim up in tha linker command. Y'all KNOW dat shit, muthafucka!  Da NEW behavior fo' dis policy is ta convert relatizzle paths ta absolute paths by appendin tha relatizzle path ta CMAKE_CURRENT_SOURCE_DIR.
+
+
+This policy was introduced up in CMake version 2.8.1.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0016
+target_link_libraries() reports error if its only argument aint a target.
+
+In CMake 2.8.2 n' lower tha target_link_libraries() command silently ignored if dat shiznit was called wit only one argument, n' dis argument wasn't a valid target. In CMake 2.8.3 n' above it reports a error up in dis case.
+
+
+This policy was introduced up in CMake version 2.8.3.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0017
+Prefer filez from tha CMake module directory when includin from there.
+
+Startin wit CMake 2.8.4, if a cold-ass lil cmake\-module shipped wit CMake (i.e. located up in tha CMake module directory) calls include() or find_package(), tha filez located up in tha CMake module directory is preferred over tha filez up in CMAKE_MODULE_PATH.  This make shizzle dat tha modulez belongin ta CMake always git dem filez included which they expect, n' against which they was pimped n' tested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  In all other cases, tha filez found up in CMAKE_MODULE_PATH still take precedence over tha ones up in tha CMake module directory.  Da OLD behaviour is ta always prefer filez from CMAKE_MODULE_PATH over filez from tha CMake modulez directory.
+
+
+This policy was introduced up in CMake version 2.8.4.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0018
+Ignore CMAKE_SHARED_LIBRARY_<Lang>_FLAGS variable.
+
+CMake 2.8.8 n' lower compiled sources up in SHARED n' MODULE libraries rockin tha value of tha undocumented CMAKE_SHARED_LIBRARY_<Lang>_FLAGS platform variable.  Da variable contained platform\-specific flags needed ta compile objects fo' shared libraries. Put ya muthafuckin choppers up if ya feel dis!  Typically it included a gangbangin' flag like fuckin \-fPIC fo' posizzle independent code but also included other flags needed on certain platforms.  CMake 2.8.9 n' higher prefer instead ta use tha POSITION_INDEPENDENT_CODE target property ta determine what tha fuck targets should be posizzle independent, n' freshly smoked up undocumented platform variablez ta select flags while ignorin CMAKE_SHARED_LIBRARY_<Lang>_FLAGS straight-up.
+
+
+Da default fo' either approach produces identical compilation flags yo, but if a project modifies CMAKE_SHARED_LIBRARY_<Lang>_FLAGS from its original gangsta value dis policy determines which approach ta use.
+
+
+Da OLD behavior fo' dis policy is ta ignore tha POSITION_INDEPENDENT_CODE property fo' all targets n' use tha modified value of CMAKE_SHARED_LIBRARY_<Lang>_FLAGS fo' SHARED n' MODULE libraries.
+
+
+Da NEW behavior fo' dis policy is ta ignore CMAKE_SHARED_LIBRARY_<Lang>_FLAGS whether it is modified or not n' honor tha POSITION_INDEPENDENT_CODE target property.
+
+
+This policy was introduced up in CMake version 2.8.9.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0019
+Do not re\-expand variablez up in include n' link shiznit.
+
+CMake 2.8.10 n' lower re\-evaluated joints given ta tha include_directories, link_directories, n' link_libraries commandz ta expand any leftover variable references all up in tha end of tha configuration step.  This was fo' strict compatibilitizzle wit VERY early CMake versions cuz all variable references is now normally evaluated durin CMake language processing.  CMake 2.8.11 n' higher prefer ta skip tha extra evaluation.
+
+
+Da OLD behavior fo' dis policy is ta re\-evaluate tha joints fo' strict compatibility.  Da NEW behavior fo' dis policy is ta leave tha joints untouched.
+
+
+This policy was introduced up in CMake version 2.8.11.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0020
+Automatically link Qt executablez ta qtmain target on Windows.
+
+CMake 2.8.10 n' lower required playaz of Qt ta always specify a link dependency ta tha qtmain.lib static library manually on Windows.  CMake 2.8.11 gained tha mobilitizzle ta evaluate generator expressions while determinin tha link dependencies from IMPORTED targets, n' you can put dat on yo' toast.  This allows CMake itself ta automatically link executablez which link ta Qt ta tha qtmain.lib library when rockin IMPORTED Qt targets, n' you can put dat on yo' toast.  For applications already linkin ta qtmain.lib, dis should have lil impact.  For applications which supply they own alternatizzle WinMain implementation n' fo' applications which use tha QAxServer library, dis automatic linkin will need ta be disabled as per tha documentation.
+
+
+Da OLD behavior fo' dis policy aint ta link executablez ta qtmain.lib automatically when they link ta tha QtCore IMPORTEDtarget.  Da NEW behavior fo' dis policy is ta link executablez ta qtmain.lib automatically when they link ta QtCore IMPORTED target.
+
+
+This policy was introduced up in CMake version 2.8.11.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0021
+Fatal error on relatizzle paths up in INCLUDE_DIRECTORIES target property.
+
+CMake 2.8.10.2 n' lower allowed tha INCLUDE_DIRECTORIES target property ta contain relatizzle paths.  Da base path fo' such relatizzle entries aint well defined. Y'all KNOW dat shit, muthafucka!  CMake 2.8.12 thangs a FATAL_ERROR if tha INCLUDE_DIRECTORIES property gotz nuff a relatizzle path.
+
+
+Da OLD behavior fo' dis policy aint ta warn bout relatizzle paths up in tha INCLUDE_DIRECTORIES target property.  Da NEW behavior fo' dis policy is ta issue a FATAL_ERROR if INCLUDE_DIRECTORIES gotz nuff a relatizzle path.
+
+
+This policy was introduced up in CMake version 2.8.12.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0022
+INTERFACE_LINK_LIBRARIES defines tha link intercourse.
+
+CMake 2.8.11 constructed tha 'link intercourse' of a target from propertizzles matchin (IMPORTED_)?LINK_INTERFACE_LIBRARIES(_<CONFIG>)?.  Da modern way ta specify config\-sensitizzle content is ta use generator expressions n' tha IMPORTED_ prefix make uniform processin of tha link intercourse wit generator expressions impossible.  Da INTERFACE_LINK_LIBRARIES target property was introduced as a replacement up in CMake 2.8.12. This freshly smoked up property is named consistently wit tha INTERFACE_COMPILE_DEFINITIONS, INTERFACE_INCLUDE_DIRECTORIES n' INTERFACE_COMPILE_OPTIONS properties. Put ya muthafuckin choppers up if ya feel dis!  For in\-build targets, CMake will use tha INTERFACE_LINK_LIBRARIES property as tha source of tha link intercourse only if policy CMP0022 is NEW.  When exportin a target which has dis policy set ta NEW, only tha INTERFACE_LINK_LIBRARIES property is ghon be processed n' generated fo' tha IMPORTED target by default.  A freshly smoked up option ta tha install(EXPORT) n' export commandz allows export of tha old\-style propertizzles fo' compatibilitizzle wit downstream playaz of CMake versions olda than 2.8.12.  Da target_link_libraries command will no longer populate tha propertizzles matchin LINK_INTERFACE_LIBRARIES(_<CONFIG>), biatch? if dis policy is NEW.
+
+
+Da OLD behavior fo' dis policy is ta ignore tha INTERFACE_LINK_LIBRARIES property fo' in\-build targets, n' you can put dat on yo' toast.  Da NEW behavior fo' dis policy is ta use tha INTERFACE_LINK_LIBRARIES property fo' in\-build targets, n' ignore tha oldschool propertizzles matchin (IMPORTED_)?LINK_INTERFACE_LIBRARIES(_<CONFIG>)?.
+
+
+This policy was introduced up in CMake version 2.8.12.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.TP
+.B CMP0023
+Plain n' keyword target_link_libraries signatures cannot be mixed.
+
+CMake 2.8.12 introduced tha target_link_libraries signature rockin tha PUBLIC, PRIVATE, n' INTERFACE keywordz ta generalize tha LINK_PUBLIC n' LINK_PRIVATE keywordz introduced up in CMake 2.8.7.  Use of signatures wit any of these keywordz sets tha link intercourse of a target explicitly, even if empty.  This produces confusin behavior when used up in combination wit tha oldschool behavior of tha plain target_link_libraries signature.  For example, consider tha code:
+
+
+.nf
+ target_link_libraries(mylib A)
+ target_link_libraries(mylib PRIVATE B)
+.fi
+
+Afta tha straight-up original gangsta line tha link intercourse has not been set explicitly so CMake would use tha link implementation, A, as tha link intercourse.  But fuck dat shiznit yo, tha word on tha street is dat tha second line sets tha link intercourse ta empty.  In order ta avoid dis subtle behavior CMake now prefers ta disallow mixin tha plain n' keyword signaturez of target_link_libraries fo' a single target.
+
+
+Da OLD behavior fo' dis policy is ta allow keyword n' plain target_link_libraries signatures ta be mixed. Y'all KNOW dat shit, muthafucka!  Da NEW behavior fo' dis policy is ta not ta allow mixin of tha keyword n' plain signatures.
+
+
+This policy was introduced up in CMake version 2.8.12.  CMake version 2.8.12.2 warns when tha policy aint set n' uses OLD behavior. Shiiit, dis aint no joke.  Use tha cmake_policy command ta set it ta OLD or NEW explicitly.
+
+.SH COPYRIGHT
+.PP
+Copyright 2000\-2012 Kitware, Inc., Insight Software Consortium.  All muthafuckin rights reserved.
+
+.PP
+Redistribution n' use up in source n' binary forms, wit or without modification, is permitted provided dat tha followin conditions is met:
+
+.PP
+Redistributionz of source code must retain tha above copyright notice, dis list of conditions n' tha followin disclaimer.
+
+.PP
+Redistributions up in binary form must reproduce tha above copyright notice, dis list of conditions n' tha followin disclaimer up in tha documentation and/or other shiznit provided wit tha distribution.
+
+.PP
+Neither tha namez of Kitware, Inc., tha Insight Software Consortium, nor tha namez of they contributors may be used ta endorse or promote shizzle derived from dis software without specific prior freestyled permission.
+
+.PP
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+.SH SEE ALSO
+.PP
+.B ccmake(1), cpack(1), ctest(1), cmakecommands(1), cmakecompat(1), cmakemodules(1), cmakeprops(1), cmakevars(1)
+
+.PP
+Da followin resources is available ta git help rockin CMake:
+
+.TP
+.B Home Page
+http://www.cmake.org
+
+Da primary startin point fo' peepin' bout CMake.
+
+.TP
+.B Frequently Axed Questions
+http://www.cmake.org/Wiki/CMake_FAQ
+
+A Wiki is provided containin lyrics ta frequently axed thangs. 
+
+.TP
+.B Online Documentation
+http://www.cmake.org/HTML/Documentation.html
+
+Links ta available documentation may be found on dis wizzy page.
+
+.TP
+.B Mailin List
+http://www.cmake.org/HTML/MailingLists.html
+
+For help n' rap bout rockin cmake, a mailin list is provided at cmake@cmake.org. Da list is member\-post\-only but one may sign up on tha CMake wizzy page. Please first read tha full documentation at http://www.cmake.org before postin thangs ta tha list.
+

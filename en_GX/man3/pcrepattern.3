@@ -1,0 +1,3150 @@
+.TH PCREPATTERN 3 "26 April 2013" "PCRE 8.33"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "PCRE REGULAR EXPRESSION DETAILS"
+.rs
+.sp
+Da syntax n' semantics of tha regular expressions dat is supported by PCRE
+are busted lyrics bout up in detail below. There be a quick-reference syntax summary up in the
+.\" HREF
+\fBpcresyntax\fP
+.\"
+page. PCRE tries ta match Perl syntax n' semantics as closely as it can. I aint talkin' bout chicken n' gravy biatch. PCRE
+also supports some alternatizzle regular expression syntax (which do not
+conflict wit tha Perl syntax) up in order ta provide some compatibilitizzle with
+regular expressions up in Python, .NET, n' Oniguruma.
+.P
+Perlz regular expressions is busted lyrics bout up in its own documentation, and
+regular expressions up in general is covered up in a fuckin shitload of books, a shitload of which
+have copious examples. Jeffrey Friedlz "Masterin Regular Expressions",
+published by O'Reilly, covers regular expressions up in pimped out detail. This
+description of PCREz regular expressions is intended as reference material.
+.P
+This document discusses tha patterns dat is supported by PCRE when one its
+main matchin functions, \fBpcre_exec()\fP (8-bit) or \fBpcre[16|32]_exec()\fP
+(16- or 32-bit), is used. Y'all KNOW dat shit, muthafucka! PCRE also has alternatizzle matchin functions,
+\fBpcre_dfa_exec()\fP n' \fBpcre[16|32_dfa_exec()\fP, which match rockin a
+different algorithm dat aint Perl-compatible. Right back up in yo muthafuckin ass. Some of tha features discussed
+below is not available when DFA matchin is used. Y'all KNOW dat shit, muthafucka! Da advantages and
+disadvantagez of tha alternatizzle functions, n' how tha fuck they differ from tha normal
+functions, is discussed up in the
+.\" HREF
+\fBpcrematching\fP
+.\"
+page.
+.
+.
+.SH "SPECIAL START-OF-PATTERN ITEMS"
+.rs
+.sp
+A number of options dat can be passed ta \fBpcre_compile()\fP can also be set
+by special shit all up in tha start of a pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. These is not Perl-compatible yo, but
+are provided ta make these options accessible ta pattern writas whoz ass is not
+able ta chizzle tha program dat processes tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch fo' realz. Any number of these
+items may step tha fuck up yo, but they must all be together right all up in tha start of the
+pattern string, n' tha lettas must be up in upper case.
+.
+.
+.SS "UTF support"
+.rs
+.sp
+Da original gangsta operation of PCRE was on stringz of one-byte charactas yo. However,
+there is now also support fo' UTF-8 strings up in tha original gangsta library, an
+extra library dat supports 16-bit n' UTF-16 characta strings, n' a
+third library dat supports 32-bit n' UTF-32 characta strings. To use these
+features, PCRE must be built ta include appropriate support. When rockin UTF
+strings you must either call tha compilin function wit tha PCRE_UTF8,
+PCRE_UTF16, or PCRE_UTF32 option, or tha pattern must start wit one of
+these special sequences:
+.sp
+  (*UTF8)
+  (*UTF16)
+  (*UTF32)
+  (*UTF)
+.sp
+(*UTF) be a generic sequence dat can be used wit any of tha libraries.
+Startin a pattern wit such a sequence is equivalent ta settin tha relevant
+option. I aint talkin' bout chicken n' gravy biatch yo. How tha fuck settin a UTF mode affects pattern matchin is mentioned up in several
+places below. There be also a summary of features up in the
+.\" HREF
+\fBpcreunicode\fP
+.\"
+page.
+.P
+Some applications dat allow they playas ta supply patterns may wish to
+restrict dem ta non-UTF data fo' securitizzle reasons. If tha PCRE_NEVER_UTF
+option is set at compile time, (*UTF) etc. is not allowed, n' their
+appearizzle causes a error.
+.
+.
+.SS "Unicode property support"
+.rs
+.sp
+Another special sequence dat may step tha fuck up all up in tha start of a pattern is
+.sp
+  (*UCP)
+.sp
+This has tha same ol' dirty effect as settin tha PCRE_UCP option: it causes sequences
+like fuckin \ed n' \ew ta use Unicode propertizzles ta determine characta types,
+instead of recognizin only charactas wit codes less than 128 via a lookup
+table.
+.
+.
+.SS "Disablin start-up optimizations"
+.rs
+.sp
+If a pattern starts wit (*NO_START_OPT), it has tha same ol' dirty effect as settin the
+PCRE_NO_START_OPTIMIZE option either at compile or matchin time.
+.
+.
+.\" HTML <a name="newlines"></a>
+.SS "Newline conventions"
+.rs
+.sp
+PCRE supports five different conventions fo' indicatin line breaks in
+strings: a single CR (carriage return) character, a single LF (linefeed)
+character, tha two-characta sequence CRLF, any of tha three preceding, or any
+Unicode newline sequence. The
+.\" HREF
+\fBpcreapi\fP
+.\"
+page has
+.\" HTML <a href="pcreapi.html#newlines">
+.\" </a>
+further rap
+.\"
+about newlines, n' shows how tha fuck ta set tha newline convention up in the
+\fIoptions\fP arguments fo' tha compilin n' matchin functions.
+.P
+It be also possible ta specify a newline convention by startin a pattern
+strin wit one of tha followin five sequences:
+.sp
+  (*CR)        carriage return
+  (*LF)        linefeed
+  (*CRLF)      carriage return, followed by linefeed
+  (*ANYCRLF)   any of tha three above
+  (*ANY)       all Unicode newline sequences
+.sp
+These override tha default n' tha options given ta tha compilin function. I aint talkin' bout chicken n' gravy biatch. For
+example, on a Unix system where LF is tha default newline sequence, tha pattern
+.sp
+  (*CR)a.b
+.sp
+changes tha convention ta CR. That pattern matches "a\enb" cuz LF is no
+longer a newline. If mo' than one of these settings is present, tha last one
+is used.
+.P
+Da newline convention affects where tha circumflex n' dollar assertions are
+true. Well shiiiit, it also affects tha interpretation of tha dot metacharacta when
+PCRE_DOTALL aint set, n' tha behaviour of \eN. But fuck dat shiznit yo, tha word on tha street is dat it do not affect
+what tha \eR escape sequence matches. By default, dis be any Unicode newline
+sequence, fo' Perl compatibility. But fuck dat shiznit yo, tha word on tha street is dat dis can be chizzled; peep the
+description of \eR up in tha section entitled
+.\" HTML <a href="#newlineseq">
+.\" </a>
+"Newline sequences"
+.\"
+below fo' realz. A chizzle of \eR settin can be combined wit a cold-ass lil chizzle of newline
+convention.
+.
+.
+.SS "Settin match n' recursion limits"
+.rs
+.sp
+Da calla of \fBpcre_exec()\fP can set a limit on tha number of times the
+internal \fBmatch()\fP function is called n' on tha maximum depth of
+recursive calls. These facilitizzles is provided ta catch runaway matches that
+are provoked by patterns wit big-ass matchin trees (a typical example be a
+pattern wit nested unlimited repeats) n' ta avoid hustlin outta system stack
+by too much recursion. I aint talkin' bout chicken n' gravy biatch. When one of these limits is reached, \fBpcre_exec()\fP
+gives a error return, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Da limits can also be set by shit all up in tha start of the
+pattern of tha form
+.sp
+  (*LIMIT_MATCH=d)
+  (*LIMIT_RECURSION=d)
+.sp
+where d be any number of decimal digits, n' you can put dat on yo' toast. But fuck dat shiznit yo, tha word on tha street is dat tha value of tha settin must
+be less than tha value set by tha calla of \fBpcre_exec()\fP fo' it ta have
+any effect. In other lyrics, tha pattern writa can lower tha limit set by the
+programmer yo, but not raise dat shit. If there is mo' than one settin of one of these
+limits, tha lower value is used.
+.
+.
+.SH "EBCDIC CHARACTER CODES"
+.rs
+.sp
+PCRE can be compiled ta run up in a environment dat uses EBCDIC as its character
+code rather than ASCII or Unicode (typically a mainframe system). In the
+sections below, characta code joints is ASCII or Unicode; up in a EBCDIC
+environment these charactas may have different code joints, n' there be no
+code points pimped outa than 255.
+.
+.
+.SH "CHARACTERS AND METACHARACTERS"
+.rs
+.sp
+A regular expression be a pattern dat is matched against a subject strang from
+left ta right. Most charactas stand fo' theyselves up in a pattern, n' match the
+correspondin charactas up in tha subject fo' realz. As a trivial example, tha pattern
+.sp
+  Da quick brown fox
+.sp
+matches a portion of a subject strang dat is identical ta itself. When
+caseless matchin is specified (the PCRE_CASELESS option), lettas is matched
+independently of case. In a UTF mode, PCRE always understandz tha concept of
+case fo' charactas whose joints is less than 128, so caseless matchin is
+always possible. For charactas wit higher joints, tha concept of case is
+supported if PCRE is compiled wit Unicode property support yo, but not otherwise.
+If you wanna use caseless matchin fo' charactas 128 n' above, you must
+ensure dat PCRE is compiled wit Unicode property support as well as with
+UTF support.
+.P
+Da juice of regular expressions be reppin tha mobilitizzle ta include alternatives
+and repetitions up in tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. These is encoded up in tha pattern by tha use of
+\fImetacharacters\fP, which do not stand fo' theyselves but instead are
+interpreted up in some special way.
+.P
+There is two different setz of metacharacters: dem dat is recognized
+anywhere up in tha pattern except within square brackets, n' dem dat are
+recognized within square brackets, n' you can put dat on yo' toast. Outside square brackets, tha metacharacters
+are as bigs up:
+.sp
+  \e      general escape characta wit nuff muthafuckin uses
+  ^      assert start of strang (or line, up in multiline mode)
+  $      assert end of strang (or line, up in multiline mode)
+  .      match any characta except newline (by default)
+  [      start characta class definition
+  |      start of alternatizzle branch
+  (      start subpattern
+  )      end subpattern
+  , biatch?      extendz tha meanin of (
+         also 0 or 1 quantifier
+         also quantifier minimizer
+  *      0 or mo' quantifier
+  +      1 or mo' quantifier
+         also "possessive quantifier"
+  {      start min/max quantifier
+.sp
+Part of a pattern dat is up in square brackets is called a "characta class". In
+a characta class tha only metacharactas are:
+.sp
+  \e      general escape character
+  ^      negate tha class yo, but only if tha straight-up original gangsta character
+  -      indicates characta range
+.\" JOIN
+  [      POSIX characta class (only if followed by POSIX
+           syntax)
+  ]      terminates tha characta class
+.sp
+Da followin sections describe tha use of each of tha metacharacters.
+.
+.
+.SH BACKSLASH
+.rs
+.sp
+Da backslash characta has nuff muthafuckin uses. Firstly, if it is followed by a
+characta dat aint a number or a letter, it takes away any special meaning
+that characta may have. This use of backslash as a escape characta applies
+both inside n' outside characta classes.
+.P
+For example, if you wanna match a * character, you write \e* up in tha pattern.
+This escapin action applies whether or not tha followin characta would
+otherwise be interpreted as a metacharacter, so it be always safe ta precede a
+non-alphanumeric wit backslash ta specify dat it standz fo' itself. In
+particular, if you wanna match a funky-ass backslash, you write \e\e.
+.P
+In a UTF mode, only ASCII numbers n' lettas have any special meanin afta a
+backslash fo' realz. All other charactas (in particular, dem whose codepoints are
+greata than 127) is treated as literals.
+.P
+If a pattern is compiled wit tha PCRE_EXTENDED option, white space up in the
+pattern (other than up in a cold-ass lil characta class) n' charactas between a # outside
+a characta class n' tha next newline is ignored. Y'all KNOW dat shit, muthafucka! An escapin backslash can
+be used ta include a white space or # characta as part of tha pattern.
+.P
+If you wanna remove tha special meanin from a sequence of characters, you
+can do so by puttin dem between \eQ n' \eE. This is different from Perl in
+that $ n' @ is handled as literals up in \eQ...\eE sequences up in PCRE, whereas in
+Perl, $ n' @ cause variable interpolation. I aint talkin' bout chicken n' gravy biatch. Note tha followin examples:
+.sp
+  Pattern            PCRE matches   Perl matches
+.sp
+.\" JOIN
+  \eQabc$xyz\eE        abc$xyz        abc followed by the
+                                      contentz of $xyz
+  \eQabc\e$xyz\eE       abc\e$xyz       abc\e$xyz
+  \eQabc\eE\e$\eQxyz\eE   abc$xyz        abc$xyz
+.sp
+Da \eQ...\eE sequence is recognized both inside n' outside characta classes.
+An isolated \eE dat aint preceded by \eQ is ignored. Y'all KNOW dat shit, muthafucka! If \eQ aint followed
+by \eE lata up in tha pattern, tha literal interpretation continues ta tha end of
+the pattern (that is, \eE be assumed all up in tha end). If tha isolated \eQ is inside
+a characta class, dis causes a error, cuz tha characta class is not
+terminated.
+.
+.
+.\" HTML <a name="digitsafterbackslash"></a>
+.SS "Non-printin characters"
+.rs
+.sp
+A second use of backslash serves up a way of encodin non-printin characters
+in patterns up in a visible manner n' shit. There is no restriction on tha appearizzle of
+non-printin characters, apart from tha binary zero dat terminates a pattern,
+but when a pattern is bein prepared by text editing, it is often easier ta use
+one of tha followin escape sequences than tha binary characta it represents:
+.sp
+  \ea        alarm, dat is, tha BEL characta (hex 07)
+  \ecx       "control-x", where x be any ASCII character
+  \ee        escape (hex 1B)
+  \ef        form feed (hex 0C)
+  \en        linefeed (hex 0A)
+  \er        carriage return (hex 0D)
+  \et        tab (hex 09)
+  \eddd      characta wit octal code ddd, or back reference
+  \exhh      characta wit hex code hh
+  \ex{hhh..} characta wit hex code hhh.. (non-JavaScript mode)
+  \euhhhh    characta wit hex code hhhh (JavaScript mode only)
+.sp
+Da precise effect of \ecx on ASCII charactas be as bigs up: if x be a lower
+case letter, it is converted ta upper case. Then bit 6 of tha characta (hex
+40) is inverted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Thus \ecA ta \ecZ become hex 01 ta hex 1A (A is 41, Z is 5A),
+but \ec{ becomes hex 3B ({ is 7B), n' \ec; becomes hex 7B (; is 3B). If the
+data item (byte or 16-bit value) followin \ec has a value pimped outa than 127, a
+compile-time error occurs. This locks up non-ASCII charactas up in all modes.
+.P
+Da \ec facilitizzle was designed fo' use wit ASCII charactas yo, but wit the
+extension ta Unicode it is even less useful than it once was. Well shiiiit, it is, however,
+recognized when PCRE is compiled up in EBCDIC mode, where data shit is always
+bytes. In dis mode, all joints is valid afta \ec. If tha next characta be a
+lower case letter, it is converted ta upper case. Then tha 0xc0 bitz of the
+byte is inverted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Thus \ecA becomes hex 01, as up in ASCII (A is C1) yo, but cuz
+the EBCDIC lettas is disjoint, \ecZ becomes hex 29 (Z is E9), n' other
+charactas also generate different joints.
+.P
+By default, afta \ex, from zero ta two hexadecimal digits is read (letters
+can be up in upper or lower case) fo' realz. Any number of hexadecimal digits may appear
+between \ex{ n' } yo, but tha characta code is constrained as bigs up:
+.sp
+  8-bit non-UTF mode    less than 0x100
+  8-bit UTF-8 mode      less than 0x10ffff n' a valid codepoint
+  16-bit non-UTF mode   less than 0x10000
+  16-bit UTF-16 mode    less than 0x10ffff n' a valid codepoint
+  32-bit non-UTF mode   less than 0x80000000
+  32-bit UTF-32 mode    less than 0x10ffff n' a valid codepoint
+.sp
+Invalid Unicode codepoints is tha range 0xd800 ta 0xdfff (the so-called
+"surrogate" codepoints), n' 0xffef.
+.P
+If charactas other than hexadecimal digits step tha fuck up between \ex{ n' }, or if
+there is no terminatin }, dis form of escape aint recognized. Y'all KNOW dat shit, muthafucka! Instead, the
+initial \ex is ghon be interpreted as a funky-ass basic hexadecimal escape, wit no
+followin digits, givin a cold-ass lil characta whose value is zero.
+.P
+If tha PCRE_JAVASCRIPT_COMPAT option is set, tha interpretation of \ex is
+as just busted lyrics bout only when it is followed by two hexadecimal digits.
+Otherwise, it matches a literal "x" character n' shit. In JavaScript mode, support for
+code points pimped outa than 256 is provided by \eu, which must be followed by
+four hexadecimal digits; otherwise it matches a literal "u" character.
+Characta codes specified by \eu up in JavaScript mode is constrained up in tha same
+was as dem specified by \ex up in non-JavaScript mode.
+.P
+Charactas whose value is less than 256 can be defined by either of tha two
+syntaxes fo' \ex (or by \eu up in JavaScript mode). There is no difference up in the
+way they is handled. Y'all KNOW dat shit, muthafucka! For example, \exdc is exactly tha same as \ex{dc} (or
+\eu00dc up in JavaScript mode).
+.P
+Afta \e0 up ta two further octal digits is read. Y'all KNOW dat shit, muthafucka! If there be fewer than two
+digits, just dem dat is present is used. Y'all KNOW dat shit, muthafucka! Thus tha sequence \e0\ex\e07
+specifies two binary zeros followed by a BEL characta (code value 7). Make
+sure you supply two digits afta tha initial zero if tha pattern characta that
+bigs up is itself a octal digit.
+.P
+Da handlin of a funky-ass backslash followed by a gangbangin' finger-lickin' digit other than 0 is fucked up.
+Outside a cold-ass lil characta class, PCRE readz it n' any followin digits as a thugged-out decimal
+number n' shit. If tha number is less than 10, or if there done been at least dat many
+previous capturin left parentheses up in tha expression, tha entire sequence is
+taken as a \fIback reference\fP fo' realz. A description of how tha fuck dis works is given
+.\" HTML <a href="#backreferences">
+.\" </a>
+later,
+.\"
+followin tha rap of
+.\" HTML <a href="#subpattern">
+.\" </a>
+parenthesized subpatterns.
+.\"
+.P
+Inside a cold-ass lil characta class, or if tha decimal number is pimped outa than 9 n' there
+have not been dat nuff capturin subpatterns, PCRE re-readz up ta three octal
+digits followin tha backslash, n' uses dem ta generate a thugged-out data character n' shiznit fo' realz. Any
+subsequent digits stand fo' theyselves. Da value of tha characta is
+constrained up in tha same way as charactas specified up in hexadecimal.
+For example:
+.sp
+  \e040   be another way of freestylin a ASCII space
+.\" JOIN
+  \e40    is tha same, provided there be fewer than 40
+            previous capturin subpatterns
+  \e7     be always a funky-ass back reference
+.\" JOIN
+  \e11    might be a funky-ass back reference, or another way of
+            freestylin a tab
+  \e011   be always a tab
+  \e0113  be a tab followed by tha characta "3"
+.\" JOIN
+  \e113   might be a funky-ass back reference, otherwise the
+            characta wit octal code 113
+.\" JOIN
+  \e377   might be a funky-ass back reference, otherwise
+            tha value 255 (decimal)
+.\" JOIN
+  \e81    is either a funky-ass back reference, or a funky-ass binary zero
+            followed by tha two charactas "8" n' "1"
+.sp
+Note dat octal jointz of 100 or pimped outa must not be introduced by a leading
+zero, cuz no mo' than three octal digits is eva read.
+.P
+All tha sequences dat define a single characta value can be used both inside
+and outside characta classes. In addition, inside a cold-ass lil characta class, \eb is
+interpreted as tha backspace characta (hex 08).
+.P
+\eN aint allowed up in a cold-ass lil characta class. \eB, \eR, n' \eX is not special
+inside a cold-ass lil characta class. Like other unrecognized escape sequences, they are
+treated as tha literal charactas "B", "R", n' "X" by default yo, but cause an
+error if tha PCRE_EXTRA option is set. Outside a cold-ass lil characta class, these
+sequences have different meanings.
+.
+.
+.SS "Unsupported escape sequences"
+.rs
+.sp
+In Perl, tha sequences \el, \eL, \eu, n' \eU is recognized by its string
+handlez n' used ta modify tha case of followin characters. By default, PCRE
+does not support these escape sequences. But fuck dat shiznit yo, tha word on tha street is dat if tha PCRE_JAVASCRIPT_COMPAT
+option is set, \eU matches a "U" character, n' \eu can be used ta define a
+characta by code point, as busted lyrics bout up in tha previous section.
+.
+.
+.SS "Absolute n' relatizzle back references"
+.rs
+.sp
+Da sequence \eg followed by a unsigned or a wack number, optionally
+enclosed up in braces, be a absolute or relatizzle back reference fo' realz. A named back
+reference can be coded as \eg{name}. Back references is discussed
+.\" HTML <a href="#backreferences">
+.\" </a>
+later,
+.\"
+followin tha rap of
+.\" HTML <a href="#subpattern">
+.\" </a>
+parenthesized subpatterns.
+.\"
+.
+.
+.SS "Absolute n' relatizzle subroutine calls"
+.rs
+.sp
+For compatibilitizzle wit Oniguruma, tha non-Perl syntax \eg followed by a name or
+a number enclosed either up in angle brackets or single quotes, be a alternative
+syntax fo' referencin a subpattern as a "subroutine". Details is discussed
+.\" HTML <a href="#onigurumasubroutines">
+.\" </a>
+later.
+.\"
+Note dat \eg{...} (Perl syntax) n' \eg<...> (Oniguruma syntax) is \fInot\fP
+synonymous. Da forma be a funky-ass back reference; tha latta be a
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+subroutine
+.\"
+call.
+.
+.
+.\" HTML <a name="genericchartypes"></a>
+.SS "Generic characta types"
+.rs
+.sp
+Another use of backslash is fo' specifyin generic characta types:
+.sp
+  \ed     any decimal digit
+  \eD     any characta dat aint a thugged-out decimal digit
+  \eh     any horizontal white space character
+  \eH     any characta dat aint a horizontal white space character
+  \es     any white space character
+  \eS     any characta dat aint a white space character
+  \ev     any vertical white space character
+  \eV     any characta dat aint a vertical white space character
+  \ew     any "word" character
+  \eW     any "non-word" character
+.sp
+There be also tha single sequence \eN, which matches a non-newline character.
+This is tha same ol' dirty as
+.\" HTML <a href="#fullstopdot">
+.\" </a>
+the "." metacharacter
+.\"
+when PCRE_DOTALL aint set. Perl also uses \eN ta match charactas by name;
+PCRE do not support all dis bullshit.
+.P
+Each pair of lower n' upper case escape sequences partitions tha complete set
+of charactas tha fuck into two disjoint sets fo' realz. Any given characta matches one, n' only
+one, of each pair. Shiiit, dis aint no joke. Da sequences can step tha fuck up both inside n' outside character
+classes. They each match one characta of tha appropriate type. If tha current
+matchin point be all up in tha end of tha subject string, all of dem fail, cuz
+there is no characta ta match.
+.P
+For compatibilitizzle wit Perl, \es do not match tha VT characta (code 11).
+This make it different from tha the POSIX "space" class. Da \es characters
+are HT (9), LF (10), FF (12), CR (13), n' space (32). If "use locale;" is
+included up in a Perl script, \es may match tha VT character n' shit. In PCRE, it never
+does.
+.P
+A "word" characta be a underscore or any characta dat be a letta or digit.
+By default, tha definizzle of lettas n' digits is controlled by PCRE's
+low-valued characta tables, n' may vary if locale-specific matchin is taking
+place (see
+.\" HTML <a href="pcreapi.html#localesupport">
+.\" </a>
+"Locale support"
+.\"
+in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+page). For example, up in a French locale like fuckin "fr_FR" up in Unix-like systems,
+or "french" up in Windows, some characta codes pimped outa than 128 is used for
+accented letters, n' these is then matched by \ew. Da use of localez with
+Unicode is discouraged.
+.P
+By default, up in a UTF mode, charactas wit joints pimped outa than 128 never match
+\ed, \es, or \ew, n' always match \eD, \eS, n' \eW. These sequences retain
+their original gangsta meanings from before UTF support was available, mainly for
+efficiency reasons. But fuck dat shiznit yo, tha word on tha street is dat if PCRE is compiled wit Unicode property support,
+and tha PCRE_UCP option is set, tha behaviour is chizzled so dat Unicode
+propertizzles is used ta determine characta types, as bigs up:
+.sp
+  \ed  any characta dat \ep{Nd} matches (decimal digit)
+  \es  any characta dat \ep{Z} matches, plus HT, LF, FF, CR
+  \ew  any characta dat \ep{L} or \ep{N} matches, plus underscore
+.sp
+Da upper case escapes match tha inverse setz of characters. Note dat \ed
+matches only decimal digits, whereas \ew matches any Unicode digit, as well as
+any Unicode letter, n' underscore. Note also dat PCRE_UCP affects \eb, and
+\eB cuz they is defined up in termz of \ew n' \eW. Matchin these sequences
+is noticeably slower when PCRE_UCP is set.
+.P
+Da sequences \eh, \eH, \ev, n' \eV is features dat was added ta Perl at
+release 5.10. In contrast ta tha other sequences, which match only ASCII
+charactas by default, these always match certain high-valued codepoints,
+whether or not PCRE_UCP is set. Da horizontal space charactas are:
+.sp
+  U+0009     Horizontal tab (HT)
+  U+0020     Space
+  U+00A0     Non-break space
+  U+1680     Ogham space mark
+  U+180E     Mongolian vowel separator
+  U+2000     En quad
+  U+2001     Em quad
+  U+2002     En space
+  U+2003     Em space
+  U+2004     Three-per-em space
+  U+2005     Four-per-em space
+  U+2006     Six-per-em space
+  U+2007     Figure space
+  U+2008     Punctuation space
+  U+2009     Thin space
+  U+200A     Afro space
+  U+202F     Narrow no-break space
+  U+205F     Medium mathematical space
+  U+3000     Ideographic space
+.sp
+Da vertical space charactas are:
+.sp
+  U+000A     Linefeed (LF)
+  U+000B     Vertical tab (VT)
+  U+000C     Form feed (FF)
+  U+000D     Carriage return (CR)
+  U+0085     Next line (NEL)
+  U+2028     Line separator
+  U+2029     Paragraph separator
+.sp
+In 8-bit, non-UTF-8 mode, only tha charactas wit codepoints less than 256 are
+relevant.
+.
+.
+.\" HTML <a name="newlineseq"></a>
+.SS "Newline sequences"
+.rs
+.sp
+Outside a cold-ass lil characta class, by default, tha escape sequence \eR matches any
+Unicode newline sequence. In 8-bit non-UTF-8 mode \eR is equivalent ta the
+following:
+.sp
+  (?>\er\en|\en|\ex0b|\ef|\er|\ex85)
+.sp
+This be a example of a "atomic group", detailz of which is given
+.\" HTML <a href="#atomicgroup">
+.\" </a>
+below.
+.\"
+This particular crew matches either tha two-characta sequence CR followed by
+LF, or one of tha single charactas LF (linefeed, U+000A), VT (vertical tab,
+U+000B), FF (form feed, U+000C), CR (carriage return, U+000D), or NEL (next
+line, U+0085). Da two-characta sequence is treated as a single unit that
+cannot be split.
+.P
+In other modes, two additionizzle charactas whose codepoints is pimped outa than 255
+are added: LS (line separator, U+2028) n' PS (paragraph separator, U+2029).
+Unicode characta property support aint needed fo' these charactas ta be
+recognized.
+.P
+It be possible ta restrict \eR ta match only CR, LF, or CRLF (instead of the
+complete set of Unicode line endings) by settin tha option PCRE_BSR_ANYCRLF
+either at compile time or when tha pattern is matched. Y'all KNOW dat shit, muthafucka! (BSR be a abbrevation
+for "backslash R".) This can be made tha default when PCRE is built; if dis is
+the case, tha other behaviour can be axed via tha PCRE_BSR_UNICODE option.
+It be also possible ta specify these settings by startin a pattern strang with
+one of tha followin sequences:
+.sp
+  (*BSR_ANYCRLF)   CR, LF, or CRLF only
+  (*BSR_UNICODE)   any Unicode newline sequence
+.sp
+These override tha default n' tha options given ta tha compilin function yo, but
+they can theyselves be overridden by options given ta a matchin function. I aint talkin' bout chicken n' gravy biatch. Note
+that these special settings, which is not Perl-compatible, is recognized only
+at tha straight-up start of a pattern, n' dat they must be up in upper case. If more
+than one of dem is present, tha last one is used. Y'all KNOW dat shit, muthafucka! They can be combined wit a
+change of newline convention; fo' example, a pattern can start with:
+.sp
+  (*ANY)(*BSR_ANYCRLF)
+.sp
+They can also be combined wit tha (*UTF8), (*UTF16), (*UTF32), (*UTF) or
+(*UCP) special sequences. Inside a cold-ass lil characta class, \eR is treated as an
+unrecognized escape sequence, n' so matches tha letta "R" by default yo, but
+causes a error if PCRE_EXTRA is set.
+.
+.
+.\" HTML <a name="uniextseq"></a>
+.SS Unicode characta properties
+.rs
+.sp
+When PCRE is built wit Unicode characta property support, three additional
+escape sequences dat match charactas wit specific propertizzles is available.
+When up in 8-bit non-UTF-8 mode, these sequences iz of course limited ta testing
+charactas whose codepoints is less than 256 yo, but they do work up in dis mode.
+Da extra escape sequences are:
+.sp
+  \ep{\fIxx\fP}   a cold-ass lil characta wit tha \fIxx\fP property
+  \eP{\fIxx\fP}   a cold-ass lil characta without tha \fIxx\fP property
+  \eX       a Unicode extended grapheme cluster
+.sp
+Da property names represented by \fIxx\fP above is limited ta tha Unicode
+script names, tha general category properties, "Any", which matches any
+characta (includin newline), n' some special PCRE propertizzles (busted lyrics about
+in the
+.\" HTML <a href="#extraprops">
+.\" </a>
+next section).
+.\"
+Other Perl propertizzles like fuckin "InMusicalSymbols" is not currently supported by
+PCRE. Note dat \eP{Any} do not match any characters, so always causes a
+match failure.
+.P
+Setz of Unicode charactas is defined as belongin ta certain scripts fo' realz. A
+characta from one of these sets can be matched rockin a script name. For
+example:
+.sp
+  \ep{Greek}
+  \eP{Han}
+.sp
+Those dat is not part of a identified script is lumped together as
+"Common". Da current list of scripts is:
+.P
+Arabic,
+Armenian,
+Avestan,
+Balinese,
+Bamum,
+Batak,
+Bengali,
+Bopomofo,
+Brahmi,
+Braille,
+Buginese,
+Buhid,
+Canadian_Aboriginal,
+Carian,
+Chakma,
+Cham,
+Cherokee,
+Common,
+Coptic,
+Cuneiform,
+Cypriot,
+Cyrillic,
+Deseret,
+Devanagari,
+Egyptian_Hieroglyphs,
+Ethiopic,
+Georgian,
+Glagolitic,
+Gothic,
+Greek,
+Gujarati,
+Gurmukhi,
+Han,
+Hangul,
+Hanunoo,
+Hebrew,
+Hiragana,
+Imperial_Aramaic,
+Inherited,
+Inscriptional_Pahlavi,
+Inscriptional_Parthian,
+Javanese,
+Kaithi,
+Kannada,
+Katakana,
+Kayah_Li,
+Kharoshthi,
+Khmer,
+Lao,
+Latin,
+Lepcha,
+Limbu,
+Linear_B,
+Lisu,
+Lycian,
+Lydian,
+Malayalam,
+Mandaic,
+Meetei_Mayek,
+Meroitic_Cursive,
+Meroitic_Hieroglyphs,
+Miao,
+Mongolian,
+Myanmar,
+New_Tai_Lue,
+Nko,
+Ogham,
+Old_Italic,
+Old_Persian,
+Old_South_Arabian,
+Old_Turkic,
+Ol_Chiki,
+Oriya,
+Osmanya,
+Phags_Pa,
+Phoenician,
+Rejang,
+Runic,
+Samaritan,
+Saurashtra,
+Sharada,
+Shavian,
+Sinhala,
+Sora_Sompeng,
+Sundanese,
+Syloti_Nagri,
+Syriac,
+Tagalog,
+Tagbanwa,
+Tai_Le,
+Tai_Tham,
+Tai_Viet,
+Takri,
+Tamil,
+Telugu,
+Thaana,
+Thai,
+Tibetan,
+Tifinagh,
+Ugaritic,
+Vai,
+Yi.
+.P
+Each characta has exactly one Unicode general category property, specified by
+a two-letta abbreviation. I aint talkin' bout chicken n' gravy biatch. For compatibilitizzle wit Perl, negation can be
+specified by includin a cold-ass lil circumflex between tha openin brace n' tha property
+name. For example, \ep{^Lu} is tha same ol' dirty as \eP{Lu}.
+.P
+If only one letta is specified wit \ep or \eP, it includes all tha general
+category propertizzles dat start wit dat letter n' shit. In dis case, up in tha absence
+of negation, tha curly brackets up in tha escape sequence is optional; these two
+examplez have tha same effect:
+.sp
+  \ep{L}
+  \epL
+.sp
+Da followin general category property codes is supported:
+.sp
+  C     Other
+  Cc    Control
+  Cf    Format
+  Cn    Unassigned
+  Co    Private use
+  Cs    Surrogate
+.sp
+  L     Letter
+  Ll    Lower case letter
+  Lm    Modifier letter
+  Lo    Other letter
+  Lt    Title case letter
+  Lu    Upper case letter
+.sp
+  M     Mark
+  Mc    Spacin mark
+  Me    Enclosin mark
+  Mn    Non-spacin mark
+.sp
+  N     Number
+  Nd    Decimal number
+  Nl    Letta number
+  No    Other number
+.sp
+  P     Punctuation
+  Pc    Connector punctuation
+  Pd    Dash punctuation
+  Pe    Close punctuation
+  Pf    Final punctuation
+  Pi    Initial punctuation
+  Po    Other punctuation
+  Ps    Open punctuation
+.sp
+  S     Symbol
+  Sc    Currency symbol
+  Sk    Modifier symbol
+  Sm    Mathematical symbol
+  So    Other symbol
+.sp
+  Z     Separator
+  Zl    Line separator
+  Zp    Paragraph separator
+  Zs    Space separator
+.sp
+Da special property L& be also supported: it matches a cold-ass lil characta dat has
+the Lu, Ll, or Lt property, up in other lyrics, a letta dat aint classified as
+a modifier or "other".
+.P
+Da Cs (Surrogate) property applies only ta charactas up in tha range U+D800 to
+U+DFFF. Right back up in yo muthafuckin ass. Such charactas is not valid up in Unicode strings n' so
+cannot be tested by PCRE, unless UTF validitizzle checkin has been turned off
+(see tha rap of PCRE_NO_UTF8_CHECK, PCRE_NO_UTF16_CHECK and
+PCRE_NO_UTF32_CHECK up in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+page). Perl do not support tha Cs property.
+.P
+Da long synonyms fo' property names dat Perl supports (like fuckin \ep{Letter})
+are not supported by PCRE, nor is it permitted ta prefix any of these
+propertizzles wit "Is".
+.P
+No characta dat is up in tha Unicode table has tha Cn (unassigned) property.
+Instead, dis property be assumed fo' any code point dat aint up in the
+Unicode table.
+.P
+Specifyin caseless matchin do not affect these escape sequences. For
+example, \ep{Lu} always matches only upper case letters. This is different from
+the behaviour of current versionz of Perl.
+.P
+Matchin charactas by Unicode property aint fast, cuz PCRE has ta do a
+multistage table lookup up in order ta find a cold-ass lil characterz property. That is why
+the traditionizzle escape sequences like fuckin \ed n' \ew do not use Unicode
+propertizzles up in PCRE by default, though you can make dem do so by settin the
+PCRE_UCP option or by startin tha pattern wit (*UCP).
+.
+.
+.SS Extended grapheme clusters
+.rs
+.sp
+Da \eX escape matches any number of Unicode charactas dat form a "extended
+grapheme cluster", n' treats tha sequence as a atomic group
+.\" HTML <a href="#atomicgroup">
+.\" </a>
+(see below).
+.\"
+Up ta n' includin release 8.31, PCRE matched a earlier, simpla definition
+that was equivalent to
+.sp
+  (?>\ePM\epM*)
+.sp
+That is, it matched a cold-ass lil characta without tha "mark" property, followed by zero
+or mo' charactas wit tha "mark" property. Charactas wit tha "mark"
+property is typically non-spacin accents dat affect tha precedin character.
+.P
+This simple definizzle was extended up in Unicode ta include mo' fucked up
+kindz of composite characta by givin each characta a grapheme breaking
+property, n' bustin rulez dat use these propertizzles ta define tha boundaries
+of extended grapheme clusters. In releasez of PCRE lata than 8.31, \eX matches
+one of these clusters.
+.P
+\eX always matches at least one character n' shit. Then it decides whether ta add
+additionizzle charactas accordin ta tha followin rulez fo' endin a cold-ass lil cluster:
+.P
+1. End all up in tha end of tha subject string.
+.P
+2. Do not end between CR n' LF; otherwise end afta any control character.
+.P
+3. Do not break Hangul (a Korean script) syllable sequences yo. Hangul characters
+are of five types: L, V, T, LV, n' LVT fo' realz. An L characta may be followed by an
+L, V, LV, or LVT character; a LV or V characta may be followed by a V or T
+character; a LVT or T characta may be follwed only by a T character.
+.P
+4. Do not end before extendin charactas or spacin marks. Charactas with
+the "mark" property always have tha "extend" grapheme breakin property.
+.P
+5. Do not end afta prepend characters.
+.P
+6. Otherwise, end tha cluster.
+.
+.
+.\" HTML <a name="extraprops"></a>
+.SS PCREz additionizzle properties
+.rs
+.sp
+As well as tha standard Unicode propertizzles busted lyrics bout above, PCRE supports four
+more dat make it possible ta convert traditionizzle escape sequences like fuckin \ew
+and \es n' POSIX characta classes ta use Unicode properties. Put ya muthafuckin choppers up if ya feel dis! PCRE uses these
+non-standard, non-Perl propertizzles internally when PCRE_UCP is set yo. However,
+they may also be used explicitly. These propertizzles are:
+.sp
+  Xan   Any alphanumeric character
+  Xps   Any POSIX space character
+  Xsp   Any Perl space character
+  Xwd   Any Perl "word" character
+.sp
+Xan matches charactas dat have either tha L (letter) or tha N (number)
+property. Xps matches tha charactas tab, linefeed, vertical tab, form feed, or
+carriage return, n' any other characta dat has tha Z (separator) property.
+Xsp is tha same ol' dirty as Xps, except dat vertical tab is excluded. Y'all KNOW dat shit, muthafucka! Xwd matches the
+same charactas as Xan, plus underscore.
+.P
+There be another non-standard property, Xuc, which matches any characta that
+can be represented by a Universal Characta Name up in C++ n' other programming
+languages. These is tha charactas $, @, ` (grave accent), n' all characters
+with Unicode code points pimped outa than or equal ta U+00A0, except fo' the
+surrogates U+D800 ta U+DFFF. Note dat most base (ASCII) charactas are
+excluded. Y'all KNOW dat shit, muthafucka! (Universal Characta Names iz of tha form \euHHHH or \eUHHHHHHHH
+where H be a hexadecimal digit. Note dat tha Xuc property do not match these
+sequences but tha charactas dat they represent.)
+.
+.
+.\" HTML <a name="resetmatchstart"></a>
+.SS "Resettin tha match start"
+.rs
+.sp
+Da escape sequence \eK causes any previously matched charactas not ta be
+included up in tha final matched sequence. For example, tha pattern:
+.sp
+  foo\eKbar
+.sp
+matches "foobar" yo, but reports dat it has matched "bar". This feature is
+similar ta a lookbehind assertion
+.\" HTML <a href="#lookbehind">
+.\" </a>
+(busted lyrics bout below).
+.\"
+But fuck dat shiznit yo, tha word on tha street is dat up in dis case, tha part of tha subject before tha real match do not
+have ta be of fixed length, as lookbehind assertions do. Da use of \eK do
+not interfere wit tha settin of
+.\" HTML <a href="#subpattern">
+.\" </a>
+captured substrings.
+.\"
+For example, when tha pattern
+.sp
+  (foo)\eKbar
+.sp
+matches "foobar", tha straight-up original gangsta substrin is still set ta "foo".
+.P
+Perl documents dat tha use of \eK within assertions is "not well defined". In
+PCRE, \eK be acted upon when it occurs inside positizzle assertions yo, but is
+ignored up in wack assertions.
+.
+.
+.\" HTML <a name="smallassertions"></a>
+.SS "Simple assertions"
+.rs
+.sp
+Da final use of backslash is fo' certain simple assertions fo' realz. An assertion
+specifies a cold-ass lil condizzle dat has ta be kicked it wit at a particular point up in a match,
+without consumin any charactas from tha subject string. Da use of
+subpatterns fo' mo' fucked up assertions is busted lyrics about
+.\" HTML <a href="#bigassertions">
+.\" </a>
+below.
+.\"
+Da backslashed assertions are:
+.sp
+  \eb     matches at a word boundary
+  \eB     matches when not at a word boundary
+  \eA     matches all up in tha start of tha subject
+  \eZ     matches all up in tha end of tha subject
+          also matches before a newline all up in tha end of tha subject
+  \ez     matches only all up in tha end of tha subject
+  \eG     matches all up in tha straight-up original gangsta matchin posizzle up in tha subject
+.sp
+Inside a cold-ass lil characta class, \eb has a gangbangin' finger-lickin' different meaning; it matches tha backspace
+character n' shit. If any other of these assertions appears up in a cold-ass lil characta class, by
+default it matches tha correspondin literal characta (for example, \eB
+matches tha letta B). But fuck dat shiznit yo, tha word on tha street is dat if tha PCRE_EXTRA option is set, a "invalid
+escape sequence" error is generated instead.
+.P
+A word boundary be a posizzle up in tha subject strang where tha current character
+and tha previous characta do not both match \ew or \eW (i.e. one matches
+\ew n' tha other matches \eW), or tha start or end of tha strang if the
+first or last characta matches \ew, respectively. In a UTF mode, tha meanings
+of \ew n' \eW can be chizzled by settin tha PCRE_UCP option. I aint talkin' bout chicken n' gravy biatch. When dis is
+done, it also affects \eb n' \eB. Neither PCRE nor Perl has a separate "start
+of word" or "end of word" metasequence. But fuck dat shiznit yo, tha word on tha street is dat whatever bigs up \eb normally
+determines which it is. For example, tha fragment \eba matches "a" all up in tha start
+of a word.
+.P
+Da \eA, \eZ, n' \ez assertions differ from tha traditionizzle circumflex and
+dollar (busted lyrics bout up in tha next section) up in dat they only eva match all up in tha hella
+start n' end of tha subject string, whatever options is set. Thus, they are
+independent of multiline mode. These three assertions is not affected by the
+PCRE_NOTBOL or PCRE_NOTEOL options, which affect only tha behaviour of the
+circumflex n' dollar metacharacters. But fuck dat shiznit yo, tha word on tha street is dat if tha \fIstartoffset\fP
+argument of \fBpcre_exec()\fP is non-zero, indicatin dat matchin is ta start
+at a point other than tha beginnin of tha subject, \eA can never match. The
+difference between \eZ n' \ez is dat \eZ matches before a newline all up in tha end
+of tha strang as well as all up in tha straight-up end, whereas \ez matches only all up in tha end.
+.P
+Da \eG assertion is legit only when tha current matchin posizzle be at the
+start point of tha match, as specified by tha \fIstartoffset\fP argument of
+\fBpcre_exec()\fP. Well shiiiit, it differs from \eA when tha value of \fIstartoffset\fP is
+non-zero. By callin \fBpcre_exec()\fP multiple times wit appropriate
+arguments, you can mimic Perlz /g option, n' it is up in dis kind of
+implementation where \eG can be useful.
+.P
+Note, however, dat PCREz interpretation of \eG, as tha start of tha current
+match, is subtly different from Perl's, which defines it as tha end of the
+previous match. In Perl, these can be different when tha previously matched
+strin was empty. Because PCRE do just one match at a time, it cannot
+reproduce dis behaviour.
+.P
+If all tha alternativez of a pattern begin wit \eG, tha expression be anchored
+to tha startin match position, n' tha "anchored" flag is set up in tha compiled
+regular expression.
+.
+.
+.SH "CIRCUMFLEX AND DOLLAR"
+.rs
+.sp
+Da circumflex n' dollar metacharactas is zero-width assertions. That is,
+they test fo' a particular condizzle bein legit without consumin any
+charactas from tha subject string.
+.P
+Outside a cold-ass lil characta class, up in tha default matchin mode, tha circumflex
+characta be a assertion dat is legit only if tha current matchin point be at
+the start of tha subject string. If tha \fIstartoffset\fP argument of
+\fBpcre_exec()\fP is non-zero, circumflex can never match if tha PCRE_MULTILINE
+option is unset. Inside a cold-ass lil characta class, circumflex has a entirely different
+meaning
+.\" HTML <a href="#characterclass">
+.\" </a>
+(see below).
+.\"
+.P
+Circumflex need not be tha straight-up original gangsta characta of tha pattern if a number of
+alternatives is involved yo, but it should be tha straight-up original gangsta thang up in each alternative
+in which it appears if tha pattern is eva ta match dat branch. If all
+possible alternatives start wit a cold-ass lil circumflex, dat is, if tha pattern is
+constrained ta match only all up in tha start of tha subject, it is holla'd ta be an
+"anchored" pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. (There is also other constructs dat can cause a pattern
+to be anchored.)
+.P
+Da dollar characta be a assertion dat is legit only if tha current matching
+point be all up in tha end of tha subject string, or immediately before a newline at
+the end of tha strang (by default). Note, however, dat it do not actually
+match tha newline. Dollar need not be tha last characta of tha pattern if a
+number of alternatives is involved yo, but it should be tha last item up in any
+branch up in which it appears. Dollar has no special meanin up in a cold-ass lil characta class.
+.P
+Da meanin of dollar can be chizzled so dat it matches only all up in tha straight-up end of
+the string, by settin tha PCRE_DOLLAR_ENDONLY option at compile time. This
+does not affect tha \eZ assertion.
+.P
+Da meaningz of tha circumflex n' dollar charactas is chizzled if the
+PCRE_MULTILINE option is set. When dis is tha case, a cold-ass lil circumflex matches
+immediately afta internal newlines as well as all up in tha start of tha subject
+string. Well shiiiit, it do not match afta a newline dat endz tha strin fo' realz. A dollar
+matches before any newlines up in tha string, as well as all up in tha straight-up end, when
+PCRE_MULTILINE is set. When newline is specified as tha two-character
+sequence CRLF, isolated CR n' LF charactas do not indicate newlines.
+.P
+For example, tha pattern /^abc$/ matches tha subject strang "def\enabc" (where
+\en represents a newline) up in multiline mode yo, but not otherwise. Consequently,
+patterns dat is anchored up in single line mode cuz all branches start with
+^ is not anchored up in multiline mode, n' a match fo' circumflex is possible
+when tha \fIstartoffset\fP argument of \fBpcre_exec()\fP is non-zero. The
+PCRE_DOLLAR_ENDONLY option is ignored if PCRE_MULTILINE is set.
+.P
+Note dat tha sequences \eA, \eZ, n' \ez can be used ta match tha start and
+end of tha subject up in both modes, n' if all branchez of a pattern start with
+\eA it be always anchored, whether or not PCRE_MULTILINE is set.
+.
+.
+.\" HTML <a name="fullstopdot"></a>
+.SH "FULL STOP (PERIOD, DOT) AND \eN"
+.rs
+.sp
+Outside a cold-ass lil characta class, a thugged-out dot up in tha pattern matches any one characta in
+the subject strang except (by default) a cold-ass lil characta dat signifies tha end of a
+line.
+.P
+When a line endin is defined as a single character, dot never matches that
+character; when tha two-characta sequence CRLF is used, dot do not match CR
+if it is immediately followed by LF yo, but otherwise it matches all characters
+(includin isolated CRs n' LFs). When any Unicode line endings is being
+recognized, dot do not match CR or LF or any of tha other line ending
+characters.
+.P
+Da behaviour of dot wit regard ta newlines can be chizzled. Y'all KNOW dat shit, muthafucka! If tha PCRE_DOTALL
+option is set, a thugged-out dot matches any one character, without exception. I aint talkin' bout chicken n' gravy biatch. If the
+two-characta sequence CRLF is present up in tha subject string, it takes two dots
+to match dat shit.
+.P
+Da handlin of dot is entirely independent of tha handlin of circumflex and
+dollar, tha only relationshizzle bein dat they both involve newlines. Dot has no
+special meanin up in a cold-ass lil characta class.
+.P
+Da escape sequence \eN behaves like a thugged-out dot, except dat it aint affected by
+the PCRE_DOTALL option. I aint talkin' bout chicken n' gravy biatch. In other lyrics, it matches any characta except one
+that signifies tha end of a line. Perl also uses \eN ta match charactas by
+name; PCRE do not support all dis bullshit.
+.
+.
+.SH "MATCHING A SINGLE DATA UNIT"
+.rs
+.sp
+Outside a cold-ass lil characta class, tha escape sequence \eC matches any one data unit,
+whether or not a UTF mode is set. In tha 8-bit library, one data unit is one
+byte; up in tha 16-bit library it aint nuthin but a 16-bit unit; up in tha 32-bit library it is
+a 32-bit unit. Unlike a thugged-out dot, \eC always
+matches line-endin characters. Da feature is provided up in Perl up in order to
+match individual bytes up in UTF-8 mode yo, but it is unclear how tha fuck it can usefully be
+used. Y'all KNOW dat shit, muthafucka! Because \eC breaks up charactas tha fuck into individual data units, matchin one
+unit wit \eC up in a UTF mode means dat tha rest of tha strang may start wit a
+malformed UTF character n' shit. This has undefined thangs up in dis biatch, cuz PCRE assumes that
+it is dealin wit valid UTF strings (and by default it checks dis at the
+start of processin unless tha PCRE_NO_UTF8_CHECK, PCRE_NO_UTF16_CHECK or
+PCRE_NO_UTF32_CHECK option is used).
+.P
+PCRE do not allow \eC ta step tha fuck up in lookbehind assertions
+.\" HTML <a href="#lookbehind">
+.\" </a>
+(busted lyrics bout below)
+.\"
+in a UTF mode, cuz dis would make it impossible ta calculate tha length of
+the lookbehind.
+.P
+In general, tha \eC escape sequence is dopest avoided. Y'all KNOW dat shit, muthafucka! But fuck dat shiznit yo, tha word on tha street is dat one
+way of rockin it dat avoidz tha problem of malformed UTF charactas is ta use a
+lookahead ta check tha length of tha next character, as up in dis pattern, which
+could be used wit a UTF-8 strang (ignore white space n' line breaks):
+.sp
+  (?| (?=[\ex00-\ex7f])(\eC) |
+      (?=[\ex80-\ex{7ff}])(\eC)(\eC) |
+      (?=[\ex{800}-\ex{ffff}])(\eC)(\eC)(\eC) |
+      (?=[\ex{10000}-\ex{1fffff}])(\eC)(\eC)(\eC)(\eC))
+.sp
+A crew dat starts wit (?| resets tha capturin parentheses numbers up in each
+alternatizzle (see
+.\" HTML <a href="#dupsubpatternnumber">
+.\" </a>
+"Duplicate Subpattern Numbers"
+.\"
+below). Da assertions all up in tha start of each branch check tha next UTF-8
+characta fo' joints whose encodin uses 1, 2, 3, or 4 bytes, respectively. The
+characterz individual bytes is then captured by tha appropriate number of
+groups.
+.
+.
+.\" HTML <a name="characterclass"></a>
+.SH "SQUARE BRACKETS AND CHARACTER CLASSES"
+.rs
+.sp
+An openin square bracket introduces a cold-ass lil characta class, terminated by a cold-ass lil closing
+square bracket fo' realz. A closin square bracket on its own aint special by default.
+But fuck dat shiznit yo, tha word on tha street is dat if tha PCRE_JAVASCRIPT_COMPAT option is set, a lone closin square
+bracket causes a cold-ass lil compile-time error. Shiiit, dis aint no joke. If a cold-ass lil closin square bracket is required as
+a gangmember of tha class, it should be tha straight-up original gangsta data characta up in tha class
+(afta a initial circumflex, if present) or escaped wit a funky-ass backslash.
+.P
+A characta class matches a single characta up in tha subject. In a UTF mode, the
+characta may be mo' than one data unit long fo' realz. A matched characta must be in
+the set of charactas defined by tha class, unless tha straight-up original gangsta characta up in the
+class definizzle be a cold-ass lil circumflex, up in which case tha subject characta must not
+be up in tha set defined by tha class. If a cold-ass lil circumflex is straight-up required as a
+gangmember of tha class, ensure it aint tha straight-up original gangsta character, or escape it wit a
+backslash.
+.P
+For example, tha characta class [aeiou] matches any lower case vowel, while
+[^aeiou] matches any characta dat aint a lower case vowel. Note dat a
+circumflex is just a cold-ass lil convenient notation fo' specifyin tha charactas that
+are up in tha class by enumeratin dem dat is not fo' realz. A class dat starts wit a
+circumflex aint a assertion; it still consumes a cold-ass lil characta from tha subject
+string, n' therefore it fails if tha current pointa be all up in tha end of the
+string.
+.P
+In UTF-8 (UTF-16, UTF-32) mode, charactas wit joints pimped outa than 255 (0xffff)
+can be included up in a cold-ass lil class as a literal strang of data units, or by rockin the
+\ex{ escapin mechanism.
+.P
+When caseless matchin is set, any lettas up in a cold-ass lil class represent both their
+upper case n' lower case versions, so fo' example, a cold-ass lil caseless [aeiou] matches
+"A" as well as "a", n' a cold-ass lil caseless [^aeiou] do not match "A", whereas a
+caseful version would. Y'all KNOW dat shit, muthafucka! In a UTF mode, PCRE always understandz tha concept of
+case fo' charactas whose joints is less than 128, so caseless matchin is
+always possible. For charactas wit higher joints, tha concept of case is
+supported if PCRE is compiled wit Unicode property support yo, but not otherwise.
+If you wanna use caseless matchin up in a UTF mode fo' charactas 128 and
+above, you must ensure dat PCRE is compiled wit Unicode property support as
+well as wit UTF support.
+.P
+Charactas dat might indicate line breaks is never treated up in any special way
+when matchin characta classes, whatever line-endin sequence is up in use, and
+whatever settin of tha PCRE_DOTALL n' PCRE_MULTILINE options is used. Y'all KNOW dat shit, muthafucka! A class
+like fuckin [^a] always matches one of these characters.
+.P
+Da minus (hyphen) characta can be used ta specify a range of charactas up in a
+characta class. For example, [d-m] matches any letta between d n' m,
+inclusive. If a minus characta is required up in a cold-ass lil class, it must be escaped with
+a backslash or step tha fuck up in a posizzle where it cannot be interpreted as
+indicatin a range, typically as tha straight-up original gangsta or last characta up in tha class.
+.P
+It aint possible ta have tha literal characta "]" as tha end characta of a
+range fo' realz. A pattern like fuckin [W-]46] is interpreted as a cold-ass lil class of two characters
+("W" n' "-") followed by a literal strang "46]", so it would match "W46]" or
+"-46]". But fuck dat shiznit yo, tha word on tha street is dat if tha "]" is escaped wit a funky-ass backslash it is interpreted as
+the end of range, so [W-\e]46] is interpreted as a cold-ass lil class containin a range
+followed by two other characters. Da octal or hexadecimal representation of
+"]" can also be used ta end a range.
+.P
+Ranges operate up in tha collatin sequence of characta joints, n' you can put dat on yo' toast. They can also be
+used fo' charactas specified numerically, fo' example [\e000-\e037]. Ranges
+can include any charactas dat is valid fo' tha current mode.
+.P
+If a range dat includes lettas is used when caseless matchin is set, it
+matches tha lettas up in either case. For example, [W-c] is equivalent to
+[][\e\e^_`wxyzabc], matched caselessly, n' up in a non-UTF mode, if character
+tablez fo' a French locale is up in use, [\exc8-\excb] matches accented E
+charactas up in both cases. In UTF modes, PCRE supports tha concept of case for
+charactas wit joints pimped outa than 128 only when it is compiled wit Unicode
+property support.
+.P
+Da characta escape sequences \ed, \eD, \eh, \eH, \ep, \eP, \es, \eS, \ev,
+\eV, \ew, n' \eW may step tha fuck up in a cold-ass lil characta class, n' add tha charactas that
+they match ta tha class. For example, [\edABCDEF] matches any hexadecimal
+digit. In UTF modes, tha PCRE_UCP option affects tha meaningz of \ed, \es, \ew
+and they upper case partners, just as it do when they step tha fuck up outside a
+characta class, as busted lyrics bout up in tha section entitled
+.\" HTML <a href="#genericchartypes">
+.\" </a>
+"Generic characta types"
+.\"
+above. Da escape sequence \eb has a gangbangin' finger-lickin' different meanin inside a cold-ass lil character
+class; it matches tha backspace character n' shit. Da sequences \eB, \eN, \eR, n' \eX
+are not special inside a cold-ass lil characta class. Like any other unrecognized escape
+sequences, they is treated as tha literal charactas "B", "N", "R", n' "X" by
+default yo, but cause a error if tha PCRE_EXTRA option is set.
+.P
+A circumflex can conveniently be used wit tha upper case characta types to
+specify a mo' restricted set of charactas than tha matchin lower case type.
+For example, tha class [^\eW_] matches any letta or digit yo, but not underscore,
+whereas [\ew] includes underscore fo' realz. A positizzle characta class should be read as
+"suttin' OR suttin' OR ..." n' a wack class as "NOT suttin' AND NOT
+suttin' AND NOT ...".
+.P
+Da only metacharactas dat is recognized up in characta classes is backslash,
+hyphen (only where it can be interpreted as specifyin a range), circumflex
+(only all up in tha start), openin square bracket (only when it can be interpreted as
+introducin a POSIX class name - peep tha next section), n' tha terminating
+closin square bracket. But fuck dat shiznit yo, tha word on tha street is dat escapin other non-alphanumeric characters
+does no harm.
+.
+.
+.SH "POSIX CHARACTER CLASSES"
+.rs
+.sp
+Perl supports tha POSIX notation fo' characta classes. This uses names
+enclosed by [: n' :] within tha enclosin square brackets, n' you can put dat on yo' toast. PCRE also supports
+this notation. I aint talkin' bout chicken n' gravy biatch. For example,
+.sp
+  [01[:alpha:]%]
+.sp
+matches "0", "1", any alphabetic character, or "%". Da supported class names
+are:
+.sp
+  alnum    lettas n' digits
+  alpha    letters
+  ascii    characta codes 0 - 127
+  blank    space or tab only
+  cntrl    control characters
+  digit    decimal digits (same as \ed)
+  graph    printin characters, excludin space
+  lower    lower case letters
+  print    printin characters, includin space
+  punct    printin characters, excludin lettas n' digits n' space
+  space    white space (not like tha same as \es)
+  upper    upper case letters
+  word     "word" charactas (same as \ew)
+  xdigit   hexadecimal digits
+.sp
+Da "space" charactas is HT (9), LF (10), VT (11), FF (12), CR (13), and
+space (32). Notice dat dis list includes tha VT characta (code 11). This
+makes "space" different ta \es, which do not include VT (for Perl
+compatibility).
+.P
+Da name "word" be a Perl extension, n' "blank" be a GNU extension from Perl
+5.8 fo' realz. Another Perl extension is negation, which is indicated by a ^ character
+afta tha colon. I aint talkin' bout chicken n' gravy biatch. For example,
+.sp
+  [12[:^digit:]]
+.sp
+matches "1", "2", or any non-digit. PCRE (and Perl) also recognize tha POSIX
+syntax [.ch.] n' [=ch=] where "ch" be a "collatin element" yo, but these is not
+supported, n' a error is given if they is encountered.
+.P
+By default, up in UTF modes, charactas wit joints pimped outa than 128 do not match
+any of tha POSIX characta classes. But fuck dat shiznit yo, tha word on tha street is dat if tha PCRE_UCP option is passed
+to \fBpcre_compile()\fP, a shitload of tha classes is chizzled so dat Unicode
+characta propertizzles is used. Y'all KNOW dat shit, muthafucka! This be  bigged up  by replacin tha POSIX classes
+by other sequences, as bigs up:
+.sp
+  [:alnum:]  becomes  \ep{Xan}
+  [:alpha:]  becomes  \ep{L}
+  [:blank:]  becomes  \eh
+  [:digit:]  becomes  \ep{Nd}
+  [:lower:]  becomes  \ep{Ll}
+  [:space:]  becomes  \ep{Xps}
+  [:upper:]  becomes  \ep{Lu}
+  [:word:]   becomes  \ep{Xwd}
+.sp
+Negated versions, like fuckin [:^alpha:] use \eP instead of \ep. Da other POSIX
+classes is unchanged, n' match only charactas wit code points less than
+128.
+.
+.
+.SH "VERTICAL BAR"
+.rs
+.sp
+Vertical bar charactas is used ta separate alternatizzle patterns. For example,
+the pattern
+.sp
+  gilbert|sullivan
+.sp
+matches either "gilbert" or "sullivan" fo' realz. Any number of alternatives may appear,
+and a empty alternatizzle is permitted (matchin tha empty string). Da matching
+process tries each alternatizzle up in turn, from left ta right, n' tha straight-up original gangsta one
+that succeedz is used. Y'all KNOW dat shit, muthafucka! If tha alternatives is within a subpattern
+.\" HTML <a href="#subpattern">
+.\" </a>
+(defined below),
+.\"
+"succeeds" means matchin tha rest of tha main pattern as well as the
+alternatizzle up in tha subpattern.
+.
+.
+.SH "INTERNAL OPTION SETTING"
+.rs
+.sp
+Da settingz of tha PCRE_CASELESS, PCRE_MULTILINE, PCRE_DOTALL, and
+PCRE_EXTENDED options (which is Perl-compatible) can be chizzled from within
+the pattern by a sequence of Perl option lettas enclosed between "(?" n' ")".
+Da option lettas are
+.sp
+  i  fo' PCRE_CASELESS
+  m  fo' PCRE_MULTILINE
+  s  fo' PCRE_DOTALL
+  x  fo' PCRE_EXTENDED
+.sp
+For example, (?im) sets caseless, multiline matching. Well shiiiit, it be also possible to
+unset these options by precedin tha letta wit a hyphen, n' a cold-ass lil combined
+settin n' unsettin like fuckin (?im-sx), which sets PCRE_CASELESS and
+PCRE_MULTILINE while unsettin PCRE_DOTALL n' PCRE_EXTENDED, be also
+permitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If a letta appears both before n' afta tha hyphen, tha option is
+unset.
+.P
+Da PCRE-specific options PCRE_DUPNAMES, PCRE_UNGREEDY, n' PCRE_EXTRA can be
+changed up in tha same way as tha Perl-compatible options by rockin tha characters
+J, U n' X respectively.
+.P
+When one of these option chizzlez occurs at top level (that is, not inside
+subpattern parentheses), tha chizzle applies ta tha remainder of tha pattern
+that bigs up. If tha chizzle is placed right all up in tha start of a pattern, PCRE
+extracts it tha fuck into tha global options (and it will therefore show up in data
+extracted by tha \fBpcre_fullinfo()\fP function).
+.P
+An option chizzle within a subpattern (see below fo' a thugged-out description of
+subpatterns) affects only dat part of tha subpattern dat bigs up it, so
+.sp
+  (a(?i)b)c
+.sp
+matches abc n' aBc n' no other strings (assumin PCRE_CASELESS aint used).
+By dis means, options can be made ta have different settings up in different
+partz of tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch fo' realz. Any chizzlez made up in one alternatizzle do carry on
+into subsequent branches within tha same subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. For example,
+.sp
+  (a(?i)b|c)
+.sp
+matches "ab", "aB", "c", n' "C", even though when matchin "C" tha first
+branch be abandoned before tha option setting. This is cuz tha effects of
+option settings happen at compile time. There would be some straight-up weird
+behaviour otherwise.
+.P
+\fBNote:\fP There is other PCRE-specific options dat can be set by the
+application when tha compilin or matchin functions is called. Y'all KNOW dat shit, muthafucka! In some cases
+the pattern can contain special leadin sequences like fuckin (*CRLF) ta override
+what tha application has set or what tha fuck has been defaulted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Details is given in
+the section entitled
+.\" HTML <a href="#newlineseq">
+.\" </a>
+"Newline sequences"
+.\"
+above. There is also tha (*UTF8), (*UTF16),(*UTF32), n' (*UCP) leading
+sequences dat can be used ta set UTF n' Unicode property modes; they are
+equivalent ta settin tha PCRE_UTF8, PCRE_UTF16, PCRE_UTF32 n' tha PCRE_UCP
+options, respectively. Da (*UTF) sequence be a generic version dat can be
+used wit any of tha libraries. Put ya muthafuckin choppers up if ya feel dis! But fuck dat shiznit yo, tha word on tha street is dat tha application can set the
+PCRE_NEVER_UTF option, which locks up tha use of tha (*UTF) sequences.
+.
+.
+.\" HTML <a name="subpattern"></a>
+.SH SUBPATTERNS
+.rs
+.sp
+Subpatterns is delimited by parentheses (round brackets), which can be nested.
+Turnin part of a pattern tha fuck into a subpattern do two thangs:
+.sp
+1. Well shiiiit, it localizes a set of alternatives. For example, tha pattern
+.sp
+  cat(aract|erpillar|)
+.sp
+matches "cataract", "caterpillar", or "cat". Without tha parentheses, it would
+match "cataract", "erpillar" or a empty string.
+.sp
+2. Well shiiiit, it sets up tha subpattern as a cold-ass lil capturin subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. This means that, when
+the whole pattern matches, dat portion of tha subject strang dat matched the
+subpattern is passed back ta tha calla via tha \fIovector\fP argument of the
+matchin function. I aint talkin' bout chicken n' gravy biatch. (This applies only ta tha traditionizzle matchin functions;
+the DFA matchin functions do not support capturing.)
+.P
+Openin parentheses is counted from left ta right (startin from 1) ta obtain
+numbers fo' tha capturin subpatterns. For example, if tha strang "the red
+king" is matched against tha pattern
+.sp
+  tha ((red|white) (king|queen))
+.sp
+the captured substrings is "red mackdaddy", "red", n' "king", n' is numbered 1,
+2, n' 3, respectively.
+.P
+Da fact dat plain parentheses fulfil two functions aint always helpful.
+There is often times when a groupin subpattern is required without a
+capturin requirement. If a openin parenthesis is followed by a question mark
+and a cold-ass lil colon, tha subpattern do not do any capturing, n' aint counted when
+computin tha number of any subsequent capturin subpatterns. For example, if
+the strang "the white biatch" is matched against tha pattern
+.sp
+  tha ((?:red|white) (king|queen))
+.sp
+the captured substrings is "white biatch" n' "queen", n' is numbered 1 and
+2. Da maximum number of capturin subpatterns is 65535.
+.P
+As a cold-ass lil convenient shorthand, if any option settings is required all up in tha start of
+a non-capturin subpattern, tha option lettas may step tha fuck up between tha "?" and
+the ":". Thus tha two patterns
+.sp
+  (?i:saturday|sunday)
+  (?:(?i)saturday|sunday)
+.sp
+match exactly tha same set of strings. Because alternatizzle branches is tried
+from left ta right, n' options is not reset until tha end of tha subpattern
+is reached, a option settin up in one branch do affect subsequent branches, so
+the above patterns match "SUNDAY" as well as "Saturday".
+.
+.
+.\" HTML <a name="dupsubpatternnumber"></a>
+.SH "DUPLICATE SUBPATTERN NUMBERS"
+.rs
+.sp
+Perl 5.10 introduced a gangbangin' feature whereby each alternatizzle up in a subpattern uses
+the same numbers fo' its capturin parentheses. Right back up in yo muthafuckin ass. Such a subpattern starts with
+(?| n' is itself a non-capturin subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. For example, consider this
+pattern:
+.sp
+  (?|(Sat)ur|(Sun))day
+.sp
+Because tha two alternatives is inside a (?| group, both setz of capturing
+parentheses is numbered one. Thus, when tha pattern matches, you can look
+at captured substrin number one, whichever alternatizzle matched. Y'all KNOW dat shit, muthafucka! This construct
+is useful when you wanna capture part yo, but not all, of one of a number of
+alternatives. Inside a (?| group, parentheses is numbered as usual yo, but the
+number is reset all up in tha start of each branch. Da numberz of any capturing
+parentheses dat follow tha subpattern start afta tha highest number used in
+any branch. Da followin example is taken from tha Perl documentation. I aint talkin' bout chicken n' gravy biatch. The
+numbers underneath show up in which buffer tha captured content is ghon be stored.
+.sp
+  # before  ---------------branch-reset----------- after
+  / ( a )  (?| x ( y ) z | (p (q) r) | (t) u (v) ) ( z ) /x
+  # 1            2         2  3        2     3     4
+.sp
+A back reference ta a numbered subpattern uses da most thugged-out recent value dat is
+set fo' dat number by any subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Da followin pattern matches "abcabc"
+or "defdef":
+.sp
+  /(?|(abc)|(def))\e1/
+.sp
+In contrast, a subroutine call ta a numbered subpattern always refers ta the
+first one up in tha pattern wit tha given number n' shit. Da followin pattern matches
+"abcabc" or "defabc":
+.sp
+  /(?|(abc)|(def))(?1)/
+.sp
+If a
+.\" HTML <a href="#conditions">
+.\" </a>
+condizzle test
+.\"
+for a subpatternz havin matched refers ta a non-unique number, tha test is
+true if any of tha subpatternz of dat number have matched.
+.P
+An alternatizzle approach ta rockin dis "branch reset" feature is ta use
+duplicate named subpatterns, as busted lyrics bout up in tha next section.
+.
+.
+.SH "NAMED SUBPATTERNS"
+.rs
+.sp
+Identifyin capturin parentheses by number is simple yo, but it can be straight-up hard
+to keep track of tha numbers up in fucked up regular expressions. Furthermore,
+if a expression is modified, tha numbers may chizzle. To help wit this
+difficulty, PCRE supports tha namin of subpatterns. This feature was not
+added ta Perl until release 5.10. Python had tha feature earlier, n' PCRE
+introduced it at release 4.0, rockin tha Python syntax. PCRE now supports both
+the Perl n' tha Python syntax. Perl allows identically numbered subpatterns to
+have different names yo, but PCRE do not.
+.P
+In PCRE, a subpattern can be named up in one of three ways: (?<name>...) or
+(?'name'...) as up in Perl, or (?P<name>...) as up in Python. I aint talkin' bout chicken n' gravy biatch. References ta capturing
+parentheses from other partz of tha pattern, such as
+.\" HTML <a href="#backreferences">
+.\" </a>
+back references,
+.\"
+.\" HTML <a href="#recursion">
+.\" </a>
+recursion,
+.\"
+and
+.\" HTML <a href="#conditions">
+.\" </a>
+conditions,
+.\"
+can be made by name as well as by number.
+.P
+Names consist of up ta 32 alphanumeric charactas n' underscores. Named
+capturin parentheses is still allocated numbers as well as names, exactly as
+if tha names was not present. Da PCRE API serves up function calls for
+extractin tha name-to-number translation table from a cold-ass lil compiled pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. There
+is also a cold-ass lil convenience function fo' extractin a cold-ass lil captured substrin by name.
+.P
+By default, a name must be unique within a pattern yo, but it is possible ta chillax
+this constraint by settin tha PCRE_DUPNAMES option at compile time. (Duplicate
+names is also always permitted fo' subpatterns wit tha same number, set up as
+busted lyrics bout up in tha previous section.) Duplicate names can be useful fo' patterns
+where only one instizzle of tha named parentheses can match. Right back up in yo muthafuckin ass. Suppose you want to
+match tha name of a weekday, either as a 3-letta abbreviation or as tha full
+name, n' up in both cases you wanna extract tha abbreviation. I aint talkin' bout chicken n' gravy biatch. This pattern
+(ignorin tha line breaks) do tha thang:
+.sp
+  (?<DN>Mon|Fri|Sun)(?:day)?|
+  (?<DN>Tue)(?:sday)?|
+  (?<DN>Wed)(?:nesday)?|
+  (?<DN>Thu)(?:rsday)?|
+  (?<DN>Sat)(?:urday)?
+.sp
+There is five capturin substrings yo, but only one is eva set afta a match.
+(An alternatizzle way of solvin dis problem is ta bust a "branch reset"
+subpattern, as busted lyrics bout up in tha previous section.)
+.P
+Da convenience function fo' extractin tha data by name returns tha substring
+for tha straight-up original gangsta (and up in dis example, tha only) subpattern of dat name that
+matched. Y'all KNOW dat shit, muthafucka! This saves searchin ta find which numbered subpattern it was.
+.P
+If you cook up a funky-ass back reference ta a non-unique named subpattern from elsewhere in
+the pattern, tha one dat correspondz ta tha straight-up original gangsta occurrence of tha name is
+used. Y'all KNOW dat shit, muthafucka! In tha absence of duplicate numbers (see tha previous section) dis is
+the one wit tha lowest number n' shit. If you bust a named reference up in a cold-ass lil condition
+test (see the
+.\"
+.\" HTML <a href="#conditions">
+.\" </a>
+section bout conditions
+.\"
+below), either ta check whether a subpattern has matched, or ta check for
+recursion, all subpatterns wit tha same name is tested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If tha condizzle is
+true fo' any one of them, tha overall condizzle is true. This is tha same
+behaviour as testin by number n' shit. For further detailz of tha intercourses for
+handlin named subpatterns, peep the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation.
+.P
+\fBWarning:\fP Yo ass cannot use different names ta distinguish between two
+subpatterns wit tha same number cuz PCRE uses only tha numbers when
+matching. For dis reason, a error is given at compile time if different names
+are given ta subpatterns wit tha same number n' shit. But fuck dat shiznit yo, tha word on tha street is dat you can give tha same
+name ta subpatterns wit tha same number, even when PCRE_DUPNAMES aint set.
+.
+.
+.SH REPETITION
+.rs
+.sp
+Repetizzle is specified by quantifiers, which can follow any of tha following
+items:
+.sp
+  a literal data character
+  tha dot metacharacter
+  tha \eC escape sequence
+  tha \eX escape sequence
+  tha \eR escape sequence
+  a escape like fuckin \ed or \epL dat matches a single character
+  a cold-ass lil characta class
+  a funky-ass back reference (see next section)
+  a parenthesized subpattern (includin assertions)
+  a subroutine call ta a subpattern (recursive or otherwise)
+.sp
+Da general repetizzle quantifier specifies a minimum n' maximum number of
+permitted matches, by givin tha two numbers up in curly brackets (braces),
+separated by a cold-ass lil comma. Da numbers must be less than 65536, n' tha straight-up original gangsta must
+be less than or equal ta tha second. Y'all KNOW dat shit, muthafucka! For example:
+.sp
+  z{2,4}
+.sp
+matches "zz", "zzz", or "zzzz" fo' realz. A closin brace on its own aint a special
+character n' shit. If tha second number is omitted yo, but tha comma is present, there is
+no upper limit; if tha second number n' tha comma is both omitted, the
+quantifier specifies a exact number of required matches. Thus
+.sp
+  [aeiou]{3,}
+.sp
+matches at least 3 successive vowels yo, but may match nuff more, while
+.sp
+  \ed{8}
+.sp
+matches exactly 8 digits fo' realz. An openin curly bracket dat appears up in a position
+where a quantifier aint allowed, or one dat do not match tha syntax of a
+quantifier, is taken as a literal character n' shit. For example, {,6} aint a
+quantifier yo, but a literal strang of four characters.
+.P
+In UTF modes, quantifiers apply ta charactas rather than ta individual data
+units, n' you can put dat on yo' toast. Thus, fo' example, \ex{100}{2} matches two characters, each of
+which is represented by a two-byte sequence up in a UTF-8 string. Right back up in yo muthafuckin ass. Similarly,
+\eX{3} matches three Unicode extended grapheme clusters, each of which may be
+several data units long (and they may be of different lengths).
+.P
+Da quantifier {0} is permitted, causin tha expression ta behave as if the
+previous item n' tha quantifier was not present. This may be useful for
+subpatterns dat is referenced as
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+subroutines
+.\"
+from elsewhere up in tha pattern (but peep also tha section entitled
+.\" HTML <a href="#subdefine">
+.\" </a>
+"Definin subpatterns fo' use by reference only"
+.\"
+below). Items other than subpatterns dat gotz a {0} quantifier is omitted
+from tha compiled pattern.
+.P
+For convenience, tha three most common quantifiers have single-character
+abbreviations:
+.sp
+  *    is equivalent ta {0,}
+  +    is equivalent ta {1,}
+  , biatch?    is equivalent ta {0,1}
+.sp
+It be possible ta construct infinite loops by followin a subpattern dat can
+match no charactas wit a quantifier dat has no upper limit, fo' example:
+.sp
+  (a?)*
+.sp
+Earlier versionz of Perl n' PCRE used ta give a error at compile time for
+such patterns. But fuck dat shiznit yo, tha word on tha street is dat cuz there be cases where dis can be useful, such
+patterns is now accepted yo, but if any repetizzle of tha subpattern do up in fact
+match no characters, tha loop is forcibly broken.
+.P
+By default, tha quantifiers is "greedy", dat is, they match as much as
+possible (up ta tha maximum number of permitted times), without causin the
+rest of tha pattern ta fail. Da funky-ass example of where dis gives problems
+is up in tryin ta match comments up in C programs. These step tha fuck up between /* n' */
+and within tha comment, individual * n' / charactas may step tha fuck up fo' realz. An attempt to
+match C comments by applyin tha pattern
+.sp
+  /\e*.*\e*/
+.sp
+to tha string
+.sp
+  /* first comment */  not comment  /* second comment */
+.sp
+fails, cuz it matches tha entire strang owin ta tha greedinizz of tha .*
+item.
+.P
+But fuck dat shiznit yo, tha word on tha street is dat if a quantifier is followed by a question mark, it ceases ta be
+greedy, n' instead matches tha minimum number of times possible, so the
+pattern
+.sp
+  /\e*.*?\e*/
+.sp
+does tha right thang wit tha C comments, n' you can put dat on yo' toast. Da meanin of tha various
+quantifiers aint otherwise chizzled, just tha preferred number of matches.
+Do not confuse dis use of question mark wit its use as a quantifier up in its
+own right. Because it has two uses, it can sometimes step tha fuck up doubled, as in
+.sp
+  \ed??\ed
+.sp
+which matches one digit by preference yo, but can match two if dat is tha only
+way tha rest of tha pattern matches.
+.P
+If tha PCRE_UNGREEDY option is set (an option dat aint available up in Perl),
+the quantifiers is not greedy by default yo, but individual ones can be made
+greedy by followin dem wit a question mark. In other lyrics, it inverts the
+default behaviour.
+.P
+When a parenthesized subpattern is quantified wit a minimum repeat count that
+is pimped outa than 1 or wit a limited maximum, mo' memory is required fo' the
+compiled pattern, up in proportion ta tha size of tha minimum or maximum.
+.P
+If a pattern starts wit .* or .{0,} n' tha PCRE_DOTALL option (equivalent
+to Perlz /s) is set, thus allowin tha dot ta match newlines, tha pattern is
+implicitly anchored, cuz whatever bigs up is ghon be tried against every
+characta posizzle up in tha subject string, so there is no point up in retryin the
+overall match at any posizzle afta tha first. PCRE normally treats such a
+pattern as though it was preceded by \eA.
+.P
+In cases where it is known dat tha subject strang gotz nuff no newlines, it is
+worth settin PCRE_DOTALL up in order ta obtain dis optimization, or
+alternatively rockin ^ ta indicate anchorin explicitly.
+.P
+But fuck dat shiznit yo, tha word on tha street is dat there be some cases where tha optimization cannot be used. Y'all KNOW dat shit, muthafucka! When .*
+is inside capturin parentheses dat is tha subject of a funky-ass back reference
+elsewhere up in tha pattern, a match all up in tha start may fail where a lata one
+succeeds. Consider, fo' example:
+.sp
+  (.*)abc\e1
+.sp
+If tha subject is "xyz123abc123" tha match point is tha fourth character n' shit. For
+this reason, such a pattern aint implicitly anchored.
+.P
+Another case where implicit anchorin aint applied is when tha leadin .* is
+inside a atomic group. Once again, a match all up in tha start may fail where a later
+one succeeds. Consider dis pattern:
+.sp
+  (?>.*?a)b
+.sp
+It matches "ab" up in tha subject "aab". Da use of tha backtrackin control verbs
+(*PRUNE) n' (*SKIP) also disable dis optimization.
+.P
+When a cold-ass lil capturin subpattern is repeated, tha value captured is tha substring
+that matched tha final iteration. I aint talkin' bout chicken n' gravy biatch. For example, after
+.sp
+  (tweedle[dume]{3}\es*)+
+.sp
+has matched "tweedledum tweedledee" tha value of tha captured substrin is
+"tweedledee". But fuck dat shiznit yo, tha word on tha street is dat if there be nested capturin subpatterns, the
+correspondin captured joints may done been set up in previous iterations. For
+example, after
+.sp
+  /(a|(b))+/
+.sp
+matches "aba" tha value of tha second captured substrin is "b".
+.
+.
+.\" HTML <a name="atomicgroup"></a>
+.SH "ATOMIC GROUPING AND POSSESSIVE QUANTIFIERS"
+.rs
+.sp
+With both maximizin ("greedy") n' minimizin ("ungreedy" or "lazy")
+repetition, failure of what tha fuck bigs up normally causes tha repeated item ta be
+re-evaluated ta peep if a gangbangin' finger-lickin' different number of repeats allows tha rest of the
+pattern ta match. Right back up in yo muthafuckin ass. Sometimes it is useful ta prevent this, either ta chizzle the
+nature of tha match, or ta cause it fail earlier than it otherwise might, when
+the lyricist of tha pattern knows there is no point up in carryin on.
+.P
+Consider, fo' example, tha pattern \ed+foo when applied ta tha subject line
+.sp
+  123456bar
+.sp
+Afta matchin all 6 digits n' then failin ta match "foo", tha normal
+action of tha matcher is ta try again n' again n' again wit only 5 digits matchin tha \ed+
+item, n' then wit 4, n' so on, before ultimately failing. "Atomic grouping"
+(a term taken from Jeffrey Friedlz book) serves up tha means fo' specifying
+that once a subpattern has matched, it aint ta be re-evaluated up in dis way.
+.P
+If we use atomic groupin fo' tha previous example, tha matcher gives up
+immediately on failin ta match "foo" tha last time. Da notation be a kind of
+special parenthesis, startin wit (?> as up in dis example:
+.sp
+  (?>\ed+)foo
+.sp
+This kind of parenthesis "locks up" tha  part of tha pattern it gotz nuff once
+it has matched, n' a gangbangin' failure further tha fuck into tha pattern is prevented from
+backtrackin tha fuck into dat shit. Backtrackin past it ta previous items, however, works as
+normal.
+.P
+An alternatizzle description is dat a subpattern of dis type matches tha string
+of charactas dat a identical standalone pattern would match, if anchored at
+the current point up in tha subject string.
+.P
+Atomic groupin subpatterns is not capturin subpatterns. Right back up in yo muthafuckin ass. Simple cases such as
+the above example can be thought of as a maximizin repeat dat must swallow
+everythang it can. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. So, while both \ed+ n' \ed+, biatch? is prepared ta adjust the
+number of digits they match up in order ta make tha rest of tha pattern match,
+(?>\ed+) can only match a entire sequence of digits.
+.P
+Atomic crews up in general can of course contain arbitrarily fucked up
+subpatterns, n' can be nested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. But fuck dat shiznit yo, tha word on tha street is dat when tha subpattern fo' a atomic
+group is just a single repeated item, as up in tha example above, a simpler
+notation, called a "possessive quantifier" can be used. Y'all KNOW dat shit, muthafucka! This consistz of an
+additionizzle + characta followin a quantifier n' shit. Usin dis notation, the
+previous example can be rewritten as
+.sp
+  \ed++foo
+.sp
+Note dat a possessive quantifier can be used wit a entire group, for
+example:
+.sp
+  (abc|xyz){2,3}+
+.sp
+Possessive quantifiers is always greedy; tha settin of tha PCRE_UNGREEDY
+option is ignored. Y'all KNOW dat shit, muthafucka! They is a cold-ass lil convenient notation fo' tha simpla forms of
+atomic group. But fuck dat shiznit yo, tha word on tha street is dat there is no difference up in tha meanin of a possessive
+quantifier n' tha equivalent atomic group, though there may be a performance
+difference; possessive quantifiers should be slightly faster.
+.P
+Da possessive quantifier syntax be a extension ta tha Perl 5.8 syntax.
+Jeffrey Friedl originated tha scam (and tha name) up in tha straight-up original gangsta edizzle of his
+book. Mike McCloskey was horny bout it, so implemented it when his thugged-out lil' punk-ass built Sunz Java
+package, n' PCRE copied it from there, so peek-a-boo, clear tha way, I be comin' thru fo'sho. Well shiiiit, it ultimately found its way tha fuck into Perl
+at release 5.10.
+.P
+PCRE has a optimization dat automatically "possessifies" certain simple
+pattern constructs, n' you can put dat on yo' toast. For example, tha sequence A+B is treated as A++B cuz
+there is no point up in backtrackin tha fuck into a sequence of Az when B must follow.
+.P
+When a pattern gotz nuff a unlimited repeat inside a subpattern dat can itself
+be repeated a unlimited number of times, tha use of a atomic crew is the
+only way ta avoid some failin matches takin a straight-up long time indeed. Y'all KNOW dat shit, muthafucka! The
+pattern
+.sp
+  (\eD+|<\ed+>)*[!?]
+.sp
+matches a unlimited number of substrings dat either consist of non-digits, or
+digits enclosed up in <>, followed by either ! or ?. When it matches, it runs
+quickly. But fuck dat shiznit yo, tha word on tha street is dat if it be applied to
+.sp
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+.sp
+it takes a long-ass time before reportin failure. This is cuz tha strang can
+be divided between tha internal \eD+ repeat n' tha external * repeat up in a
+pimpin' number of ways, n' all gotta be tried. Y'all KNOW dat shit, muthafucka! (Da example uses [!?] rather
+than a single characta all up in tha end, cuz both PCRE n' Perl have an
+optimization dat allows fo' fast failure when a single characta is used. Y'all KNOW dat shit, muthafucka! They
+remember tha last single characta dat is required fo' a match, n' fail early
+if it aint present up in tha string.) If tha pattern is chizzled so dat it uses
+an atomic group, like this:
+.sp
+  ((?>\eD+)|<\ed+>)*[!?]
+.sp
+sequencez of non-digits cannot be broken, n' failure happens doggystyle.
+.
+.
+.\" HTML <a name="backreferences"></a>
+.SH "BACK REFERENCES"
+.rs
+.sp
+Outside a cold-ass lil characta class, a funky-ass backslash followed by a gangbangin' finger-lickin' digit pimped outa than 0 (and
+possibly further digits) be a funky-ass back reference ta a cold-ass lil capturin subpattern earlier
+(that is, ta its left) up in tha pattern, provided there done been dat many
+previous capturin left parentheses.
+.P
+But fuck dat shiznit yo, tha word on tha street is dat if tha decimal number followin tha backslash is less than 10, it is
+always taken as a funky-ass back reference, n' causes a error only if there be not
+that nuff capturin left parentheses up in tha entire pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. In other lyrics, the
+parentheses dat is referenced need not be ta tha left of tha reference for
+numbers less than 10 fo' realz. A "forward back reference" of dis type can make sense
+when a repetizzle is involved n' tha subpattern ta tha right has participated
+in a earlier iteration.
+.P
+It aint possible ta git a numerical "forward back reference" ta a subpattern
+whose number is 10 or mo' rockin dis syntax cuz a sequence like fuckin \e50 is
+interpreted as a cold-ass lil characta defined up in octal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Right back up in yo muthafuckin ass. See tha subsection entitled
+"Non-printin characters"
+.\" HTML <a href="#digitsafterbackslash">
+.\" </a>
+above
+.\"
+for further detailz of tha handlin of digits followin a funky-ass backslash. There is
+no such problem when named parentheses is used. Y'all KNOW dat shit, muthafucka! A back reference ta any
+subpattern is possible rockin named parentheses (see below).
+.P
+Another way of avoidin tha ambiguitizzle inherent up in tha use of digits followin a
+backslash is ta use tha \eg escape sequence. This escape must be followed by an
+unsigned number or a wack number, optionally enclosed up in braces. These
+examplez is all identical:
+.sp
+  (ring), \e1
+  (ring), \eg1
+  (ring), \eg{1}
+.sp
+An unsigned number specifies a absolute reference without tha ambiguitizzle that
+is present up in tha olda syntax. Well shiiiit, it be also useful when literal digits follow
+the reference fo' realz. A wack number be a relatizzle reference. Consider this
+example:
+.sp
+  (abc(def)ghi)\eg{-1}
+.sp
+Da sequence \eg{-1} be a reference ta da most thugged-out recently started capturing
+subpattern before \eg, dat is, is it equivalent ta \e2 up in dis example.
+Similarly, \eg{-2} would be equivalent ta \e1. Da use of relatizzle references
+can be helpful up in long patterns, n' also up in patterns dat is pimped by
+joinin together fragments dat contain references within theyselves.
+.P
+A back reference matches whatever straight-up matched tha capturin subpattern in
+the current subject string, rather than anythang matchin tha subpattern
+itself (see
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+"Subpatterns as subroutines"
+.\"
+below fo' a way of bustin that). Right back up in yo muthafuckin ass. So tha pattern
+.sp
+  (sens|respons)e n' \e1ibility
+.sp
+matches "sense n' sensibility" n' "response n' responsibility" yo, but not
+"sense n' responsibility". If caseful matchin is up in force all up in tha time of the
+back reference, tha case of lettas is relevant. For example,
+.sp
+  ((?i)rah)\es+\e1
+.sp
+matches "rah rah" n' "RAH RAH" yo, but not "RAH rah", even though tha original
+capturin subpattern is matched caselessly.
+.P
+There is nuff muthafuckin different wayz of freestylin back references ta named
+subpatterns. Da .NET syntax \ek{name} n' tha Perl syntax \ek<name> or
+\ek'name' is supported, as is tha Python syntax (?P=name). Perl 5.10z unified
+back reference syntax, up in which \eg can be used fo' both numeric n' named
+references, be also supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. We could rewrite tha above example up in any of
+the followin ways:
+.sp
+  (?<p1>(?i)rah)\es+\ek<p1>
+  (?'p1'(?i)rah)\es+\ek{p1}
+  (?P<p1>(?i)rah)\es+(?P=p1)
+  (?<p1>(?i)rah)\es+\eg{p1}
+.sp
+A subpattern dat is referenced by name may step tha fuck up in tha pattern before or
+afta tha reference.
+.P
+There may be mo' than one back reference ta tha same subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. If a
+subpattern has not straight-up been used up in a particular match, any back
+references ta it always fail by default. For example, tha pattern
+.sp
+  (a|(bc))\e2
+.sp
+always fails if it starts ta match "a" rather than "bc". But fuck dat shiznit yo, tha word on tha street is dat if the
+PCRE_JAVASCRIPT_COMPAT option is set at compile time, a funky-ass back reference ta an
+unset value matches a empty string.
+.P
+Because there may be nuff capturin parentheses up in a pattern, all digits
+followin a funky-ass backslash is taken as part of a potential back reference number.
+If tha pattern continues wit a gangbangin' finger-lickin' digit character, some delimita must be used to
+terminizzle tha back reference. If tha PCRE_EXTENDED option is set, dis can be
+white space. Otherwise, tha \eg{ syntax or a empty comment (see
+.\" HTML <a href="#comments">
+.\" </a>
+"Comments"
+.\"
+below) can be used.
+.
+.SS "Recursive back references"
+.rs
+.sp
+A back reference dat occurs inside tha parentheses ta which it refers fails
+when tha subpattern is first used, so, fo' example, (a\e1) never matches.
+But fuck dat shiznit yo, tha word on tha street is dat such references can be useful inside repeated subpatterns. For
+example, tha pattern
+.sp
+  (a|b\e1)+
+.sp
+matches any number of "a"s n' also "aba", "ababbaa" etc fo' realz. At each iteration of
+the subpattern, tha back reference matches tha characta strang corresponding
+to tha previous iteration. I aint talkin' bout chicken n' gravy biatch. In order fo' dis ta work, tha pattern must be such
+that tha straight-up original gangsta iteration do not need ta match tha back reference. This can be
+done rockin alternation, as up in tha example above, or by a quantifier wit a
+minimum of zero.
+.P
+Back referencez of dis type cause tha crew dat they reference ta be treated
+as an
+.\" HTML <a href="#atomicgroup">
+.\" </a>
+atomic group.
+.\"
+Once tha whole crew has been matched, a subsequent matchin failure cannot
+cause backtrackin tha fuck into tha middle of tha group.
+.
+.
+.\" HTML <a name="bigassertions"></a>
+.SH ASSERTIONS
+.rs
+.sp
+An assertion be a test on tha charactas followin or precedin tha current
+matchin point dat do not straight-up consume any characters. Da simple
+assertions coded as \eb, \eB, \eA, \eG, \eZ, \ez, ^ n' $ is busted lyrics about
+.\" HTML <a href="#smallassertions">
+.\" </a>
+above.
+.\"
+.P
+Mo' fucked up assertions is coded as subpatterns. There is two kinds:
+those dat look ahead of tha current posizzle up in tha subject string, n' them
+that look behind it fo' realz. An assertion subpattern is matched up in tha aiiight way,
+except dat it do not cause tha current matchin posizzle ta be chizzled.
+.P
+Assertion subpatterns is not capturin subpatterns. If such a assertion
+gotz nuff capturin subpatterns within it, these is counted fo' tha purposes of
+numberin tha capturin subpatterns up in tha whole pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. But fuck dat shiznit yo, tha word on tha street is dat substring
+capturin is carried up only fo' positizzle assertions. (Perl sometimes yo, but not
+always, do do capturin up in wack assertions.)
+.P
+For compatibilitizzle wit Perl, assertion subpatterns may be repeated; though
+it make no sense ta assert tha same thang nuff muthafuckin times, tha side effect of
+capturin parentheses may occasionally be useful naaahhmean, biatch? In practice, there only three
+cases:
+.sp
+(1) If tha quantifier is {0}, tha assertion is never obeyed durin matching.
+But fuck dat shiznit yo, tha word on tha street is dat it may contain internal capturin parenthesized crews dat is called
+from elsewhere via the
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+subroutine mechanism.
+.\"
+.sp
+(2) If quantifier is {0,n} where n is pimped outa than zero, it is treated as if it
+were {0,1} fo' realz. At run time, tha rest of tha pattern match is tried wit and
+without tha assertion, tha order dependin on tha greedinizz of tha quantifier.
+.sp
+(3) If tha minimum repetizzle is pimped outa than zero, tha quantifier is ignored.
+Da assertion is obeyed just once when encountered durin matching.
+.
+.
+.SS "Lookahead assertions"
+.rs
+.sp
+Lookahead assertions start wit (?= fo' positizzle assertions n' (?! for
+negatizzle assertions. For example,
+.sp
+  \ew+(?=;)
+.sp
+matches a word followed by a semicolon yo, but do not include tha semicolon in
+the match, and
+.sp
+  foo(?!bar)
+.sp
+matches any occurrence of "foo" dat aint followed by "bar". Note dat the
+apparently similar pattern
+.sp
+  (?!foo)bar
+.sp
+does not find a occurrence of "bar" dat is preceded by suttin' other than
+"foo"; it findz any occurrence of "bar" whatsoever, cuz tha assertion
+(?!foo) be always legit when tha next three charactas is "bar" fo' realz. A
+lookbehind assertion is needed ta big up tha other effect.
+.P
+If you wanna force a matchin failure at some point up in a pattern, da most thugged-out
+convenient way ta do it is wit (?!) cuz a empty strang always matches, so
+an assertion dat requires there not ta be a empty strang must always fail.
+Da backtrackin control verb (*FAIL) or (*F) be a synonym fo' (?!).
+.
+.
+.\" HTML <a name="lookbehind"></a>
+.SS "Lookbehind assertions"
+.rs
+.sp
+Lookbehind assertions start wit (?<= fo' positizzle assertions n' (?<! for
+negatizzle assertions. For example,
+.sp
+  (?<!foo)bar
+.sp
+does find a occurrence of "bar" dat aint preceded by "foo". Da contents of
+a lookbehind assertion is restricted such dat all tha strings it matches must
+have a gangbangin' fixed length. But fuck dat shiznit yo, tha word on tha street is dat if there be nuff muthafuckin top-level alternatives, they
+do not all gotta have tha same fixed length. Thus
+.sp
+  (?<=bullock|donkey)
+.sp
+is permitted yo, but
+.sp
+  (?<!dawgs?|cats?)
+.sp
+causes a error at compile time. Branches dat match different length strings
+are permitted only all up in tha top level of a lookbehind assertion. I aint talkin' bout chicken n' gravy biatch. This be an
+extension compared wit Perl, which requires all branches ta match tha same
+length of strin fo' realz. An assertion such as
+.sp
+  (?<=ab(c|de))
+.sp
+is not permitted, cuz its single top-level branch can match two different
+lengths yo, but it be aaight ta PCRE if rewritten ta use two top-level
+branches:
+.sp
+  (?<=abc|abde)
+.sp
+In some cases, tha escape sequence \eK
+.\" HTML <a href="#resetmatchstart">
+.\" </a>
+(see above)
+.\"
+can be used instead of a lookbehind assertion ta git round tha fixed-length
+restriction.
+.P
+Da implementation of lookbehind assertions is, fo' each alternative, to
+temporarily move tha current posizzle back by tha fixed length n' then try to
+match. If there be insufficient charactas before tha current position, the
+assertion fails.
+.P
+In a UTF mode, PCRE do not allow tha \eC escape (which matches a single data
+unit even up in a UTF mode) ta step tha fuck up in lookbehind assertions, cuz it makes
+it impossible ta calculate tha length of tha lookbehind. Y'all KNOW dat shit, muthafucka! Da \eX n' \eR
+escapes, which can match different numberz of data units, is also not
+permitted.
+.P
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+"Subroutine"
+.\"
+calls (see below) like fuckin (?2) or (?&X) is permitted up in lookbehinds, as long
+as tha subpattern matches a gangbangin' fixed-length string.
+.\" HTML <a href="#recursion">
+.\" </a>
+Recursion,
+.\"
+however, aint supported.
+.P
+Possessive quantifiers can be used up in conjunction wit lookbehind assertions to
+specify efficient matchin of fixed-length strings all up in tha end of subject
+strings. Consider a simple pattern such as
+.sp
+  abcd$
+.sp
+when applied ta a long-ass strang dat do not match. Because matchin proceeds
+from left ta right, PCRE will look fo' each "a" up in tha subject n' then peep if
+what bigs up matches tha rest of tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. If tha pattern is specified as
+.sp
+  ^.*abcd$
+.sp
+the initial .* matches tha entire strang at first yo, but when dis fails (because
+there is no followin "a"), it backtracks ta match all but tha last character,
+then all but tha last two characters, n' so on. I aint talkin' bout chicken n' gravy biatch. Once again n' again n' again tha search fo' "a"
+covers tha entire string, from right ta left, so we is no betta off yo. However,
+if tha pattern is freestyled as
+.sp
+  ^.*+(?<=abcd)
+.sp
+there can be no backtrackin fo' tha .*+ item; it can match only tha entire
+string. Da subsequent lookbehind assertion do a single test on tha last four
+characters. If it fails, tha match fails immediately. For long strings, this
+approach cook up a thugged-out dope difference ta tha processin time.
+.
+.
+.SS "Usin multiple assertions"
+.rs
+.sp
+Several assertions (of any sort) may occur up in succession. I aint talkin' bout chicken n' gravy biatch. For example,
+.sp
+  (?<=\ed{3})(?<!999)foo
+.sp
+matches "foo" preceded by three digits dat is not "999". Notice dat each of
+the assertions be applied independently all up in tha same point up in tha subject
+string. First there be a cold-ass lil check dat tha previous three charactas is all
+digits, n' then there be a cold-ass lil check dat tha same three charactas is not "999".
+This pattern do \fInot\fP match "foo" preceded by six characters, tha first
+of which is digits n' tha last three of which is not "999". For example, it
+doesn't match "123abcfoo" fo' realz. A pattern ta do dat is
+.sp
+  (?<=\ed{3}...)(?<!999)foo
+.sp
+This time tha straight-up original gangsta assertion looks all up in tha precedin six characters, checking
+that tha straight-up original gangsta three is digits, n' then tha second assertion checks dat the
+precedin three charactas is not "999".
+.P
+Assertions can be nested up in any combination. I aint talkin' bout chicken n' gravy biatch. For example,
+.sp
+  (?<=(?<!foo)bar)baz
+.sp
+matches a occurrence of "baz" dat is preceded by "bar" which up in turn is not
+preceded by "foo", while
+.sp
+  (?<=\ed{3}(?!999)...)foo
+.sp
+is another pattern dat matches "foo" preceded by three digits n' any three
+charactas dat is not "999".
+.
+.
+.\" HTML <a name="conditions"></a>
+.SH "CONDITIONAL SUBPATTERNS"
+.rs
+.sp
+It be possible ta cause tha matchin process ta obey a subpattern
+conditionally or ta chizzle between two alternatizzle subpatterns, dependin on
+the result of a assertion, or whether a specific capturin subpattern has
+already been matched. Y'all KNOW dat shit, muthafucka! Da two possible formz of conditionizzle subpattern are:
+.sp
+  (?(condition)yes-pattern)
+  (?(condition)yes-pattern|no-pattern)
+.sp
+If tha condizzle is satisfied, tha yes-pattern is used; otherwise the
+no-pattern (if present) is used. Y'all KNOW dat shit, muthafucka! If there be mo' than two alternatives up in the
+subpattern, a cold-ass lil compile-time error occurs. Each of tha two alternatives may
+itself contain nested subpatternz of any form, includin conditional
+subpatterns; tha restriction ta two alternatives applies only all up in tha level of
+the condition. I aint talkin' bout chicken n' gravy biatch. This pattern fragment be a example where tha alternatives are
+complex:
+.sp
+  (?(1) (A|B|C) | (D | (?(2)E|F) | E) )
+.sp
+.P
+There is four kindz of condition: references ta subpatterns, references to
+recursion, a pseudo-condizzle called DEFINE, n' assertions.
+.
+.SS "Checkin fo' a used subpattern by number"
+.rs
+.sp
+If tha text between tha parentheses consistz of a sequence of digits, the
+condizzle is legit if a cold-ass lil capturin subpattern of dat number has previously
+matched. Y'all KNOW dat shit, muthafucka! If there is mo' than one capturin subpattern wit tha same number
+(see tha earlier
+.\"
+.\" HTML <a href="#recursion">
+.\" </a>
+section bout duplicate subpattern numbers),
+.\"
+the condizzle is legit if any of dem have matched. Y'all KNOW dat shit, muthafucka! An alternatizzle notation is
+to precede tha digits wit a plus or minus sign. I aint talkin' bout chicken n' gravy biatch. In dis case, tha subpattern
+number is relatizzle rather than absolute. Da most recently opened parentheses
+can be referenced by (?(-1), tha next most recent by (?(-2), n' so on. I aint talkin' bout chicken n' gravy biatch. Inside
+loops it can also make sense ta refer ta subsequent groups. Da next
+parentheses ta be opened can be referenced as (?(+1), n' so on. I aint talkin' bout chicken n' gravy biatch. (Da value
+zero up in any of these forms aint used; it provokes a cold-ass lil compile-time error.)
+.P
+Consider tha followin pattern, which gotz nuff non-significant white space to
+make it mo' readable (assume tha PCRE_EXTENDED option) n' ta divide it into
+three parts fo' ease of rap:
+.sp
+  ( \e( ), biatch?    [^()]+    (?(1) \e) )
+.sp
+Da first part matches a optionizzle openin parenthesis, n' if that
+characta is present, sets it as tha straight-up original gangsta captured substring. Da second part
+matches one or mo' charactas dat is not parentheses. Da third part be a
+conditionizzle subpattern dat tests whether or not tha straight-up original gangsta set of parentheses
+matched. Y'all KNOW dat shit, muthafucka! If they did, dat is, if subject started wit a openin parenthesis,
+the condizzle is true, n' so tha yes-pattern is executed n' a cold-ass lil closing
+parenthesis is required. Y'all KNOW dat shit, muthafucka! Otherwise, since no-pattern aint present, the
+subpattern matches nothing. In other lyrics, dis pattern matches a sequence of
+non-parentheses, optionally enclosed up in parentheses.
+.P
+If you was embeddin dis pattern up in a larger one, you could bust a relative
+reference:
+.sp
+  ...other stuff... ( \e( ), biatch?    [^()]+    (?(-1) \e) ) ...
+.sp
+This make tha fragment independent of tha parentheses up in tha larger pattern.
+.
+.SS "Checkin fo' a used subpattern by name"
+.rs
+.sp
+Perl uses tha syntax (?(<name>)...) or (?('name')...) ta test fo' a used
+subpattern by name. For compatibilitizzle wit earlier versionz of PCRE, which had
+this facilitizzle before Perl, tha syntax (?(name)...) be also recognized. Y'all KNOW dat shit, muthafucka! However,
+there be a possible ambiguitizzle wit dis syntax, cuz subpattern names may
+consist entirely of digits, n' you can put dat on yo' toast. PCRE looks first fo' a named subpattern; if it
+cannot find one n' tha name consists entirely of digits, PCRE looks fo' a
+subpattern of dat number, which must be pimped outa than zero. Usin subpattern
+names dat consist entirely of digits aint recommended.
+.P
+Rewritin tha above example ta bust a named subpattern gives this:
+.sp
+  (?<OPEN> \e( ), biatch?    [^()]+    (?(<OPEN>) \e) )
+.sp
+If tha name used up in a cold-ass lil condizzle of dis kind be a thugged-out duplicate, tha test is
+applied ta all subpatternz of tha same name, n' is legit if any one of dem has
+matched.
+.
+.SS "Checkin fo' pattern recursion"
+.rs
+.sp
+If tha condizzle is tha strang (R), n' there is no subpattern wit tha name R,
+the condizzle is legit if a recursive call ta tha whole pattern or any
+subpattern has been made. If digits or a name preceded by ampersand follow the
+letta R, fo' example:
+.sp
+  (?(R3)...) or (?(R&name)...)
+.sp
+the condizzle is legit if da most thugged-out recent recursion is tha fuck into a subpattern whose
+number or name is given. I aint talkin' bout chicken n' gravy biatch. This condizzle do not check tha entire recursion
+stack. If tha name used up in a cold-ass lil condizzle of dis kind be a thugged-out duplicate, tha test is
+applied ta all subpatternz of tha same name, n' is legit if any one of dem is
+da most thugged-out recent recursion.
+.P
+At "top level", all these recursion test conditions is false.
+.\" HTML <a href="#recursion">
+.\" </a>
+Da syntax fo' recursive patterns
+.\"
+is busted lyrics bout below.
+.
+.\" HTML <a name="subdefine"></a>
+.SS "Definin subpatterns fo' use by reference only"
+.rs
+.sp
+If tha condizzle is tha strang (DEFINE), n' there is no subpattern wit the
+name DEFINE, tha condizzle be always false. In dis case, there may be only one
+alternatizzle up in tha subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Well shiiiit, it be always skipped if control reaches this
+point up in tha pattern; tha scam of DEFINE is dat it can be used ta define
+subroutines dat can be referenced from elsewhere, so peek-a-boo, clear tha way, I be comin' thru fo'sho. (Da use of
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+subroutines
+.\"
+is busted lyrics bout below.) For example, a pattern ta match a IPv4 address such as
+"192.168.23.245" could be freestyled like dis (ignore white space n' line
+breaks):
+.sp
+  (?(DEFINE) (?<byte> 2[0-4]\ed | 25[0-5] | 1\ed\ed | [1-9]?\ed) )
+  \eb (?&byte) (\e.(?&byte)){3} \eb
+.sp
+Da first part of tha pattern be a DEFINE crew inside which a another group
+named "byte" is defined. Y'all KNOW dat shit, muthafucka! This matches a individual component of a IPv4
+address (a number less than 256). When matchin takes place, dis part of the
+pattern is skipped cuz DEFINE acts like a gangbangin' false condition. I aint talkin' bout chicken n' gravy biatch. Da rest of the
+pattern uses references ta tha named crew ta match tha four dot-separated
+componentz of a IPv4 address, insistin on a word boundary at each end.
+.
+.SS "Assertion conditions"
+.rs
+.sp
+If tha condizzle aint up in any of tha above formats, it must be a assertion.
+This may be a positizzle or wack lookahead or lookbehind assertion. I aint talkin' bout chicken n' gravy biatch. Consider
+this pattern, again n' again n' again containin non-significant white space, n' wit tha two
+alternatives on tha second line:
+.sp
+  (?(?=[^a-z]*[a-z])
+  \ed{2}-[a-z]{3}-\ed{2}  |  \ed{2}-\ed{2}-\ed{2} )
+.sp
+Da condizzle be a positizzle lookahead assertion dat matches a optional
+sequence of non-lettas followed by a letter n' shit. In other lyrics, it tests fo' the
+presence of at least one letta up in tha subject. If a letta is found, the
+subject is matched against tha straight-up original gangsta alternative; otherwise it is matched
+against tha second. Y'all KNOW dat shit, muthafucka! This pattern matches strings up in one of tha two forms
+dd-aaa-dd or dd-dd-dd, where aaa is lettas n' dd is digits.
+.
+.
+.\" HTML <a name="comments"></a>
+.SH COMMENTS
+.rs
+.sp
+There is two wayz of includin comments up in patterns dat is processed by
+PCRE. In both cases, tha start of tha comment must not be up in a cold-ass lil characta class,
+nor up in tha middle of any other sequence of related charactas like fuckin (?: or a
+subpattern name or number n' shit. Da charactas dat make up a cold-ass lil comment play no part
+in tha pattern matching.
+.P
+Da sequence (?# marks tha start of a cold-ass lil comment dat continues up ta tha next
+closin parenthesis. Nested parentheses is not permitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If tha PCRE_EXTENDED
+option is set, a unescaped # characta also introduces a cold-ass lil comment, which in
+this case continues ta immediately afta tha next newline characta or
+characta sequence up in tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Which charactas is interpreted as newlines
+is controlled by tha options passed ta a cold-ass lil compilin function or by a special
+sequence all up in tha start of tha pattern, as busted lyrics bout up in tha section entitled
+.\" HTML <a href="#newlines">
+.\" </a>
+"Newline conventions"
+.\"
+above. Note dat tha end of dis type of comment be a literal newline sequence
+in tha pattern; escape sequences dat happen ta represent a newline do not
+count. For example, consider dis pattern when PCRE_EXTENDED is set, n' the
+default newline convention is up in force:
+.sp
+  abc #comment \en still comment
+.sp
+On encounterin tha # character, \fBpcre_compile()\fP skips along, lookin for
+a newline up in tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Da sequence \en is still literal at dis stage, so
+it do not terminizzle tha comment. Only a actual characta wit tha code value
+0x0a (the default newline) do so.
+.
+.
+.\" HTML <a name="recursion"></a>
+.SH "RECURSIVE PATTERNS"
+.rs
+.sp
+Consider tha problem of matchin a strang up in parentheses, allowin for
+unlimited nested parentheses. Without tha use of recursion, tha dopest dat can
+be done is ta bust a pattern dat matches up ta some fixed depth of nesting. It
+is not possible ta handle a arbitrary nestin depth.
+.P
+For some time, Perl has provided a gangbangin' facilitizzle dat allows regular expressions to
+recurse (amongst other thangs). Well shiiiit, it do dis by interpolatin Perl code up in the
+expression at run time, n' tha code can refer ta tha expression itself fo' realz. A Perl
+pattern rockin code interpolation ta solve tha parentheses problem can be
+created like this:
+.sp
+  $re = qr{\e( (?: (?>[^()]+) | (?p{$re}) )* \e)}x;
+.sp
+Da (?p{...}) item interpolates Perl code at run time, n' up in dis case refers
+recursively ta tha pattern up in which it appears.
+.P
+Obviously, PCRE cannot support tha interpolation of Perl code. Instead, it
+supports special syntax fo' recursion of tha entire pattern, n' also for
+individual subpattern recursion. I aint talkin' bout chicken n' gravy biatch fo' realz. Afta its introduction up in PCRE n' Python,
+this kind of recursion was subsequently introduced tha fuck into Perl at release 5.10.
+.P
+A special item dat consistz of (, biatch? followed by a number pimped outa than zero n' a
+closin parenthesis be a recursive subroutine call of tha subpattern of the
+given number, provided dat it occurs inside dat subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. (If not, it be a
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+non-recursive subroutine
+.\"
+call, which is busted lyrics bout up in tha next section.) Da special item (?R) or (?0) is
+a recursive call of tha entire regular expression.
+.P
+This PCRE pattern solves tha nested parentheses problem (assume the
+PCRE_EXTENDED option is set so dat white space is ignored):
+.sp
+  \e( ( [^()]++ | (?R) )* \e)
+.sp
+First it matches a openin parenthesis. Then it matches any number of
+substrings which can either be a sequence of non-parentheses, or a recursive
+match of tha pattern itself (that is, a cold-ass lil erectly parenthesized substring).
+Finally there be a cold-ass lil closin parenthesis. Note tha use of a possessive quantifier
+to avoid backtrackin tha fuck into sequencez of non-parentheses.
+.P
+If dis was part of a larger pattern, you would not wanna recurse tha entire
+pattern, so instead you could use this:
+.sp
+  ( \e( ( [^()]++ | (?1) )* \e) )
+.sp
+Our thugged-out asses have put tha pattern tha fuck into parentheses, n' caused tha recursion ta refer to
+them instead of tha whole pattern.
+.P
+In a larger pattern, keepin track of parenthesis numbers can be tricky. This
+is made easier by tha use of relatizzle references. Instead of (?1) up in the
+pattern above you can write (?-2) ta refer ta tha second most recently opened
+parentheses precedin tha recursion. I aint talkin' bout chicken n' gravy biatch. In other lyrics, a wack number counts
+capturin parentheses leftwardz from tha point at which it is encountered.
+.P
+It be also possible ta refer ta subsequently opened parentheses, by writing
+references like fuckin (?+2). But fuck dat shiznit yo, tha word on tha street is dat these cannot be recursive cuz the
+reference aint inside tha parentheses dat is referenced. Y'all KNOW dat shit, muthafucka! They is always
+.\" HTML <a href="#subpatternsassubroutines">
+.\" </a>
+non-recursive subroutine
+.\"
+calls, as busted lyrics bout up in tha next section.
+.P
+An alternatizzle approach is ta use named parentheses instead. Y'all KNOW dat shit, muthafucka! Da Perl syntax
+for dis is (?&name); PCREz earlier syntax (?P>name) be also supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. We
+could rewrite tha above example as bigs up:
+.sp
+  (?<pn> \e( ( [^()]++ | (?&pn) )* \e) )
+.sp
+If there is mo' than one subpattern wit tha same name, tha earliest one is
+used.
+.P
+This particular example pattern dat we done been lookin at gotz nuff nested
+unlimited repeats, n' so tha use of a possessive quantifier fo' matching
+stringz of non-parentheses is blingin when applyin tha pattern ta strings
+that do not match. For example, when dis pattern be applied to
+.sp
+  (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa()
+.sp
+it yieldz "no match" doggystyle. But fuck dat shiznit yo, tha word on tha street is dat if a possessive quantifier aint used,
+the match runs fo' a straight-up long time indeed cuz there be all kindsa nuff different
+ways tha + n' * repeats can carve up tha subject, n' all gotta be tested
+before failure can be reported.
+.P
+At tha end of a match, tha jointz of capturin parentheses is dem from
+the outermost level. If you wanna obtain intermediate joints, a cold-ass lil callout
+function can be used (see below n' the
+.\" HREF
+\fBpcrecallout\fP
+.\"
+documentation). If tha pattern above is matched against
+.sp
+  (ab(cd)ef)
+.sp
+the value fo' tha inner capturin parentheses (numbered 2) is "ef", which is
+the last value taken on all up in tha top level. If a cold-ass lil capturin subpattern is not
+matched all up in tha top level, its final captured value is unset, even if it was
+(temporarily) set at a thugged-out deeper level durin tha matchin process.
+.P
+If there be mo' than 15 capturin parentheses up in a pattern, PCRE has to
+obtain extra memory ta store data durin a recursion, which it do by using
+\fBpcre_malloc\fP, freein it via \fBpcre_free\fP afterwards. If no memory can
+be obtained, tha match fails wit tha PCRE_ERROR_NOMEMORY error.
+.P
+Do not confuse tha (?R) item wit tha condizzle (R), which tests fo' recursion.
+Consider dis pattern, which matches text up in angle brackets, allowin for
+arbitrary nesting. Only digits is allowed up in nested brackets (that is, when
+recursing), whereas any charactas is permitted all up in tha outa level.
+.sp
+  < (?: (?(R) \ed++  | [^<>]*+) | (?R)) * >
+.sp
+In dis pattern, (?(R) is tha start of a cold-ass lil conditionizzle subpattern, wit two
+different alternatives fo' tha recursive n' non-recursive cases. Da (?R) item
+is tha actual recursive call.
+.
+.
+.\" HTML <a name="recursiondifference"></a>
+.SS "Differences up in recursion processin between PCRE n' Perl"
+.rs
+.sp
+Recursion processin up in PCRE differs from Perl up in two blingin ways. In PCRE
+(like Python yo, but unlike Perl), a recursive subpattern call be always treated
+as a atomic group. That is, once it has matched a shitload of tha subject string, it
+is never re-entered, even if it gotz nuff untried alternatives n' there be a
+subsequent matchin failure. This can be illustrated by tha followin pattern,
+which purports ta match a palindromic strang dat gotz nuff a odd number of
+charactas (for example, "a", "aba", "abcba", "abcdcba"):
+.sp
+  ^(.|(.)(?1)\e2)$
+.sp
+Da scam is dat it either matches a single character, or two identical
+charactas surroundin a sub-palindrome. In Perl, dis pattern works; up in PCRE
+it do not if tha pattern is longer than three characters. Consider the
+subject strang "abcba":
+.P
+At tha top level, tha straight-up original gangsta characta is matched yo, but as it aint all up in tha end
+of tha string, tha straight-up original gangsta alternatizzle fails; tha second alternatizzle is taken
+and tha recursion kicks in. I aint talkin' bout chicken n' gravy biatch. Da recursive call ta subpattern 1 successfully
+matches tha next characta ("b"). (Note dat tha beginnin n' end of line
+tests is not part of tha recursion).
+.P
+Back all up in tha top level, tha next characta ("c") is compared wit what
+subpattern 2 matched, which was "a". This fails. Because tha recursion is
+treated as a atomic group, there be now no backtrackin points, n' so the
+entire match fails. (Perl be able, at dis point, ta re-enta tha recursion and
+try tha second alternative.) But fuck dat shiznit yo, tha word on tha street is dat if tha pattern is freestyled wit the
+alternatives up in tha other order, thangs is different:
+.sp
+  ^((.)(?1)\e2|.)$
+.sp
+This time, tha recursin alternatizzle is tried first, n' continues ta recurse
+until it runs outta characters, at which point tha recursion fails. But this
+time our phat asses do have another alternatizzle ta try all up in tha higher level. That is tha big
+difference: up in tha previous case tha remainin alternatizzle be at a thugged-out deeper
+recursion level, which PCRE cannot use.
+.P
+To chizzle tha pattern so dat it matches all palindromic strings, not just
+those wit a odd number of characters, it is temptin ta chizzle tha pattern to
+this:
+.sp
+  ^((.)(?1)\e2|.?)$
+.sp
+Again, dis works up in Perl yo, but not up in PCRE, n' fo' tha same reason. I aint talkin' bout chicken n' gravy biatch. When a
+deeper recursion has matched a single character, it cannot be entered again n' again n' again in
+order ta match a empty string. Da solution is ta separate tha two cases, and
+write up tha odd n' even cases as alternatives all up in tha higher level:
+.sp
+  ^(?:((.)(?1)\e2|)|((.)(?3)\e4|.))
+.sp
+If you wanna match typical palindromic phrases, tha pattern has ta ignore all
+non-word characters, which can be done like this:
+.sp
+  ^\eW*+(?:((.)\eW*+(?1)\eW*+\e2|)|((.)\eW*+(?3)\eW*+\e4|\eW*+.\eW*+))\eW*+$
+.sp
+If run wit tha PCRE_CASELESS option, dis pattern matches phrases like fuckin "A
+man, a plan, a cold-ass lil canal: Panama!" n' it works well up in both PCRE n' Perl. Note
+the use of tha possessive quantifier *+ ta avoid backtrackin tha fuck into sequences of
+non-word characters. Without this, PCRE takes a pimped out deal longer (ten times or
+more) ta match typical phrases, n' Perl takes so long dat you be thinkin it has
+gone tha fuck into a loop.
+.P
+\fBWARNING\fP: Da palindrome-matchin patterns above work only if tha subject
+strin do not start wit a palindrome dat is shorta than tha entire string.
+For example, although "abcba" is erectly matched, if tha subject is "ababa",
+PCRE findz tha palindrome "aba" all up in tha start, then fails at top level cuz
+the end of tha strang do not follow. Once again, it cannot jump back tha fuck into the
+recursion ta try other alternatives, so tha entire match fails.
+.P
+Da second way up in which PCRE n' Perl differ up in they recursion processin is
+in tha handlin of captured joints, n' you can put dat on yo' toast. In Perl, when a subpattern is called
+recursively or as a subpattern (see tha next section), it has no access ta any
+values dat was captured outside tha recursion, whereas up in PCRE these joints
+can be referenced. Y'all KNOW dat shit, muthafucka! Consider dis pattern:
+.sp
+  ^(.)(\e1|a(?2))
+.sp
+In PCRE, dis pattern matches "bab". Da first capturin parentheses match "b",
+then up in tha second group, when tha back reference \e1 fails ta match "b", the
+second alternatizzle matches "a" n' then recurses. In tha recursion, \e1 do
+now match "b" n' so tha whole match succeeds. In Perl, tha pattern fails to
+match cuz inside tha recursive call \e1 cannot access tha externally set
+value.
+.
+.
+.\" HTML <a name="subpatternsassubroutines"></a>
+.SH "SUBPATTERNS AS SUBROUTINES"
+.rs
+.sp
+If tha syntax fo' a recursive subpattern call (either by number or by
+name) is used outside tha parentheses ta which it refers, it operates like a
+subroutine up in a programmin language. Da called subpattern may be defined
+before or afta tha reference fo' realz. A numbered reference can be absolute or
+relative, as up in these examples:
+.sp
+  (...(absolute)...)...(?2)...
+  (...(relative)...)...(?-1)...
+  (...(?+1)...(relative)...
+.sp
+An earlier example pointed up dat tha pattern
+.sp
+  (sens|respons)e n' \e1ibility
+.sp
+matches "sense n' sensibility" n' "response n' responsibility" yo, but not
+"sense n' responsibility". If instead tha pattern
+.sp
+  (sens|respons)e n' (?1)ibility
+.sp
+is used, it do match "sense n' responsibility" as well as tha other two
+strings fo' realz. Another example is given up in tha rap of DEFINE above.
+.P
+All subroutine calls, whether recursive or not, is always treated as atomic
+groups. That is, once a subroutine has matched a shitload of tha subject string, it
+is never re-entered, even if it gotz nuff untried alternatives n' there be a
+subsequent matchin failure fo' realz. Any capturin parentheses dat is set durin the
+subroutine call revert ta they previous joints afterwards.
+.P
+Processin options like fuckin case-independence is fixed when a subpattern is
+defined, so if it is used as a subroutine, such options cannot be chizzled for
+different calls. For example, consider dis pattern:
+.sp
+  (abc)(?i:(?-1))
+.sp
+It matches "abcabc". Well shiiiit, it do not match "abcABC" cuz tha chizzle of
+processin option do not affect tha called subpattern.
+.
+.
+.\" HTML <a name="onigurumasubroutines"></a>
+.SH "ONIGURUMA SUBROUTINE SYNTAX"
+.rs
+.sp
+For compatibilitizzle wit Oniguruma, tha non-Perl syntax \eg followed by a name or
+a number enclosed either up in angle brackets or single quotes, be a alternative
+syntax fo' referencin a subpattern as a subroutine, possibly recursively yo. Here
+are two of tha examplez used above, rewritten rockin dis syntax:
+.sp
+  (?<pn> \e( ( (?>[^()]+) | \eg<pn> )* \e) )
+  (sens|respons)e n' \eg'1'ibility
+.sp
+PCRE supports a extension ta Oniguruma: if a number is preceded by a
+plus or a minus sign it is taken as a relatizzle reference. For example:
+.sp
+  (abc)(?i:\eg<-1>)
+.sp
+Note dat \eg{...} (Perl syntax) n' \eg<...> (Oniguruma syntax) is \fInot\fP
+synonymous. Da forma be a funky-ass back reference; tha latta be a subroutine call.
+.
+.
+.SH CALLOUTS
+.rs
+.sp
+Perl has a gangbangin' feature whereby rockin tha sequence (?{...}) causes arbitrary Perl
+code ta be obeyed up in tha middle of matchin a regular expression. I aint talkin' bout chicken n' gravy biatch. This make it
+possible, amongst other thangs, ta extract different substrings dat match the
+same pair of parentheses when there be a repetition.
+.P
+PCRE serves up a similar feature yo, but of course it cannot obey arbitrary Perl
+code. Da feature is called "callout". Da calla of PCRE serves up a external
+function by puttin its entry point up in tha global variable \fIpcre_callout\fP
+(8-bit library) or \fIpcre[16|32]_callout\fP (16-bit or 32-bit library).
+By default, dis variable gotz nuff NULL, which disablez all callin out.
+.P
+Within a regular expression, (?C) indicates tha points at which tha external
+function is ta be called. Y'all KNOW dat shit, muthafucka! If you wanna identify different callout points, you
+can put a number less than 256 afta tha letta C. Da default value is zero.
+For example, dis pattern has two callout points:
+.sp
+  (?C1)abc(?C2)def
+.sp
+If tha PCRE_AUTO_CALLOUT flag is passed ta a cold-ass lil compilin function, callouts are
+automatically installed before each item up in tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. They is all numbered
+255. If there be a cold-ass lil conditionizzle crew up in tha pattern whose condizzle be an
+assertion, a additionizzle callout is banged just before tha condition. I aint talkin' bout chicken n' gravy biatch fo' realz. An
+explicit callout may also be set at dis position, as up in dis example:
+.sp
+  (?(?C9)(?=a)abc|def)
+.sp
+Note dat dis applies only ta assertion conditions, not ta other types of
+condition.
+.P
+Durin matching, when PCRE reaches a cold-ass lil callout point, tha external function is
+called. Y'all KNOW dat shit, muthafucka! Well shiiiit, it is provided wit tha number of tha callout, tha posizzle up in the
+pattern, and, optionally, one item of data originally supplied by tha calla of
+the matchin function. I aint talkin' bout chicken n' gravy biatch. Da callout function may cause matchin ta proceed, to
+backtrack, or ta fail altogether n' shiznit fo' realz. A complete description of tha intercourse to
+the callout function is given up in the
+.\" HREF
+\fBpcrecallout\fP
+.\"
+documentation.
+.
+.
+.\" HTML <a name="backtrackcontrol"></a>
+.SH "BACKTRACKING CONTROL"
+.rs
+.sp
+Perl 5.10 introduced a fuckin shitload of "Special Backtrackin Control Verbs", which
+are still busted lyrics bout up in tha Perl documentation as "experimenstrual n' subject to
+change or removal up in a gangbangin' future version of Perl". Well shiiiit, it goes on ta say: "Their usage
+in thang code should be noted ta avoid problems durin upgrades." Da same
+remarks apply ta tha PCRE features busted lyrics bout up in dis section.
+.P
+Da freshly smoked up verbs make use of what tha fuck was previously invalid syntax: a opening
+parenthesis followed by a asterisk. They is generally of tha form
+(*VERB) or (*VERB:NAME). Right back up in yo muthafuckin ass. Some may take either form, possibly behaving
+differently dependin on whether or not a name is present fo' realz. A name be any
+sequence of charactas dat do not include a cold-ass lil closin parenthesis. Da maximum
+length of name is 255 up in tha 8-bit library n' 65535 up in tha 16-bit n' 32-bit
+libraries. Put ya muthafuckin choppers up if ya feel dis! If tha name is empty, dat is, if tha closin parenthesis
+immediately bigs up tha colon, tha effect be as if tha colon was not there.
+Any number of these verbs may occur up in a pattern.
+.P
+Since these verbs is specifically related ta backtracking, most of dem can be
+used only when tha pattern is ta be matched rockin one of tha traditional
+matchin functions, cuz these bust a funky-ass backtrackin algorithm. With the
+exception of (*FAIL), which behaves like a gangbangin' failin wack assertion, the
+backtrackin control verbs cause a error if encountered by a DFA matching
+function.
+.P
+Da behaviour of these verbs in
+.\" HTML <a href="#btrepeat">
+.\" </a>
+repeated groups,
+.\"
+.\" HTML <a href="#btassert">
+.\" </a>
+assertions,
+.\"
+and in
+.\" HTML <a href="#btsub">
+.\" </a>
+subpatterns called as subroutines
+.\"
+(whether or not recursively) is documented below.
+.
+.
+.\" HTML <a name="nooptimize"></a>
+.SS "Optimizations dat affect backtrackin verbs"
+.rs
+.sp
+PCRE gotz nuff some optimizations dat is used ta speed up matchin by hustlin
+some checks all up in tha start of each match attempt. For example, it may know the
+minimum length of matchin subject, or dat a particular characta must be
+present. When one of these optimizations bypasses tha hustlin of a match, any
+included backtrackin verbs will not, of course, be processed. Y'all KNOW dat shit, muthafucka! Yo ass can suppress
+the start-of-match optimizations by settin tha PCRE_NO_START_OPTIMIZE option
+when callin \fBpcre_compile()\fP or \fBpcre_exec()\fP, or by startin the
+pattern wit (*NO_START_OPT). There is mo' rap of dis option up in the
+section entitled
+.\" HTML <a href="pcreapi.html#execoptions">
+.\" </a>
+"Option bits fo' \fBpcre_exec()\fP"
+.\"
+in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation.
+.P
+Experiments wit Perl suggest dat it too has similar optimizations, sometimes
+leadin ta anomalous thangs up in dis biatch.
+.
+.
+.SS "Verbs dat act immediately"
+.rs
+.sp
+Da followin verbs act as soon as they is encountered. Y'all KNOW dat shit, muthafucka! They may not be
+followed by a name.
+.sp
+   (*ACCEPT)
+.sp
+This verb causes tha match ta end successfully, skippin tha remainder of the
+pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. But fuck dat shiznit yo, tha word on tha street is dat when it is inside a subpattern dat is called as a
+subroutine, only dat subpattern is ended successfully. Matchin then continues
+at tha outa level. If (*ACCEPT) up in triggered up in a positizzle assertion, the
+assertion succeeds; up in a wack assertion, tha assertion fails.
+.P
+If (*ACCEPT) is inside capturin parentheses, tha data so far is captured. Y'all KNOW dat shit, muthafucka! For
+example:
+.sp
+  A((?:A|B(*ACCEPT)|C)D)
+.sp
+This matches "AB", "AAD", or "ACD"; when it matches "AB", "B" is captured by
+the outa parentheses.
+.sp
+  (*FAIL) or (*F)
+.sp
+This verb causes a matchin failure, forcin backtrackin ta occur. Shiiit, dis aint no joke. Well shiiiit, it is
+equivalent ta (?!) but easier ta read. Y'all KNOW dat shit, muthafucka! Da Perl documentation notes dat it is
+probably useful only when combined wit (?{}) or (??{}). Those are, of course,
+Perl features dat is not present up in PCRE. Da nearest equivalent is the
+callout feature, as fo' example up in dis pattern:
+.sp
+  a+(?C)(*FAIL)
+.sp
+A match wit tha strang "aaaa" always fails yo, but tha callout is taken before
+each backtrack happens (in dis example, 10 times).
+.
+.
+.SS "Recordin which path was taken"
+.rs
+.sp
+There is one verb whose main purpose is ta track how tha fuck a match was arrived at,
+though it also has a secondary use up in conjunction wit advancin tha match
+startin point (see (*SKIP) below).
+.sp
+  (*MARK:NAME) or (*:NAME)
+.sp
+A name be always required wit dis verb. There may be as nuff instances of
+(*MARK) as you like up in a pattern, n' they names do not gotta be unique.
+.P
+When a match succeeds, tha name of tha last-encountered (*MARK:NAME),
+(*PRUNE:NAME), or (*THEN:NAME) on tha matchin path is passed back ta the
+calla as busted lyrics bout up in tha section entitled
+.\" HTML <a href="pcreapi.html#extradata">
+.\" </a>
+"Extra data fo' \fBpcre_exec()\fP"
+.\"
+in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation. I aint talkin' bout chicken n' gravy biatch yo. Here be a example of \fBpcretest\fP output, where tha /K
+modifier requests tha retrieval n' outputtin of (*MARK) data:
+.sp
+    re> /X(*MARK:A)Y|X(*MARK:B)Z/K
+  data> XY
+   0: XY
+  MK: A
+  XZ
+   0: XZ
+  MK: B
+.sp
+Da (*MARK) name is tagged wit "MK:" up in dis output, n' up in dis example it
+indicates which of tha two alternatives matched. Y'all KNOW dat shit, muthafucka! This be a mo' efficient way
+of obtainin dis shiznit than puttin each alternatizzle up in its own
+capturin parentheses.
+.P
+If a verb wit a name is encountered up in a positizzle assertion dat is true, the
+name is recorded n' passed back if it is tha last-encountered. Y'all KNOW dat shit, muthafucka! This do not
+happen fo' wack assertions or failin positizzle assertions.
+.P
+Afta a partial match or a gangbangin' failed match, tha last encountered name up in the
+entire match process is returned. Y'all KNOW dat shit, muthafucka! For example:
+.sp
+    re> /X(*MARK:A)Y|X(*MARK:B)Z/K
+  data> XP
+  No match, mark = B
+.sp
+Note dat up in dis unanchored example tha mark is retained from tha match
+attempt dat started all up in tha letta "X" up in tha subject. Right back up in yo muthafuckin ass. Subsequent match
+attempts startin at "P" n' then wit a empty strang do not git as far as the
+(*MARK) item yo, but nevertheless do not reset dat shit.
+.P
+If yo ass is horny bout (*MARK) joints afta failed matches, you should
+probably set tha PCRE_NO_START_OPTIMIZE option
+.\" HTML <a href="#nooptimize">
+.\" </a>
+(see above)
+.\"
+to ensure dat tha match be always attempted.
+.
+.
+.SS "Verbs dat act afta backtracking"
+.rs
+.sp
+Da followin verbs do not a god damn thang when they is encountered. Y'all KNOW dat shit, muthafucka! Matchin continues
+with what tha fuck bigs up yo, but if there is no subsequent match, causin a funky-ass backtrack to
+the verb, a gangbangin' failure is forced. Y'all KNOW dat shit, muthafucka! That is, backtrackin cannot pass ta tha left of
+the verb. But fuck dat shiznit yo, tha word on tha street is dat when one of these verbs appears inside a atomic crew or an
+assertion dat is true, its effect is confined ta dat group, cuz once the
+group has been matched, there is never any backtrackin tha fuck into dat shit. In this
+situation, backtrackin can "jump back" ta tha left of tha entire atomic group
+or assertion. I aint talkin' bout chicken n' gravy biatch. (Remember also, as stated above, dat dis localization also
+applies up in subroutine calls.)
+.P
+These verbs differ up in exactly what tha fuck kind of failure occurs when backtracking
+reaches em. Da behaviour busted lyrics bout below is what tha fuck happens when tha verb is
+not up in a subroutine or a assertion. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Subsequent sections cover these special
+cases.
+.sp
+  (*COMMIT)
+.sp
+This verb, which may not be followed by a name, causes tha whole match ta fail
+outright if there be a lata matchin failure dat causes backtrackin ta reach
+it. Even if tha pattern is unanchored, no further attempts ta find a match by
+advancin tha startin point take place. If (*COMMIT) is tha only backtracking
+verb dat is encountered, once it has been passed \fBpcre_exec()\fP is
+committed ta findin a match all up in tha current startin point, or not at all. For
+example:
+.sp
+  a+(*COMMIT)b
+.sp
+This matches "xxaab" but not "aacaab". Well shiiiit, it can be thought of as a kind of
+dynamic anchor, or "I've started, so I must finish." Da name of da most thugged-out
+recently passed (*MARK) up in tha path is passed back when (*COMMIT) forces a
+match failure.
+.P
+If there is mo' than one backtrackin verb up in a pattern, a gangbangin' finger-lickin' different one that
+bigs up (*COMMIT) may be triggered first, so merely passin (*COMMIT) durin a
+match do not always guarantee dat a match must be at dis startin point.
+.P
+Note dat (*COMMIT) all up in tha start of a pattern aint tha same as a anchor,
+unless PCREz start-of-match optimizations is turned off, as shown up in this
+\fBpcretest\fP example:
+.sp
+    re> /(*COMMIT)abc/
+  data> xyzabc
+   0: abc
+  xyzabc\eY
+  No match
+.sp
+PCRE knows dat any match must start wit "a", so tha optimization skips along
+the subject ta "a" before hustlin tha straight-up original gangsta match attempt, which succeeds. When
+the optimization is disabled by tha \eY escape up in tha second subject, tha match
+starts at "x" n' so tha (*COMMIT) causes it ta fail without tryin any other
+startin points.
+.sp
+  (*PRUNE) or (*PRUNE:NAME)
+.sp
+This verb causes tha match ta fail all up in tha current startin posizzle up in the
+subject if there be a lata matchin failure dat causes backtrackin ta reach
+it. If tha pattern is unanchored, tha aiiight "bumpalong" advizzle ta tha next
+startin characta then happens. Backtrackin can occur as usual ta tha left of
+(*PRUNE), before it is reached, or when matchin ta tha right of (*PRUNE) yo, but
+if there is no match ta tha right, backtrackin cannot cross (*PRUNE). In
+simple cases, tha use of (*PRUNE) is just a alternatizzle ta a atomic crew or
+possessive quantifier yo, but there be some usez of (*PRUNE) dat cannot be
+expressed up in any other way. In a anchored pattern (*PRUNE) has tha same ol' dirty effect
+as (*COMMIT).
+.P
+Da behaviour of (*PRUNE:NAME) is tha not tha same as (*MARK:NAME)(*PRUNE).
+It be like (*MARK:NAME) up in dat tha name is remembered fo' passin back ta the
+calla n' shit. But fuck dat shiznit yo, tha word on tha street is dat (*SKIP:NAME) searches only fo' names set wit (*MARK).
+.sp
+  (*SKIP)
+.sp
+This verb, when given without a name, is like (*PRUNE), except dat if the
+pattern is unanchored, tha "bumpalong" advizzle aint ta tha next character,
+but ta tha posizzle up in tha subject where (*SKIP) was encountered. Y'all KNOW dat shit, muthafucka! (*SKIP)
+signifies dat whatever text was matched leadin up ta it cannot be part of a
+successful match. Consider:
+.sp
+  a+(*SKIP)b
+.sp
+If tha subject is "aaaac...", afta tha straight-up original gangsta match attempt fails (startin at
+the first characta up in tha string), tha startin point skips on ta start the
+next attempt at "c". Note dat a possessive quantifer aint gots tha same
+effect as dis example; although it would suppress backtrackin durin the
+first match attempt, tha second attempt would start all up in tha second character
+instead of skippin on ta "c".
+.sp
+  (*SKIP:NAME)
+.sp
+When (*SKIP) has a associated name, its behaviour is modified. Y'all KNOW dat shit, muthafucka! When it is
+triggered, tha previous path all up in tha pattern is searched fo' da most thugged-out
+recent (*MARK) dat has tha same ol' dirty name. If one is found, tha "bumpalong" advance
+is ta tha subject posizzle dat correspondz ta dat (*MARK) instead of ta where
+(*SKIP) was encountered. Y'all KNOW dat shit, muthafucka! If no (*MARK) wit a matchin name is found, the
+(*SKIP) is ignored.
+.P
+Note dat (*SKIP:NAME) searches only fo' names set by (*MARK:NAME). Well shiiiit, it ignores
+names dat is set by (*PRUNE:NAME) or (*THEN:NAME).
+.sp
+  (*THEN) or (*THEN:NAME)
+.sp
+This verb causes a skip ta tha next innermost alternatizzle when backtracking
+reaches dat shit. That is, it cancels any further backtrackin within tha current
+alternative. Its name be reppin tha observation dat it can be used fo' a
+pattern-based if-then-else block:
+.sp
+  ( COND1 (*THEN) FOO | COND2 (*THEN) BAR | COND3 (*THEN) BAZ ) ...
+.sp
+If tha COND1 pattern matches, FOO is tried (and possibly further shit after
+the end of tha crew if FOO succeeds); on failure, tha matcher skips ta the
+second alternatizzle n' tries COND2, without backtrackin tha fuck into COND1. If that
+succeedz n' BAR fails, COND3 is tried. Y'all KNOW dat shit, muthafucka! If subsequently BAZ fails, there be no
+more alternatives, so there be a funky-ass backtrack ta whatever came before tha entire
+group. If (*THEN) aint inside a alternation, it acts like (*PRUNE).
+.P
+Da behaviour of (*THEN:NAME) is tha not tha same as (*MARK:NAME)(*THEN).
+It be like (*MARK:NAME) up in dat tha name is remembered fo' passin back ta the
+calla n' shit. But fuck dat shiznit yo, tha word on tha street is dat (*SKIP:NAME) searches only fo' names set wit (*MARK).
+.P
+A subpattern dat do not contain a | characta is just a part of the
+enclosin alternative; it aint a nested alternation wit only one
+alternative. Da effect of (*THEN) extendz beyond such a subpattern ta the
+enclosin alternative. Consider dis pattern, where A, B, etc. is complex
+pattern fragments dat do not contain any | charactas at dis level:
+.sp
+  A (B(*THEN)C) | D
+.sp
+If A n' B is matched yo, but there be a gangbangin' failure up in C, matchin do not
+backtrack tha fuck into A; instead it moves ta tha next alternative, dat is, D.
+But fuck dat shiznit yo, tha word on tha street is dat if tha subpattern containin (*THEN) is given a alternative, it
+behaves differently:
+.sp
+  A (B(*THEN)C | (*FAIL)) | D
+.sp
+Da effect of (*THEN) is now confined ta tha inner subpattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch fo' realz. Afta a gangbangin' failure
+in C, matchin moves ta (*FAIL), which causes tha whole subpattern ta fail
+because there be no mo' alternatives ta try. In dis case, matchin do now
+backtrack tha fuck into A.
+.P
+Note dat a cold-ass lil conditionizzle subpattern aint considered as havin two
+alternatives, cuz only one is eva used. Y'all KNOW dat shit, muthafucka! In other lyrics, tha | characta in
+a conditionizzle subpattern has a gangbangin' finger-lickin' different meaning. Ignorin white space,
+consider:
+.sp
+  ^.*, biatch? (?(?=a) a | b(*THEN)c )
+.sp
+If tha subject is "ba", dis pattern do not match. Because .*, biatch? is ungreedy,
+it initially matches zero characters. Da condizzle (?=a) then fails, the
+characta "b" is matched yo, but "c" aint fo' realz. At dis point, matchin do not
+backtrack ta .*, biatch? as might like be expected from tha presence of tha |
+character n' shit. Da conditionizzle subpattern is part of tha single alternatizzle that
+comprises tha whole pattern, n' so tha match fails. (If there was a funky-ass backtrack
+into .*?, allowin it ta match "b", tha match would succeed.)
+.P
+Da verbs just busted lyrics bout provide four different "strengths" of control when
+subsequent matchin fails. (*THEN) is tha weakest, carryin on tha match at the
+next alternative. (*PRUNE) comes next, failin tha match all up in tha current
+startin posizzle yo, but allowin a advizzle ta tha next characta (for an
+unanchored pattern). (*SKIP) is similar, except dat tha advizzle may be more
+than one character n' shit. (*COMMIT) is tha strongest, causin tha entire match to
+fail.
+.
+.
+.SS "Mo' than one backtrackin verb"
+.rs
+.sp
+If mo' than one backtrackin verb is present up in a pattern, tha one dat is
+backtracked onto first acts, n' you can put dat on yo' toast. For example, consider dis pattern, where A, B,
+etc. is complex pattern fragments:
+.sp
+  (A(*COMMIT)B(*THEN)C|ABD)
+.sp
+If A matches but B fails, tha backtrack ta (*COMMIT) causes tha entire match to
+fail. But fuck dat shiznit yo, tha word on tha street is dat if A n' B match yo, but C fails, tha backtrack ta (*THEN) causes
+the next alternatizzle (ABD) ta be tried. Y'all KNOW dat shit, muthafucka! This behaviour is consistent yo, but is
+not always tha same ol' dirty as Perl's. Well shiiiit, it means dat if two or mo' backtrackin verbs
+appear up in succession, all tha the last of dem has no effect. Consider this
+example:
+.sp
+  ...(*COMMIT)(*PRUNE)...
+.sp
+If there be a matchin failure ta tha right, backtrackin onto (*PRUNE) cases
+it ta be triggered, n' its action is taken. I aint talkin' bout chicken n' gravy biatch. There can never be a funky-ass backtrack
+onto (*COMMIT).
+.
+.
+.\" HTML <a name="btrepeat"></a>
+.SS "Backtrackin verbs up in repeated groups"
+.rs
+.sp
+PCRE differs from Perl up in its handlin of backtrackin verbs up in repeated
+groups. For example, consider:
+.sp
+  /(a(*COMMIT)b)+ac/
+.sp
+If tha subject is "abac", Perl matches yo, but PCRE fails cuz tha (*COMMIT) in
+the second repeat of tha crew acts.
+.
+.
+.\" HTML <a name="btassert"></a>
+.SS "Backtrackin verbs up in assertions"
+.rs
+.sp
+(*FAIL) up in a assertion has its aiiight effect: it forces a immediate backtrack.
+.P
+(*ACCEPT) up in a positizzle assertion causes tha assertion ta succeed without any
+further processing. In a wack assertion, (*ACCEPT) causes tha assertion to
+fail without any further processing.
+.P
+Da other backtrackin verbs is not treated specially if they step tha fuck up in a
+positizzle assertion. I aint talkin' bout chicken n' gravy biatch. In particular, (*THEN) skips ta tha next alternatizzle up in the
+innermost enclosin crew dat has alternations, whether or not dis is within
+the assertion.
+.P
+Negatizzle assertions are, however, different, up in order ta ensure dat changin a
+positizzle assertion tha fuck into a wack assertion chizzlez its result. Backtracking
+into (*COMMIT), (*SKIP), or (*PRUNE) causes a wack assertion ta be true,
+without thankin bout any further alternatizzle branches up in tha assertion.
+Backtrackin tha fuck into (*THEN) causes it ta skip ta tha next enclosin alternative
+within tha assertion (the aiiight behaviour) yo, but if tha assertion do not have
+such a alternative, (*THEN) behaves like (*PRUNE).
+.
+.
+.\" HTML <a name="btsub"></a>
+.SS "Backtrackin verbs up in subroutines"
+.rs
+.sp
+These behaviours occur whether or not tha subpattern is called recursively.
+Perlz treatment of subroutines is different up in some cases.
+.P
+(*FAIL) up in a subpattern called as a subroutine has its aiiight effect: it forces
+an immediate backtrack.
+.P
+(*ACCEPT) up in a subpattern called as a subroutine causes tha subroutine match to
+succeed without any further processing. Matchin then continues afta the
+subroutine call.
+.P
+(*COMMIT), (*SKIP), n' (*PRUNE) up in a subpattern called as a subroutine cause
+the subroutine match ta fail.
+.P
+(*THEN) skips ta tha next alternatizzle up in tha innermost enclosin crew within
+the subpattern dat has alternatives. If there is no such crew within the
+subpattern, (*THEN) causes tha subroutine match ta fail.
+.
+.
+.SH "SEE ALSO"
+.rs
+.sp
+\fBpcreapi\fP(3), \fBpcrecallout\fP(3), \fBpcrematching\fP(3),
+\fBpcresyntax\fP(3), \fBpcre\fP(3), \fBpcre16(3)\fP, \fBpcre32(3)\fP.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 26 April 2013
+Copyright (c) 1997-2013 Universitizzle of Cambridge.
+.fi

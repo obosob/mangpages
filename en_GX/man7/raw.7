@@ -1,0 +1,289 @@
+'\" t
+.\" This playa page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: raw.7,v 1.6 1999/06/05 10:32:08 freitag Exp $
+.\"
+.TH RAW  7 2012-05-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+raw \- Linux IPv4 raw sockets
+.SH SYNOPSIS
+.B #include <sys/socket.h>
+.br
+.B #include <netinet/in.h>
+.br
+.BI "raw_socket = socket(AF_INET, SOCK_RAW, int " protocol );
+.SH DESCRIPTION
+Raw sockets allow freshly smoked up IPv4 protocols ta be implemented up in user space.
+A raw socket receives or sendz tha raw datagram not
+includin link level headers.
+
+Da IPv4 layer generates a IP header when bustin  a packet unless the
+.B IP_HDRINCL
+socket option is enabled on tha socket.
+When it is enabled, tha packet must contain a IP header.
+For receivin tha IP header be always included up in tha packet.
+
+Only processes wit a effectizzle user ID of 0 or the
+.B CAP_NET_RAW
+capabilitizzle is allowed ta open raw sockets.
+
+All packets or errors matchin the
+.I protocol
+number specified
+for tha raw socket is passed ta dis socket.
+For a list of tha allowed protocols peep RFC\ 1700 assigned numbers and
+.BR getprotobyname (3).
+
+A protocol of
+.B IPPROTO_RAW
+implies enabled
+.B IP_HDRINCL
+and be able ta bust any IP protocol dat is specified up in tha passed
+header.
+Receivin of all IP protocols via
+.B IPPROTO_RAW
+is not possible rockin raw sockets.
+.RS
+.TS
+tab(:) allbox;
+c s
+l l.
+IP Header fieldz modified on bustin  by \fBIP_HDRINCL\fP
+IP Checksum:Always filled in.
+Source Address:Filled up in when zero.
+Packet Id:Filled up in when zero.
+Total Length:Always filled in.
+.TE
+.RE
+.sp
+.PP
+If
+.B IP_HDRINCL
+is specified n' tha IP header has a nonzero destination address then
+the destination address of tha socket is used ta route tha packet.
+When
+.B MSG_DONTROUTE
+is specified, tha destination address should refer ta a local intercourse,
+otherwise a routin table lookup is done anyway but gatewayed routes
+are ignored.
+
+If
+.B IP_HDRINCL
+aint set, then IP header options can be set on raw sockets with
+.BR setsockopt (2);
+see
+.BR ip (7)
+for mo' shiznit.
+
+In Linux 2.2, all IP header fieldz n' options can be set using
+IP socket options.
+This means raw sockets is probably needed only fo' new
+protocols or protocols wit no user intercourse (like ICMP).
+
+When a packet is received, it is passed ta any raw sockets which have
+been bound ta its protocol before it is passed ta other protocol handlezs
+(e.g., kernel protocol modules).
+.SS Address format
+Raw sockets use tha standard
+.I sockaddr_in
+address structure defined in
+.BR ip (7).
+The
+.I sin_port
+field could be used ta specify tha IP protocol number,
+but it is ignored fo' bustin  up in Linux 2.2 n' should be always
+set ta 0 (see BUGS).
+For incomin packets,
+.I sin_port
+is set ta tha protocol of tha packet.
+See the
+.I <netinet/in.h>
+include file fo' valid IP protocols.
+.SS Socket options
+Raw socket options can be set with
+.BR setsockopt (2)
+and read with
+.BR getsockopt (2)
+by passin the
+.B IPPROTO_RAW
+.\" Or SOL_RAW on Linux
+family flag.
+.TP
+.B ICMP_FILTER
+Enable a special filta fo' raw sockets bound ta the
+.B IPPROTO_ICMP
+protocol.
+Da value has a lil' bit set fo' each ICMP message type which
+should be filtered out.
+Da default is ta filta no ICMP lyrics.
+.PP
+In addition, all
+.BR ip (7)
+.B IPPROTO_IP
+socket options valid fo' datagram sockets is supported.
+.SS Error handling
+Errors originatin from tha network is passed ta tha user only when the
+socket is connected or the
+.B IP_RECVERR
+flag is enabled.
+For connected sockets, only
+.B EMSGSIZE
+and
+.B EPROTO
+are passed fo' compatibility.
+With
+.BR IP_RECVERR ,
+all network errors is saved up in tha error queue.
+.SH ERRORS
+.TP
+.B EACCES
+User tried ta bust ta a funky-ass broadcast address without havin the
+broadcast flag set on tha socket.
+.TP
+.B EFAULT
+An invalid memory address was supplied.
+.TP
+.B EINVAL
+Invalid argument.
+.TP
+.B EMSGSIZE
+Packet too big.
+Either Path MTU Discovery is enabled (the
+.B IP_MTU_DISCOVER
+socket flag) or tha packet size exceedz tha maximum allowed IPv4
+packet size of 64KB.
+.TP
+.B EOPNOTSUPP
+Invalid flag has been passed ta a socket call (like
+.BR MSG_OOB ).
+.TP
+.B EPERM
+Da user aint gots permission ta open raw sockets.
+Only processes wit a effectizzle user ID of 0 or the
+.B CAP_NET_RAW
+attribute may do dis shit.
+.TP
+.B EPROTO
+An ICMP error has arrived reportin a parameta problem.
+.SH VERSIONS
+.B IP_RECVERR
+and
+.B ICMP_FILTER
+are freshly smoked up in Linux 2.2.
+They is Linux extensions n' should not be used up in portable programs.
+
+Linux 2.0 enabled some bug-to-bug compatibilitizzle wit BSD up in the
+raw socket code when the
+.B SO_BSDCOMPAT
+socket option was set \(em since Linux 2.2,
+this option no longer has dat effect.
+.SH NOTES
+By default, raw sockets do path MTU (Maximum Transmission Unit) discovery.
+This means tha kernel
+will keep track of tha MTU ta a specific target IP address n' return
+.B EMSGSIZE
+when a raw packet write exceedz dat shit.
+When dis happens, tha application should decrease tha packet size.
+Path MTU discovery can be also turned off rockin the
+.B IP_MTU_DISCOVER
+socket option or the
+.I /proc/sys/net/ipv4/ip_no_pmtu_disc
+file, see
+.BR ip (7)
+for details.
+When turned off, raw sockets will fragment outgoin packets
+that exceed tha intercourse MTU.
+But fuck dat shiznit yo, tha word on tha street is dat disablin it aint recommended
+for performizzle n' reliabilitizzle reasons.
+
+A raw socket can be bound ta a specific local address rockin the
+.BR bind (2)
+call.
+If it aint bound, all packets wit tha specified IP protocol is received.
+In addition, a RAW socket can be bound ta a specific network thang using
+.BR SO_BINDTODEVICE ;
+see
+.BR socket (7).
+
+An
+.B IPPROTO_RAW
+socket is bust only.
+If you straight-up wanna receive all IP packets, use a
+.BR packet (7)
+socket wit the
+.B ETH_P_IP
+protocol.
+Note dat packet sockets don't reassemble IP fragments,
+unlike raw sockets.
+
+If you wanna receive all ICMP packets fo' a thugged-out datagram socket,
+it is often betta ta use
+.B IP_RECVERR
+on dat particular socket; see
+.BR ip (7).
+
+Raw sockets may tap all IP protocols up in Linux, even
+protocols like ICMP or TCP which gotz a protocol module up in tha kernel.
+In dis case, tha packets is passed ta both tha kernel module n' tha raw
+socket(s).
+This should not be relied upon up in portable programs, nuff other BSD
+socket implementation have limitations here.
+
+Linux never chizzlez headaz passed from tha user (except fo' filling
+in some zeroed fieldz as busted lyrics bout for
+.BR IP_HDRINCL ).
+This differs from nuff other implementationz of raw sockets.
+
+RAW sockets is generally rather unportable n' should be avoided in
+programs intended ta be portable.
+
+Sendin on raw sockets should take tha IP protocol from
+.IR sin_port ;
+this mobilitizzle was lost up in Linux 2.2.
+Da workaround is ta use
+.BR IP_HDRINCL .
+.SH BUGS
+Transparent proxy extensions is not busted lyrics about.
+
+When the
+.B IP_HDRINCL
+option is set, datagrams aint gonna be fragmented n' is limited to
+the intercourse MTU.
+
+Settin tha IP protocol fo' bustin  in
+.I sin_port
+got lost up in Linux 2.2.
+Da protocol dat tha socket was bound ta or that
+was specified up in tha initial
+.BR socket (2)
+call be always used.
+.\" .SH AUTHORS
+.\" This playa page was freestyled by Andi Kleen.
+.SH SEE ALSO
+.BR recvmsg (2),
+.BR sendmsg (2),
+.BR capabilitizzles (7),
+.BR ip (7),
+.BR socket (7)
+
+.B RFC\ 1191
+for path MTU discovery.
+.B RFC\ 791
+and the
+.I <linux/ip.h>
+header file fo' tha IP protocol.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

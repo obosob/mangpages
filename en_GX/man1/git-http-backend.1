@@ -1,0 +1,407 @@
+'\" t
+.\"     Title: git-http-backend
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 10/25/2014
+.\"    Manual: Git Manual
+.\"    Source: Git 1.9.3
+.\"  Language: Gangsta
+.\"
+.TH "GIT\-HTTP\-BACKEND" "1" "10/25/2014" "Git 1\&.9\&.3" "Git Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+git-http-backend \- Server side implementation of Git over HTTP
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIgit http\-backend\fR
+.fi
+.sp
+.SH "DESCRIPTION"
+.sp
+A simple CGI program ta serve tha contentz of a Git repository ta Git clients accessin tha repository over http:// n' https:// protocols\&. Da program supports clients fetchin rockin both tha smart-ass HTTP protocol n' tha backwards\-compatible dumb HTTP protocol, as well as clients pushin rockin tha smart-ass HTTP protocol\&.
+.sp
+It verifies dat tha directory has tha magic file "git\-daemon\-export\-ok", n' it will refuse ta export any Git directory dat hasn\(cqt explicitly been marked fo' export dis way (unless tha GIT_HTTP_EXPORT_ALL environmenstrual variable is set)\&.
+.sp
+By default, only tha upload\-pack steez is enabled, which serves \fIgit fetch\-pack\fR n' \fIgit ls\-remote\fR clients, which is invoked from \fIgit fetch\fR, \fIgit pull\fR, n' \fIgit clone\fR\&. If tha client be authenticated, tha receive\-pack steez is enabled, which serves \fIgit send\-pack\fR clients, which is invoked from \fIgit push\fR\&.
+.SH "SERVICES"
+.sp
+These skillz can be enabled/disabled rockin tha per\-repository configuration file:
+.PP
+http\&.getanyfile
+.RS 4
+This serves Git clients olda than version 1\&.6\&.6 dat is unable ta use tha upload pack service\&. When enabled, clients is able ta read any file within tha repository, includin objects dat is no longer reachable from a funky-ass branch but is still present\&. Well shiiiit, it is enabled by default yo, but a repository can disable it by settin dis configuration item to
+false\&.
+.RE
+.PP
+http\&.uploadpack
+.RS 4
+This serves
+\fIgit fetch\-pack\fR
+and
+\fIgit ls\-remote\fR
+clients\&. Well shiiiit, it is enabled by default yo, but a repository can disable it by settin dis configuration item to
+false\&.
+.RE
+.PP
+http\&.receivepack
+.RS 4
+This serves
+\fIgit send\-pack\fR
+clients, allowin push\&. Well shiiiit, it is disabled by default fo' anonymous users, n' enabled by default fo' playas authenticated by tha wizzy server\&. Well shiiiit, it can be disabled by settin dis item to
+false, or enabled fo' all users, includin anonymous users, by settin it to
+true\&.
+.RE
+.SH "URL TRANSLATION"
+.sp
+To determine tha location of tha repository on disk, \fIgit http\-backend\fR concatenates tha environment variablez PATH_INFO, which is set automatically by tha wizzy server, n' GIT_PROJECT_ROOT, which must be set manually up in tha wizzy server configuration\&. If GIT_PROJECT_ROOT aint set, \fIgit http\-backend\fR readz PATH_TRANSLATED, which be also set automatically by tha wizzy server\&.
+.SH "EXAMPLES"
+.sp
+All of tha followin examplez map \fIhttp://$hostname/git/foo/bar\&.git\fR ta \fI/var/www/git/foo/bar\&.git\fR\&.
+.PP
+Apache 2\&.x
+.RS 4
+Ensure mod_cgi, mod_alias, n' mod_env is enabled, set GIT_PROJECT_ROOT (or DocumentRoot) appropriately, n' create a ScriptAlias ta tha CGI:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+SetEnv GIT_PROJECT_ROOT /var/www/git
+SetEnv GIT_HTTP_EXPORT_ALL
+ScriptAlias /git/ /usr/libexec/git\-core/git\-http\-backend/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To enable anonymous read access but authenticated write access, require authorization fo' both tha initial ref advertisement (which our phat asses detect as a push via tha steez parameta up in tha query string), n' tha receive\-pack invocation itself:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+RewriteCond %{QUERY_STRING} service=git\-receive\-pack [OR]
+RewriteCond %{REQUEST_URI} /git\-receive\-pack$
+RewriteRule ^/git/ \- [E=AUTHREQUIRED:yes]
+
+<LocationMatch "^/git/">
+        Order Deny,Allow
+        Deny from env=AUTHREQUIRED
+
+        AuthType Basic
+        AuthName "Git Access"
+        Require crew committers
+        Satisfy Any
+        \&.\&.\&.
+</LocationMatch>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+If you do not have
+mod_rewrite
+available ta match against tha query string, it is sufficient ta just protect
+git\-receive\-pack
+itself, like:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+<LocationMatch "^/git/\&.*/git\-receive\-pack$">
+        AuthType Basic
+        AuthName "Git Access"
+        Require crew committers
+        \&.\&.\&.
+</LocationMatch>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+In dis mode, tha server aint gonna request authentication until tha client straight-up starts tha object negotiation phase of tha push, rather than durin tha initial contact\&. For dis reason, you must also enable the
+http\&.receivepack
+config option up in any repositories dat should accept a push\&. Da default behavior, if
+http\&.receivepack
+is not set, is ta reject any pushes by unauthenticated users; tha initial request will therefore report
+403 Forbidden
+to tha client, without even givin a opportunitizzle fo' authentication\&.
+.sp
+To require authentication fo' both readz n' writes, bust a Location directizzle round tha repository, or one of its parent directories:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+<Location /git/private>
+        AuthType Basic
+        AuthName "Private Git Access"
+        Require crew committers
+        \&.\&.\&.
+</Location>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To serve gitweb all up in tha same url, bust a ScriptAliasMatch ta only dem URLs that
+\fIgit http\-backend\fR
+can handle, n' forward tha rest ta gitweb:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ScriptAliasMatch \e
+        "(?x)^/git/(\&.*/(HEAD | \e
+                        info/refs | \e
+                        objects/(info/[^/]+ | \e
+                                 [0\-9a\-f]{2}/[0\-9a\-f]{38} | \e
+                                 pack/pack\-[0\-9a\-f]{40}\e\&.(pack|idx)) | \e
+                        git\-(upload|receive)\-pack))$" \e
+        /usr/libexec/git\-core/git\-http\-backend/$1
+
+ScriptAlias /git/ /var/www/cgi\-bin/gitweb\&.cgi/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To serve multiple repositories from different
+\fBgitnamespaces\fR(7)
+in a single repository:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+SetEnvIf Request_URI "^/git/([^/]*)" GIT_NAMESPACE=$1
+ScriptAliasMatch ^/git/[^/]*(\&.*) /usr/libexec/git\-core/git\-http\-backend/storage\&.git$1
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+Accelerated static Apache 2\&.x
+.RS 4
+Similar ta tha above yo, but Apache can be used ta return static filez dat is stored on disk\&. On nuff systems dis may be mo' efficient as Apache can ask tha kernel ta copy tha file contents from tha file system directly ta tha network:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+SetEnv GIT_PROJECT_ROOT /var/www/git
+
+AliasMatch ^/git/(\&.*/objects/[0\-9a\-f]{2}/[0\-9a\-f]{38})$          /var/www/git/$1
+AliasMatch ^/git/(\&.*/objects/pack/pack\-[0\-9a\-f]{40}\&.(pack|idx))$ /var/www/git/$1
+ScriptAlias /git/ /usr/libexec/git\-core/git\-http\-backend/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This can be combined wit tha gitweb configuration:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+SetEnv GIT_PROJECT_ROOT /var/www/git
+
+AliasMatch ^/git/(\&.*/objects/[0\-9a\-f]{2}/[0\-9a\-f]{38})$          /var/www/git/$1
+AliasMatch ^/git/(\&.*/objects/pack/pack\-[0\-9a\-f]{40}\&.(pack|idx))$ /var/www/git/$1
+ScriptAliasMatch \e
+        "(?x)^/git/(\&.*/(HEAD | \e
+                        info/refs | \e
+                        objects/info/[^/]+ | \e
+                        git\-(upload|receive)\-pack))$" \e
+        /usr/libexec/git\-core/git\-http\-backend/$1
+ScriptAlias /git/ /var/www/cgi\-bin/gitweb\&.cgi/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+Lighttpd
+.RS 4
+Ensure that
+mod_cgi,
+mod_alias,
+mod_auth,
+mod_setenv
+are loaded, then set
+GIT_PROJECT_ROOT
+appropriately n' redirect all requests ta tha CGI:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+alias\&.url += ( "/git" => "/usr/lib/git\-core/git\-http\-backend" )
+$HTTP["url"] =~ "^/git" {
+        cgi\&.assign = ("" => "")
+        setenv\&.add\-environment = (
+                "GIT_PROJECT_ROOT" => "/var/www/git",
+                "GIT_HTTP_EXPORT_ALL" => ""
+        )
+}
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To enable anonymous read access but authenticated write access:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$HTTP["querystring"] =~ "service=git\-receive\-pack" {
+        include "git\-auth\&.conf"
+}
+$HTTP["url"] =~ "^/git/\&.*/git\-receive\-pack$" {
+        include "git\-auth\&.conf"
+}
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+where
+git\-auth\&.conf
+looks suttin' like:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+auth\&.require = (
+        "/" => (
+                "method" => "basic",
+                "realm" => "Git Access",
+                "require" => "valid\-user"
+               )
+)
+# \&.\&.\&.and set up auth\&.backend here
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To require authentication fo' both readz n' writes:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$HTTP["url"] =~ "^/git/private" {
+        include "git\-auth\&.conf"
+}
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.RE
+.SH "ENVIRONMENT"
+.sp
+\fIgit http\-backend\fR relies upon tha CGI environment variablez set by tha invokin wizzy server, including:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+PATH_INFO (if GIT_PROJECT_ROOT is set, otherwise PATH_TRANSLATED)
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+REMOTE_USER
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+REMOTE_ADDR
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+CONTENT_TYPE
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+QUERY_STRING
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+REQUEST_METHOD
+.RE
+.sp
+Da GIT_HTTP_EXPORT_ALL environmenstrual variable may be passed ta \fIgit\-http\-backend\fR ta bypass tha check fo' tha "git\-daemon\-export\-ok" file up in each repository before allowin export of dat repository\&.
+.sp
+Da backend process sets GIT_COMMITTER_NAME ta \fI$REMOTE_USER\fR n' GIT_COMMITTER_EMAIL ta \fI${REMOTE_USER}@http\&.${REMOTE_ADDR}\fR, ensurin dat any reflogs pimped by \fIgit\-receive\-pack\fR contain some identifyin shiznit of tha remote user whoz ass performed tha push\&.
+.sp
+All CGI environment variablez is available ta each of tha hooks invoked by tha \fIgit\-receive\-pack\fR\&.
+.SH "GIT"
+.sp
+Part of tha \fBgit\fR(1) suite

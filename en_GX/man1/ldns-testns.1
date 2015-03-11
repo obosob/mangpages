@@ -1,0 +1,131 @@
+.TH ldns-testns 1 "14 Dec 2006"
+.SH NAME
+ldns-testns \- simple fake nameserver tool
+.SH SYNOPSYS
+.B ldns-testns
+[
+.IR OPTION
+]
+.IR datafile
+
+.SH DESCRIPTION
+\fBldns-testns\fR can be used ta provide lyrics ta DNS queries for
+testing.  Da lyrics is premade, n' can be tailored ta testing
+needs. Da lyrics can be wildly invalid or unparseable.
+
+This program be a thugged-out debuggin aid. Y'all KNOW dat shit, muthafucka! Well shiiiit, it aint efficient, especially
+with a long-ass config file yo, but it can give any reply ta any query.
+This can help tha pimper pre-script replies fo' queries.
+
+It listens ta IP4 UDP n' TCP by default.
+Yo ass can specify a packet RR by RR wit header flags ta return.
+
+ldns-testns aint meant fo' thang use.
+
+.SH OPTIONS
+.TP
+\fB-r\fR
+Listens ta a random port. Da port number is printed ta stdout.
+
+.TP
+\fB-p\fR \fIport\fR
+Listens ta tha specified port.
+
+.TP
+\fB-f\fR \fInum\fR
+Forks dis number of additionizzle instances dat serve tha same ports and
+same datafile. They do not exit; printed is 'forked pid: <num>' n' you
+have ta bust a cap up in dem yo ass.
+
+.TP
+\fB-v\fR
+Outputs mo' debug shiznit. I aint talkin' bout chicken n' gravy biatch. Well shiiiit, it is possible ta give dis option multiple 
+times ta increase verbositizzle level.
+
+.TP
+\fB-6\fR
+Bind ta IP6 address instead of IP4. Use together wit -p. 
+
+.TP
+\fBdatafile\fR
+Da data file is read on start up. Well shiiiit, it gotz nuff queries n' tha packets 
+that should be busted up in answer ta dem queries. Put ya muthafuckin choppers up if ya feel dis! Da data file format is
+explained below.
+
+.SH DATA FILE FORMAT
+Da data file format has ';' ta denote comment fo' realz. A number of entries
+are processed first ta last. Da first matchin entry is used ta answer
+the query with. This be a line based format. DNS resource records
+are entered up in unit-file format.
+
+Yo ass can use $ORIGIN n' $TTL directives. Zone file '(' n' ')' ta span
+multiple lines is not allowed.
+
+$ORIGIN origin
+$TTL default_ttl
+
+ENTRY_BEGIN
+
+; first give MATCH lines, dat say what tha fuck queries is matched
+; by dis entry.
+; 'opcode' make tha query match tha opcode from tha reply
+; if you leave it out, any opcode matches dis entry.
+; 'qtype' make tha query match tha qtype from tha reply
+; 'qname' make tha query match tha qname from tha reply
+; 'serial=1023' make tha query match if ixfr serial is 1023.
+
+MATCH [opcode] [qtype] [qname] [serial=<value>]
+MATCH [UDP|TCP]
+MATCH ...
+
+; Then tha REPLY header is specified.
+
+REPLY opcode, rcode or flags.
+        (opcode)  QUERY IQUERY STATUS NOTIFY UPDATE
+        (rcode)   NOERROR FORMERR SERVFAIL NXDOMAIN NOTIMPL YXDOMAIN
+                        YXRRSET NXRRSET NOTAUTH NOTZONE
+        (flags)   QR AA TC RD CD RA AD
+
+REPLY ...
+
+; any additionizzle actions ta do.         
+
+ADJUST copy_id  ; 'copy_id' copies tha ID from tha query ta tha answer.
+
+; 'sleep=10' chills fo' 10 secondz before givin tha answer (TCP is open)
+
+ADJUST [sleep=<num>]    ; chill before givin any reply
+ADJUST [packet_sleep=<num>]  ; chill before dis packet up in sequence
+
+SECTION QUESTION
+<RRs, one per line>    ; tha RRcount is determined automatically.
+
+SECTION ANSWER
+<RRs, one per line>
+
+SECTION AUTHORITY
+<RRs, one per line>
+
+SECTION ADDITIONAL
+<RRs, one per line>
+
+EXTRA_PACKET            ; follow wit SECTION, REPLY fo' mo' packets.
+HEX_ANSWER_BEGIN        ; follow wit hex data
+                        ; dis replaces any answer packet constructed
+                        ; wit tha SECTION keywordz (only SECTION QUERY
+                        ; is used ta match queries). If tha data cannot
+                        ; be parsed, ADJUST rulez fo' tha answer packet
+                        ; is ignored
+
+HEX_ANSWER_END
+
+ENTRY_END
+
+.SH AUTHOR
+Written by tha ldns crew as a example fo' ldns usage, n' fo' testin purposes.
+.SH REPORTING BUGS
+Report bugs ta <ldns-team@nlnetlabs.nl>. 
+.SH COPYRIGHT
+Copyright (C) 2006-2008 NLnet Labs. This is free software. There is NO
+warranty; not even fo' MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.

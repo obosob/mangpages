@@ -1,0 +1,331 @@
+.TH KDUMP.CONF 5 "07/23/2008" "kexec-tools"
+
+.SH NAME
+kdump.conf \- configuration file fo' kdump kernel.
+
+.SH DESCRIPTION 
+
+kdump.conf be a cold-ass lil configuration file fo' tha kdump kernel crash
+collection service.
+
+kdump.conf serves up post-kexec instructions ta tha kdump kernel. Well shiiiit, it is
+stored up in tha initrd file managed by tha kdump service. If you chizzle
+this file n' do not wanna restart before it takes effect, restart
+the kdump steez ta rebuild ta initrd.
+
+For most configurations, you can simply review tha examplez provided
+in tha stock /etc/kdump.conf.
+
+.B NOTE: 
+For filesystem dump tha dump target must be mounted before building
+kdump initramfs.
+
+kdump.conf only affects tha behavior of tha initramfs.  Please read the
+kdump operationizzle flow section of kexec-kdump-howto.txt up in tha docs ta better
+understand how tha fuck dis configuration file affects tha behavior of kdump.
+
+.SH OPTIONS
+
+.B raw <partition>
+.RS
+Will dd /proc/vmcore tha fuck into <partition>.  Use persistent thang names for
+partizzle devices, like fuckin /dev/vg/<devname>.
+.RE
+
+.B nfs <nfs mount>
+.RS
+Will mount fs n' copy /proc/vmcore ta <mnt>/var/crash/%HOST-%DATE/,
+supports DNS. Note dat a gangbangin' fqdn should be used as tha server name up in tha 
+mount point
+.RE
+
+.B ssh <user@server>
+.RS
+Will scp /proc/vmcore ta <user@server>:/var/crash/%HOST-%DATE/,
+supports DNS. NOTE: make shizzle user has necessary write permissions on
+server n' dat a gangbangin' fqdn is used as tha server name
+.RE
+
+.B sshkey <path>
+.RS
+Specifies tha path of tha ssh key you wanna use when do ssh dump,
+the default value is /root/.ssh/kdump_id_rsa.
+.RE
+
+.B <fs type> <partition>
+.RS
+Will mount -t <fs type> <partition> /mnt n' copy /proc/vmcore to
+/mnt/var/crash/%DATE/.  NOTE: <partition> can be a thang node, label
+or uuid. Y'all KNOW dat shit, muthafucka!  It aint nuthin but recommended ta use persistent thang names such as
+/dev/vg/<devname>. Otherwise itz suggested ta use label or uuid.
+.RE
+
+.B path <path>
+.RS
+Append path ta tha filesystem thang which yo ass is dumpin to.
+Ignored fo' raw thang dumps.  If unset, will default ta /var/crash.
+.RE
+
+.B core_collector <command> <options>
+.RS
+This allows you ta specify tha command ta copy tha vmcore.
+Yo ass could use tha dump filterin program makedumpfile, tha default one,
+to retrieve yo' core, which on some arches can drastically reduce
+core file size.  See /sbin/makedumpfile --help fo' a list of options.
+Note dat tha -i n' -g options is not needed here, as tha initrd
+will automatically be populated wit a cold-ass lil config file appropriate
+for tha hustlin kernel.
+.PP
+Note 1: Bout default core collector:
+Default core_collector fo' raw/ssh dump is:
+"makedumpfile -F -l --message-level 1 -d 31".
+Default core_collector fo' other targets is:
+"makedumpfile -l --message-level 1 -d 31".
+Even if core_collector option is commented up in kdump.conf, makedumpfile
+is default core collector n' kdump uses it internally.
+If one do not want makedumpfile as default core_collector, then they
+need ta specify one rockin core_collector option ta chizzle tha behavior.
+.PP
+Note 2: If "makedumpfile -F" is used then yo big-ass booty is ghon git a gangbangin' flattened format
+vmcore.flat, yo big-ass booty is ghon need ta use "makedumpfile -R" ta rearrange the
+dump data from stdard input ta a aiiight dumpfile (readable wit analysis
+tools).
+ie. "makedumpfile -R vmcore < vmcore.flat"
+
+.RE
+
+.B kdump_post <binary | script>
+.RS
+This directizzle allows you ta run a specified
+executable just afta tha memory dump process
+terminates. Da exit status from tha dump process
+is fed ta tha kdump_post executable, which can be
+used ta trigger different actions fo' success or
+failure.
+.PP
+Note dat scripts freestyled fo' use wit this
+directizzle must use tha /bin/bash interpreter
+.RE
+
+.B kdump_pre <binary | script>
+.RS
+Works just like tha kdump_post directizzle yo, but instead
+of hustlin afta tha dump process, runs immediately
+before.  Exit statuz of dis binary is interpreted
+as bigs up:
+.PP
+0 - continue wit dump process as usual
+.PP
+non 0 - reboot tha system
+.PP
+Note dat scripts freestyled fo' dis directizzle must use
+the /bin/bash interpreter
+.RE
+
+.B extra_bins <binaries | shell scripts>
+.RS
+This directizzle allows you ta specify additional
+binaries or shell scripts you'd like ta include in
+your kdump initrd. Y'all KNOW dat shit, muthafucka! Generally only useful in
+conjunction wit a kdump_post binary or script that
+relies on other binaries or scripts.
+.RE
+
+.B extra_modulez <module(s)>
+.RS
+This directizzle allows you ta specify extra kernel
+modulez dat you wanna be loaded up in tha kdump
+initrd, typically used ta set up access to
+non-boot-path dump targets dat might otherwise
+not be accessible up in tha kdump environment. Multiple
+modulez can be listed, separated by a space, n' any
+dependent modulez will automatically be included.
+.RE
+
+.B default <reboot | halt | poweroff | shell | dump_to_rootfs>
+.RS
+Action ta preform up in case dumpin ta intended target fails. If no default
+action is specified, "reboot" be assumed default.
+reboot: If tha default action is reboot simply reboot tha system (this is what
+most playas will want, as it returns tha system ta a nominal state).  shell: If tha default
+action is shell, then drop ta a shell session inside tha initramfs from
+where you can manually preform additionizzle recovery actions.  Exitin dis shell
+reboots tha system.  halt: brang tha system ta a halt, requirin manual reset
+poweroff: Da system is ghon be powered down. I aint talkin' bout chicken n' gravy biatch. dump_to_rootfs:If tha default action
+is dump_to_rootfs, specified root is ghon be mounted n' dump is ghon be saved up in "path"
+directory.
+Note: kdump uses bash as tha default shell.
+.RE
+
+.B force_rebuild <0 | 1>
+.RS
+By default, kdump initrd only is ghon be rebuilt when necessary.
+Specify 1 ta force rebuildin kdump initrd every last muthafuckin time when kdump steez starts.
+.RE
+
+.B override_resettable <0 | 1>
+.RS
+Usually a unresettable block thang can't be dump target. Right back up in yo muthafuckin ass. Specifyin 1 means
+though block target is unresettable, user KNOW dis thang n' want
+to try dumping. By default, itz set ta 0, means not ta try a thugged-out destined failure.
+.RE
+
+
+.B dracut_args <arg(s)>
+.RS
+Kdump uses dracut ta generate initramfs fo' second kernel. This option
+allows a user ta pass arguments ta dracut directly.
+.RE
+
+
+.B fence_kdump_args <arg(s)>
+.RS
+Command line arguments fo' fence_kdump_send (it can contain all valid
+arguments except hosts ta bust notification to).
+.RE
+
+
+.B fence_kdump_nodes <node(s)>
+.RS
+List of clusta node(s) separated by space ta bust fence_kdump notification
+to (this option is mandatory ta enable fence_kdump).
+.RE
+
+
+.SH DEPRECATED OPTIONS
+
+.B net <nfs mount>|<user@server>
+.RS
+net option is replaced by nfs n' ssh options. Use nfs or ssh options
+directly.
+.RE
+
+.B options <module> <option list>
+.RS
+Use KDUMP_COMMANDLINE_APPEND up in /etc/sysconfig/kdump ta add proper
+module option as kernel command line params. Right back up in yo muthafuckin ass. Such as append loop.max_loop=1
+to limit maximum loop devices ta 1.
+.RE
+
+.B link_delay <seconds>
+.RS
+link_delay was used ta wait a network thang ta initialize before rockin dat shit.
+Now dracut network module take care of dis issue automaticlly.
+.RE
+
+.B disk_timeout <seconds>
+.RS
+Similar ta link_delay, dracut ensures disks bein locked n loaded before kdump uses em.
+.RE
+
+.B debug_mem_level <0-3>
+.RS
+This was used ta turns on debug/verbose output of kdump scripts regarding
+free/used memory at various pointz of execution. I aint talkin' bout chicken n' gravy biatch.  This feature has been
+moved ta dracut now, nahmeean?
+Use KDUMP_COMMANDLINE_APPEND up in /etc/sysconfig/kdump and
+append dracut cmdline param rd.memdebug=[0-3] ta enable tha debug output.
+
+Higher level means mo' debuggin output.
+.PP
+0 - no output
+.PP
+1 - partial /proc/meminfo
+.PP
+2 - /proc/meminfo
+.PP
+3 - /proc/meminfo + /proc/slabinfo
+.RE
+
+.B blacklist <list of kernel modules>
+.RS
+blacklist option was recently bein used ta prevent loadin modulez in
+initramfs. General terminologizzle fo' blacklist has been dat module is
+present up in initramfs but it aint straight-up loaded up in kernel yo. Hence
+retainin blacklist option creates mo' confusin behavior. Shiiit, dis aint no joke. Well shiiiit, it has been
+deprecated.
+.PP
+Instead use rd.driver.blacklist option on second kernel ta blacklist
+a certain module. One can edit /etc/sysconfig/kdump.conf n' edit
+KDUMP_COMMANDLINE_APPEND ta pass kernel command line options. Refer
+to dracut.cmdline playa page fo' mo' details on module blacklist option.
+.RE
+
+.RE
+
+.SH EXAMPLES
+Here is some examplez fo' core_collector option:
+.PP
+Core collector command format dependz on dump target type. Typically for
+filesystem (local/remote), core_collector should accept two arguments.
+First one is source file n' second one is target file. For ex.
+.TP
+ex1.
+core_collector "cp --sparse=always"
+
+Above will effectively be translated to:
+
+cp --sparse=always /proc/vmcore <dest-path>/vmcore
+.TP
+ex2.
+core_collector "makedumpfile -l --message-level 1 -d 31"
+
+Above will effectively be translated to:
+
+makedumpfile -l --message-level 1 -d 31 /proc/vmcore <dest-path>/vmcore
+.PP
+For dump targets like raw n' ssh, up in general, core collector should expect
+one argument (source file) n' should output tha processed core on standard
+output (There is one exception of "scp", discussed later). This standard
+output is ghon be saved ta destination rockin appropriate commands.
+
+raw dumps examples:
+.TP
+ex3.
+core_collector "cat"
+
+Above will effectively be translated to.
+
+cat /proc/vmcore | dd of=<target-device>
+.TP
+ex4.
+core_collector "makedumpfile -F -l --message-level 1 -d 31"
+
+Above will effectively be translated to.
+
+makedumpfile -F -l --message-level 1 -d 31 | dd of=<target-device>
+.PP
+ssh dumps examples
+.TP
+ex5.
+core_collector "cat"
+
+Above will effectively be translated to.
+
+cat /proc/vmcore | ssh <options> <remote-location> "dd of=path/vmcore"
+.TP
+ex6.
+core_collector "makedumpfile -F -l --message-level 1 -d 31"
+
+Above will effectively be translated to.
+
+makedumpfile -F -l --message-level 1 -d 31 | ssh <options> <remote-location> "dd of=path/vmcore"
+
+There is one exception ta standard output rule fo' ssh dumps fo' realz. And dat is
+scp fo' realz. As scp can handle ssh destinations fo' file transfers, one can
+specify "scp" as core collector fo' ssh targets (no output on stdout).
+.TP
+ex7.
+core_collector "scp"
+
+Above will effectively be translated to.
+
+scp /proc/vmcore <user@host>:path/vmcore
+
+.PP
+examplez fo' other options please see
+.I /etc/kdump.conf
+
+.SH SEE ALSO
+
+kexec(8) mkdumprd(8) dracut.cmdline(7)

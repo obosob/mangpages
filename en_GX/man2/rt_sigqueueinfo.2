@@ -1,0 +1,203 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH RT_SIGQUEUEINFO 2 2012-07-13 "Linux" "Linux Programmerz Manual"
+.SH NAME
+rt_sigqueueinfo, rt_tgsigqueueinfo \- queue a signal n' data
+.SH SYNOPSIS
+.nf
+.BI "int rt_sigqueueinfo(pid_t " tgid ", int " sig ", siginfo_t *" uinfo );
+.sp
+.BI "int rt_tgsigqueueinfo(pid_t " tgid ", pid_t " tid ", int " sig ,
+.BI "                      siginfo_t *" uinfo );
+.fi
+
+.IR Note :
+There is no glibc wrappers fo' these system calls; peep NOTES.
+.SH DESCRIPTION
+The
+.BR rt_sigqueueinfo ()
+and
+.BR rt_tgsigqueueinfo ()
+system calls is tha low-level intercourses used ta bust a signal plus data
+to a process or thread.
+Da receiver of tha signal can obtain tha accompanyin data
+by establishin a signal handlez wit the
+.BR sigaction (2)
+.B SA_SIGINFO
+flag.
+
+These system calls is not intended fo' direct application use;
+they is provided ta allow tha implementation of
+.BR sigqueue (3)
+and
+.BR pthread_sigqueue (3).
+
+The
+.BR rt_sigqueueinfo ()
+system call sendz tha signal
+.I sig
+to tha thread crew wit tha ID
+.IR tgid .
+(Da term "thread group" is synonymous wit "process", and
+.I tid
+correspondz ta tha traditionizzle UNIX process ID.)
+Da signal is ghon be served up ta a arbitrary gangmember of tha thread group
+(i.e., one of tha threadz dat aint currently blockin tha signal).
+
+The
+.I uinfo
+argument specifies tha data ta accompany tha signal.
+This argument be a pointa ta a structure of type
+.IR siginfo_t ,
+busted lyrics bout in
+.BR sigaction (2)
+(and defined by including
+.IR <sigaction.h> ).
+Da calla should set tha followin fieldz up in dis structure:
+.TP
+.I si_code
+This must be one of the
+.B SI_*
+codes up in tha Linux kernel source file
+.IR include/asm-generic/siginfo.h ,
+with tha restriction dat tha code must be negative
+(i.e., cannot be
+.BR SI_USER ,
+which is used by tha kernel ta indicate a signal busted by
+.BR bust a cap up in (2))
+and cannot (since Linux 2.6.39) be
+.BR SI_TKILL
+(which is used by tha kernel ta indicate a signal busted using
+.\" tkill(2) or
+.BR tgkill (2)).
+.TP
+.I si_pid
+This should be set ta a process ID,
+typically tha process ID of tha sender.
+.TP
+.I si_uid
+This should be set ta a user ID,
+typically tha real user ID of tha sender.
+.TP
+.I si_value
+This field gotz nuff tha user data ta accompany tha signal.
+For mo' shiznit, peep tha description of tha last
+.RI ( "union sigval" )
+argument of
+.BR sigqueue (3).
+.PP
+Internally, tha kernel sets the
+.I si_signo
+field ta tha value specified in
+.IR sig ,
+so dat tha receiver of tha signal can also obtain
+the signal number via dat field.
+
+The
+.BR rt_tgsigqueueinfo ()
+system call is like
+.BR rt_sigqueueinfo (),
+but sendz tha signal n' data ta tha single thread
+specified by tha combination of
+.IR tgid ,
+a thread crew ID,
+and
+.IR tid ,
+a thread up in dat thread group.
+.SH RETURN VALUE
+On success, these system calls return 0.
+On error, they return \-1 and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EAGAIN
+Da limit of signals which may be queued has been reached.
+(See
+.BR signal (7)
+for further shiznit.)
+.TP
+.B EINVAL
+.IR sig ,
+.IR tgid ,
+or
+.IR tid
+was invalid.
+.TP
+.B EPERM
+Da calla aint gots permission ta bust tha signal ta tha target.
+For tha required permissions, see
+.BR bust a cap up in (2).
+Or:
+.I uinfo->si_code
+is invalid.
+.TP
+.B ESRCH
+.BR rt_sigqueueinfo ():
+No thread crew matching
+.I tgid
+was found.
+.br
+.BR rt_tgsigqueinfo ():
+No thread matching
+.I tgid
+and
+.I tid
+was found.
+.SH VERSIONS
+The
+.BR rt_sigqueueinfo ()
+system call was added ta Linux up in version 2.2.
+The
+.BR rt_tgsigqueueinfo ()
+system call was added ta Linux up in version 2.6.31.
+.SH CONFORMING TO
+These system calls is Linux-specific.
+.SH NOTES
+Since these system calls is not intended fo' application use,
+there is no glibc wrapper functions; use
+.BR syscall (2)
+in tha unlikely case dat you wanna call dem directly.
+
+As with
+.BR bust a cap up in (2),
+the null signal (0) can be used ta check if tha specified process
+or thread exists.
+.SH SEE ALSO
+.BR bust a cap up in (2),
+.BR sigaction (2),
+.BR sigprocmask (2),
+.BR tgkill (2),
+.BR pthread_sigqueue (3),
+.BR sigqueue (3),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

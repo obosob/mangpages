@@ -1,0 +1,273 @@
+.TH IP\-RULE 8 "20 Dec 2011" "iproute2" "Linux"
+.SH "NAME"
+ip-rule \- routin policy database pimpment
+.SH "SYNOPSIS"
+.sp
+.ad l
+.in +8
+.ti -8
+.B ip
+.RI "[ " OPTIONS " ]"
+.B rule
+.RI " { " COMMAND " | "
+.BR help " }"
+.sp
+
+.ti -8
+.B  ip rule
+.RB " [ " list " | " add " | " del " | " flush " ]"
+.I  SELECTOR ACTION
+
+.ti -8
+.IR SELECTOR " := [ "
+.B  from
+.IR PREFIX " ] [ "
+.B  to
+.IR PREFIX " ] [ "
+.B  tos
+.IR TOS " ] [ "
+.B  fwmark
+.IR FWMARK[/MASK] " ] [ "
+.B  iif
+.IR STRING " ] [ "
+.B  oif
+.IR STRING " ] [ "
+.B  pref
+.IR NUMBER " ]"
+
+.ti -8
+.IR ACTION " := [ "
+.B  table
+.IR TABLE_ID " ] [ "
+.B  nat
+.IR ADDRESS " ] [ "
+.BR prohibit " | " reject " | " unreachable " ] [ " realms
+.RI "[" SRCREALM "/]" DSTREALM " ]"
+.I  SUPPRESSOR
+
+.ti -8
+.IR SUPPRESSOR " := [ "
+.B  suppress_prefixlength
+.IR NUMBER " ] [ "
+.B  suppress_ifgroup
+.IR GROUP " ]"
+
+.ti -8
+.IR TABLE_ID " := [ "
+.BR local " | " main " | " default " |"
+.IR NUMBER " ]"
+
+.SH DESCRIPTION
+.I ip rule
+manipulates rulez 
+in tha routin policy database control tha route selection algorithm.
+
+.P
+Funky-Ass routin algorithms used up in tha Internizzle make routin decisions
+based only on tha destination address of packets (and up in theory,
+but not up in practice, on tha TOS field).
+
+.P
+In some circumstances we wanna route packets differently dependin not only
+on destination addresses yo, but also on other packet fields: source address,
+IP protocol, transhiznit protocol ports or even packet payload.
+This task is called 'policy routing'.
+
+.P
+To solve dis task, tha conventionizzle destination based routin table, ordered
+accordin ta tha longest match rule, is replaced wit a 'routin policy
+database' (or RPDB), which selects routes by executin some set of rules.
+
+.P
+Each policy routin rule consistz of a
+.B selector
+and an
+.B action predicate.
+Da RPDB is scanned up in order of decreasin priority. Da selector
+of each rule be applied ta {source address, destination address, incoming
+interface, tos, fwmark} and, if tha selector matches tha packet,
+the action is performed. Y'all KNOW dat shit, muthafucka!  Da action predicate may return wit success.
+In dis case, it will either give a route or failure indication
+and tha RPDB lookup is terminated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Otherwise, tha RPDB program
+continues wit tha next rule.
+
+.P
+Semantically, tha natural action is ta select tha nexthop n' tha output device.
+
+.P
+At startup time tha kernel configures tha default RPDB consistin of three
+rules:
+
+.TP
+1.
+Priority: 0, Selector: match anything, Action: lookup routing
+table
+.B local
+(ID 255).
+The
+.B local
+table be a special routin table containing
+high prioritizzle control routes fo' local n' broadcast addresses.
+.sp
+Rule 0 is special. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Well shiiiit, it cannot be deleted or overridden.
+
+.TP
+2.
+Priority: 32766, Selector: match anything, Action: lookup routing
+table
+.B main
+(ID 254).
+The
+.B main
+table is tha aiiight routin table containin all non-policy
+routes. This rule may be deleted and/or overridden wit other
+ones by tha administrator.
+
+.TP
+3.
+Priority: 32767, Selector: match anything, Action: lookup routing
+table
+.B default
+(ID 253).
+The
+.B default
+table is empty.  It be reserved fo' some post-processin if no previous
+default rulez selected tha packet.
+This rule may also be deleted.
+
+.P
+Each RPDB entry has additional
+attributes.  F.e. each rule has a pointa ta some routing
+table.  NAT n' masqueradin rulez have a attribute ta select freshly smoked up IP
+address ta translate/masquerade.  Besides that, rulez have some
+optionizzle attributes, which routes have, namely
+.BR "realms" .
+These joints do not override dem contained up in tha routin tables.  They
+are only used if tha route did not select any attributes.
+
+.sp
+Da RPDB may contain rulez of tha followin types:
+
+.RS
+.B unicast
+- tha rule prescribes ta return tha route found
+in tha routin table referenced by tha rule.
+
+.B blackhole
+- tha rule prescribes ta silently drop tha packet.
+
+.B unreachable
+- tha rule prescribes ta generate a 'Network is unreachable' error.
+
+.B prohibit
+- tha rule prescribes ta generate 'Communication be administratively
+prohibited' error.
+
+.B nat
+- tha rule prescribes ta translate tha source address
+of tha IP packet tha fuck into some other value.
+.RE
+
+.TP
+.B ip rule add - bang a freshly smoked up rule
+.TP
+.B ip rule delete - delete a rule
+.RS
+.TP
+.BI type " TYPE " (default)
+the type of dis rule.  Da list of valid types was given up in tha previous
+subsection.
+
+.TP
+.BI from " PREFIX"
+select tha source prefix ta match.
+
+.TP
+.BI ta " PREFIX"
+select tha destination prefix ta match.
+
+.TP
+.BI iif " NAME"
+select tha incomin thang ta match.  If tha intercourse is loopback,
+the rule only matches packets originatin from dis host.  This means
+that you may create separate routin tablez fo' forwarded n' local
+packets and, hence, straight-up segregate em.
+
+.TP
+.BI oif " NAME"
+select tha outgoin thang ta match.  Da outgoin intercourse is only
+available fo' packets originatin from local sockets dat is bound to
+a device.
+
+.TP
+.BI tos " TOS"
+.TP
+.BI dsfield " TOS"
+select tha TOS value ta match.
+
+.TP
+.BI fwmark " MARK"
+select the
+.B fwmark
+value ta match.
+
+.TP
+.BI prioritizzle " PREFERENCE"
+the prioritizzle of dis rule.  Each rule should have a explicitly
+set
+.I unique
+prioritizzle value.
+Da options preference n' order is synonyms wit priority.
+
+.TP
+.BI table " TABLEID"
+the routin table identifier ta lookup if tha rule selector matches.
+It be also possible ta use lookup instead of table.
+
+.TP
+.BI suppress_prefixlength " NUMBER"
+reject routin decisions dat gotz a prefix length of NUMBER or less.
+
+.TP
+.BI suppress_ifgroup " GROUP"
+reject routin decisions dat bust a thang belongin ta tha intercourse
+group GROUP.
+
+.TP
+.BI realms " FROM/TO"
+Realms ta select if tha rule matched n' tha routin table lookup
+succeeded. Y'all KNOW dat shit, muthafucka!  Realm
+.I TO
+is only used if tha route did not select any realm.
+
+.TP
+.BI nat " ADDRESS"
+Da base of tha IP address block ta translate (for source addresses).
+The
+.I ADDRESS
+may be either tha start of tha block of NAT addresses (selected by NAT
+routes) or a local host address (or even zero).
+In tha last case tha routa do not translate tha packets yo, but
+masquerades dem ta dis address.
+Usin map-to instead of nat means tha same ol' dirty thang.
+
+.B Warning:
+Changes ta tha RPDB made wit these commandz do not become active
+immediately.  It be assumed dat afta a script finishes a funky-ass batch of
+updates, it flushes tha routin cache with
+.BR "ip route flush cache" .
+.RE
+.TP
+.B ip rule flush - also dumps all tha deleted rules.
+This command has no arguments.
+.TP
+.B ip rule show - list rules
+This command has no arguments.
+Da options list or lst is synonyms wit show.
+
+.SH SEE ALSO
+.br
+.BR ip (8)
+
+.SH AUTHOR
+Original Gangsta Manpage by Michail Litvak <mci@owl.openwall.com>

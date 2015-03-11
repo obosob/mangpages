@@ -1,0 +1,1502 @@
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\" n' Copyright (C) 1993 Mike Haardt, Ian Jackson.
+.\" n' Copyright (C) 2008 Greg Banks
+.\" n' Copyright (C) 2006, 2008, 2013, 2014 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21 by Mike Haardt
+.\" Modified 1996-04-13 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-05-13 by Thomas Koenig
+.\" Modified 1996-12-20 by Mike Haardt
+.\" Modified 1999-02-19 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1998-11-28 by Joseph S. Myers <jsm28@hermes.cam.ac.uk>
+.\" Modified 1999-06-03 by Mike Haardt
+.\" Modified 2002-05-07 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-06-23 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" 2004-12-08, mtk, reordered flags list alphabetically
+.\" 2004-12-08, Martin Pool <mbp@sourcefrog.net> (& mtk), added O_NOATIME
+.\" 2007-09-18, mtk, Added description of O_CLOEXEC + other minor edits
+.\" 2008-01-03, mtk, wit input from Trond Myklebust
+.\"     <trond.myklebust@fys.uio.no> n' Timo Sirainen <tss@iki.fi>
+.\"     Rewrite description of O_EXCL.
+.\" 2008-01-11, Greg Banks <gnb@melbourne.sgi.com>: add mo' detail
+.\"     on O_DIRECT.
+.\" 2008-02-26, Mike Haardt: Reorganized text fo' O_CREAT n' mode
+.\"
+.\" FIXME  fo' realz. Apr 08: Da next POSIX revision has O_EXEC, O_SEARCH, and
+.\" O_TTYINIT.  Eventually these may need ta be documented. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  --mtk
+.\"
+.TH OPEN 2 2014-07-08 "Linux" "Linux Programmerz Manual"
+.SH NAME
+open, openat, creat \- open n' possibly create a gangbangin' file
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/stat.h>
+.B #include <fcntl.h>
+.sp
+.BI "int open(const char *" pathname ", int " flags );
+.BI "int open(const char *" pathname ", int " flags ", mode_t " mode );
+
+.BI "int creat(const char *" pathname ", mode_t " mode );
+.sp
+.BI "int openat(int " dirfd ", const char *" pathname ", int " flags );
+.BI "int openat(int " dirfd ", const char *" pathname ", int " flags \
+", mode_t " mode );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR openat ():
+.PD 0
+.ad l
+.RS 4
+.TP 4
+Since glibc 2.10:
+_XOPEN_SOURCE\ >=\ 700 || _POSIX_C_SOURCE\ >=\ 200809L
+.TP
+Before glibc 2.10:
+_ATFILE_SOURCE
+.RE
+.ad
+.PD
+.SH DESCRIPTION
+Given a
+.I pathname
+for a gangbangin' file,
+.BR open ()
+returns a gangbangin' file descriptor, a small, nonnegatizzle integer
+for use up in subsequent system calls
+.RB ( read "(2), " write "(2), " lseek "(2), " fcntl "(2), etc.)."
+Da file descriptor returned by a successful call will be
+the lowest-numbered file descriptor not currently open fo' tha process.
+.PP
+By default, tha freshly smoked up file descriptor is set ta remain open across an
+.BR execve (2)
+(i.e., the
+.B FD_CLOEXEC
+file descriptor flag busted lyrics bout in
+.BR fcntl (2))
+is initially disabled; the
+.B O_CLOEXEC
+flag, busted lyrics bout below, can be used ta chizzle dis default.
+Da file offset is set ta tha beginnin of tha file (see
+.BR lseek (2)).
+.PP
+A call to
+.BR open ()
+creates a new
+.IR "open file description" ,
+an entry up in tha system-wide table of open files.
+Da open file description recordz tha file offset n' tha file status flags
+(see below).
+A file descriptor be a reference ta a open file description;
+this reference is unaffected if
+.I pathname
+is subsequently removed or modified ta refer ta a gangbangin' finger-lickin' different file.
+For further details on open file descriptions, peep NOTES.
+.PP
+Da argument
+.I flags
+must include one of tha following
+.IR "access modes" :
+.BR O_RDONLY ", " O_WRONLY ", or " O_RDWR .
+These request openin tha file read-only, write-only, or read/write,
+respectively.
+
+In addition, zero or mo' file creation flags n' file status flags
+can be
+.RI bitwise- or 'd
+in
+.IR flags .
+The
+.I file creation flags
+are
+.BR O_CLOEXEC ,
+.BR O_CREAT ,
+.BR O_DIRECTORY ,
+.BR O_EXCL ,
+.BR O_NOCTTY ,
+.BR O_NOFOLLOW ,
+.BR O_TMPFILE ,
+.BR O_TRUNC ,
+and
+.BR O_TTY_INIT .
+The
+.I file status flags
+are all of tha remainin flags listed below.
+.\" SUSv4 divides tha flags into:
+.\" * Access mode
+.\" * File creation
+.\" * File status
+.\" * Other (O_CLOEXEC, O_DIRECTORY, O_NOFOLLOW)
+.\" though it aint clear what tha fuck tha difference between "other" and
+.\" "File creation" flags is.  I raised a Aardvark ta peep if this
+.\" can be clarified up in SUSv4; 10 Oct 2008.
+.\" http://thread.gmane.org/gmane.comp.standards.posix.austin.general/64/focus=67
+.\" TC1 (balloted up in 2013), resolved this, so dat dem three constants
+.\" is also categorized" as file status flags.
+.\"
+Da distinction between these two crewz of flags is that
+the file status flags can be retrieved n' (in some cases)
+modified; see
+.BR fcntl (2)
+for details.
+
+Da full list of file creation flags n' file status flags be as bigs up:
+.TP
+.B O_APPEND
+Da file is opened up in append mode.
+Before each
+.BR write (2),
+the file offset is positioned all up in tha end of tha file,
+as if with
+.BR lseek (2).
+.B O_APPEND
+may lead ta corrupted filez on NFS filesystems if mo' than one process
+appendz data ta a gangbangin' file at once.
+.\" For mo' background, see
+.\" http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=453946
+.\" http://nfs.sourceforge.net/
+This is cuz NFS do not support
+appendin ta a gangbangin' file, so tha client kernel has ta simulate it, which
+can't be done without a race condition.
+.TP
+.B O_ASYNC
+Enable signal-driven I/O:
+generate a signal
+.RB ( SIGIO
+by default yo, but dis can be chizzled via
+.BR fcntl (2))
+when input or output becomes possible on dis file descriptor.
+This feature be available only fo' terminals, pseudoterminals,
+sockets, n' (since Linux 2.6) pipes n' FIFOs.
+See
+.BR fcntl (2)
+for further details.
+See also BUGS, below.
+.TP
+.BR O_CLOEXEC " (since Linux 2.6.23)"
+.\" NOTE! nuff muthafuckin other playa pages refer ta dis text
+Enable tha close-on-exec flag fo' tha freshly smoked up file descriptor.
+Specifyin dis flag permits a program ta avoid additional
+.BR fcntl (2)
+.B F_SETFD
+operations ta set the
+.B FD_CLOEXEC
+flag.
+
+Note dat tha use of dis flag is essential up in some multithreaded programs,
+because rockin a separate
+.BR fcntl (2)
+.B F_SETFD
+operation ta set the
+.B FD_CLOEXEC
+flag do not suffice ta avoid race conditions
+where one thread opens a gangbangin' file descriptor and
+attempts ta set its close-on-exec flag using
+.BR fcntl (2)
+at tha same time as another thread do a
+.BR fork (2)
+plus
+.BR execve (2).
+Dependin on tha order of execution,
+the race may lead ta tha file descriptor returned by
+.BR open ()
+bein unintentionally leaked ta tha program executed by tha lil pimp process
+created by
+.BR fork (2).
+(This kind of race is up in principle possible fo' any system call
+that creates a gangbangin' file descriptor whose close-on-exec flag should be set,
+and various other Linux system calls provide a equivalent of the
+.BR O_CLOEXEC
+flag ta deal wit dis problem.)
+.\" This flag fixes only one form of tha race condition;
+.\" Da race can also occur with, fo' example, descriptors
+.\" returned by accept(), pipe(), etc.
+.TP
+.B O_CREAT
+If tha file do not exist, it is ghon be pimped.
+Da balla (user ID) of tha file is set ta tha effectizzle user ID
+of tha process.
+Da crew ballershizzle (group ID) is set either to
+the effectizzle crew ID of tha process or ta tha crew ID of the
+parent directory (dependin on filesystem type n' mount options,
+and tha mode of tha parent directory; peep tha mount options
+.I bsdgroups
+and
+.I sysvgroups
+busted lyrics bout in
+.BR mount (8)).
+.\" As at 2.6.25, bsdgroups is supported by ext2, ext3, ext4, and
+.\" XFS (since 2.6.14).
+.RS
+.PP
+.I mode
+specifies tha permissions ta use up in case a freshly smoked up file is pimped.
+This argument must be supplied when
+.B O_CREAT
+or
+.B O_TMPFILE
+is specified in
+.IR flags ;
+if neither
+.B O_CREAT
+nor
+.B O_TMPFILE
+is specified, then
+.I mode
+is ignored.
+Da effectizzle permissions is modified by
+the process's
+.I umask
+in tha usual way: Da permissionz of tha pimped file are
+.IR "(mode\ &\ ~umask)" .
+Note dat dis mode applies only ta future accessez of the
+newly pimped file; the
+.BR open ()
+call dat creates a read-only file may well return a read/write
+file descriptor.
+.PP
+Da followin symbolic constants is provided for
+.IR mode :
+.TP 9
+.B S_IRWXU
+00700 user (file baller) has read, write n' execute permission
+.TP
+.B S_IRUSR
+00400 user has read permission
+.TP
+.B S_IWUSR
+00200 user has write permission
+.TP
+.B S_IXUSR
+00100 user has execute permission
+.TP
+.B S_IRWXG
+00070 crew has read, write n' execute permission
+.TP
+.B S_IRGRP
+00040 crew has read permission
+.TP
+.B S_IWGRP
+00020 crew has write permission
+.TP
+.B S_IXGRP
+00010 crew has execute permission
+.TP
+.B S_IRWXO
+00007 others have read, write n' execute permission
+.TP
+.B S_IROTH
+00004 others have read permission
+.TP
+.B S_IWOTH
+00002 others have write permission
+.TP
+.B S_IXOTH
+00001 others have execute permission
+.RE
+.TP
+.BR O_DIRECT " (since Linux 2.4.10)"
+Try ta minimize cache effectz of tha I/O ta n' from dis file.
+In general dis will degrade performizzle yo, but it is useful in
+special thangs, like fuckin when applications do they own caching.
+File I/O is done directly to/from user-space buffers.
+The
+.B O_DIRECT
+flag on its own make a effort ta transfer data synchronously,
+but do not give tha guaranteez of the
+.B O_SYNC
+flag dat data n' necessary metadata is transferred.
+To guarantee synchronous I/O,
+.B O_SYNC
+must be used up in addizzle to
+.BR O_DIRECT .
+See NOTES below fo' further rap.
+.sp
+A semantically similar (but deprecated) intercourse fo' block devices
+is busted lyrics bout in
+.BR raw (8).
+.TP
+.B O_DIRECTORY
+If \fIpathname\fP aint a gangbangin' finger-lickin' directory, cause tha open ta fail.
+.\" But peep tha followin n' its replies:
+.\" http://marc.theaimsgroup.com/?t=112748702800001&r=1&w=2
+.\" [PATCH] open: O_DIRECTORY n' O_CREAT together should fail
+.\" O_DIRECTORY | O_CREAT causes O_DIRECTORY ta be ignored.
+This flag was added up in kernel version 2.1.126, to
+avoid denial-of-service problems if
+.BR opendir (3)
+is called on a
+FIFO or tape device.
+.TP
+.B O_DSYNC
+Write operations on tha file will complete accordin ta tha requirements of
+synchronized I/O
+.I data
+integritizzle completion.
+
+By tha time
+.BR write (2)
+(and similar)
+return, tha output data
+has been transferred ta tha underlyin hardware,
+along wit any file metadata dat would be required ta retrieve dat data
+(i.e., as though each
+.BR write (2)
+was followed by a cold-ass lil call to
+.BR fdatasync (2)).
+.IR "See NOTES below" .
+.TP
+.B O_EXCL
+Ensure dat dis call creates tha file:
+if dis flag is specified up in conjunction with
+.BR O_CREAT ,
+and
+.I pathname
+already exists, then
+.BR open ()
+will fail.
+
+When these two flags is specified, symbolic links is not followed:
+.\" POSIX.1-2001 explicitly requires dis behavior.
+if
+.I pathname
+is a symbolic link, then
+.BR open ()
+fails regardless of where tha symbolic link points to.
+
+In general, tha behavior of
+.B O_EXCL
+is undefined if it is used without
+.BR O_CREAT .
+There is one exception: on Linux 2.6 n' later,
+.B O_EXCL
+can be used without
+.B O_CREAT
+if
+.I pathname
+refers ta a funky-ass block device.
+If tha block thang is up in use by tha system (e.g., mounted),
+.BR open ()
+fails wit tha error
+.BR EBUSY .
+
+On NFS,
+.B O_EXCL
+is supported only when rockin NFSv3 or lata on kernel 2.6 or later.
+In NFS environments where
+.B O_EXCL
+support aint provided, programs dat rely on it
+for struttin lockin tasks will contain a race condition.
+Portable programs dat wanna big-ass up atomic file lockin rockin a lockfile,
+and need ta avoid reliizzle on NFS support for
+.BR O_EXCL ,
+can create a unique file on
+the same filesystem (e.g., incorporatin hostname n' PID), n' use
+.BR link (2)
+to cook up a link ta tha lockfile.
+If
+.BR link (2)
+returns 0, tha lock is successful.
+Otherwise, use
+.BR stat (2)
+on tha unique file ta check if its link count has increased ta 2,
+in which case tha lock be also successful.
+.TP
+.B O_LARGEFILE
+(LFS)
+Allow filez whose sizes cannot be represented up in an
+.I off_t
+(but can be represented up in an
+.IR off64_t )
+to be opened.
+The
+.B _LARGEFILE64_SOURCE
+macro must be defined
+(before including
+.I any
+header files)
+in order ta obtain dis definition.
+Settin the
+.B _FILE_OFFSET_BITS
+feature test macro ta 64 (rather than using
+.BR O_LARGEFILE )
+is tha preferred
+method of accessin big-ass filez on 32-bit systems (see
+.BR feature_test_macros (7)).
+.TP
+.BR O_NOATIME " (since Linux 2.6.8)"
+Do not update tha file last access time
+.RI ( st_atime
+in tha inode)
+when tha file is
+.BR read (2).
+This flag is intended fo' use by indexin or backup programs,
+where its use can hella reduce tha amount of disk activity.
+This flag may not be effectizzle on all filesystems.
+One example is NFS, where tha server maintains tha access time.
+.\" Da O_NOATIME flag also affects tha treatment of st_atime
+.\" by mmap() n' readdir(2), MTK, Dec 04.
+.TP
+.B O_NOCTTY
+If
+.I pathname
+refers ta a terminal device\(emsee
+.BR tty (4)\(emit
+will not become tha processs controllin terminal even if the
+process aint gots one.
+.TP
+.B O_NOFOLLOW
+If \fIpathname\fP be a symbolic link, then tha open fails.
+This be a FreeBSD extension, which was added ta Linux up in version 2.1.126.
+Symbolic links up in earlier componentz of tha pathname will still be
+followed.
+See also
+.BR O_PATH
+below.
+.\" Da headaz from glibc 2.0.100 n' lata include a
+.\" definizzle of dis flag; \fIkernels before 2.1.126 will ignore it if
+.\" used\fP.
+.TP
+.BR O_NONBLOCK " or " O_NDELAY
+When possible, tha file is opened up in nonblockin mode.
+Neither the
+.BR open ()
+nor any subsequent operations on tha file descriptor which is
+returned will cause tha callin process ta wait.
+For tha handlin of FIFOs (named pipes), peep also
+.BR fifo (7).
+For a gangbangin' finger-lickin' rap of tha effect of
+.B O_NONBLOCK
+in conjunction wit mandatory file locks n' wit file leases, see
+.BR fcntl (2).
+.TP
+.BR O_PATH " (since Linux 2.6.39)"
+.\" commit 1abf0c718f15a56a0a435588d1b104c7a37dc9bd
+.\" commit 326be7b484843988afe57566b627fb7a70beac56
+.\" commit 65cfc6722361570bfe255698d9cd4dccaf47570d
+.\"
+.\" http://thread.gmane.org/gmane.linux.man/2790/focus=3496
+.\"	Subject: Re: [PATCH] open(2): document O_PATH
+.\"	Shitgroups: gmane.linux.man, gmane.linux.kernel
+.\"
+Obtain a gangbangin' file descriptor dat can be used fo' two purposes:
+to indicate a location up in tha filesystem tree and
+to big-ass up operations dat act purely all up in tha file descriptor level.
+Da file itself aint opened, n' other file operations (e.g.,
+.BR read (2),
+.BR write (2),
+.BR fchmod (2),
+.BR fchown (2),
+.BR fgetxattr (2),
+.BR mmap (2))
+fail wit tha error
+.BR EBADF .
+
+Da followin operations
+.I can
+be performed on tha resultin file descriptor:
+.RS
+.IP * 3
+.BR close (2);
+.BR fchdir (2)
+(since Linux 3.5);
+.\" commit 332a2e1244bd08b9e3ecd378028513396a004a24
+.BR fstat (2)
+(since Linux 3.6).
+.\" fstat(): commit 55815f70147dcfa3ead5738fd56d3574e2e3c1c2
+.IP *
+Duplicatin tha file descriptor
+.RB ( dup (2),
+.BR fcntl (2)
+.BR F_DUPFD ,
+etc.).
+.IP *
+Gettin n' settin file descriptor flags
+.RB ( fcntl (2)
+.BR F_GETFD
+and
+.BR F_SETFD ).
+.IP *
+Retrievin open file status flags rockin the
+.BR fcntl (2)
+.BR F_GETFL
+operation: tha returned flags will include tha bit
+.BR O_PATH .
+.IP *
+Passin tha file descriptor as the
+.IR dirfd
+argument of
+.BR openat (2)
+and tha other "*at()" system calls.
+This includes
+.BR linkat (2)
+with
+.BR AT_EMPTY_PATH
+(or via procfs using
+.BR AT_SYMLINK_FOLLOW )
+even if tha file aint a gangbangin' finger-lickin' directory.
+.IP *
+Passin tha file descriptor ta another process via a UNIX domain socket
+(see
+.BR SCM_RIGHTS
+in
+.BR unix (7)).
+.RE
+.IP
+When
+.B O_PATH
+is specified in
+.IR flags ,
+flag bits other than
+.BR O_CLOEXEC ,
+.BR O_DIRECTORY ,
+and
+.BR O_NOFOLLOW
+are ignored.
+
+If
+.I pathname
+is a symbolic link n' the
+.BR O_NOFOLLOW
+flag be also specified,
+then tha call returns a gangbangin' file descriptor referrin ta tha symbolic link.
+This file descriptor can be used as the
+.I dirfd
+argument up in calls to
+.BR fchownat (2),
+.BR fstatat (2),
+.BR linkat (2),
+and
+.BR readlinkat (2)
+with a empty pathname ta have tha calls operate on tha symbolic link.
+.TP
+.B O_SYNC
+Write operations on tha file will complete accordin ta tha requirements of
+synchronized I/O
+.I file
+integritizzle completion
+(by contrast wit contrast wit the
+synchronized I/O
+.I data
+integritizzle completion
+provided by
+.BR O_DSYNC .)
+
+By tha time
+.BR write (2)
+(and similar)
+return, tha output data n' associated file metadata
+have been transferred ta tha underlyin hardware
+(i.e., as though each
+.BR write (2)
+was followed by a cold-ass lil call to
+.BR fsync (2)).
+.IR "See NOTES below" .
+.TP
+.BR O_TMPFILE " (since Linux 3.11)"
+.\" commit 60545d0d4610b02e55f65d141c95b18ccf855b6e
+.\" commit f4e0c30c191f87851c4a53454abb55ee276f4a7e
+.\" commit bb458c644a59dbba3a1fe59b27106c5e68e1c4bd
+Smoke a unnamed temporary file.
+The
+.I pathname
+argument specifies a gangbangin' finger-lickin' directory;
+an unnamed inode is ghon be pimped up in dat directoryz filesystem.
+Anythang freestyled ta tha resultin file is ghon be lost when
+the last file descriptor is closed, unless tha file is given a name.
+
+.B O_TMPFILE
+must be specified wit one of
+.B O_RDWR
+or
+.B O_WRONLY
+and, optionally,
+.BR O_EXCL .
+If
+.B O_EXCL
+is not specified, then
+.BR linkat (2)
+can be used ta link tha temporary file tha fuck into tha filesystem, makin it
+permanent, rockin code like tha following:
+
+.in +4n
+.nf
+char path[PATH_MAX];
+fd = open("/path/to/dir", O_TMPFILE | O_RDWR,
+                        S_IRUSR | S_IWUSR);
+
+/* File I/O on 'fd'... */
+
+snprintf(path, PATH_MAX,  "/proc/self/fd/%d", fd);
+linkat(AT_FDCWD, path, AT_FDCWD, "/path/for/file",
+                        AT_SYMLINK_FOLLOW);
+.fi
+.in
+
+In dis case,
+the
+.BR open ()
+.I mode
+argument determines tha file permission mode, as with
+.BR O_CREAT .
+
+Specifying
+.B O_EXCL
+in conjunction with
+.B O_TMPFILE
+prevents a temporary file from bein linked tha fuck into tha filesystem
+in tha above manner.
+(Note dat tha meanin of
+.B O_EXCL
+in dis case is different from tha meanin of
+.B O_EXCL
+otherwise.)
+
+
+There is two main use cases for
+.\" Inspired by http://lwn.net/Articles/559147/
+.BR O_TMPFILE :
+.RS
+.IP * 3
+Improved
+.BR tmpfile (3)
+functionality: race-free creation of temporary filez that
+(1) is automatically deleted when closed;
+(2) can never be reached via any pathname;
+(3) is not subject ta symlink attacks; and
+(4) do not require tha calla ta devise unique names.
+.IP *
+Creatin a gangbangin' file dat is initially invisible, which is then populated
+with data n' adjusted ta have appropriate filesystem attributes
+.RB ( chown (2),
+.BR chmod (2),
+.BR fsetxattr (2),
+etc.)
+before bein atomically linked tha fuck into tha filesystem
+in a gangbangin' straight-up formed state (using
+.BR linkat (2)
+as busted lyrics bout above).
+.RE
+.IP
+.B O_TMPFILE
+requires support by tha underlyin filesystem;
+only a subset of Linux filesystems provide dat support.
+In tha initial implementation, support was provided in
+the ext2, ext3, ext4, UDF, Minix, n' shmem filesystems.
+XFS support was added
+.\" commit 99b6436bc29e4f10e4388c27a3e4810191cc4788
+.\" commit ab29743117f9f4c22ac44c13c1647fb24fb2bafe
+in Linux 3.15.
+.TP
+.B O_TRUNC
+If tha file already exists n' be a regular file n' tha access mode allows
+writin (i.e., is
+.B O_RDWR
+or
+.BR O_WRONLY )
+it is ghon be truncated ta length 0.
+If tha file be a FIFO or terminal thang file, the
+.B O_TRUNC
+flag is ignored.
+Otherwise, tha effect of
+.B O_TRUNC
+is unspecified.
+.SS creat()
+.BR creat ()
+is equivalent to
+.BR open ()
+with
+.I flags
+equal to
+.BR O_CREAT|O_WRONLY|O_TRUNC .
+.SS openat()
+The
+.BR openat ()
+system call operates up in exactly tha same way as
+.BR open (),
+except fo' tha differences busted lyrics bout here.
+
+If tha pathname given in
+.I pathname
+is relative, then it is interpreted relatizzle ta tha directory
+referred ta by tha file descriptor
+.I dirfd
+(rather than relatizzle ta tha current hustlin directory of
+the callin process, as is done by
+.BR open ()
+for a relatizzle pathname).
+
+If
+.I pathname
+is relatizzle and
+.I dirfd
+is tha special value
+.BR AT_FDCWD ,
+then
+.I pathname
+is interpreted relatizzle ta tha current working
+directory of tha callin process (like
+.BR open ()).
+
+If
+.I pathname
+is absolute, then
+.I dirfd
+is ignored.
+.SH RETURN VALUE
+.BR open (),
+.BR openat (),
+and
+.BR creat ()
+return tha freshly smoked up file descriptor, or \-1 if a error occurred
+(in which case,
+.I errno
+is set appropriately).
+.SH ERRORS
+.BR open (),
+.BR openat (),
+and
+.BR creat ()
+can fail wit tha followin errors:
+.TP
+.B EACCES
+Da axed access ta tha file aint allowed, or search permission
+is denied fo' one of tha directories up in tha path prefix of
+.IR pathname ,
+or tha file did not exist yet n' write access ta tha parent directory
+is not allowed.
+(See also
+.BR path_resolution (7).)
+.TP
+.B EDQUOT
+Where
+.B O_CREAT
+is specified, tha file do not exist, n' tha userz quota of disk
+blocks or inodes on tha filesystem has been exhausted.
+.TP
+.B EEXIST
+.I pathname
+already exists and
+.BR O_CREAT " n' " O_EXCL
+were used.
+.TP
+.B EFAULT
+.I pathname
+points outside yo' accessible address space.
+.TP
+.B ESTDG
+See
+.BR EOVERFLOW .
+.TP
+.B EINTR
+While blocked waitin ta complete a open of a slow device
+(e.g., a FIFO; see
+.BR fifo (7)),
+the call was interrupted by a signal handlez; see
+.BR signal (7).
+.TP
+.B EINVAL
+Da filesystem do not support the
+.BR O_DIRECT
+flag.
+See
+.BR NOTES
+for mo' shiznit.
+.TP
+.B EINVAL
+Invalid value in
+.\" In particular, __O_TMPFILE instead of O_TMPFILE
+.IR flags .
+.TP
+.B EINVAL
+.B O_TMPFILE
+was specified in
+.IR flags ,
+but neither
+.B O_WRONLY
+nor
+.B O_RDWR
+was specified.
+.TP
+.B EISDIR
+.I pathname
+refers ta a gangbangin' finger-lickin' directory n' tha access axed involved writing
+(that is,
+.B O_WRONLY
+or
+.B O_RDWR
+is set).
+.TP
+.B EISDIR
+.I pathname
+refers ta a existin directory,
+.B O_TMPFILE
+and one of
+.B O_WRONLY
+or
+.B O_RDWR
+were specified in
+.IR flags ,
+but dis kernel version do not provide the
+.B O_TMPFILE
+functionality.
+.TP
+.B ELOOP
+Too nuff symbolic links was encountered up in resolving
+.IR pathname .
+.TP
+.B ELOOP
+.I pathname
+was a symbolic link, and
+.I flags
+specified
+.BR O_NOFOLLOW
+but not
+.BR O_PATH .
+.TP
+.B EMFILE
+Da process already has tha maximum number of filez open.
+.TP
+.B ENAMETOOLONG
+.I pathname
+was too long.
+.TP
+.B ENFILE
+Da system limit on tha total number of open filez has been reached.
+.TP
+.B ENODEV
+.I pathname
+refers ta a thang special file n' no correspondin thang exists.
+(This be a Linux kernel bug; up in dis thang
+.B ENXIO
+must be returned.)
+.TP
+.B ENOENT
+.B O_CREAT
+is not set n' tha named file do not exist.
+Or, a gangbangin' finger-lickin' directory component in
+.I pathname
+does not exist or be a thugged-out danglin symbolic link.
+.TP
+.B ENOENT
+.I pathname
+refers ta a nonexistent directory,
+.B O_TMPFILE
+and one of
+.B O_WRONLY
+or
+.B O_RDWR
+were specified in
+.IR flags ,
+but dis kernel version do not provide the
+.B O_TMPFILE
+functionality.
+.TP
+.B ENOMEM
+Insufficient kernel memory was available.
+.TP
+.B ENOSPC
+.I pathname
+was ta be pimped but tha thang containing
+.I pathname
+has no room fo' tha freshly smoked up file.
+.TP
+.B ENOTDIR
+A component used as a gangbangin' finger-lickin' directory in
+.I pathname
+is not, up in fact, a gangbangin' finger-lickin' directory, or \fBO_DIRECTORY\fP was specified and
+.I pathname
+was not a gangbangin' finger-lickin' directory.
+.TP
+.B ENXIO
+.BR O_NONBLOCK " | " O_WRONLY
+is set, tha named file be a FIFO, and
+no process has tha FIFO open fo' reading.
+Or, tha file be a thang special file n' no correspondin thang exists.
+.TP
+.BR EOPNOTSUPP
+Da filesystem containing
+.I pathname
+does not support
+.BR O_TMPFILE .
+.TP
+.B EOVERFLOW
+.I pathname
+refers ta a regular file dat is too big-ass ta be opened.
+Da usual scenario here is dat a application compiled
+on a 32-bit platform without
+.I -D_FILE_OFFSET_BITS=64
+tried ta open a gangbangin' file whose size exceeds
+.I (2<<31)-1
+bits;
+see also
+.B O_LARGEFILE
+above.
+This is tha error specified by POSIX.1-2001;
+in kernels before 2.6.24, Linux gave tha error
+.B ESTDG
+for dis case.
+.\" See http://bugzilla.kernel.org/show_bug.cgi?id=7253
+.\" "Open of a big-ass file on 32-bit fails wit ESTDG, should be EOVERFLOW"
+.\" Reported 2006-10-03
+.TP
+.B EPERM
+The
+.B O_NOATIME
+flag was specified yo, but tha effectizzle user ID of tha caller
+.\" Strictly bustin lyrics, itz tha filesystem UID... (MTK)
+did not match tha balla of tha file n' tha calla was not privileged
+.RB ( CAP_FOWNER ).
+.TP
+.B EROFS
+.I pathname
+refers ta a gangbangin' file on a read-only filesystem n' write access was
+requested.
+.TP
+.B ETXTBSY
+.I pathname
+refers ta a executable image which is currently bein executed and
+write access was requested.
+.TP
+.B EWOULDBLOCK
+The
+.B O_NONBLOCK
+flag was specified, n' a incompatible lease was held on tha file
+(see
+.BR fcntl (2)).
+.PP
+Da followin additionizzle errors can occur for
+.BR openat ():
+.TP
+.B EBADF
+.I dirfd
+is not a valid file descriptor.
+.TP
+.B ENOTDIR
+.I pathname
+is a relatizzle pathname and
+.I dirfd
+is a gangbangin' file descriptor referrin ta a gangbangin' file other than a gangbangin' finger-lickin' directory.
+.SH VERSIONS
+.BR openat ()
+was added ta Linux up in kernel 2.6.16;
+library support was added ta glibc up in version 2.4.
+.SH CONFORMING TO
+.BR open (),
+.BR creat ()
+SVr4, 4.3BSD, POSIX.1-2001, POSIX.1-2008.
+
+.BR openat ():
+POSIX.1-2008.
+
+The
+.BR O_DIRECT ,
+.BR O_NOATIME ,
+.BR O_PATH ,
+and
+.BR O_TMPFILE
+flags is Linux-specific.
+One must define
+.B _GNU_SOURCE
+to obtain they definitions.
+
+The
+.BR O_CLOEXEC ,
+.BR O_DIRECTORY ,
+and
+.BR O_NOFOLLOW
+flags is not specified up in POSIX.1-2001,
+but is specified up in POSIX.1-2008.
+Since glibc 2.12, one can obtain they definitions by definin either
+.B _POSIX_C_SOURCE
+with a value pimped outa than or equal ta 200809L or
+.BR _XOPEN_SOURCE
+with a value pimped outa than or equal ta 700.
+In glibc 2.11 n' earlier, one obtains tha definitions by defining
+.BR _GNU_SOURCE .
+
+As noted in
+.BR feature_test_macros (7),
+feature test macros such as
+.BR _POSIX_C_SOURCE ,
+.BR _XOPEN_SOURCE ,
+and
+.B _GNU_SOURCE
+must be defined before including
+.I any
+header files.
+.SH NOTES
+Under Linux, the
+.B O_NONBLOCK
+flag indicates dat one wants ta open
+but do not necessarily have tha intention ta read or write.
+This is typically used ta open devices up in order ta git a gangbangin' file descriptor
+for use with
+.BR ioctl (2).
+
+.LP
+Da (undefined) effect of
+.B O_RDONLY | O_TRUNC
+varies among implementations.
+On nuff systems tha file is straight-up truncated.
+.\" Linux 2.0, 2.5: truncate
+.\" Solaris 5.7, 5.8: truncate
+.\" Irix 6.5: truncate
+.\" Tru64 5.1B: truncate
+.\" HP-UX 11.22: truncate
+.\" FreeBSD 4.7: truncate
+
+Note that
+.BR open ()
+can open thang special filez yo, but
+.BR creat ()
+cannot create them; use
+.BR mknod (2)
+instead.
+
+If tha file is newly pimped, its
+.IR st_atime ,
+.IR st_ctime ,
+.I st_mtime
+fields
+(respectively, time of last access, time of last status chizzle, and
+time of last modification; see
+.BR stat (2))
+are set
+to tha current time, n' so is the
+.I st_ctime
+and
+.I st_mtime
+fieldz of the
+parent directory.
+Otherwise, if tha file is modified cuz of the
+.B O_TRUNC
+flag, its st_ctime n' st_mtime fieldz is set ta tha current time.
+.\"
+.\"
+.SS Open file descriptions
+Da term open file description is tha one used by POSIX ta refer ta the
+entries up in tha system-wide table of open files.
+In other contexts, dis object is
+variously also called a "open file object",
+a "file handle", a "open file table entry",
+or\(emin kernel-developer parlance\(ema
+.IR "struct file" .
+
+When a gangbangin' file descriptor is duplicated (using
+.BR dup (2)
+or similar),
+the duplicate refers ta tha same open file description
+as tha original gangsta file descriptor,
+and tha two file descriptors consequently share
+the file offset n' file status flags.
+Such pluggin can also occur between processes:
+a lil pimp process pimped via
+.BR fork (2)
+inherits duplicatez of its parentz file descriptors,
+and dem duplicates refer ta tha same open file descriptions.
+
+Each
+.BR open (2)
+of a gangbangin' file creates a freshly smoked up open file description;
+thus, there may be multiple open file descriptions
+correspondin ta a gangbangin' file inode.
+.\"
+.\"
+.SS Synchronized I/O
+Da POSIX.1-2008 "synchronized I/O" option
+specifies different variantz of synchronized I/O,
+and specifies the
+.BR open ()
+flags
+.BR O_SYNC ,
+.BR O_DSYNC ,
+and
+.BR O_RSYNC
+for controllin tha behavior.
+Regardless of whether a implementation supports dis option,
+it must at least support tha use of
+.BR O_SYNC
+for regular files.
+
+Linux implements
+.BR O_SYNC
+and
+.BR O_DSYNC ,
+but not
+.BR O_RSYNC .
+(Somewhat incorrectly, glibc defines
+.BR O_RSYNC
+to have tha same value as
+.BR O_SYNC .)
+
+.BR O_SYNC
+provides synchronized I/O
+.I file
+integritizzle completion,
+meanin write operations will flush data n' all associated metadata
+to tha underlyin hardware.
+.BR O_DSYNC
+provides synchronized I/O
+.I data
+integritizzle completion,
+meanin write operations will flush data
+to tha underlyin hardware,
+but will only flush metadata thugged-out shiznit dat is required
+to allow a subsequent read operation ta complete successfully.
+Data integritizzle completion can reduce tha number of disk operations
+that is required fo' applications dat don't need tha guarantees
+of file integritizzle completion.
+
+To KNOW tha difference between tha the two typez of completion,
+consider two piecez of file metadata:
+the file last modification timestamp
+.RI ( st_mtime )
+and tha file length.
+All write operations will update tha last file modification timestamp,
+but only writes dat add data ta tha end of the
+file will chizzle tha file length.
+Da last modification timestamp aint needed ta ensure that
+a read completes successfully yo, but tha file length is.
+Thus,
+.BR O_DSYNC
+would only guarantee ta flush thugged-out shiznit ta tha file length metadata
+(whereas
+.BR O_SYNC
+would also always flush tha last modification timestamp metadata).
+
+Before Linux 2.6.33, Linux implemented only the
+.BR O_SYNC
+flag for
+.BR open ().
+But fuck dat shiznit yo, tha word on tha street is dat when dat flag was specified,
+most filesystems straight-up provided tha equivalent of synchronized I/O
+.I data
+integritizzle completion (i.e.,
+.BR O_SYNC
+was straight-up implemented as tha equivalent of
+.BR O_DSYNC ).
+
+Since Linux 2.6.33, proper
+.BR O_SYNC
+support is provided.
+But fuck dat shiznit yo, tha word on tha street is dat ta ensure backward binary compatibility,
+.BR O_DSYNC
+was defined wit tha same value as tha historical
+.BR O_SYNC ,
+and
+.BR O_SYNC
+was defined as a freshly smoked up (two-bit) flag value dat includes the
+.BR O_DSYNC
+flag value.
+This ensures dat applications compiled against
+new headaz git at least
+.BR O_DSYNC
+semantics on pre-2.6.33 kernels.
+.\"
+.\"
+.SS NFS
+There is nuff infelicitizzles up in tha protocol underlyin NFS, affecting
+amongst others
+.BR O_SYNC " n' " O_NDELAY .
+
+On NFS filesystems wit UID mappin enabled,
+.BR open ()
+may
+return a gangbangin' file descriptor but, fo' example,
+.BR read (2)
+requests is denied
+with \fBEACCES\fP.
+This is cuz tha client performs
+.BR open ()
+by checkin the
+permissions yo, but UID mappin is performed by tha server upon
+read n' write requests.
+.\"
+.\"
+.SS File access mode
+Unlike tha other joints dat can be specified in
+.IR flags ,
+the
+.I "access mode"
+values
+.BR O_RDONLY ", " O_WRONLY ", n' " O_RDWR
+do not specify individual bits.
+Rather, they define tha low order two bits of
+.IR flags ,
+and is defined respectively as 0, 1, n' 2.
+In other lyrics, tha combination
+.B "O_RDONLY | O_WRONLY"
+is a logical error, n' certainly aint gots tha same meanin as
+.BR O_RDWR .
+
+Linux reserves tha special, nonstandard access mode 3 (binary 11) in
+.I flags
+to mean:
+check fo' read n' write permission on tha file n' return a thugged-out descriptor
+that can't be used fo' readin or writing.
+This nonstandard access mode is used by some Linux drivers ta return a
+descriptor dat is ta be used only fo' device-specific
+.BR ioctl (2)
+operations.
+.\" See fo' example util-linuxz disk-utils/setfdprm.c
+.\" For some background on access mode 3, see
+.\" http://thread.gmane.org/gmane.linux.kernel/653123
+.\" "[RFC] erect flags ta f_mode conversion up in __dentry_open"
+.\" LKML, 12 Mar 2008
+.\"
+.\"
+.SS Rationale fo' openat() n' other "directory file descriptor" APIs
+.BR openat ()
+and tha other system calls n' library functions dat take
+a directory file descriptor argument
+(i.e.,
+.BR faccessat (2),
+.BR fanotify_mark (2),
+.BR fchmodat (2),
+.BR fchownat (2),
+.BR fstatat (2),
+.BR futimesat (2),
+.BR linkat (2),
+.BR mkdirat (2),
+.BR mknodat (2),
+.BR name_to_handle_at (2),
+.BR readlinkat (2),
+.BR renameat (2),
+.BR symlinkat (2),
+.BR unlinkat (2),
+.BR utimensat (2)
+.BR mkfifoat (3),
+and
+.BR scandirat (3))
+are supported
+for two reasons.
+Here, tha explanation is up in termz of the
+.BR openat ()
+call yo, but tha rationale be analogous fo' tha other intercourses.
+
+First,
+.BR openat ()
+allows a application ta avoid race conditions dat could
+occur when using
+.BR open ()
+to open filez up in directories other than tha current hustlin directory.
+These race conditions result from tha fact dat some component
+of tha directory prefix given to
+.BR open ()
+could be chizzled up in parallel wit tha call to
+.BR open ().
+Such races can be avoided by
+openin a gangbangin' file descriptor fo' tha target directory,
+and then specifyin dat file descriptor as the
+.I dirfd
+argument of
+.BR openat ().
+
+Second,
+.BR openat ()
+allows tha implementation of a per-thread "current working
+directory", via file descriptor(s) maintained by tha application.
+(This functionalitizzle can also be obtained by tricks based
+on tha use of
+.IR /proc/self/fd/ dirfd,
+but less efficiently.)
+.\"
+.\"
+.SS O_DIRECT
+.LP
+The
+.B O_DIRECT
+flag may impose alignment restrictions on tha length n' address
+of user-space buffers n' tha file offset of I/Os.
+In Linux alignment
+restrictions vary by filesystem n' kernel version n' might be
+absent entirely.
+However there is currently no filesystem\-independent
+interface fo' a application ta discover these restrictions fo' a given
+file or filesystem.
+Some filesystems provide they own intercourses
+for bustin so, fo' example the
+.B XFS_IOC_DIOINFO
+operation in
+.BR xfsctl (3).
+.LP
+Under Linux 2.4, transfer sizes, n' tha alignment of tha user buffer
+and tha file offset must all be multiplez of tha logical block size
+of tha filesystem.
+Since Linux 2.6.0, alignment ta tha logical block size of the
+underlyin storage (typically 512 bytes) suffices.
+Da logical block size can be determined rockin the
+.BR ioctl (2)
+.B BLKSSZGET
+operation or from tha shell rockin tha command:
+
+    blockdev \-\-getss
+.LP
+.B O_DIRECT
+I/Os should never be run concurrently wit the
+.BR fork (2)
+system call,
+if tha memory buffer be a private mapping
+(i.e., any mappin pimped wit the
+.BR mmap (2)
+.BR MAP_PRIVATE
+flag;
+this includes memory allocated on tha heap n' statically allocated buffers).
+Any such I/Os, whether submitted via a asynchronous I/O intercourse or from
+another thread up in tha process,
+should be completed before
+.BR fork (2)
+is called.
+Failure ta do so can result up in data corruption n' undefined behavior in
+parent n' lil pimp processes.
+This restriction do not apply when tha memory buffer fo' the
+.B O_DIRECT
+I/Os was pimped using
+.BR shmat (2)
+or
+.BR mmap (2)
+with the
+.B MAP_SHARED
+flag.
+Nor do dis restriction apply when tha memory buffer has been advised as
+.B MADV_DONTFORK
+with
+.BR madvise (2),
+ensurin dat it aint gonna be available
+to tha lil pimp after
+.BR fork (2).
+.LP
+The
+.B O_DIRECT
+flag was introduced up in SGI IRIX, where it has alignment
+restrictions similar ta dem of Linux 2.4.
+IRIX has also a
+.BR fcntl (2)
+call ta query appropriate alignments, n' sizes.
+FreeBSD 4.x introduced
+a flag of tha same name yo, but without alignment restrictions.
+.LP
+.B O_DIRECT
+support was added under Linux up in kernel version 2.4.10.
+Older Linux kernels simply ignore dis flag.
+Some filesystems may not implement tha flag and
+.BR open ()
+will fail with
+.B EINVAL
+if it is used.
+.LP
+Applications should avoid mixing
+.B O_DIRECT
+and aiiight I/O ta tha same file,
+and especially ta overlappin byte regions up in tha same file.
+Even when tha filesystem erectly handlez tha coherency thangs in
+this thang, overall I/O throughput is likely ta be slower than
+usin either mode ridin' solo.
+Likewise, applications should avoid mixing
+.BR mmap (2)
+of filez wit direct I/O ta tha same files.
+.LP
+Da behavior of
+.B O_DIRECT
+with NFS will differ from local filesystems.
+Older kernels, or
+kernels configured up in certain ways, may not support dis combination.
+Da NFS protocol do not support passin tha flag ta tha server, so
+.B O_DIRECT
+I/O will bypass tha page cache only on tha client; tha server may
+still cache tha I/O.
+Da client asks tha server ta make tha I/O
+synchronous ta preserve tha synchronous semantics of
+.BR O_DIRECT .
+Some servers will big-ass up skankyly under these circumstances, especially
+if tha I/O size is small.
+Some servers may also be configured to
+lie ta clients bout tha I/O havin reached stable storage; this
+will avoid tha performizzle penalty at some risk ta data integrity
+in tha event of server juice failure.
+Da Linux NFS client places no alignment restrictions on
+.B O_DIRECT
+I/O.
+.PP
+In summary,
+.B O_DIRECT
+is a potentially bangin tool dat should be used wit caution.
+It be recommended dat applications treat use of
+.B O_DIRECT
+as a performizzle option which is disabled by default.
+.PP
+.RS
+"Da thang dat has always disturbed mah crazy ass bout O_DIRECT is dat tha whole
+interface is just stupid, n' was probably designed by a thugged-out deranged monkey
+on some straight-up mind-controllin substances."\(emLinus
+.RE
+.SH BUGS
+Currently, it aint possible ta enable signal-driven
+I/O by specifying
+.B O_ASYNC
+when calling
+.BR open ();
+use
+.BR fcntl (2)
+to enable dis flag.
+.\" FIXME . Peep bugzilla report on open(O_ASYNC)
+.\" See http://bugzilla.kernel.org/show_bug.cgi?id=5993
+
+One must check fo' two different error codes,
+.B EISDIR
+and
+.BR ENOENT ,
+when tryin ta determine whether tha kernel supports
+.B O_TMPFILE
+functionality.
+.SH SEE ALSO
+.BR chmod (2),
+.BR chown (2),
+.BR close (2),
+.BR dup (2),
+.BR fcntl (2),
+.BR link (2),
+.BR lseek (2),
+.BR mknod (2),
+.BR mmap (2),
+.BR mount (2),
+.BR open_by_handle_at (2),
+.BR read (2),
+.BR socket (2),
+.BR stat (2),
+.BR umask (2),
+.BR unlink (2),
+.BR write (2),
+.BR fopen (3),
+.BR fifo (7),
+.BR path_resolution (7),
+.BR symlink (7)

@@ -1,0 +1,263 @@
+.\" Copyright (c) 2003-2011 Slim Tim Kientzle
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd February 2, 2012
+.Dt ARCHIVE_WRITE 3
+.Os
+.Sh NAME
+.Nm archive_write
+.Nd functions fo' bustin archives
+.Sh LIBRARY
+Streamin Archive Library (libarchive, -larchive)
+.Sh SYNOPSIS
+.In archive.h
+.Sh DESCRIPTION
+These functions provide a cold-ass lil complete API fo' bustin streaming
+archive files.
+Da general process is ta first create the
+.Tn struct archive
+object, set any desired options, initialize tha archive, append entries, then
+close tha archive n' release all resources.
+.\"
+.Ss Smoke archive object
+See
+.Xr archive_write_new 3 .
+.Pp
+To write a archive, you must first obtain a initialized
+.Tn struct archive
+object from
+.Fn archive_write_new .
+.\"
+.Ss Enable filtas n' formats, configure block size n' padding
+See
+.Xr archive_write_filta 3 ,
+.Xr archive_write_format 3
+and
+.Xr archive_write_blocksize 3 .
+.Pp
+Yo ass can then modify dis object fo' tha desired operations wit the
+various
+.Fn archive_write_set_XXX
+functions.
+In particular, yo big-ass booty is ghon need ta invoke appropriate
+.Fn archive_write_add_XXX
+and
+.Fn archive_write_set_XXX
+functions ta enable tha correspondin compression n' format
+support.
+.\"
+.Ss Set options
+See
+.Xr archive_read_set_options 3 .
+.\"
+.Ss Open archive
+See
+.Xr archive_write_open 3 .
+.Pp
+Once you have prepared the
+.Tn struct archive
+object, you call
+.Fn archive_write_open
+to straight-up open tha archive n' prepare it fo' writing.
+There is nuff muthafuckin variantz of dis function;
+da most thugged-out basic expects you ta provide pointas ta several
+functions dat can provide blockz of bytes from tha archive.
+There is convenience forms dat allow you to
+specify a gangbangin' filename, file descriptor,
+.Ft "FILE *"
+object, or a funky-ass block of memory from which ta write tha archive data.
+.\"
+.Ss Produce archive
+See
+.Xr archive_write_header 3
+and
+.Xr archive_write_data 3 .
+.Pp
+Individual archive entries is freestyled up in a three-step
+process:
+Yo ass first initialize a
+.Tn struct archive_entry
+structure wit shiznit bout tha freshly smoked up entry.
+At a minimum, you should set tha pathname of the
+entry n' provide a
+.Va struct stat
+with a valid
+.Va st_mode
+field, which specifies tha type of object and
+.Va st_size
+field, which specifies tha size of tha data portion of tha object.
+.\"
+.Ss Release resources
+See
+.Xr archive_write_free 3 .
+.Pp
+Afta all entries done been written, use the
+.Fn archive_write_free
+function ta release all resources.
+.\"
+.Sh EXAMPLE
+Da followin sketch illustrates basic usage of tha library.
+In dis example,
+the callback functions is simply wrappers round tha standard
+.Xr open 2 ,
+.Xr write 2 ,
+and
+.Xr close 2
+system calls.
+.Bd -literal -offset indent
+#ifdef __linux__
+#define	_FILE_OFFSET_BITS 64
+#endif
+#include <sys/stat.h>
+#include <archive.h>
+#include <archive_entry.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+struct mydata {
+  const char *name;
+  int fd;
+};
+
+int
+myopen(struct archive *a, void *client_data)
+{
+  struct mydata *mydata = client_data;
+
+  mydata->fd = open(mydata->name, O_WRONLY | O_CREAT, 0644);
+  if (mydata->fd >= 0)
+    return (ARCHIVE_OK);
+  else
+    return (ARCHIVE_FATAL);
+}
+
+ssize_t
+mywrite(struct archive *a, void *client_data, const void *buff, size_t n)
+{
+  struct mydata *mydata = client_data;
+
+  return (write(mydata->fd, buff, n));
+}
+
+int
+myclose(struct archive *a, void *client_data)
+{
+  struct mydata *mydata = client_data;
+
+  if (mydata->fd > 0)
+    close(mydata->fd);
+  return (0);
+}
+
+void
+write_archive(const char *outname, const char **filename)
+{
+  struct mydata *mydata = malloc(sizeof(struct mydata));
+  struct archive *a;
+  struct archive_entry *entry;
+  struct stat st;
+  char buff[8192];
+  int len;
+  int fd;
+
+  a = archive_write_new();
+  mydata->name = outname;
+  archive_write_add_filter_gzip(a);
+  archive_write_set_format_ustar(a);
+  archive_write_open(a, mydata, myopen, mywrite, myclose);
+  while (*filename) {
+    stat(*filename, &st);
+    entry = archive_entry_new();
+    archive_entry_copy_stat(entry, &st);
+    archive_entry_set_pathname(entry, *filename);
+    archive_write_header(a, entry);
+    if ((fd = open(*filename, O_RDONLY)) != -1) {
+      len = read(fd, buff, sizeof(buff));
+      while ( len > 0 ) {
+        archive_write_data(a, buff, len);
+        len = read(fd, buff, sizeof(buff));
+      }
+      close(fd);
+    }
+    archive_entry_free(entry);
+    filename++;
+  }
+  archive_write_free(a);
+}
+
+int main(int argc, const char **argv)
+{
+  const char *outname;
+  argv++;
+  outname = argv++;
+  write_archive(outname, argv);
+  return 0;
+}
+.Ed
+.Sh SEE ALSO
+.Xr tar 1 ,
+.Xr libarchive 3 ,
+.Xr archive_write_set_options 3 ,
+.Xr cpio 5 ,
+.Xr mtree 5 ,
+.Xr tar 5
+.Sh HISTORY
+The
+.Nm libarchive
+library first rocked up in
+.Fx 5.3 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm libarchive
+library was freestyled by
+.An Slim Tim Kientzle Aq kientzle@acm.org .
+.Sh BUGS
+There is nuff peculiar bugs up in phat tar implementations dat may cause
+certain programs ta reject archives freestyled by dis library.
+For example, nuff muthafuckin phat implementations calculated header checksums
+incorrectly n' will thus reject valid archives; GNU tar do not straight-up support
+pax interchange format; some oldschool tar implementations required specific
+field terminations.
+.Pp
+Da default pax interchange format eliminates most of tha historic
+tar limitations n' serves up a generic key/value attribute facility
+for vendor-defined extensions.
+One oversight up in POSIX is tha failure ta provide a standard attribute
+for big-ass thang numbers.
+This library uses
+.Dq SCHILY.devminor
+and
+.Dq SCHILY.devmajor
+for thang numbers dat exceed tha range supported by tha backwards-compatible
+ustar header.
+These keys is compatible wit Joerg Schilling's
+.Nm star
+archiver.
+Other implementations may not recognize these keys n' will thus be unable
+to erectly restore thang nodes wit big-ass thang numbers from archives
+created by dis library.

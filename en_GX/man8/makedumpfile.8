@@ -1,0 +1,590 @@
+.TH MAKEDUMPFILE 8 "3 Jul 2013" "makedumpfile v1.5.4" "Linux System Administratorz Manual"
+.SH NAME
+makedumpfile \- cook up a lil' small-ass dumpfile of kdump
+.SH SYNOPSIS
+\fBmakedumpfile\fR    [\fIOPTION\fR] [\-x \fIVMLINUX\fR|\-i \fIVMCOREINFO\fR] \fIVMCORE\fR \fIDUMPFILE\fR
+.br
+\fBmakedumpfile\fR \-F [\fIOPTION\fR] [\-x \fIVMLINUX\fR|\-i \fIVMCOREINFO\fR] \fIVMCORE\fR
+.br
+\fBmakedumpfile\fR   [\fIOPTION\fR] \-x \fIVMLINUX\fR [\-\-config \fIFILTERCONFIGFILE\fR] [\-\-eppic \fIEPPICMACRO\fR] \fIVMCORE\fR \fIDUMPFILE\fR
+.br
+\fBmakedumpfile\fR \-R \fIDUMPFILE\fR
+.br
+\fBmakedumpfile\fR \-\-split [\fIOPTION\fR] [\-x \fIVMLINUX\fR|\-i \fIVMCOREINFO\fR] \fIVMCORE\fR \fIDUMPFILE1\fR \fIDUMPFILE2\fR [\fIDUMPFILE3\fR ..]
+.br
+\fBmakedumpfile\fR \-\-reassemble \fIDUMPFILE1\fR \fIDUMPFILE2\fR [\fIDUMPFILE3\fR ..] \fIDUMPFILE\fR
+.br
+\fBmakedumpfile\fR \-g \fIVMCOREINFO\fR \-x \fIVMLINUX\fR
+.br
+\fBmakedumpfile\fR \-E [\-\-xen-syms \fIXEN-SYMS\fR|\-\-xen-vmcoreinfo \fIVMCOREINFO\fR] \fIVMCORE\fR \fIDUMPFILE\fR
+.br
+\fBmakedumpfile\fR \-\-dump-dmesg [\-x \fIVMLINUX\fR|\-i \fIVMCOREINFO\fR] \fIVMCORE\fR \fILOGFILE\fR
+.br
+\fBmakedumpfile\fR    [\fIOPTION\fR] \-x \fIVMLINUX\fR \-\-diskset=\fIVMCORE1\fR \-\-diskset=\fIVMCORE2\fR [\-\-diskset=\fIVMCORE3\fR ..] \fIDUMPFILE\fR
+.br
+.B makedumpfile
+\-h
+.br
+.B makedumpfile
+\-v
+.br
+.SH DESCRIPTION
+.PP
+With kdump, tha memory image of tha straight-up original gangsta kernel (called "panicked kernel") can
+be taken as /proc/vmcore while tha second kernel (called "kdump kernel" or
+"capture kernel") is hustlin. This document represents /proc/vmcore as
+\fIVMCORE\fR. makedumpfile cook up a lil' small-ass \fIDUMPFILE\fR by compressin dump
+data or by excludin unnecessary pages fo' analysis, or both. makedumpfile
+needz tha straight-up original gangsta kernelz debug shiznit, so dat it can distinguish
+unnecessary pages by analyzin how tha fuck tha straight-up original gangsta kernel uses tha memory.
+Da shiznit can be taken from \fIVMLINUX\fR or \fIVMCOREINFO\fR.
+.PP
+makedumpfile can exclude tha followin typez of pages while copying
+\fIVMCORE\fR ta \fIDUMPFILE\fR, n' a user can chizzle which type of pages will
+be excluded.
+.br
+.B \- Pages filled wit zero
+.br
+.B \- Cache pages without private pages
+.br
+.B \- All cache pages wit private pages
+.br
+.B \- User process data pages
+.br
+.B \- Jacked pages
+.PP
+makedumpfile serves up two \fIDUMPFILE\fR formats (the ELF format n' the
+kdump\-compressed format). By default, makedumpfile cook up a \fIDUMPFILE\fR in
+the kdump\-compressed format. Da kdump\-compressed format is readable only with
+the crash utility, n' it can be smalla than tha ELF format cuz of the
+compression support. Da ELF format is readable wit GDB n' tha crash utility.
+If a user wants ta use GDB, \fIDUMPFILE\fR format has ta be explicitly
+specified ta be tha ELF format.
+.PP
+Apart from tha exclusion of unnecessary pages mentioned above, makedumpfile
+allows user ta filta up targeted kernel data. Da filta config file can
+be used ta specify kernel/module symbols n' its thugz dat need ta be
+filtered up all up in tha erase command syntax. makedumpfile readz tha filter
+config n' buildz tha list of memory addresses n' its sizes afta processing
+filta commands. Da memory locations dat require ta be filtered up are
+then poisoned wit characta 'X' (58 up in Hex). Refer to
+\fBmakedumpfile.conf(5)\fR fo' file format.
+.PP
+Eppic macros can also be used ta specify kernel symbols n' its thugz that
+need ta be filtered. Y'all KNOW dat shit, muthafucka! Eppic serves up C semantics includin language constructs
+like fuckin conditionizzle statements, logical n' arithmetic operators, functions,
+nested loops ta traverse n' erase kernel data. --eppic requires
+\fBeppic_makedumpfile.so\fR n' eppic library. \fBeppic_makedumpfile.so\fR
+can be built from makedumpfile source. Refer to
+\fBhttp://code.google.com/p/eppic/\fR ta build eppic library \fBlibeppic.a\fR
+and fo' mo' shiznit on freestylin eppic macros.
+.PP
+To analyze tha straight-up original gangsta kernelz memory usage, makedumpfile can refer to
+\fIVMCOREINFO\fR instead of \fIVMLINUX\fR. \fIVMCOREINFO\fR gotz nuff tha first
+kernelz shiznit (structure size, field offset, etc.), n' \fIVMCOREINFO\fR
+is lil' small-ass enough ta be included tha fuck into tha second kernelz initrd.
+.br
+If tha second kernel is hustlin on its initrd without mountin a root file
+system, makedumpfile cannot refer ta \fIVMLINUX\fR cuz tha second kernel's
+initrd cannot include a big-ass file like \fIVMLINUX\fR. To solve tha problem,
+makedumpfile make \fIVMCOREINFO\fR beforehand, n' it refers to
+\fIVMCOREINFO\fR instead of \fIVMLINUX\fR while tha second kernel is hustlin.
+.br
+\fIVMCORE\fR has contained \fIVMCOREINFO\fR since linux-2.6.24, n' a user do
+not need ta specify neither -x nor -i option.
+.PP
+If tha second kernel is hustlin on its initrd without mountin any file system,
+a user need ta transhiznit tha dump data ta a remote host. To transhiznit tha dump
+data by SSH, makedumpfile outputs tha dump data up in tha intermediate format (the
+flattened format) ta tha standard output. By pipin tha output data ta SSH,
+a user can transhiznit tha dump data ta a remote host. Note dat analysis tools
+(crash utilitizzle before version 5.1.2 or GDB) cannot read tha flattened format 
+directly, so on a remote host tha received data up in tha flattened format needs
+to be rearranged ta a readable \fIDUMPFILE\fR format by makedumpfile (or makedumpfile\-R.pl).
+.PP
+makedumpfile can read a \fIDUMPFILE\fR up in tha kdump-compressed format instead
+of \fIVMCORE\fR n' re-filta dat shit. This feature is useful up in thang that
+users need ta reduce tha file size of \fIDUMPFILE\fR fo' bustin  it somewhere
+by ftp/scp/etc. (If all of tha page types, which is specified by a freshly smoked up dump_level,
+are excluded from a original gangsta \fIDUMPFILE\fR already, a freshly smoked up \fIDUMPFILE\fR is the
+same as a original gangsta \fIDUMPFILE\fR.)
+.br
+For example, makedumpfile can create a \fIDUMPFILE\fR of dump_level 31 from the
+one of dump_level 3 like tha following:
+.br
+.B Example:
+.br
+# makedumpfile \-c \-d 3 /proc/vmcore dumpfile.1
+.br
+# makedumpfile \-c \-d 31 dumpfile.1 dumpfile.2
+.PP
+makedumpfile can read \fIVMCORE\fR(s) up in three kindz of sadump
+formats: single partizzle format, diskset format n' media backup
+format, n' can convert each of dem tha fuck into kdump-compressed format with
+filterin n' compression processing. Note dat fo' \fIVMCORE\fR(s)
+created by sadump, you always need ta pass \fIVMLINUX\fR wit -x
+option. I aint talkin' bout chicken n' gravy biatch fo' realz. Also, ta pass multiple \fIVMCORE\fRs pimped on diskset
+configuration, you need ta use --diskset option.
+
+.PP
+.SH OPTIONS
+
+.TP
+\fB\-c,\-l,\-p\fR
+Compress dump data by each page rockin zlib fo' -c option, lzo fo' -l
+option or snappy fo' -p option.
+(-l option needz USELZO=on n' -p option needz USESNAPPY=on when building)
+.br
+A user cannot specify dis option wit \-E option, cuz tha ELF format do
+not support compressed data.
+.br
+.B Example:
+.br
+# makedumpfile \-c \-d 31 \-x vmlinux /proc/vmcore dumpfile
+
+.TP
+.BI \-d \ dump_level
+Specify tha type of unnecessary page fo' analysis.
+.br
+Pagez of tha specified type is not copied ta \fIDUMPFILE\fR. Da page type
+marked up in tha followin table is excluded. Y'all KNOW dat shit, muthafucka! A user can specify multiple page
+types by settin tha sum of each page type fo' dump_level. Da maximum of
+dump_level is 31. Note dat a thugged-out dump_level fo' Xen dump filterin is 0 or 1 on
+a machine other than x86_64 (On a x86_64 machine, it is possible ta specify
+2 or bigger as a thugged-out dump_level).
+.br
+If specifyin multiple dump_levels wit tha delimita ',', makedumpfile retries
+to create a \fIDUMPFILE\fR by other dump_level when "No space on device" error
+happens. For example, if dump_level is "11,31" n' makedumpfile fails
+by dump_level 11, makedumpfile retries it by dump_level 31.
+.br
+.B Example:
+.br
+# makedumpfile \-d 11 \-x vmlinux /proc/vmcore dumpfile
+.br
+# makedumpfile \-d 11,31 \-x vmlinux /proc/vmcore dumpfile
+
+       |      |cache  |cache  |      |
+  dump | zero |without|with   | user | free
+ level | page |private|private| data | page
+.br
+\-\-\-\-\-\-\-+\-\-\-\-\-\-+\-\-\-\-\-\-\-+\-\-\-\-\-\-\-+\-\-\-\-\-\-+\-\-\-\-\-\-
+     0 |      |       |       |      |
+     1 |  X   |       |       |      |
+     2 |      |   X   |       |      |
+     3 |  X   |   X   |       |      |
+     4 |      |   X   |   X   |      |
+     5 |  X   |   X   |   X   |      |
+     6 |      |   X   |   X   |      |
+     7 |  X   |   X   |   X   |      |
+     8 |      |       |       |  X   |
+     9 |  X   |       |       |  X   |
+    10 |      |   X   |       |  X   |
+    11 |  X   |   X   |       |  X   |
+    12 |      |   X   |   X   |  X   |
+    13 |  X   |   X   |   X   |  X   |
+    14 |      |   X   |   X   |  X   |
+    15 |  X   |   X   |   X   |  X   |
+    16 |      |       |       |      |  X
+    17 |  X   |       |       |      |  X
+    18 |      |   X   |       |      |  X
+    19 |  X   |   X   |       |      |  X
+    20 |      |   X   |   X   |      |  X
+    21 |  X   |   X   |   X   |      |  X
+    22 |      |   X   |   X   |      |  X
+    23 |  X   |   X   |   X   |      |  X
+    24 |      |       |       |  X   |  X
+    25 |  X   |       |       |  X   |  X
+    26 |      |   X   |       |  X   |  X
+    27 |  X   |   X   |       |  X   |  X
+    28 |      |   X   |   X   |  X   |  X
+    29 |  X   |   X   |   X   |  X   |  X
+    30 |      |   X   |   X   |  X   |  X
+    31 |  X   |   X   |   X   |  X   |  X
+
+
+.TP
+\fB\-E\fR
+Smoke \fIDUMPFILE\fR up in tha ELF format.
+.br
+This option cannot be specified wit either of \-c option or \-l option, cuz
+the ELF format do not support compressed data.
+.br
+.B Example:
+.br
+# makedumpfile \-E \-d 31 \-x vmlinux /proc/vmcore dumpfile
+
+.TP
+\fB\-f\fR
+Force existin DUMPFILE ta be overwritten.
+.br
+.B Example:
+.br
+# makedumpfile \-f \-d 31 \-x vmlinux /proc/vmcore dumpfile
+.br
+This command overwrites \fIDUMPFILE\fR even if it already exists.
+
+.TP
+\fB\-x\fR \fIVMLINUX\fR
+Specify tha straight-up original gangsta kernelz \fIVMLINUX\fR wit debug shiznit ta analyze the
+first kernelz memory usage.
+.br
+This option is necessary if \fIVMCORE\fR do not contain \fIVMCOREINFO\fR,
+[\-i \fIVMCOREINFO\fR] aint specified, n' dump_level is 2 or more.
+.br
+Da page size of tha straight-up original gangsta kernel n' tha second kernel should match.
+.br
+.B Example:
+.br
+# makedumpfile \-d 31 \-x vmlinux /proc/vmcore dumpfile
+
+.TP
+\fB\-i\fR \fIVMCOREINFO\fR
+Specify \fIVMCOREINFO\fR instead of \fIVMLINUX\fR fo' analyzin tha straight-up original gangsta kernelz memory usage.
+.br
+\fIVMCOREINFO\fR should be made beforehand by makedumpfile wit \-g option, and
+it gotz nuff tha straight-up original gangsta kernelz shiznit.
+.br
+This option is necessary if \fIVMCORE\fR do not contain \fIVMCOREINFO\fR,
+[\-x \fIVMLINUX\fR] aint specified, n' dump_level is 2 or more.
+.br
+.B Example:
+.br
+# makedumpfile \-d 31 \-i vmcoreinfo /proc/vmcore dumpfile
+
+.TP
+\fB\-g\fR \fIVMCOREINFO\fR
+Generate \fIVMCOREINFO\fR from tha straight-up original gangsta kernelz \fIVMLINUX\fR wit debug
+information.
+.br
+\fIVMCOREINFO\fR must be generated on tha system dat is hustlin tha first
+kernel. With \-i option, a user can specify \fIVMCOREINFO\fR generated on the
+other system dat is hustlin tha same first kernel. [\-x \fIVMLINUX\fR] must be
+specified.
+.br
+.B Example:
+.br
+# makedumpfile \-g vmcoreinfo \-x vmlinux
+
+.TP
+\fB\-\-config\fR \fIFILTERCONFIGFILE\fR
+Used up in conjunction wit \-x \fIVMLINUX\fR option, ta specify tha filter
+config file \fIFILTERCONFIGFILE\fR dat gotz nuff erase commandz ta filta out
+desired kernel data from vmcore while bustin \fIDUMPFILE\fR. For filter
+command syntax please refer ta \fBmakedumpfile.conf(5)\fR.
+
+.TP
+\fB\-\-eppic\fR \fIEPPICMACRO\fR
+Used up in conjunction wit \-x \fIVMLINUX\fR option, ta specify tha eppic macro
+file dat gotz nuff filta rulez or directory dat gotz nuff eppic macro
+filez ta filta up desired kernel data from vmcore while bustin \fIDUMPFILE\fR.
+When directory is specified, all tha eppic macros up in tha directory is processed.
+
+.TP
+\fB\-F\fR
+Output tha dump data up in tha flattened format ta tha standard output for
+transportin tha dump data by SSH.
+.br
+Analysis tools (crash utilitizzle before version 5.1.2 or GDB) cannot read tha 
+flattened format directly. For analysis, tha dump data up in tha flattened format
+should be rearranged ta a aiiight \fIDUMPFILE\fR (readable wit analysis tools)
+by \-R option. I aint talkin' bout chicken n' gravy biatch. By which option is specified wit \-F option, tha format of the
+rearranged \fIDUMPFILE\fR is fixed.
+In other lyrics, it is impossible ta specify tha \fIDUMPFILE\fR format when the
+dump data is rearranged wit \-R option. I aint talkin' bout chicken n' gravy biatch. If specifyin \-E option wit \-F option,
+the format of tha rearranged \fIDUMPFILE\fR is tha ELF format. Otherwise, it
+is tha kdump\-compressed format fo' realz. All tha lyrics is output ta standard error
+output by \-F option cuz standard output is used fo' tha dump data.
+.br
+.B Example:
+.br
+# makedumpfile \-F \-c \-d 31 \-x vmlinux /proc/vmcore \e
+.br
+| ssh user@host "cat > dumpfile.tmp"
+.br
+# makedumpfile \-F \-c \-d 31 \-x vmlinux /proc/vmcore \e
+.br
+| ssh user@host "makedumpfile \-R dumpfile"
+.br
+# makedumpfile \-F \-E \-d 31 \-i vmcoreinfo  /proc/vmcore \e
+.br
+| ssh user@host "makedumpfile \-R dumpfile"
+.br
+# makedumpfile \-F \-E \-\-xen-vmcoreinfo \fIVMCOREINFO\fR /proc/vmcore \e
+.br
+| ssh user@host "makedumpfile \-R dumpfile"
+
+.TP
+\fB\-R\fR
+Rearrange tha dump data up in tha flattened format from tha standard input ta a
+normal \fIDUMPFILE\fR (readable wit analysis tools).
+.br
+.B Example:
+.br
+# makedumpfile \-R dumpfile < dumpfile.tmp
+.br
+# makedumpfile \-F \-d 31 \-x vmlinux /proc/vmcore \e
+.br
+| ssh user@host "makedumpfile \-R dumpfile"
+
+Instead of rockin \-R option, a perl script "makedumpfile\-R.pl" rearranges the
+dump data up in tha flattened format ta a aiiight \fIDUMPFILE\fR, like a muthafucka. Da perl
+script do not depend on architecture, n' most systems have perl command.
+Even if a remote host aint gots makedumpfile, it is possible ta rearrange
+the dump data up in tha flattened format ta a readable \fIDUMPFILE\fR on a remote
+host by hustlin dis script.
+.br
+.B Example:
+.br
+# makedumpfile \-F \-d 31 \-x vmlinux /proc/vmcore \e
+.br
+| ssh user@host "makedumpfile\-R.pl dumpfile"
+
+.TP
+\fB\-\-split\fR
+Split tha dump data ta multiple \fIDUMPFILE\fRs up in parallel. If specifying
+\fIDUMPFILE\fRs on different storage devices, a thang can share I/O load
+with other devices n' it reduces time fo' savin tha dump data. Da file
+size of each \fIDUMPFILE\fR is smalla than tha system memory size which
+is divided by tha number of \fIDUMPFILE\fRs. This feature supports only
+the kdump\-compressed format.
+.br
+.B Example:
+.br
+# makedumpfile \-\-split \-d 31 \-x vmlinux /proc/vmcore dumpfile1 dumpfile2
+
+.TP
+\fB\-\-reassemble\fR
+Reassemble multiple \fIDUMPFILE\fRs, which is pimped by \-\-split option,
+into one \fIDUMPFILE\fR. dumpfile1 n' dumpfile2 is reassembled tha fuck into dumpfile
+on tha followin example.
+.br
+.B Example:
+.br
+# makedumpfile \-\-reassemble dumpfile1 dumpfile2 dumpfile
+
+.TP
+\fB\-b\fR \fI<order>\fR
+Cache 2^order pages up in ram when generatin \fIDUMPFILE\fR before freestylin ta output.
+Da default value is 4.
+
+.TP
+\fB\-\-cyclic\-buffer\fR \fIbuffer_size\fR
+Specify tha buffer size up in kilo bytes fo' analysis up in tha cyclic mode.
+Actually, tha double of \fIbuffer_size\fR kilo bytes is ghon be allocated up in memory.
+In tha cyclic mode, tha number of cyclez is represented as:
+
+    num_of_cyclez = system_memory / (\fIbuffer_size\fR * 1024 * bit_per_bytes * page_size )
+
+Da lesser number of cycles, tha fasta hustlin speed is expected.
+By default, \fIbuffer_size\fR is ghon be calculated automatically dependin on system memory
+size, so ordinary playas don't need ta specify dis option.
+
+.br
+.B Example:
+.br
+# makedumpfile \-\-cyclic\-buffer 1024 \-d 31 \-x vmlinux /proc/vmcore dumpfile
+
+.TP
+\fB\-\-non\-cyclic\fR
+Hustlin up in tha non-cyclic mode, dis mode uses tha oldschool filterin logic same as v1.4.4 or before.
+If you feel tha cyclic mode is too slow, please try dis mode.
+.br
+.B Example:
+.br
+# makedumpfile \-\-non\-cyclic \-d 31 \-x vmlinux /proc/vmcore dumpfile
+
+.TP
+\fB\-\-non\-mmap\fR
+Never use \fBmmap(2)\fR ta read \fIVMCORE\fR even if it supports \fBmmap(2)\fR.
+Generally, readin \fIVMCORE\fR wit \fBmmap(2)\fR is fasta than without it,
+so ordinary playas don't need ta specify dis option.
+This option is mainly fo' debugging.
+.br
+.B Example:
+.br
+# makedumpfile \-\-non\-mmap \-d 31 \-x vmlinux /proc/vmcore dumpfile
+
+.TP
+\fB\-\-xen-syms\fR \fIXEN-SYMS\fR
+Specify tha \fIXEN-SYMS\fR wit debug shiznit ta analyze tha xenz memory usage.
+This option extracts tha part of xen n' domain-0.
+\-E option must be specified wit dis option.
+.br
+.B Example:
+.br
+# makedumpfile \-E \-\-xen-syms xen-syms /proc/vmcore dumpfile
+
+.TP
+\fB\-\-xen-vmcoreinfo\fR \fIVMCOREINFO\fR
+Specify \fIVMCOREINFO\fR instead of \fIXEN-SYMS\fR fo' analyzin tha xenz memory usage.
+.br
+\fIVMCOREINFO\fR should be made beforehand by makedumpfile wit \-g option, and
+it gotz nuff tha xenz shiznit.
+\-E option must be specified wit dis option.
+.br
+.B Example:
+.br
+# makedumpfile \-E \-\-xen-vmcoreinfo \fIVMCOREINFO\fR /proc/vmcore dumpfile
+
+.TP
+\fB\-X\fR
+Exclude all tha user domain pages from Xen kdumpz \fIVMCORE\fR, n' extracts the
+part of xen n' domain-0. If \fIVMCORE\fR gotz nuff \fIVMCOREINFO\fR fo' Xen, it is
+not necessary ta specify \fI\-\-xen-syms\fR n' \fI\-\-xen-vmcoreinfo\fR.
+\-E option must be specified wit dis option.
+.br
+.B Example:
+.br
+# makedumpfile \-E \-X /proc/vmcore dumpfile
+
+.TP
+\fB\-\-xen_phys_start\fR \fIxen_phys_start_address\fR
+This option is only fo' x86_64.
+Specify tha \fIxen_phys_start_address\fR, if tha xen code/data is relocatable
+and \fIVMCORE\fR do not contain \fIxen_phys_start_address\fR up in tha CRASHINFO.
+\fIxen_phys_start_address\fR can be taken from tha line of "Hypervisor code
+and data" up in /proc/iomem. For example, specify 0xcee00000 as \fIxen_phys_start_address\fR
+if /proc/iomem is tha following:
+  -------------------------------------------------------
+  # pussaaaaay /proc/iomem
+  ...
+    cee00000-cfd99999 : Hypervisor code n' data
+  ...
+  -------------------------------------------------------
+
+.br
+.B Example:
+.br
+# makedumpfile \-E \-X \-\-xen_phys_start 0xcee00000 /proc/vmcore dumpfile
+
+.TP
+\fB\-\-message-level\fR \fImessage_level\fR
+Specify tha message types.
+.br
+Users can restrict outputs printed by specifyin \fImessage_level\fR
+with dis option. I aint talkin' bout chicken n' gravy biatch. Da message type marked wit a X up in tha following
+table is printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. For example, accordin ta tha table, specifyin 7 as
+\fImessage_level\fR means progress indicator, common message, n' error
+message is printed, n' dis be a thugged-out default value. Note dat tha maximum
+value of \fImessage_level\fR is 31.
+.br
+
+ message | progress | common  | error   | debug   | report
+ level   | indicator| message | message | message | message
+.br
+\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-
+       0 |          |         |         |         |
+       1 |    X     |         |         |         |
+       2 |          |    X    |         |         |
+       3 |    X     |    X    |         |         |
+       4 |          |         |    X    |         |
+       5 |    X     |         |    X    |         |
+       6 |          |    X    |    X    |         |
+     * 7 |    X     |    X    |    X    |         |
+       8 |          |         |         |    X    |
+       9 |    X     |         |         |    X    |
+      10 |          |    X    |         |    X    |
+      11 |    X     |    X    |         |    X    |
+      12 |          |         |    X    |    X    |
+      13 |    X     |         |    X    |    X    |
+      14 |          |    X    |    X    |    X    |
+      15 |    X     |    X    |    X    |    X    |
+      16 |          |         |         |         |    X
+      17 |    X     |         |         |         |    X
+      18 |          |    X    |         |         |    X
+      19 |    X     |    X    |         |         |    X
+      20 |          |         |    X    |         |    X
+      21 |    X     |         |    X    |         |    X
+      22 |          |    X    |    X    |         |    X
+      23 |    X     |    X    |    X    |         |    X
+      24 |          |         |         |    X    |    X
+      25 |    X     |         |         |    X    |    X
+      26 |          |    X    |         |    X    |    X
+      27 |    X     |    X    |         |    X    |    X
+      28 |          |         |    X    |    X    |    X
+      29 |    X     |         |    X    |    X    |    X
+      30 |          |    X    |    X    |    X    |    X
+      31 |    X     |    X    |    X    |    X    |    X
+
+.TP
+\fB\-\-vtop\fR \fIvirtual_address\fR
+This option is useful, when user debugs tha translation problem
+of virtual address. If specifin \fIvirtual_address\fR, its physical
+address is printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Well shiiiit, it make debuggin easy as fuck  by comparin the
+output of dis option wit tha one of "vtop" subcommand of the
+crash utility.
+"--vtop" option only prints tha translation output, n' it do
+not affect tha dumpfile creation.
+
+.TP
+\fB\-\-dump-dmesg\fR
+This option overrides tha aiiight behavior of makedumpfile.  Instead of
+compressin n' filterin a \fIVMCORE\fR ta make it smaller, it simply
+extracts tha dmesg log from a \fIVMCORE\fR n' writes it ta tha specified
+\fILOGFILE\fR. If a \fIVMCORE\fR do not contain \fIVMCOREINFO\fR fo' dmesg,
+it is necessary ta specfiy [\-x \fIVMLINUX\fR] or [\-i \fIVMCOREINFO\fR].
+
+.br
+.B Example:
+.br
+# makedumpfile \-\-dump-dmesg /proc/vmcore dmesgfile
+.br
+# makedumpfile \-\-dump-dmesg -x vmlinux /proc/vmcore dmesgfile
+.br
+
+.TP
+\fB\-\-diskset=VMCORE\fR
+Specify multiple \fIVMCORE\fRs pimped on sadump diskset configuration
+the same number of times as tha number of \fIVMCORE\fRs up in increasing
+order from left ta right.  \fIVMCORE\fRs is assembled tha fuck into a single
+\fIDUMPFILE.
+
+.br
+.B Example:
+.br
+# makedumpfile \-x vmlinux \-\-diskset=vmcore1 \-\-diskset=vmcore2 dumpfile
+
+.TP
+\fB\-D\fR
+Print debuggin message.
+
+.TP
+\fB\-h (\-\-help)\fR
+Show help message n' LZO/snappy support status (enabled/disabled).
+
+.TP
+\fB\-v\fR
+Show tha version of makedumpfile.
+
+.SH ENVIRONMENT VARIABLES
+
+.TP 8
+.B TMPDIR
+This environment variable is fo' a temporary memory bitmap file only up in tha non-cyclic mode.
+If yo' machine has a fuckin shitloadz of memory n' you use tmpfs on /tmp, makedumpfile
+can fail fo' a lil memory up in tha 2nd kernel cuz makedumpfile make a
+very big-ass temporary memory bitmap file up in dis case. To avoid dis failure,
+you can set a TMPDIR environment variable. If you do not set a TMPDIR
+environment variable, makedumpfile uses /tmp directory fo' a temporary
+bitmap file as a thugged-out default.
+
+.SH DIAGNOSTICS
+makedumpfile exits wit tha followin value.
+.TP
+\fB0\fR : makedumpfile succeeded.
+.TP
+\fB1\fR : makedumpfile failed without tha followin reasons.
+.TP
+\fB2\fR : makedumpfile failed cuz of tha different version between  \fIVMLINUX\fR n' \fIVMCORE\fR.
+.TP
+\fB3\fR : makedumpfile failed cuz of tha analysis error of tha memory.
+
+.SH AUTHORS
+.PP
+Written by Masaki Tachibana, n' Ken'ichi Ohmichi.
+
+.SH SEE ALSO
+.PP
+crash(8), gdb(1), kexec(8), makedumpfile.conf(5)
+

@@ -1,0 +1,213 @@
+.TH SFB 8 "August 2011" "iproute2" "Linux"
+.SH NAME
+sfb \- Stochastic Fair Blue
+.SH SYNOPSIS
+.B tc qdisc ... blue
+.B rehash
+milliseconds
+.B db
+milliseconds
+.B limit
+packets
+.B max
+packets
+.B target
+packets
+.B increment
+float
+.B decrement
+float
+.B penalty_rate
+packets per second
+.B penalty_burst
+packets
+
+.SH DESCRIPTION
+Stochastic Fair Blue be a cold-ass lil classless qdisc ta manage congestion based on
+packet loss n' link utilization history while tryin ta prevent
+non-responsive flows (i.e. flows dat do not react ta congestion marking
+or dropped packets) from impactin performizzle of responsive flows.
+Unlike RED, where tha markin probabilitizzle has ta be configured, BLUE
+tries ta determine tha ideal markin probabilitizzle automatically.
+
+.SH ALGORITHM
+
+The
+.B BLUE
+algorithm maintains a probabilitizzle which is used ta mark or drop packets
+that is ta be queued. Y'all KNOW dat shit, muthafucka!  If tha queue overflows, tha mark/drop probability
+is increased. Y'all KNOW dat shit, muthafucka! If tha queue becomes empty, tha probabilitizzle is decreased. Y'all KNOW dat shit, muthafucka! The
+.B Stochastic Fair Blue
+(SFB) algorithm is designed ta protect TCP flows against non-responsive flows.
+
+This SFB implementation maintains 8 levelz of 16 bins each fo' accounting.
+Each flow is mapped tha fuck into a funky-ass bin of each level rockin a per-level hash value.
+
+Every bin maintains a markin probability, which gets increased or decreased
+based on bin occupancy.  If tha number of packets exceedz tha size of that
+bin, tha markin probabilitizzle is increased. Y'all KNOW dat shit, muthafucka!  If tha number drops ta zero, it
+is decreased.
+
+Da markin probabilitizzle is based on tha minimum value of all bins a gangbangin' flow is
+mapped into, thus, when a gangbangin' flow do not respond ta markin or gradual packet
+drops, tha markin probabilitizzle quickly reaches one.
+
+In dis case, tha flow is rate-limited to
+.B penalty_rate
+packets per second.
+
+.SH LIMITATIONS
+
+Cuz of SFBs nature, it is possible fo' responsive flows ta share all of its bins
+with a non-responsive flow, causin tha responsive flow ta be misidentified as
+bein non-responsive.
+
+Da probabilitizzle of a responsive flow ta be misidentified is dependent on
+the number of non-responsive flows, M.  It be (1 - (1 - (1 / 16.0)) ** M) **8,
+so fo' example wit 10 non-responsive flows approximately 0.2% of responsive flows
+will be misidentified.
+
+To mitigate this, SFB performs performs periodic re-hashin ta avoid
+misclassification fo' prolonged periodz of time.
+
+Da default hashin method will use source n' destination ip addresses n' port numbers
+if possible, n' also supports tunnelin protocols.
+Alternatively, a external classifier can be configured, like a muthafucka.
+
+.SH PARAMETERS
+.TP
+rehash
+Time interval up in millisecondz when queue perturbation occurs ta avoid erroneously
+detectin unrelated, responsive flows as bein part of a non-responsive flow for
+prolonged periodz of time.
+Defaults ta 10 minutes.
+.TP
+db
+Double bufferin warmup wait time, up in milliseconds.
+To avoid beatin tha livin shiznit outta tha probabilitizzle history when rehashin is performed, this
+implementation maintains a second set of levels/bins as busted lyrics bout up in section
+4.4 of tha SFB reference.
+While one set is used ta manage tha queue, a second set is warmed up:
+Whenever a gangbangin' flow is then determined ta be non-responsive, tha marking
+probabilitizzles up in tha second set is updated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  When tha rehashing
+happens, these bins is ghon be used ta manage tha queue n' all non-responsive
+flows can be rate-limited immediately.
+This value determines how tha fuck much time has ta pass before tha 2nd set
+will start ta be warmed up.
+Defaults ta one minute, should be lower than
+.B
+rehash.
+.TP
+limit
+Hard limit on tha real (not average) total queue size up in packets.
+Further packets is dropped. Y'all KNOW dat shit, muthafucka!  Defaults ta tha transmit queue length of the
+device tha qdisc be attached to.
+.TP
+max
+Maximum length of a funky-ass buckets queue, up in packets, before packets start being
+dropped. Y'all KNOW dat shit, muthafucka!  Should be sightly larger than
+.B target
+ yo, but should not be set ta joints exceedin 1.5 times dat of
+.B target .
+Defaults ta 25.
+.TP
+target
+Da desired average bin length.  If tha bin queue length reaches dis value,
+the markin probabilitizzle is increased by
+.B increment.
+Da default value dependz on the
+.B max
+setting, wit max set ta 25
+.B target
+will default ta 20.
+.TP
+increment
+A value used ta increase tha markin probabilitizzle when tha queue appears
+to be over-used. Y'all KNOW dat shit, muthafucka!  Must be between 0 n' 1.0.  Defaults ta 0.00050.
+.TP
+decrement
+Value used ta decrease tha markin probabilitizzle when tha queue is found
+to be empty.  Must be between 0 n' 1.0.
+Defaults ta 0.00005.
+.TP
+penalty_rate
+Da maximum number of packets belongin ta flows identified as being
+non-responsive dat can be enqueued per second. Y'all KNOW dat shit, muthafucka! Once dis number has been
+reached, further packetz of such non-responsive flows is dropped.
+Set dis ta a reasonable fraction of yo' uplink throughput; the
+default value of 10 packets is probably too small.
+.TP
+penalty_burst
+Da number of packets a gangbangin' flow is permitted ta exceed tha penalty rate before packets
+start bein dropped.
+Defaults ta 20 packets.
+
+.SH STATISTICS
+
+This qdisc exposes additionizzle statistics via 'tc -s qdisc' output.
+These are:
+.TP
+earlydrop
+Da number of packets dropped before a per-flow queue was full.
+.TP
+ratedrop
+Da number of packets dropped cuz of rate-limiting.
+If dis value is high, there be nuff non-reactizzle flows being
+sent all up in sfb.  In such cases, it might be betta to
+embed sfb within a cold-ass lil classful qdisc ta betta control such
+flows rockin a gangbangin' finger-lickin' different, shapin qdisc.
+.TP
+bucketdrop
+Da number of packets dropped cuz a per-flow queue was full.
+High bucketdrop may point ta a high number of aggressive, short-lived
+flows.
+.TP
+queuedrop
+Da number of packets dropped cuz of reachin limit.  This should normally be 0.
+.TP
+marked
+Da number of packets marked wit ECN.
+.TP
+maxqlen
+Da length of tha current longest per-flow (virtual) queue.
+.TP
+maxprob
+Da maximum per-flow drop probability.  1 means dat some
+flows done been detected as non-reactive.
+
+.SH NOTES
+
+SFB automatically enablez use of Explicit Congestion Notification (ECN).
+Also, dis SFB implementation do not queue packets itself.
+Rather, packets is enqueued ta tha inner qdisc (defaults ta pfifo).
+Because sfb maintains virtual queue states, tha inner qdisc must not
+drop a packet previously queued.
+Furthermore, if a funky-ass buckets queue has a straight-up high markin rate,
+this implementation will start droppin packets instead of
+markin them, as such a thang points ta either wack congestion, or an
+unresponsive flow.
+
+.SH EXAMPLE & USAGE
+
+To attach ta intercourse $DEV, rockin default options:
+.P
+# tc qdisc add dev $DEV handle 1: root sfb
+
+Only use destination ip addresses fo' assignin packets ta bins, perturbing
+hash thangs up in dis biatch every last muthafuckin 10 minutes:
+.P
+# tc filta add dev $DEV parent 1: handle 1 flow hash keys dst perturb 600
+
+.SH SEE ALSO
+.BR tc (8),
+.BR tc-red (8),
+.BR tc-sfq (8)
+.SH SOURCES
+.TP
+o
+W. Feng, D. Kandlur, D. Right back up in yo muthafuckin ass. Saha, K. Right back up in yo muthafuckin ass. Shin, BLUE: A New Class of Actizzle Queue Management Algorithms,
+U. Michigan CSE-TR-387-99, April 1999.
+
+.SH AUTHORS
+
+This SFB implementation was contributed by Juliuss Chroboczek n' Eric Dumazet.

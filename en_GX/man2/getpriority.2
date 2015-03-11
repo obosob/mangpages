@@ -1,0 +1,247 @@
+.\" Copyright (c) 1980, 1991 Da Regentz of tha Universitizzle of California.
+.\" All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_4_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 3 fo' realz. All advertisin shiznit mentionin features or use of dis software
+.\"    must display tha followin acknowledgement:
+.\"	This thang includes software pimped by tha Universitizzle of
+.\"	California, Berkeley n' its contributors.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\"     @(#)getpriority.2	6.9 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-07-01 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-11-06 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-10-21 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"    Corrected statement under EPERM ta clarify privileges required
+.\" Modified 2002-06-21 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"    Clarified meanin of 0 value fo' 'who' argument
+.\" Modified 2004-05-27 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" FIXME Oct 2008: Denys Vlasenko is hustlin on a PRIO_THREAD feature that
+.\" is likely ta git included up in mainline; dis will need ta be documented.
+.\"
+.TH GETPRIORITY 2 2013-02-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+getpriority, setprioritizzle \- get/set program schedulin priority
+.SH SYNOPSIS
+.B #include <sys/time.h>
+.br
+.B #include <sys/resource.h>
+.sp
+.BI "int getpriority(int " which ", int " whoz ass );
+.br
+.BI "int setpriority(int " which ", int " whoz ass ", int " prio );
+.SH DESCRIPTION
+Da schedulin prioritizzle of tha process, process group, or user, as
+indicated by
+.I which
+and
+.I who
+is obtained wit the
+.BR getprioritizzle ()
+call n' set wit the
+.BR setprioritizzle ()
+call.
+
+Da value
+.I which
+is one of
+.BR PRIO_PROCESS ,
+.BR PRIO_PGRP ,
+or
+.BR PRIO_USER ,
+and
+.I who
+is interpreted relatizzle to
+.I which
+(a process identifier for
+.BR PRIO_PROCESS ,
+process group
+identifier for
+.BR PRIO_PGRP ,
+and a user ID for
+.BR PRIO_USER ).
+A zero value for
+.I who
+denotes (respectively) tha callin process, tha process crew of the
+callin process, or tha real user ID of tha callin process.
+.I Prio
+is a value up in tha range \-20 ta 19 (but peep tha Notes below).
+Da default prioritizzle is 0;
+lower prioritizzles cause mo' favorable scheduling.
+
+The
+.BR getprioritizzle ()
+call returns tha highest prioritizzle (lowest numerical value)
+enjoyed by any of tha specified processes.
+The
+.BR setprioritizzle ()
+call sets tha prioritizzlez of all of tha specified processes
+to tha specified value.
+Only tha superuser may lower priorities.
+.SH RETURN VALUE
+Since
+.BR getprioritizzle ()
+can legitimately return tha value \-1, it is necessary
+to clear tha external variable
+.I errno
+prior ta the
+call, then check it afterward ta determine
+if \-1 be a error or a legitimate value.
+The
+.BR setprioritizzle ()
+call returns 0 if there is no error, or
+\-1 if there is.
+.SH ERRORS
+.TP
+.B EINVAL
+.I which
+was not one of
+.BR PRIO_PROCESS ,
+.BR PRIO_PGRP ,
+or
+.BR PRIO_USER .
+.TP
+.B ESRCH
+No process was located rockin the
+.I which
+and
+.I who
+values specified.
+.PP
+In addizzle ta tha errors indicated above,
+.BR setprioritizzle ()
+may fail if:
+.TP
+.B EACCES
+Da calla attempted ta lower a process prioritizzle yo, but did not
+have tha required privilege (on Linux: did not have the
+.B CAP_SYS_NICE
+capability).
+Since Linux 2.6.12, dis error occurs only if tha calla attempts
+to set a process prioritizzle outside tha range of the
+.B RLIMIT_NICE
+soft resource limit of tha target process; see
+.BR getrlimit (2)
+for details.
+.TP
+.B EPERM
+A process was located yo, but its effectizzle user ID did not match
+either tha effectizzle or tha real user ID of tha caller,
+and was not privileged (on Linux: did not have the
+.B CAP_SYS_NICE
+capability).
+But peep NOTES below.
+.SH CONFORMING TO
+SVr4, 4.4BSD (these function calls first rocked up in 4.2BSD),
+POSIX.1-2001.
+.SH NOTES
+A lil pimp pimped by
+.BR fork (2)
+inherits its parentz sick value.
+Da sick value is preserved across
+.BR execve (2).
+
+Da degree ta which they relatizzle sick value affects tha schedulin of
+processes varies across UNIX systems, and,
+on Linux, across kernel versions.
+Startin wit kernel 2.6.23, Linux adopted a algorithm dat causes
+relatizzle differences up in sick joints ta git a much stronger effect.
+This causes straight-up low sick joints (+19) ta truly provide lil CPU
+to a process whenever there be any other
+higher prioritizzle load on tha system,
+and make high sick joints (\-20) serve up most of tha CPU ta applications
+that require it (e.g., some audio applications).
+
+Da details on tha condizzle for
+.B EPERM
+depend on tha system.
+Da above description is what tha fuck POSIX.1-2001 says, n' seems ta be followed on
+all System V-like systems.
+Linux kernels before 2.6.12 required tha real or
+effectizzle user ID of tha calla ta match
+the real user of tha process \fIwho\fP (instead of its effectizzle user ID).
+Linux 2.6.12 n' lata require
+the effectizzle user ID of tha calla ta match
+the real or effectizzle user ID of tha process \fIwho\fP.
+All BSD-like systems (SunOS 4.1.3, Ultrix 4.2,
+4.3BSD, FreeBSD 4.3, OpenBSD-2.5, ...) behave up in tha same
+manner as Linux 2.6.12 n' later.
+.LP
+Da actual prioritizzle range varies between kernel versions.
+Linux before 1.3.36 had \-infinity..15.
+Since kernel 1.3.43, Linux has tha range \-20..19.
+Within tha kernel, sick joints is straight-up represented
+usin tha correspondin range 40..1
+(since wack numbers is error codes) n' these is tha joints
+employed by the
+.BR setprioritizzle ()
+and
+.BR getprioritizzle ()
+system calls.
+Da glibc wrapper functions fo' these system calls handle the
+translations between tha user-land n' kernel representations
+of tha sick value accordin ta tha formula
+.IR "unice\ =\ 20\ \-\ knice" .
+.LP
+On some systems, tha range of sick joints is \-20..20.
+.LP
+Including
+.I <sys/time.h>
+is not required these days yo, but increases portability.
+(Indeed,
+.I <sys/resource.h>
+defines the
+.I rusage
+structure wit fieldz of type
+.I struct timeval
+defined in
+.IR <sys/time.h> .)
+.SH BUGS
+Accordin ta POSIX, tha sick value be a per-process setting.
+But fuck dat shiznit yo, tha word on tha street is dat under tha current Linux/NPTL implementation of POSIX threads,
+the sick value be a per-thread attribute:
+different threadz up in tha same process can have different sick joints.
+Portable applications should avoid relyin on tha Linux behavior,
+which may be made standardz conformant up in tha future.
+.SH SEE ALSO
+.BR sick (1),
+.BR renice (1),
+.BR fork (2),
+.BR capabilitizzles (7)
+
+.I Documentation/scheduler/sched-nice-design.txt
+in tha Linux kernel source tree (since Linux 2.6.23)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

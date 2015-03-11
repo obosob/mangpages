@@ -1,0 +1,424 @@
+.\" Start example.
+.de EX
+.  nr mE \\n(.f
+.  nf
+.  nh
+.  ft CW
+..
+.
+.
+.\" End example.
+.de EE
+.  ft \\n(mE
+.  fi
+.  hy \\n(HY
+..
+.
+.EX
+/*************************************************
+*           PCRE DEMONSTRATION PROGRAM           *
+*************************************************/
+
+/* This be a thugged-out demonstration program ta illustrate da most thugged-out straightforward ways
+of callin tha PCRE regular expression library from a C program. Right back up in yo muthafuckin ass. See the
+pcresample documentation fo' a gangbangin' finger-lickin' dirty-ass short rap ("man pcresample" if you have
+the PCRE playa pages installed).
+
+In Unix-like environments, if PCRE is installed up in yo' standard system
+libraries, you should be able ta compile dis program rockin dis command:
+
+gcc -Wall pcredemo.c -lpcre -o pcredemo
+
+If PCRE aint installed up in a standard place, it is likely ta be installed with
+support fo' tha pkg-config mechanism. If you have pkg-config, you can compile
+this program rockin dis command:
+
+gcc -Wall pcredemo.c `pkg-config --cflags --libs libpcre` -o pcredemo
+
+If you aint gots pkg-config, you may gotta use this:
+
+gcc -Wall pcredemo.c -I/usr/local/include -L/usr/local/lib \e
+  -R/usr/local/lib -lpcre -o pcredemo
+
+Replace "/usr/local/include" n' "/usr/local/lib" wit wherever tha include and
+library filez fo' PCRE is installed on yo' system. Only some operating
+systems (e.g. Right back up in yo muthafuckin ass. Solaris) use tha -R option.
+
+Buildin under Windows:
+
+If you wanna statically link dis program against a non-dll .a file, you must
+define PCRE_STATIC before includin pcre.h, otherwise tha pcre_malloc() and
+pcre_free() exported functions is ghon be declared __declspec(dllimport), with
+unwanted thangs up in dis biatch. Right back up in yo muthafuckin ass. So up in dis environment, uncomment tha followin line. */
+
+/* #define PCRE_STATIC */
+
+#include <stdio.h>
+#include <string.h>
+#include <pcre.h>
+
+#define OVECCOUNT 30    /* should be a multiple of 3 */
+
+
+int main(int argc, char **argv)
+{
+pcre *re;
+const char *error;
+char *pattern;
+char *subject;
+unsigned char *name_table;
+unsigned int option_bits;
+int erroffset;
+int find_all;
+int crlf_is_newline;
+int namecount;
+int name_entry_size;
+int ovector[OVECCOUNT];
+int subject_length;
+int rc, i;
+int utf8;
+
+
+/**************************************************************************
+* First, sort up tha command line. There is only one possible option at  *
+* tha moment, "-g" ta request repeated matchin ta find all occurrences,  *
+* like Perlz /g option. I aint talkin' bout chicken n' gravy biatch. We set tha variable find_all ta a non-zero value *
+* if tha -g option is present fo' realz. Apart from that, there must be exactly two *
+* arguments, n' you can put dat on yo' toast.                                                              *
+**************************************************************************/
+
+find_all = 0;
+for (i = 1; i < argc; i++)
+  {
+  if (strcmp(argv[i], "-g") == 0) find_all = 1;
+    else break;
+  }
+
+/* Afta tha options, we require exactly two arguments, which is tha pattern,
+and tha subject string. */
+
+if (argc - i != 2)
+  {
+  printf("Two arguments required: a regex n' a subject string\en");
+  return 1;
+  }
+
+pattern = argv[i];
+subject = argv[i+1];
+subject_length = (int)strlen(subject);
+
+
+/*************************************************************************
+* Now we is goin ta compile tha regular expression pattern, n' handle *
+* n' errors dat is detected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.                                          *
+*************************************************************************/
+
+re = pcre_compile(
+  pattern,              /* tha pattern */
+  0,                    /* default options */
+  &error,               /* fo' error message */
+  &erroffset,           /* fo' error offset */
+  NULL);                /* use default characta tablez */
+
+/* Compilation failed: print tha error message n' exit */
+
+if (re == NULL)
+  {
+  printf("PCRE compilation failed at offset %d: %s\en", erroffset, error);
+  return 1;
+  }
+
+
+/*************************************************************************
+* If tha compilation succeeded, we call PCRE again, up in order ta do a     *
+* pattern match against tha subject string. This do just ONE match. If *
+* further matchin is needed, it is ghon be done below.                     *
+*************************************************************************/
+
+rc = pcre_exec(
+  re,                   /* tha compiled pattern */
+  NULL,                 /* no extra data - our phat asses didn't study tha pattern */
+  subject,              /* tha subject strang */
+  subject_length,       /* tha length of tha subject */
+  0,                    /* start at offset 0 up in tha subject */
+  0,                    /* default options */
+  ovector,              /* output vector fo' substrin shiznit */
+  OVECCOUNT);           /* number of elements up in tha output vector */
+
+/* Matchin failed: handle error cases */
+
+if (rc < 0)
+  {
+  switch(rc)
+    {
+    case PCRE_ERROR_NOMATCH: printf("No match\en"); break;
+    /*
+    Handle other special cases if you like
+    */
+    default: printf("Matchin error %d\en", rc); break;
+    }
+  pcre_free(re);     /* Release memory used fo' tha compiled pattern */
+  return 1;
+  }
+
+/* Match succeded */
+
+printf("\enMatch succeeded at offset %d\en", ovector[0]);
+
+
+/*************************************************************************
+* Our thugged-out asses have found tha straight-up original gangsta match within tha subject string. If tha output *
+* vector wasn't big-ass enough, say so. Then output any substrings dat was *
+* captured. Y'all KNOW dat shit, muthafucka!                                                              *
+*************************************************************************/
+
+/* Da output vector wasn't big-ass enough */
+
+if (rc == 0)
+  {
+  rc = OVECCOUNT/3;
+  printf("ovector only has room fo' %d captured substrings\en", rc - 1);
+  }
+
+/* Show substrings stored up in tha output vector by number n' shit. Obviously, up in a real
+application you might wanna do thangs other than print em. */
+
+for (i = 0; i < rc; i++)
+  {
+  char *substring_start = subject + ovector[2*i];
+  int substring_length = ovector[2*i+1] - ovector[2*i];
+  printf("%2d: %.*s\en", i, substring_length, substring_start);
+  }
+
+
+/**************************************************************************
+* That concludes tha basic part of dis demonstration program. Our thugged-out asses have    *
+* compiled a pattern, n' performed a single match. Da code dat bigs up *
+* shows first how tha fuck ta access named substrings, n' then how tha fuck ta code fo'    *
+* repeated matches on tha same subject.                                   *
+**************************************************************************/
+
+/* See if there be any named substrings, n' if so, show dem by name. First
+we gotta extract tha count of named parentheses from tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. */
+
+(void)pcre_fullinfo(
+  re,                   /* tha compiled pattern */
+  NULL,                 /* no extra data - our phat asses didn't study tha pattern */
+  PCRE_INFO_NAMECOUNT,  /* number of named substrings */
+  &namecount);          /* where ta put tha answer */
+
+if (namecount <= 0) printf("No named substrings\en"); else
+  {
+  unsigned char *tabptr;
+  printf("Named substrings\en");
+
+  /* Before we can access tha substrings, we must extract tha table for
+  translatin names ta numbers, n' tha size of each entry up in tha table. */
+
+  (void)pcre_fullinfo(
+    re,                       /* tha compiled pattern */
+    NULL,                     /* no extra data - our phat asses didn't study tha pattern */
+    PCRE_INFO_NAMETABLE,      /* address of tha table */
+    &name_table);             /* where ta put tha answer */
+
+  (void)pcre_fullinfo(
+    re,                       /* tha compiled pattern */
+    NULL,                     /* no extra data - our phat asses didn't study tha pattern */
+    PCRE_INFO_NAMEENTRYSIZE,  /* size of each entry up in tha table */
+    &name_entry_size);        /* where ta put tha answer */
+
+  /* Now we can scan tha table and, fo' each entry, print tha number, tha name,
+  n' tha substrin itself. */
+
+  tabptr = name_table;
+  fo' (i = 0; i < namecount; i++)
+    {
+    int n = (tabptr[0] << 8) | tabptr[1];
+    printf("(%d) %*s: %.*s\en", n, name_entry_size - 3, tabptr + 2,
+      ovector[2*n+1] - ovector[2*n], subject + ovector[2*n]);
+    tabptr += name_entry_size;
+    }
+  }
+
+
+/*************************************************************************
+* If tha "-g" option was given on tha command line, we wanna continue  *
+* ta search fo' additionizzle matches up in tha subject string, up in a similar   *
+* way ta tha /g option up in Perl. This turns up ta be trickier than you   *
+* might be thinkin cuz of tha possibilitizzle of matchin a empty string.    *
+* What happens be as bigs up:                                            *
+*                                                                        *
+* If tha previous match was NOT fo' a empty string, we can just start   *
+* tha next match all up in tha end of tha previous one.                         *
+*                                                                        *
+* If tha previous match WAS fo' a empty string, we can't do that, as it *
+* would lead ta a infinite loop. Instead, a special call of pcre_exec() *
+* is made wit tha PCRE_NOTEMPTY_ATSTART n' PCRE_ANCHORED flags set.    *
+* Da first of these  drops some lyrics ta PCRE dat a empty strang all up in tha start of tha *
+* subject aint a valid match; other possibilitizzles must be tried. Y'all KNOW dat shit, muthafucka! Da   *
+* second flag restricts PCRE ta one match attempt all up in tha initial strang  *
+* position. I aint talkin' bout chicken n' gravy biatch. If dis match succeeds, a alternatizzle ta tha empty strang   *
+* match has been found, n' we can print it n' proceed round tha loop,  *
+* advancin by tha length of whatever was found. Y'all KNOW dat shit, muthafucka! If dis match do not  *
+* succeed, we still stay up in tha loop, advancin by just one character n' shit.   *
+* In UTF-8 mode, which can be set by (*UTF8) up in tha pattern, dis may be *
+* mo' than one byte.                                                    *
+*                                                                        *
+* But fuck dat shiznit yo, tha word on tha street is dat there be a cold-ass lil complication concerned wit newlines. When tha     *
+* newline convention is such dat CRLF be a valid newline, we must       *
+* advizzle by two charactas rather than one. Da newline convention can  *
+* be set up in tha regex by (*CR), etc.; if not, we must find tha default.  *
+*************************************************************************/
+
+if (!find_all)     /* Peep fo' -g */
+  {
+  pcre_free(re);   /* Release tha memory used fo' tha compiled pattern */
+  return 0;        /* Finish unless -g was given */
+  }
+
+/* Before hustlin tha loop, check fo' UTF-8 n' whether CRLF be a valid newline
+sequence. First, find tha options wit which tha regex was compiled; extract
+the UTF-8 state, n' mask off all but tha newline options. */
+
+(void)pcre_fullinfo(re, NULL, PCRE_INFO_OPTIONS, &option_bits);
+utf8 = option_bits & PCRE_UTF8;
+option_bits &= PCRE_NEWLINE_CR|PCRE_NEWLINE_LF|PCRE_NEWLINE_CRLF|
+               PCRE_NEWLINE_ANY|PCRE_NEWLINE_ANYCRLF;
+
+/* If no newline options was set, find tha default newline convention from the
+build configuration. I aint talkin' bout chicken n' gravy biatch. */
+
+if (option_bits == 0)
+  {
+  int d;
+  (void)pcre_config(PCRE_CONFIG_NEWLINE, &d);
+  /* Note dat these joints is always tha ASCII ones, even in
+  EBCDIC environments, n' you can put dat on yo' toast. CR = 13, NL = 10. */
+  option_bits = (d == 13), biatch? PCRE_NEWLINE_CR :
+          (d == 10), biatch? PCRE_NEWLINE_LF :
+          (d == (13<<8 | 10)), biatch? PCRE_NEWLINE_CRLF :
+          (d == -2), biatch? PCRE_NEWLINE_ANYCRLF :
+          (d == -1), biatch? PCRE_NEWLINE_ANY : 0;
+  }
+
+/* See if CRLF be a valid newline sequence. */
+
+crlf_is_newline =
+     option_bits == PCRE_NEWLINE_ANY ||
+     option_bits == PCRE_NEWLINE_CRLF ||
+     option_bits == PCRE_NEWLINE_ANYCRLF;
+
+/* Loop fo' second n' subsequent matches */
+
+for (;;)
+  {
+  int options = 0;                 /* Normally no options */
+  int start_offset = ovector[1];   /* Start at end of previous match */
+
+  /* If tha previous match was fo' a empty string, we is finished if we are
+  all up in tha end of tha subject. Otherwise, arrange ta run another match at the
+  same point ta peep if a non-empty match can be found. Y'all KNOW dat shit, muthafucka! */
+
+  if (ovector[0] == ovector[1])
+    {
+    if (ovector[0] == subject_length) break;
+    options = PCRE_NOTEMPTY_ATSTART | PCRE_ANCHORED;
+    }
+
+  /* Run tha next matchin operation */
+
+  rc = pcre_exec(
+    re,                   /* tha compiled pattern */
+    NULL,                 /* no extra data - our phat asses didn't study tha pattern */
+    subject,              /* tha subject strang */
+    subject_length,       /* tha length of tha subject */
+    start_offset,         /* startin offset up in tha subject */
+    options,              /* options */
+    ovector,              /* output vector fo' substrin shiznit */
+    OVECCOUNT);           /* number of elements up in tha output vector */
+
+  /* This time, a result of NOMATCH aint a error. Shiiit, dis aint no joke. If tha value up in "options"
+  is zero, it just means our crazy asses have found all possible matches, so tha loop ends.
+  Otherwise, it means our crazy asses have failed ta find a non-empty-strin match at a
+  point where there was a previous empty-strin match. In dis case, our phat asses do what
+  Perl do: advizzle tha matchin posizzle by one character, n' continue. We
+  do dis by settin tha "end of previous match" offset, cuz dat is picked
+  up all up in tha top of tha loop as tha point at which ta start again.
+
+  There is two complications: (a) When CRLF be a valid newline sequence, and
+  tha current posizzle is just before it, advizzle by a extra byte. (b)
+  Otherwise we must ensure dat we skip a entire UTF-8 characta if we is in
+  UTF-8 mode. */
+
+  if (rc == PCRE_ERROR_NOMATCH)
+    {
+    if (options == 0) break;                    /* All matches found */
+    ovector[1] = start_offset + 1;              /* Advizzle one byte */
+    if (crlf_is_newline &&                      /* If CRLF is newline & */
+        start_offset < subject_length - 1 &&    /* we is at CRLF, */
+        subject[start_offset] == '\er' &&
+        subject[start_offset + 1] == '\en')
+      ovector[1] += 1;                          /* Advizzle by one mo' n' mo' n' mo'. */
+    else if (utf8)                              /* Otherwise, ensure we */
+      {                                         /* advizzle a whole UTF-8 */
+      while (ovector[1] < subject_length)       /* character n' shit. */
+        {
+        if ((subject[ovector[1]] & 0xc0) != 0x80) break;
+        ovector[1] += 1;
+        }
+      }
+    continue;    /* Go round tha loop again n' again n' again */
+    }
+
+  /* Other matchin errors is not recoverable. */
+
+  if (rc < 0)
+    {
+    printf("Matchin error %d\en", rc);
+    pcre_free(re);    /* Release memory used fo' tha compiled pattern */
+    return 1;
+    }
+
+  /* Match succeded */
+
+  printf("\enMatch succeeded again n' again n' again at offset %d\en", ovector[0]);
+
+  /* Da match succeeded yo, but tha output vector wasn't big-ass enough cause I gots dem finger-lickin' chickens wit tha siz-auce. */
+
+  if (rc == 0)
+    {
+    rc = OVECCOUNT/3;
+    printf("ovector only has room fo' %d captured substrings\en", rc - 1);
+    }
+
+  /* As before, show substrings stored up in tha output vector by number, n' then
+  also any named substrings. */
+
+  fo' (i = 0; i < rc; i++)
+    {
+    char *substring_start = subject + ovector[2*i];
+    int substring_length = ovector[2*i+1] - ovector[2*i];
+    printf("%2d: %.*s\en", i, substring_length, substring_start);
+    }
+
+  if (namecount <= 0) printf("No named substrings\en"); else
+    {
+    unsigned char *tabptr = name_table;
+    printf("Named substrings\en");
+    fo' (i = 0; i < namecount; i++)
+      {
+      int n = (tabptr[0] << 8) | tabptr[1];
+      printf("(%d) %*s: %.*s\en", n, name_entry_size - 3, tabptr + 2,
+        ovector[2*n+1] - ovector[2*n], subject + ovector[2*n]);
+      tabptr += name_entry_size;
+      }
+    }
+  }      /* End of loop ta find second n' subsequent matches */
+
+printf("\en");
+pcre_free(re);       /* Release memory used fo' tha compiled pattern */
+return 0;
+}
+
+/* End of pcredemo.c */
+.EE

@@ -1,0 +1,289 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" FIXME  fo' realz. Add a example ta dis page
+.TH SHM_OPEN 3 2009-02-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+shm_open, shm_unlink \- create/open or unlink POSIX shared memory objects
+.SH SYNOPSIS
+.B #include <sys/mman.h>
+.br
+.BR "#include <sys/stat.h>" "        /* For mode constants */"
+.br
+.BR "#include <fcntl.h>" "           /* For O_* constants */"
+.sp
+.BI "int shm_open(const char *" name ", int " oflag ", mode_t " mode );
+.sp
+.BI "int shm_unlink(const char *" name );
+.sp
+Link wit \fI\-lrt\fP.
+.SH DESCRIPTION
+.BR shm_open ()
+creates n' opens a new, or opens a existing, POSIX shared memory object.
+A POSIX shared memory object is up in effect a handle which can
+be used by unrelated processes to
+.BR mmap (2)
+the same region of shared memory.
+The
+.BR shm_unlink ()
+function performs tha converse operation,
+removin a object previously pimped by
+.BR shm_open ().
+.LP
+Da operation of
+.BR shm_open ()
+is analogous ta dat of
+.BR open (2).
+.I name
+specifies tha shared memory object ta be pimped or opened.
+For portable use,
+a shared memory object should be identified by a name of tha form
+.IR /somename ;
+that is, a null-terminated strang of up to
+.BI NAME_MAX
+(i.e., 255) charactas consistin of a initial slash,
+.\" glibc allows tha initial slash ta be omitted, n' makes
+.\" multiple initial slashes equivalent ta a single slash.
+.\" This differs from tha implementation of POSIX message queues.
+followed by one or mo' characters, none of which is slashes.
+.\" glibc allows subdirectory components up in tha name, up in which
+.\" case tha subdirectory must exist under /dev/shm, n' allow the
+.\" required permissions if a user wants ta create a gangbangin' finger-lickin' dirty-ass shared memory
+.\" object up in dat subdirectory.
+.LP
+.I oflag
+is a lil' bit mask pimped by ORin together exactly one of
+.B O_RDONLY
+or
+.B O_RDWR
+and any of tha other flags listed here:
+.TP 1.1i
+.B O_RDONLY
+Open tha object fo' read access.
+A shared memory object opened up in dis way can be
+.BR mmap (2)ed
+only fo' read
+.RB ( PROT_READ )
+access.
+.TP
+.B O_RDWR
+Open tha object fo' read-write access.
+.TP
+.B O_CREAT
+Smoke tha shared memory object if it do not exist.
+Da user n' crew ballershizzle of tha object is taken
+from tha correspondin effectizzle IDz of tha callin process,
+.\" In truth it is straight-up tha file system IDs on Linux yo, but these
+.\" is nearly always tha same ol' dirty as tha effectizzle IDs.  (MTK, Jul 05)
+and tha object's
+permission bits is set accordin ta tha low-order 9 bits of
+.IR mode ,
+except dat dem bits set up in tha process file mode
+creation mask (see
+.BR umask (2))
+are cleared fo' tha freshly smoked up object.
+A set of macro constants which can be used ta define
+.I mode
+is listed in
+.BR open (2).
+(Symbolic definitionz of these constants can be obtained by including
+.IR <sys/stat.h> .)
+.sp
+A freshly smoked up shared memory object initially has zero length\(emthe size of the
+object can be set using
+.BR ftruncate (2).
+Da newly allocated bytez of a gangbangin' finger-lickin' dirty-ass shared memory
+object is automatically initialized ta 0.
+.TP
+.B O_EXCL
+If
+.B O_CREAT
+was also specified, n' a gangbangin' finger-lickin' dirty-ass shared memory object wit tha given
+.I name
+already exists, return a error.
+Da check fo' tha existence of tha object, n' its creation if it
+does not exist, is performed atomically.
+.TP
+.B O_TRUNC
+If tha shared memory object already exists, truncate it ta zero bytes.
+.LP
+Definitionz of these flag joints can be obtained by including
+.IR <fcntl.h> .
+.LP
+On successful completion
+.BR shm_open ()
+returns a freshly smoked up file descriptor referrin ta tha shared memory object.
+This file descriptor is guaranteed ta be tha lowest-numbered file descriptor
+not previously opened within tha process.
+The
+.B FD_CLOEXEC
+flag (see
+.BR fcntl (2))
+is set fo' tha file descriptor.
+
+Da file descriptor is normally used up in subsequent calls
+to
+.BR ftruncate (2)
+(for a newly pimped object) and
+.BR mmap (2).
+Afta a cold-ass lil call to
+.BR mmap (2)
+the file descriptor may be closed without affectin tha memory mapping.
+
+Da operation
+of
+.BR shm_unlink ()
+is analogous to
+.BR unlink (2):
+it removes a gangbangin' finger-lickin' dirty-ass shared memory object name, and, once all processes
+have unmapped tha object, de-allocates and
+destroys tha contentz of tha associated memory region.
+Afta a successful
+.BR shm_unlink (),
+attempts to
+.BR shm_open ()
+an object wit tha same
+.I name
+will fail (unless
+.B O_CREAT
+was specified, up in which case a new, distinct object is pimped).
+.SH RETURN VALUE
+On success,
+.BR shm_open ()
+returns a nonnegatizzle file descriptor.
+On failure,
+.BR shm_open ()
+returns \-1.
+.BR shm_unlink ()
+returns 0 on success, or \-1 on error.
+.SH ERRORS
+On failure,
+.I errno
+is set ta indicate tha cause of tha error.
+Values which may step tha fuck up in
+.I errno
+include tha following:
+.TP
+.B EACCES
+Permission to
+.BR shm_unlink ()
+the shared memory object was denied.
+.TP
+.B EACCES
+Permission was denied to
+.BR shm_open ()
+.I name
+in tha specified
+.IR mode ,
+or
+.B O_TRUNC
+was specified n' tha calla aint gots write permission on tha object.
+.TP
+.B EEXIST
+Both
+.B O_CREAT
+and
+.B O_EXCL
+were specified to
+.BR shm_open ()
+and tha shared memory object specified by
+.I name
+already exists.
+.TP
+.B EINVAL
+The
+.I name
+argument to
+.BR shm_open ()
+was invalid.
+.TP
+.B EMFILE
+Da process already has tha maximum number of filez open.
+.TP
+.B ENAMETOOLONG
+Da length of
+.I name
+exceeds
+.BR PATH_MAX .
+.TP
+.B ENFILE
+Da limit on tha total number of filez open on tha system has been
+reached.
+.TP
+.B ENOENT
+An attempt was made to
+.BR shm_open ()
+a
+.I name
+that did not exist, and
+.B O_CREAT
+was not specified.
+.TP
+.B ENOENT
+An attempt was ta made to
+.BR shm_unlink ()
+a
+.I name
+that do not exist.
+.SH VERSIONS
+These functions is provided up in glibc 2.2 n' later.
+.SH CONFORMING TO
+POSIX.1-2001.
+.LP
+POSIX.1-2001 say dat tha crew ballershizzle of a newly pimped shared
+memory object is set ta either tha callin processs effectizzle crew ID
+or "a system default crew ID".
+.SH NOTES
+.LP
+POSIX leaves tha behavior of tha combination of
+.B O_RDONLY
+and
+.B O_TRUNC
+unspecified.
+On Linux, dis will successfully truncate a existing
+shared memory object\(emthis may not be all kindsa on other UNIX systems.
+.LP
+Da POSIX shared memory object implementation on Linux 2.4 make use
+of a thugged-out dedicated file system, which is normally
+mounted under
+.IR /dev/shm .
+.SH SEE ALSO
+.BR close (2),
+.BR fchmod (2),
+.BR fchown (2),
+.BR fcntl (2),
+.BR fstat (2),
+.BR ftruncate (2),
+.BR mmap (2),
+.BR open (2),
+.BR umask (2),
+.BR shm_overview (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,293 @@
+.\" Copyright (c) 1997 Jizzy S. Kallal (kallal@voicenet.com)
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_ONEPARA)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\" %%%LICENSE_END
+.\"
+.\" Some chizzlez by tytso n' aeb.
+.\"
+.\" 2004-12-16, Jizzy V. Belmonte/mtk, Updated init n' quit scripts
+.\" 2004-04-08, AEB, Improved description of read from /dev/urandom
+.\" 2008-06-20, George Spelvin <linux@horizon.com>,
+.\"             Mack Mackall <mpm@selenic.com>
+.\"     Add a Usage subsection dat recommendz most playas ta use
+.\"     /dev/urandom, n' emphasizes parsimonious usage of /dev/random.
+.\"
+.TH RANDOM 4 2013-03-15 "Linux" "Linux Programmerz Manual"
+.SH NAME
+random, urandom \- kernel random number source devices
+.SH SYNOPSIS
+#include <linux/random.h>
+.sp
+.BI "int ioctl(" fd ", RND" request ", " param ");"
+.SH DESCRIPTION
+Da characta special filez \fI/dev/random\fP and
+\fI/dev/urandom\fP (present since Linux 1.3.30)
+provide a intercourse ta tha kernelz random number generator.
+File \fI/dev/random\fP has major thang number 1
+and minor thang number 8.
+File \fI/dev/urandom\fP has major thang number 1 n' minor thang number 9.
+.LP
+Da random number generator gathers environmenstrual noise
+from thang drivers n' other sources tha fuck into a entropy pool.
+Da generator also keeps a estimate of the
+number of bitz of noise up in tha entropy pool.
+From dis entropy pool random numbers is pimped.
+.LP
+When read, tha \fI/dev/random\fP thang will only return random bytes
+within tha estimated number of bitz of noise up in tha entropy
+pool.
+\fI/dev/random\fP should be suitable fo' uses dat need hella
+high qualitizzle randomnizz like fuckin one-time pad or key generation.
+When tha entropy pool is empty, readz from \fI/dev/random\fP will block
+until additionizzle environmenstrual noise is gathered.
+.LP
+A read from tha \fI/dev/urandom\fP thang aint gonna block
+waitin fo' mo' entropy.
+As a result, if there aint sufficient entropy up in the
+entropy pool, tha returned joints is theoretically vulnerable ta a
+cryptographic whoopin' on tha algorithms used by tha driver.
+Knowledge of how tha fuck ta do dis aint available up in tha current unclassified
+literature yo, but it is theoretically possible dat such a battle may
+exist.
+If dis be a cold-ass lil concern up in yo' application, use \fI/dev/random\fP
+instead.
+.LP
+Freestylin ta \fI/dev/random\fP or \fI/dev/urandom\fP will update the
+entropy pool wit tha data written yo, but dis aint gonna result up in a
+higher entropy count.
+This means dat it will impact tha contents
+read from both filez yo, but it aint gonna make readz from
+\fI/dev/random\fP faster.
+.SS Usage
+If yo ass is unsure bout whether you should use
+.IR /dev/random
+or
+.IR /dev/urandom ,
+then probably you wanna use tha latter.
+As a general rule,
+.IR /dev/urandom
+should be used fo' every last muthafuckin thang except long-lived GPG/SSL/SSH keys.
+
+If a seed file is saved across reboots as recommended below (all major
+Linux distributions have done dis since 2000 at least), tha output is
+cryptographically secure against attackers without local root access as
+soon as it is reloaded up in tha boot sequence, n' perfectly adequate for
+network encryption session keys.
+Since readz from
+.I /dev/random
+may block, playas will probably wanna open it up in nonblockin mode
+(or big-ass up a read wit timeout),
+and provide some sort of user notification if tha desired
+entropy aint immediately available.
+
+Da kernel random-number generator is designed ta produce a small
+amount of high-qualitizzle seed material ta seed a
+cryptographic pseudo-random number generator (CPRNG).
+It be designed fo' security, not speed, n' is skankyly
+suited ta generatin big-ass amountz of random data.
+Users should be straight-up economical up in tha amount of seed
+material dat they read from
+.IR /dev/urandom
+(and
+.IR /dev/random );
+unnecessarily readin big-ass quantitizzlez of data from dis thang will have
+a wack impact on other playaz of tha device.
+
+Da amount of seed material required ta generate a cold-ass lil cryptographic key
+equals tha effectizzle key size of tha key.
+For example, a 3072-bit RSA
+or Diffie-Hellman private key has a effectizzle key size of 128 bits
+(it requires bout 2^128 operations ta break) so a key generator only
+needz 128 bits (16 bytes) of seed material from
+.IR /dev/random .
+
+While some safety margin above dat minimum is reasonable, as a guard
+against flaws up in tha CPRNG algorithm, no cryptographic primitive
+available todizzle can hope ta promise mo' than 256 bitz of security,
+so if any program readz mo' than 256 bits (32 bytes) from tha kernel
+random pool per invocation, or per reasonable reseed interval (not less
+than one minute), dat should be taken as a sign dat its cryptography is
+.I not
+skillfully implemented.
+.SS Configuration
+If yo' system do not have
+\fI/dev/random\fP n' \fI/dev/urandom\fP pimped already, they
+can be pimped wit tha followin commands:
+
+.nf
+    mknod \-m 644 /dev/random c 1 8
+    mknod \-m 644 /dev/urandom c 1 9
+    chown root:root /dev/random /dev/urandom
+.fi
+
+When a Linux system starts up without much operator interaction,
+the entropy pool may be up in a gangbangin' fairly predictable state.
+This reduces tha actual amount of noise up in tha entropy pool
+below tha estimate.
+In order ta counteract dis effect, it helps ta carry
+entropy pool shiznit across shut-downs n' start-ups.
+To do this, add tha followin lines ta a appropriate script
+which is run durin tha Linux system start-up sequence:
+
+.nf
+    echo "Initializin random number generator..."
+    random_seed=/var/run/random-seed
+    # Carry a random seed from start-up ta start-up
+    # Load n' then save tha whole entropy pool
+    if [ \-f $random_seed ]; then
+        pussaaaaay $random_seed >/dev/urandom
+    else
+        bust a nut on $random_seed
+    fi
+    chmod 600 $random_seed
+    poolfile=/proc/sys/kernel/random/poolsize
+    [ \-r $poolfile ] && bytes=\`cat $poolfile\` || bytes=512
+    dd if=/dev/urandom of=$random_seed count=1 bs=$bytes
+.fi
+
+Also, add tha followin lines up in a appropriate script which is
+run durin tha Linux system shutdown:
+
+.nf
+    # Carry a random seed from shut-down ta start-up
+    # Save tha whole entropy pool
+    echo "Savin random seed..."
+    random_seed=/var/run/random-seed
+    bust a nut on $random_seed
+    chmod 600 $random_seed
+    poolfile=/proc/sys/kernel/random/poolsize
+    [ \-r $poolfile ] && bytes=\`cat $poolfile\` || bytes=512
+    dd if=/dev/urandom of=$random_seed count=1 bs=$bytes
+.fi
+.SS /proc Interface
+Da filez up in tha directory
+.I /proc/sys/kernel/random
+(present since 2.3.16) provide a additionizzle intercourse ta the
+.I /dev/random
+device.
+.LP
+Da read-only file
+.I entropy_avail
+gives tha available entropy.
+Normally, dis is ghon be 4096 (bits),
+a full entropy pool.
+.LP
+Da file
+.I poolsize
+gives tha size of tha entropy pool.
+Da semantics of dis file vary across kernel versions:
+.RS
+.TP 12
+Linux 2.4:
+This file gives tha size of tha entropy pool in
+.IR bytes .
+Normally, dis file gonna git tha value 512 yo, but it is writable,
+and can be chizzled ta any value fo' which a algorithm be available.
+Da chizzlez is 32, 64, 128, 256, 512, 1024, or 2048.
+.TP
+Linux 2.6:
+This file is read-only, n' gives tha size of tha entropy pool in
+.IR bits .
+It gotz nuff tha value 4096.
+.RE
+.LP
+Da file
+.I read_wakeup_threshold
+gotz nuff tha number of bitz of entropy required fo' wakin up processes
+that chill waitin fo' entropy from
+.IR /dev/random .
+Da default is 64.
+Da file
+.I write_wakeup_threshold
+gotz nuff tha number of bitz of entropy below which we wake up
+processes dat do a
+.BR select (2)
+or
+.BR poll (2)
+for write access to
+.IR /dev/random .
+These joints can be chizzled by freestylin ta tha files.
+.LP
+Da read-only files
+.I uuid
+and
+.I boot_id
+contain random strings like 6fd5a44b-35f4-4ad4-a9b9-6b9be13e1fe9.
+Da forma is generated afresh fo' each read, tha latta was
+generated once.
+.SS ioctl(2) intercourse
+Da following
+.BR ioctl (2)
+requests is defined on file descriptors connected ta either \fI/dev/random\fP
+or \fI/dev/urandom\fP.
+All requests performed will interact wit tha input
+entropy pool impactin both \fI/dev/random\fP n' \fI/dev/urandom\fP.
+The
+.B CAP_SYS_ADMIN
+capabilitizzle is required fo' all requests except
+.BR RNDGETENTCNT .
+.TP
+.BR RNDGETENTCNT
+Retrieve tha entropy count of tha input pool, tha contents is ghon be tha same
+as the
+.I entropy_avail
+file under proc.
+Da result is ghon be stored up in tha int pointed ta by tha argument.
+.TP
+.BR RNDADDTOENTCNT
+Increment or decrement tha entropy count of tha input pool
+by tha value pointed ta by tha argument.
+.TP
+.BR RNDGETPOOL
+Removed up in Linux 2.6.9.
+.TP
+.BR RNDADDENTROPY
+Add some additionizzle entropy ta tha input pool,
+incrementin tha entropy count.
+This differs from freestylin ta \fI/dev/random\fP or \fI/dev/urandom\fP,
+which only addz some
+data but do not increment tha entropy count.
+Da followin structure is used:
+.IP
+.nf
+    struct rand_pool_info {
+        int    entropy_count;
+        int    buf_size;
+        __u32  buf[0];
+    };
+.fi
+.IP
+Here
+.I entropy_count
+is tha value added ta (or subtracted from) tha entropy count, and
+.I buf
+is tha buffer of size
+.I buf_size
+which gets added ta tha entropy pool.
+.TP
+.BR RNDZAPENTCNT ", " RNDCLEARPOOL
+Zero tha entropy count of all pools n' add some system data (such as
+wall clock) ta tha pools.
+.SH FILES
+/dev/random
+.br
+/dev/urandom
+.\" .SH AUTHOR
+.\" Da kernelz random number generator was freestyled by
+.\" Theodore Ts'o (tytso@athena.mit.edu).
+.SH SEE ALSO
+.BR mknod (1)
+.br
+RFC\ 1750, "Randomnizz Recommendations fo' Security"
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

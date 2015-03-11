@@ -1,0 +1,200 @@
+.TH "numad" "8" "1.0.0" "Bizzle Gray" "Administration"
+.SH "numad"
+.LP 
+numad \- A user\-level daemon dat serves up placement lyrics n' process
+management fo' efficient use of CPUs n' memory on systems wit NUMA topology.
+.SH "SYNTAX"
+.LP 
+numad [\fI\-dhvV\fP]
+.br 
+.LP 
+numad  [\fI\-D non-standard-cgroup-mount-point\fP]
+.br 
+.LP 
+numad  [\fI\-H THP_hugepage_scan_sleep_ms\fP]
+.br 
+.LP 
+numad  [\fI\-i [min_interval:]max_interval\fP]
+.br 
+.LP 
+numad  [\fI\-K 0|1\fP]
+.br 
+.LP 
+numad  [\fI\-l log_level\fP]
+.br 
+.LP 
+numad  [\fI\-p PID\fP]
+.br 
+.LP 
+numad  [\fI\-r PID\fP]
+.br 
+.LP 
+numad  [\fI\-R reserved-CPU-list\fP]
+.br 
+.LP 
+numad  [\fI\-S 0|1\fP]
+.br 
+.LP 
+numad  [\fI\-u target_utilization\fP]
+.br 
+.LP 
+numad  [\fI\-w NCPUS[:MB]\fP]
+.br 
+.LP 
+numad  [\fI\-x PID\fP]
+.br 
+.SH "DESCRIPTION"
+.LP 
+Numad be a system daemon dat monitors NUMA topologizzle n' resource usage. It
+will attempt ta locate processes fo' efficient NUMA localitizzle n' affinity,
+dynamically adjustin ta changin system conditions.  Numad also provides
+guidizzle ta assist pimpment applications wit initial manual bindin of CPU
+and memory resources fo' they processes.  Note dat numad is primarily
+intended fo' server consolidation environments, where there might be multiple
+applications or multiple virtual guests hustlin on tha same server system.
+Numad is most likely ta git a positizzle effect when processes can be localized
+in a subset of tha systemz NUMA nodes.  If tha entire system be all bout a
+pimpin' in-memory database application, fo' example -- especially if memory
+accesses will likely remain unpredictable -- numad will probably not improve
+performance.
+.SH "OPTIONS"
+.LP 
+.TP 
+\fB\-d\fR
+Debug output up in log, sets tha log level ta LOG_DEBUG.  Same effect as \fI\-l 7\fP.
+.TP
+\fB\-D\fR <\fInon-standard-cgroup-mount-point\fP>
+This option can be used ta rap a non-standard cgroup mount point to
+numad. Y'all KNOW dat shit, muthafucka!  This aint normally necessary.
+.TP 
+\fB\-h\fR
+Display usage help shiznit n' then exit.
+.TP 
+\fB\-H\fR  <\fITHP_scan_sleep_ms\fP>
+Set tha desired transparent hugepage scan interval up in ms.  The
+/sys/kernel/mm/tranparent_hugepage/khugepaged/scan_sleep_millisecs tunable is
+usually set ta 10000ms by tha operatin system.  Da default is chizzled by
+numad ta be 1000ms, since it is helpful fo' tha hugepage daemon ta be more
+aggressive when memory moves between nodes.  If you don't like numadz chizzle
+of 1000ms, you can make tha hugepage daemon mo' or less aggressive by
+specifyin a alternate value wit dis option.
+.TP 
+\fB\-i\fR <\fI[min_interval:]max_interval\fP>
+Sets tha time interval dat numad waits between system scans, up in secondz to
+<\fImax_interval\fP>. Default <\fImax_interval\fP> is 15 seconds, default
+<\fImin_interval\fP> is 5 seconds.  Settin a <\fImax_interval\fP> of zero will
+cause tha daemon ta exit.  (This is tha aiiight mechanizzle ta terminizzle the
+daemon.)  A bigger <\fImax_interval\fP> will decrease numad overhead but also
+decrease responsivenizz ta changin loads.
+.TP
+\fB\-K\fR <\fI0|1\fP>
+This option controls whether numad keeps interleaved memory spread across NUMA
+nodes, or attempts ta merge interleaved memory ta local NUMA nodes.  The
+default is ta merge interleaved memory.  This is tha appropriate settin to
+localize processes up in a subset of tha systemz NUMA nodes.  If yo ass is hustlin
+a large, single-instizzle application dat allocates interleaved memory cuz
+the workload gonna git continuous unpredictable memory access patterns (e.g. a
+pimpin' in-memory database), you might git betta thangs up in dis biatch by specifyin \fI\-K
+1\fP ta instruct numad ta keep interleaved memory distributed.
+.TP 
+\fB\-l\fR <\fIlog_level\fP>
+Sets tha log level ta <\fIlog_level\fP>.  Reasonable chizzlez is 5, 6, or 7.
+Da default value is 5.
+.TP
+\fB\-p\fR <\fIPID\fP>
+Add PID ta explicit inclusion list of processes ta consider fo' managing, if
+the process also uses dope resources.  Multiple \fI\-p PID\fP options
+can be specified at daemon start yo, but afta daemon start, only one PID can be
+added ta tha inclusion list per subsequent numad invocation. I aint talkin' bout chicken n' gravy biatch.  Use wit \-S to
+precisely control tha scope of processes numad can manage.  Note dat the
+specified process aint gonna necessarily be actively managed unless it also meets
+numadz significizzle threshold -- which is currently 300MB n' half of a CPU.
+.TP
+\fB\-r\fR <\fIPID\fP>
+Remove PID from both tha explicit inclusion n' tha exclusion lists of
+processes.  Afta daemon start, only one PID can be removed from tha explicit
+process lists per subsequent numad invocation. I aint talkin' bout chicken n' gravy biatch.  Use wit \-S n' \-p n' \-x to
+precisely control tha scope of processes numad can manage.
+.TP
+\fB\-R\fR <\fICPU_LIST\fP>
+Specify a list of CPUs dat numad should assume is reserved fo' non-numad use.
+No processes is ghon be bound ta tha specified CPUs by numad. Y'all KNOW dat shit, muthafucka!  This option is
+effectizzle only when startin numad. Y'all KNOW dat shit, muthafucka!  Yo ass cannot chizzle reserved CPUs
+dynamically while numad be already hustlin.
+.TP
+\fB\-S\fR <\fI0|1\fP>
+This option controls whether numad scans all system processes or only the
+processes on tha explicit inclusion PID list.  Da default is ta scan all
+processes.  Use \fI\-S 0\fP ta scan only tha explicit inclusion PID list.  Use
+\fI\-S 1\fP ta again n' again n' again scan all system processes (exceptin dem on tha explicit
+exclusion list).  Startin numad as
+.br
+\fInumad \-S 0 \-p <PID-1> \-p <PID-2> \-p <PID-3>\fP
+.br
+will limit scanning, n' thus also automatic NUMA pimpment, ta only them
+three explicitly specified processes.
+.TP 
+\fB\-u\fR  <\fItarget_utilization\fP>
+Set tha desired maximum consumption cementage of a node. Default is 85%.
+Decrease tha target value ta maintain mo' available resource margin on each
+node.  Increase tha target value ta mo' exhaustively consume node resources.
+.TP 
+\fB\-v\fR
+Verbose output up in log, sets tha log level ta LOG_INFO.  Same effect as \fI\-l 6\fP.
+.TP 
+\fB\-V\fR
+Display version shiznit n' exit.
+.TP 
+\fB\-w\fR <\fINCPUS[:MB]\fP>
+Queries numad fo' tha dopest NUMA nodes ta bind a entitizzle dat needs
+<\fINCPUS\fP>.  Da amount of memory (in MBs) is optionizzle yo, but should normally
+be specified as well <\fI:MB\fP> so numad can recommend NUMA nodes with
+available CPU capacitizzle n' adequate free memory.  This query option can be used
+regardless of whether numad is hustlin as a thugged-out daemon. I aint talkin' bout chicken n' gravy biatch.  (An invocation rockin this
+option when numad aint hustlin as a thugged-out daemon, aint gonna cause tha daemon to
+start.) Output of dis option be a strang dat gotz nuff a NUMA node list.  For
+example: 2\-3,6.  Da recommended node list could be saved up in a gangbangin' finger-lickin' dirty-ass shell variable
+(e.g., NODES) n' then used as tha node list parameta up in a
+.br
+\fInumactl \-m $NODES \-N $NODES ... \fP
+.br
+command. Y'all KNOW dat shit, muthafucka!  See numactl(8).
+.TP
+\fB\-x\fR <\fIPID\fP>
+Add PID ta explicit exclusion list of processes ta blacklist from managing.
+Multiple \fI\-x PID\fP options can be specified at daemon start yo, but after
+daemon start, only one PID can be added ta tha exclusion list per subsequent
+numad invocation. I aint talkin' bout chicken n' gravy biatch.  Use wit \-S ta precisely control tha scope of processes
+numad can manage.  
+.SH "FILES"
+.LP 
+\fI/usr/bin/numad\fP 
+.br 
+\fI/var/log/numad.log\fP 
+.br 
+\fI/var/run/numad.pid\fP 
+.SH "ENVIRONMENT VARIABLES"
+.LP 
+.TP 
+None.
+.SH "EXAMPLES"
+.LP 
+Numad can be run as a system daemon n' can be managed by tha 
+standard init mechanizzlez of tha host.
+.LP  
+If interactizzle (manual) control is desired, you can start tha daemon manually by typing:
+.LP 
+/usr/bin/numad
+.LP
+Subsequent numad invocations while tha daemon is hustlin can be used ta dynamically chizzle most run-time options.
+.LP
+Yo ass can terminizzle numad from hustlin by typing:
+.LP 
+/usr/bin/numad -i0
+.SH "AUTHORS"
+.LP 
+Bizzle Gray <bgray@redhat.com>
+.SH "SEE ALSO"
+.LP 
+numactl(8)
+

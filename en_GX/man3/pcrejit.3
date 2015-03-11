@@ -1,0 +1,431 @@
+.TH PCREJIT 3 "17 March 2013" "PCRE 8.33"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "PCRE JUST-IN-TIME COMPILER SUPPORT"
+.rs
+.sp
+Just-in-time compilin be a heavyweight optimization dat can pimped outly speed up
+pattern matching. But fuck dat shiznit yo, tha word on tha street is dat it comes all up in tha cost of extra processin before the
+match is performed. Y'all KNOW dat shit, muthafucka! Therefore, it iz of most benefit when tha same pattern is
+goin ta be matched nuff times. This do not necessarily mean nuff callz of a
+matchin function; if tha pattern aint anchored, matchin attempts may take
+place nuff times at various positions up in tha subject, even fo' a single call.
+Therefore, if tha subject strang is straight-up long, it may still pay ta use JIT for
+one-off matches.
+.P
+JIT support applies only ta tha traditionizzle Perl-compatible matchin function.
+It do not apply when tha DFA matchin function is bein used. Y'all KNOW dat shit, muthafucka! Da code for
+this support was freestyled by Zoltan Herczeg.
+.
+.
+.SH "8-BIT, 16-BIT AND 32-BIT SUPPORT"
+.rs
+.sp
+JIT support be available fo' all of tha 8-bit, 16-bit n' 32-bit PCRE
+libraries. Put ya muthafuckin choppers up if ya feel dis! To keep dis documentation simple, only tha 8-bit intercourse is
+busted lyrics bout up in what tha fuck bigs up. If yo ass is rockin tha 16-bit library, substitute the
+16-bit functions n' 16-bit structures (for example, \fIpcre16_jit_stack\fP
+instead of \fIpcre_jit_stack\fP). If yo ass is rockin tha 32-bit library,
+substitute tha 32-bit functions n' 32-bit structures (for example,
+\fIpcre32_jit_stack\fP instead of \fIpcre_jit_stack\fP).
+.
+.
+.SH "AVAILABILITY OF JIT SUPPORT"
+.rs
+.sp
+JIT support be a optionizzle feature of PCRE. Da "configure" option --enable-jit
+(or equivalent CMake option) must be set when PCRE is built if you wanna use
+JIT. Da support is limited ta tha followin hardware platforms:
+.sp
+  ARM v5, v7, n' Thumb2
+  Intel x86 32-bit n' 64-bit
+  MIPS 32-bit
+  Juice PC 32-bit n' 64-bit
+  SPARC 32-bit (experimental)
+.sp
+If --enable-jit is set on a unsupported platform, compilation fails.
+.P
+A program dat is linked wit PCRE 8.20 or lata can tell if JIT support is
+available by callin \fBpcre_config()\fP wit tha PCRE_CONFIG_JIT option. I aint talkin' bout chicken n' gravy biatch. The
+result is 1 when JIT be available, n' 0 otherwise. But fuck dat shiznit yo, tha word on tha street is dat a simple program
+does not need ta check dis up in order ta use JIT. Da aiiight API is implemented
+in a way dat falls back ta tha interpretizzle code if JIT aint available. For
+programs dat need tha dopest possible performance, there be also a "fast path"
+API dat is JIT-specific.
+.P
+If yo' program may sometimes be linked wit versionz of PCRE dat is older
+than 8.20 yo, but you wanna use JIT when it be available, you can test
+the jointz of PCRE_MAJOR n' PCRE_MINOR, or tha existence of a JIT macro such
+as PCRE_CONFIG_JIT, fo' compile-time control of yo' code.
+.
+.
+.SH "SIMPLE USE OF JIT"
+.rs
+.sp
+Yo ass gotta do two thangs ta make use of tha JIT support up in tha simplest way:
+.sp
+  (1) Call \fBpcre_study()\fP wit tha PCRE_STUDY_JIT_COMPILE option for
+      each compiled pattern, n' pass tha resultin \fBpcre_extra\fP block to
+      \fBpcre_exec()\fP.
+.sp
+  (2) Use \fBpcre_free_study()\fP ta free tha \fBpcre_extra\fP block when it is
+      no longer needed, instead of just freein it yo ass. This ensures that
+      any JIT data be also freed.
+.sp
+For a program dat may be linked wit pre-8.20 versionz of PCRE, you can insert
+.sp
+  #ifndef PCRE_STUDY_JIT_COMPILE
+  #define PCRE_STUDY_JIT_COMPILE 0
+  #endif
+.sp
+so dat no option is passed ta \fBpcre_study()\fP, n' then use suttin' like
+this ta free tha study data:
+.sp
+  #ifdef PCRE_CONFIG_JIT
+      pcre_free_study(study_ptr);
+  #else
+      pcre_free(study_ptr);
+  #endif
+.sp
+PCRE_STUDY_JIT_COMPILE requests tha JIT compila ta generate code fo' complete
+matches. If you wanna run partial matches rockin tha PCRE_PARTIAL_HARD or
+PCRE_PARTIAL_SOFT optionz of \fBpcre_exec()\fP, you should set one or both of
+the followin options up in addizzle to, or instead of, PCRE_STUDY_JIT_COMPILE
+when you call \fBpcre_study()\fP:
+.sp
+  PCRE_STUDY_JIT_PARTIAL_HARD_COMPILE
+  PCRE_STUDY_JIT_PARTIAL_SOFT_COMPILE
+.sp
+Da JIT compila generates different optimized code fo' each of tha three
+modes (normal, soft partial, hard partial). When \fBpcre_exec()\fP is called,
+the appropriate code is run if it be available. Otherwise, tha pattern is
+matched rockin interpretizzle code.
+.P
+In some circumstances you may need ta booty-call additionizzle functions. These are
+busted lyrics bout up in tha section entitled
+.\" HTML <a href="#stackcontrol">
+.\" </a>
+"Controllin tha JIT stack"
+.\"
+below.
+.P
+If JIT support aint available, PCRE_STUDY_JIT_COMPILE etc. is ignored, and
+no JIT data is pimped. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Otherwise, tha compiled pattern is passed ta tha JIT
+compiler, which turns it tha fuck into machine code dat executes much fasta than the
+normal interpretizzle code. When \fBpcre_exec()\fP is passed a \fBpcre_extra\fP
+block containin a pointa ta JIT code of tha appropriate mode (normal or
+hard/soft partial), it obeys dat code instead of hustlin tha interpreter n' shit. The
+result is identical yo, but tha compiled JIT code runs much faster.
+.P
+There is some \fBpcre_exec()\fP options dat is not supported fo' JIT
+execution. I aint talkin' bout chicken n' gravy biatch. There is also some pattern shit dat JIT cannot handle. Details
+are given below. In both cases, execution automatically falls back ta the
+interpretizzle code. If you wanna know whether JIT was straight-up used fo' a
+particular match, you should arrange fo' a JIT callback function ta be set up
+as busted lyrics bout up in tha section entitled
+.\" HTML <a href="#stackcontrol">
+.\" </a>
+"Controllin tha JIT stack"
+.\"
+below, even if you do not need ta supply a non-default JIT stack. Right back up in yo muthafuckin ass. Such a
+callback function is called whenever JIT code be bout ta be obeyed. Y'all KNOW dat shit, muthafucka! If the
+execution options is not right fo' JIT execution, tha callback function is not
+obeyed.
+.P
+If tha JIT compila findz a unsupported item, no JIT data is generated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. You
+can smoke up if JIT execution be available afta studyin a pattern by calling
+\fBpcre_fullinfo()\fP wit tha PCRE_INFO_JIT option. I aint talkin' bout chicken n' gravy biatch fo' realz. A result of 1 means that
+JIT compilation was successful naaahhmean, biatch? A result of 0 means dat JIT support is not
+available, or tha pattern was not studied wit PCRE_STUDY_JIT_COMPILE etc., or
+the JIT compila was not able ta handle tha pattern.
+.P
+Once a pattern has been studied, wit or without JIT, it can be used as many
+times as you like fo' matchin different subject strings.
+.
+.
+.SH "UNSUPPORTED OPTIONS AND PATTERN ITEMS"
+.rs
+.sp
+Da only \fBpcre_exec()\fP options dat is supported fo' JIT execution are
+PCRE_NO_UTF8_CHECK, PCRE_NO_UTF16_CHECK, PCRE_NO_UTF32_CHECK, PCRE_NOTBOL,
+PCRE_NOTEOL, PCRE_NOTEMPTY, PCRE_NOTEMPTY_ATSTART, PCRE_PARTIAL_HARD, and
+PCRE_PARTIAL_SOFT.
+.P
+Da only unsupported pattern shit is \eC (match a single data unit) when
+runnin up in a UTF mode, n' a cold-ass lil callout immediately before a assertion condition
+in a cold-ass lil conditionizzle group.
+.
+.
+.SH "RETURN VALUES FROM JIT EXECUTION"
+.rs
+.sp
+When a pattern is matched rockin JIT execution, tha return joints is tha same
+as dem given by tha interpretizzle \fBpcre_exec()\fP code, wit tha addizzle of
+one freshly smoked up error code: PCRE_ERROR_JIT_STACKLIMIT. This means dat tha memory used
+for tha JIT stack was insufficient. Right back up in yo muthafuckin ass. See
+.\" HTML <a href="#stackcontrol">
+.\" </a>
+"Controllin tha JIT stack"
+.\"
+below fo' a gangbangin' finger-lickin' rap of JIT stack usage. For compatibilitizzle wit the
+interpretizzle \fBpcre_exec()\fP code, no mo' than two-thirdz of the
+\fIovector\fP argument is used fo' passin back captured substrings.
+.P
+Da error code PCRE_ERROR_MATCHLIMIT is returned by tha JIT code if searchin a
+very big-ass pattern tree goes on fo' too long, as it is up in tha same circumstance
+when JIT aint used yo, but tha detailz of exactly what tha fuck is counted is not the
+same. Da PCRE_ERROR_RECURSIONLIMIT error code is never returned by JIT
+execution.
+.
+.
+.SH "SAVING AND RESTORING COMPILED PATTERNS"
+.rs
+.sp
+Da code dat is generated by tha JIT compila be architecture-specific, n' is
+also posizzle dependent. For dem reasons it cannot be saved (in a gangbangin' file or
+database) n' restored lata like tha bytecode n' other data of a cold-ass lil compiled
+pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Savin n' restorin compiled patterns aint suttin' nuff people
+do. Mo' detail bout dis facilitizzle is given up in the
+.\" HREF
+\fBpcreprecompile\fP
+.\"
+documentation. I aint talkin' bout chicken n' gravy biatch. Well shiiiit, it should be possible ta run \fBpcre_study()\fP on a saved and
+restored pattern, n' thereby recreate tha JIT data yo, but cuz JIT
+compilation uses dope resources, it is probably not worth bustin this;
+you might as well recompile tha original gangsta pattern.
+.
+.
+.\" HTML <a name="stackcontrol"></a>
+.SH "CONTROLLING THE JIT STACK"
+.rs
+.sp
+When tha compiled JIT code runs, it needz a funky-ass block of memory ta use as a stack.
+By default, it uses 32K on tha machine stack. But fuck dat shiznit yo, tha word on tha street is dat some big-ass or
+fucked up patterns need mo' than all dis bullshit. Da error PCRE_ERROR_JIT_STACKLIMIT
+is given when there aint enough stack. Three functions is provided for
+managin blockz of memory fo' use as JIT stacks. There is further rap
+about tha use of JIT stacks up in tha section entitled
+.\" HTML <a href="#stackcontrol">
+.\" </a>
+"JIT stack FAQUIZZY"
+.\"
+below.
+.P
+Da \fBpcre_jit_stack_alloc()\fP function creates a JIT stack. Its arguments
+are a startin size n' a maximum size, n' it returns a pointa ta a opaque
+structure of type \fBpcre_jit_stack\fP, or NULL if there be a error. Shiiit, dis aint no joke. The
+\fBpcre_jit_stack_free()\fP function can be used ta free a stack dat is no
+longer needed. Y'all KNOW dat shit, muthafucka! (For tha technologically minded: tha address space be allocated by
+mmap or VirtualAlloc.)
+.P
+JIT uses far less memory fo' recursion than tha interpretizzle code,
+and a maximum stack size of 512K ta 1M should be mo' than enough fo' any
+pattern.
+.P
+Da \fBpcre_assign_jit_stack()\fP function specifies which stack JIT code
+should use. Its arguments is as bigs up:
+.sp
+  pcre_extra         *extra
+  pcre_jit_callback  callback
+  void               *data
+.sp
+Da \fIextra\fP argument must be tha result of studyin a pattern with
+PCRE_STUDY_JIT_COMPILE etc. There is three cases fo' tha jointz of tha other
+two options:
+.sp
+  (1) If \fIcallback\fP is NULL n' \fIdata\fP is NULL, a internal 32K block
+      on tha machine stack is used.
+.sp
+  (2) If \fIcallback\fP is NULL n' \fIdata\fP aint NULL, \fIdata\fP must be
+      a valid JIT stack, tha result of callin \fBpcre_jit_stack_alloc()\fP.
+.sp
+  (3) If \fIcallback\fP aint NULL, it must point ta a gangbangin' function dat is
+      called wit \fIdata\fP as a argument all up in tha start of matching, in
+      order ta set up a JIT stack. If tha return from tha callback
+      function is NULL, tha internal 32K stack is used; otherwise the
+      return value must be a valid JIT stack, tha result of calling
+      \fBpcre_jit_stack_alloc()\fP.
+.sp
+A callback function is obeyed whenever JIT code be bout ta be run; it is not
+obeyed when \fBpcre_exec()\fP is called wit options dat is incompatible for
+JIT execution. I aint talkin' bout chicken n' gravy biatch fo' realz. A callback function can therefore be used ta determine whether a
+match operation was executed by JIT or by tha interpreter.
+.P
+Yo ass may safely use tha same JIT stack fo' mo' than one pattern (either by
+assignin directly or by callback), as long as tha patterns is all matched
+sequentially up in tha same thread. Y'all KNOW dat shit, muthafucka! In a multithread application, if you do not
+specify a JIT stack, or if you assign or pass back NULL from a cold-ass lil callback, that
+is thread-safe, cuz each thread has its own machine stack. But fuck dat shiznit yo, tha word on tha street is dat if you
+assign or pass back a non-NULL JIT stack, dis must be a gangbangin' finger-lickin' different stack for
+each thread so dat tha application is thread-safe.
+.P
+Strictly bustin lyrics, even mo' be allowed. Y'all KNOW dat shit, muthafucka! Yo ass can assign tha same non-NULL stack
+to any number of patterns as long as they is not used fo' matchin by multiple
+threadz all up in tha same time. For example, you can assign tha same stack ta all
+compiled patterns, n' bust a global mutex up in tha callback ta wait until the
+stack be available fo' use. But fuck dat shiznit yo, tha word on tha street is dat dis be a inefficient solution, n' not
+recommended.
+.P
+This be a suggestion fo' how tha fuck a multithreaded program dat need ta set up
+non-default JIT stacks might operate:
+.sp
+  Durin thread initalization
+    thread_local_var = pcre_jit_stack_alloc(...)
+.sp
+  Durin thread exit
+    pcre_jit_stack_free(thread_local_var)
+.sp
+  Use a one-line callback function
+    return thread_local_var
+.sp
+All tha functions busted lyrics bout up in dis section do not a god damn thang if JIT aint available,
+and \fBpcre_assign_jit_stack()\fP do not a god damn thang unless tha \fBextra\fP argument
+is non-NULL n' points ta a \fBpcre_extra\fP block dat is tha result of a
+successful study wit PCRE_STUDY_JIT_COMPILE etc.
+.
+.
+.\" HTML <a name="stackfaq"></a>
+.SH "JIT STACK FAQUIZZY"
+.rs
+.sp
+(1) Why do we need JIT stacks?
+.sp
+PCRE (and JIT) be a recursive, depth-first engine, so it needz a stack where
+the local data of tha current node is pushed before checkin its lil pimp nodes.
+Allocatin real machine stack on some platforms is difficult. For example, the
+stack chain need ta be updated every last muthafuckin time if we extend tha stack on PowerPC.
+Although it is possible, its uppimpin time overhead decreases performance. Right back up in yo muthafuckin ass. So
+we do tha recursion up in memory.
+.P
+(2) Why don't we simply allocate blockz of memory wit \fBmalloc()\fP?
+.sp
+Modern operatin systems gotz a sick feature: they can reserve a address space
+instead of allocatin memory. We can safely allocate memory pages inside this
+address space, so tha stack could grow without movin memory data (this is
+important cuz of pointers). Thus we can allocate 1M address space, n' use
+only a single memory page (usually 4K) if dat is enough cause I gots dem finger-lickin' chickens wit tha siz-auce. But fuck dat shiznit yo, tha word on tha street is dat we can still
+grow up ta 1M anytime if needed.
+.P
+(3) Dum diddy-dum, here I come biaaatch! Who tha fuck "owns" a JIT stack?
+.sp
+Da balla of tha stack is tha user program, not tha JIT studied pattern or
+anythang else. Da user program must ensure dat if a stack is used by
+\fBpcre_exec()\fP, (that is, it be assigned ta tha pattern currently hustlin),
+that stack must not be used by any other threadz (to avoid overwritin tha same
+memory area). Da dopest practice fo' multithreaded programs is ta allocate a
+stack fo' each thread, n' return dis stack all up in tha JIT callback function.
+.P
+(4) When should a JIT stack be freed?
+.sp
+Yo ass can free a JIT stack at any time, as long as it aint gonna be used by
+\fBpcre_exec()\fP again. I aint talkin' bout chicken n' gravy biatch. When you assign tha stack ta a pattern, only a pointer
+is set. There is no reference countin or any other magic. Yo ass can free the
+patterns n' stacks up in any order, anytime. Just \fIdo not\fP call
+\fBpcre_exec()\fP wit a pattern pointin ta a already freed stack, as that
+will cause SEGFAULT. (Also, do not free a stack currently used by
+\fBpcre_exec()\fP up in another thread). Yo ass can also replace tha stack fo' a
+pattern at any time. Yo ass can even free tha previous stack before assignin a
+replacement.
+.P
+(5) Should I allocate/free a stack every last muthafuckin time before/afta calling
+\fBpcre_exec()\fP?
+.sp
+Fuck dat shit, cuz dis is too costly up in termz of resources. But fuck dat shiznit yo, tha word on tha street is dat you could
+implement some smart-ass scam which release tha stack if it aint used up in let's
+say two minutes. Da JIT callback can help ta bust dis without keepin a
+list of tha currently JIT studied patterns.
+.P
+(6) OK, tha stack is fo' long term memory allocation. I aint talkin' bout chicken n' gravy biatch. But what tha fuck happens if a
+pattern causes stack overflow wit a stack of 1M, biatch? Is dat 1M kept until the
+stack is freed?
+.sp
+Especially on embedded sytems, it might be a phat scam ta release memory
+sometimes without freein tha stack. There is no API fo' dis all up in tha moment.
+Probably a gangbangin' function call which returns wit tha currently allocated memory for
+any stack n' another which allows releasin memory (shrinkin tha stack) would
+be a phat scam if one of mah thugs needz all dis bullshit.
+.P
+(7) This is too much of a headache. Isn't there any betta solution fo' JIT
+stack handling?
+.sp
+Fuck dat shit, props ta Windows. If POSIX threadz was used everywhere, we could throw
+out dis fucked up API.
+.
+.
+.SH "EXAMPLE CODE"
+.rs
+.sp
+This be a single-threaded example dat specifies a JIT stack without rockin a
+callback.
+.sp
+  int rc;
+  int ovector[30];
+  pcre *re;
+  pcre_extra *extra;
+  pcre_jit_stack *jit_stack;
+.sp
+  re = pcre_compile(pattern, 0, &error, &erroffset, NULL);
+  /* Peep fo' errors */
+  extra = pcre_study(re, PCRE_STUDY_JIT_COMPILE, &error);
+  jit_stack = pcre_jit_stack_alloc(32*1024, 512*1024);
+  /* Peep fo' error (NULL) */
+  pcre_assign_jit_stack(extra, NULL, jit_stack);
+  rc = pcre_exec(re, extra, subject, length, 0, 0, ovector, 30);
+  /* Peep thangs up in dis biatch */
+  pcre_free(re);
+  pcre_free_study(extra);
+  pcre_jit_stack_free(jit_stack);
+.sp
+.
+.
+.SH "JIT FAST PATH API"
+.rs
+.sp
+Because tha API busted lyrics bout above falls back ta interpreted execution when JIT is
+not available, it is convenient fo' programs dat is freestyled fo' general use
+in nuff environments, n' you can put dat on yo' toast. But fuck dat shiznit yo, tha word on tha street is dat callin JIT via \fBpcre_exec()\fP do have a
+performizzle impact. Programs dat is freestyled fo' use where JIT is known ta be
+available, n' which need tha dopest possible performance, can instead use a
+"fast path" API ta booty-call JIT execution directly instead of calling
+\fBpcre_exec()\fP (obviously only fo' patterns dat done been successfully
+studied by JIT).
+.P
+Da fast path function is called \fBpcre_jit_exec()\fP, n' it takes exactly
+the same arguments as \fBpcre_exec()\fP, plus one additionizzle argument that
+must point ta a JIT stack. Da JIT stack arrangements busted lyrics bout above do not
+apply. Da return joints is tha same as fo' \fBpcre_exec()\fP.
+.P
+When you call \fBpcre_exec()\fP, as well as testin fo' invalid options, a
+number of other sanitizzle checks is performed on tha arguments, n' you can put dat on yo' toast. For example, if
+the subject pointa is NULL, or its length is negative, a immediate error is
+given. I aint talkin' bout chicken n' gravy biatch fo' realz. Also, unless PCRE_NO_UTF[8|16|32] is set, a UTF subject strang is tested
+for validity. In tha interestz of speed, these checks do not happen on tha JIT
+fast path, n' if invalid data is passed, tha result is undefined.
+.P
+Bypassin tha sanitizzle checks n' tha \fBpcre_exec()\fP wrappin can give
+speedupz of mo' than 10%.
+.
+.
+.SH "SEE ALSO"
+.rs
+.sp
+\fBpcreapi\fP(3)
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel (FAQ by Zoltan Herczeg)
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 17 March 2013
+Copyright (c) 1997-2013 Universitizzle of Cambridge.
+.fi

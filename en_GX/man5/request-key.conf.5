@@ -1,0 +1,141 @@
+.\" -*- nroff -*-
+.\" Copyright (C) 2005 Red Hat, Inc fo' realz. All Rights Reserved.
+.\" Written by Dizzy Howells (dhowells@redhat.com)
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License
+.\" as published by tha Jacked Software Foundation; either version
+.\" 2 of tha License, or (at yo' option) any lata version.
+.\"
+.TH REQUEST-KEY.CONF 5 "15 November 2011" Linux "Linux Key Management Utilities"
+.SH NAME
+request-key.conf - Instantiation handlez configuration file
+.SH DESCRIPTION
+.P
+This file n' its associated key-type specific variants is used by the
+/sbin/request-key program ta determine which program it should run to
+instantiate a key.
+.P
+request-key looks first up in /etc/request-key.d/ fo' a gangbangin' file of tha key type name
+plus ".conf" dat it can use.  If dat aint found, it will fall back to
+/etc/request-key.conf.
+.P
+request-key scans all up in tha chosen file one line at a time until it
+findz a match, which it will then use. If it don't find a match, it'll return
+an error n' tha kernel will automatically negate tha key.
+.P
+Any blank line or line beginnin wit a hash mark '#' is considered ta be a
+comment n' ignored.
+.P
+All other lines is assumed ta be command lines wit a fuckin shitload of white space
+separated fields:
+.P
+<op> <type> <description> <callout-info> <prog> <arg1> <arg2> ...
+.P
+Da first four fieldz is used ta match tha parametas passed ta request-key by
+the kernel. \fIop\fR is tha operation type; currently tha only supported
+operation is "create".
+.P
+\fItype\fR, \fIdescription\fR n' \fIcallout-info\fR match tha three parameters
+passed ta \fBkeyctl request2\fR or tha \fBrequest_key()\fR system call. Each of
+these may contain one or mo' asterisk '*' charactas as wildcardz anywhere
+within tha string.
+.P
+Should a match be made, tha program specified by <prog> is ghon be exec'd. Y'all KNOW dat shit, muthafucka! This
+must gotz a gangbangin' straight-up qualified path name. argv[0] is ghon be set from tha part of the
+program name dat bigs up tha last slash '/' character.
+.P
+If tha program name is prefixed wit a pipe bar characta '|', then tha program
+will be forked n' exec'd attached ta three pipes. Da callout shiznit will
+be piped ta it on itz stdin n' tha intended payload data is ghon be retrieved
+from its stdout fo' realz. Anythang busted ta stderr is ghon be posted up in syslog. If the
+program exits 0, then /sbin/request-key will attempt ta instantiate tha key
+with tha data read from stdout. If it fails up in any other way, then request-key
+will attempt ta execute tha appropriate 'negate' operation command.
+.P
+Da program arguments can be substituted wit various macros. Only complete
+argument substitution is supported - macro substitutions can't be embedded. Y'all KNOW dat shit, muthafucka! All
+macros begin wit a cement characta '%' fo' realz. An argument beginnin wit two
+percent charactas gonna git one of dem discarded.
+.P
+Da followin macros is supported:
+.P
+.RS
+%o    Operation type
+.br
+%k    Key ID
+.br
+%t    Key type
+.br
+%d    Key description
+.br
+%c    Callout shiznit
+.br
+%u    Key UID
+.br
+%g    Key GID
+.br
+%T    Requestorz thread keyring
+.br
+%P    Requestorz process keyring
+.br
+%S    Requestorz session keyring
+.RE
+.P
+Therez another macro substitution too dat permits tha interpolation of the
+contentz of a key:
+.P
+.RS
+%{<type>:<description>}
+.RE
+.P
+This performs a lookup fo' a key of tha given type n' description on the
+requestorz keyrings, n' if found, substitutes tha contents fo' tha macro. If
+not found a error is ghon be logged n' tha key under construction will be
+negated.
+.SH EXAMPLE
+.P
+A basic file is ghon be installed up in tha /etc. This will contain two debugging
+lines dat can be used ta test tha installation:
+.P
+.RS
+create user debug:* negate /bin/keyctl negate %k 30 %S
+.br
+create user debug:loop:* * |/bin/cat
+.br
+create user debug:* * /usr/share/keyutils/request-key-debug.sh %k %d %c %S
+.br
+negate * * * /bin/keyctl negate %k 30 %S
+.RE
+.P
+This is set up so dat suttin' like:
+.P
+.RS
+keyctl request2 user debug:xxxx negate
+.RE
+.P
+will create a wack user-defined key, suttin' like:
+.P
+.RS
+keyctl request2 user debug:yyyy spoon
+.RE
+.P
+will create a instantiated user-defined key wit "Debug spoon" as tha payload,
+and suttin' like:
+.P
+.RS
+keyctl request2 user debug:loop:zzzz abcdefghijkl
+.RE
+.P
+will create a instantiated user-defined key wit tha callout shiznit as
+the payload.
+.SH FILES
+.ul
+/etc/request-key.conf
+.ul 0
+.br
+.ul
+/etc/request-key.d/<keytype>.conf
+.ul 0
+.SH SEE ALSO
+\fBkeyctl\fR(1), \fBrequest-key.conf\fR(5)

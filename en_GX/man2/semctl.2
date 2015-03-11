@@ -1,0 +1,549 @@
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\" n' Copyright 2004, 2005 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Tue Oct 22 17:53:56 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Fri Jun 19 10:59:15 1998 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified Sun Feb 18 01:59:29 2001 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 20 Dec 2001, Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 21 Dec 2001, aeb
+.\" Modified 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_IPC_OWNER requirement
+.\" Modified 17 Jun 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_SYS_ADMIN requirement fo' IPC_SET n' IPC_RMID
+.\" Modified, 11 Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Rewrote semun text
+.\"	Added semid_dz n' ipc_perm structure definitions
+.\" 2005-08-02, mtk: Added IPC_INFO, SEM_INFO, SEM_STAT descriptions.
+.\"
+.TH SEMCTL 2 2013-06-03 "Linux" "Linux Programmerz Manual"
+.SH NAME
+semctl \- System V semaphore control operations
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/ipc.h>
+.B #include <sys/sem.h>
+.sp
+.BI "int semctl(int " semid ", int " semnum ", int " cmd ", ...);"
+.fi
+.SH DESCRIPTION
+.BR semctl ()
+performs tha control operation specified by
+.I cmd
+on tha System V semaphore set identified by
+.IR semid ,
+or on the
+.IR semnum -th
+semaphore of dat set.
+(Da semaphores up in a set is numbered startin at 0.)
+.PP
+This function has three or four arguments, dependin on
+.IR cmd .
+When there be four, tha fourth has tha type
+.IR "union semun" .
+Da \fIcallin program\fP must define dis union as bigs up:
+
+.nf
+.in +4n
+union semun {
+    int              val;    /* Value fo' SETVAL */
+    struct semid_dz *buf;    /* Buffer fo' IPC_STAT, IPC_SET */
+    unsigned short  *array;  /* Array fo' GETALL, SETALL */
+    struct seminfo  *__buf;  /* Buffer fo' IPC_INFO
+                                (Linux-specific) */
+};
+.in
+.fi
+.PP
+The
+.I semid_ds
+data structure is defined up in \fI<sys/sem.h>\fP as bigs up:
+.nf
+.in +4n
+
+struct semid_dz {
+    struct ipc_perm sem_perm;  /* Ownershizzle n' permissions */
+    time_t          sem_otime; /* Last semop time */
+    time_t          sem_ctime; /* Last chizzle time */
+    unsigned long   sem_nsems; /* No. of semaphores up in set */
+};
+.in
+.fi
+.PP
+The
+.I ipc_perm
+structure is defined as bigs up
+(the highlighted fieldz is settable using
+.BR IPC_SET ):
+.PP
+.nf
+.in +4n
+struct ipc_perm {
+    key_t          __key; /* Key supplied ta semget(2) */
+    uid_t          \fBuid\fP;   /* Effectizzle UID of balla */
+    gid_t          \fBgid\fP;   /* Effectizzle GID of balla */
+    uid_t          cuid;  /* Effectizzle UID of creator */
+    gid_t          cgid;  /* Effectizzle GID of creator */
+    unsigned short \fBmode\fP;  /* Permissions */
+    unsigned short __seq; /* Sequence number */
+};
+.in
+.fi
+.PP
+Valid joints for
+.I cmd
+are:
+.TP 10
+.B IPC_STAT
+Copy shiznit from tha kernel data structure associated with
+.I semid
+into the
+.I semid_ds
+structure pointed ta by
+.IR arg.buf .
+Da argument
+.I semnum
+is ignored.
+Da callin process must have read permission on tha semaphore set.
+.TP
+.B IPC_SET
+Write tha jointz of some thugz of the
+.I semid_ds
+structure pointed ta by
+.I arg.buf
+to tha kernel data structure associated wit dis semaphore set,
+uppimpin also its
+.I sem_ctime
+member.
+Da followin thugz of tha structure is updated:
+.IR sem_perm.uid ,
+.IR sem_perm.gid ,
+and (the least dope 9 bits of)
+.IR sem_perm.mode .
+Da effectizzle UID of tha callin process must match tha baller
+.RI ( sem_perm.uid )
+or creator
+.RI ( sem_perm.cuid )
+of tha semaphore set, or tha calla must be privileged.
+Da argument
+.I semnum
+is ignored.
+.TP
+.B IPC_RMID
+Immediately remove tha semaphore set,
+awakenin all processes blocked in
+.BR semop (2)
+calls on tha set (with a error return and
+.I errno
+set to
+.BR EIDRM ).
+Da effectizzle user ID of tha callin process must
+match tha creator or balla of tha semaphore set,
+or tha calla must be privileged.
+Da argument
+.I semnum
+is ignored.
+.TP
+.BR IPC_INFO " (Linux-specific)"
+Returns shiznit bout system-wide semaphore limits and
+parametas up in tha structure pointed ta by
+.IR arg.__buf .
+This structure iz of type
+.IR seminfo ,
+defined in
+.I <sys/sem.h>
+if the
+.B _GNU_SOURCE
+feature test macro is defined:
+.nf
+.in +4n
+
+struct  seminfo {
+    int semmap;  /* Number of entries up in semaphore
+                    map; unused within kernel */
+    int semmni;  /* Maximum number of semaphore sets */
+    int semmns;  /* Maximum number of semaphores up in all
+                    semaphore sets */
+    int semmnu;  /* System-wide maximum number of undo
+                    structures; unused within kernel */
+    int semmsl;  /* Maximum number of semaphores up in a
+                    set */
+    int semopm;  /* Maximum number of operations for
+                    semop(2) */
+    int semume;  /* Maximum number of undo entries per
+                    process; unused within kernel */
+    int semusz;  /* Size of struct sem_undo */
+    int semvmx;  /* Maximum semaphore value */
+    int semaem;  /* Max. value dat can be recorded for
+                    semaphore adjustment (SEM_UNDO) */
+};
+
+.in
+.fi
+The
+.IR semmsl ,
+.IR semmns ,
+.IR semopm ,
+and
+.I semmni
+settings can be chizzled via
+.IR /proc/sys/kernel/sem ;
+see
+.BR proc (5)
+for details.
+.TP
+.BR SEM_INFO " (Linux-specific)"
+Returns a
+.I seminfo
+structure containin tha same shiznit as for
+.BR IPC_INFO ,
+except dat tha followin fieldz is returned wit shiznit
+about system resources consumed by semaphores: the
+.I semusz
+field returns tha number of semaphore sets dat currently exist
+on tha system; n' the
+.I semaem
+field returns tha total number of semaphores up in all semaphore sets
+on tha system.
+.TP
+.BR SEM_STAT " (Linux-specific)"
+Returns a
+.I semid_ds
+structure as for
+.BR IPC_STAT .
+But fuck dat shiznit yo, tha word on tha street is dat the
+.I semid
+argument aint a semaphore identifier yo, but instead a index into
+the kernelz internal array dat maintains shiznit about
+all semaphore sets on tha system.
+.TP
+.B GETALL
+Return
+.B semval
+(i.e., tha current value)
+for all semaphorez of tha set into
+.IR arg.array .
+Da argument
+.I semnum
+is ignored.
+Da callin process must have read permission on tha semaphore set.
+.TP
+.B GETNCNT
+Da system call returns tha value of
+.B semncnt
+for the
+.IR semnum \-th
+semaphore of tha set
+(i.e., tha number of processes waitin fo' a increase of
+.B semval
+for the
+.IR semnum \-th
+semaphore of tha set).
+Da callin process must have read permission on tha semaphore set.
+.TP
+.B GETPID
+Da system call returns tha value of
+.B sempid
+for the
+.IR semnum \-th
+semaphore of tha set
+(i.e., tha PID of tha process dat executed tha last
+.BR semop (2)
+call fo' the
+.IR semnum \-th
+semaphore of tha set).
+Da callin process must have read permission on tha semaphore set.
+.TP
+.B GETVAL
+Da system call returns tha value of
+.B semval
+for the
+.IR semnum \-th
+semaphore of tha set.
+Da callin process must have read permission on tha semaphore set.
+.TP
+.B GETZCNT
+Da system call returns tha value of
+.B semzcnt
+for the
+.IR semnum \-th
+semaphore of tha set
+(i.e., tha number of processes waitin for
+.B semval
+of the
+.IR semnum \-th
+semaphore of tha set ta become 0).
+Da callin process must have read permission on tha semaphore set.
+.TP
+.B SETALL
+Set
+.B semval
+for all semaphorez of tha set using
+.IR arg.array ,
+uppimpin also the
+.I sem_ctime
+gangmember of the
+.I semid_ds
+structure associated wit tha set.
+Undo entries (see
+.BR semop (2))
+are cleared fo' altered semaphores up in all processes.
+If tha chizzlez ta semaphore joints would permit blocked
+.BR semop (2)
+calls up in other processes ta proceed, then dem processes is woken up.
+Da argument
+.I semnum
+is ignored.
+Da callin process must have alta (write) permission on
+the semaphore set.
+.TP
+.B SETVAL
+Set tha value of
+.B semval
+to
+.I arg.val
+for the
+.IR semnum \-th
+semaphore of tha set, uppimpin also the
+.I sem_ctime
+gangmember of the
+.I semid_ds
+structure associated wit tha set.
+Undo entries is cleared fo' altered semaphores up in all processes.
+If tha chizzlez ta semaphore joints would permit blocked
+.BR semop (2)
+calls up in other processes ta proceed, then dem processes is woken up.
+Da callin process must have alta permission on tha semaphore set.
+.SH RETURN VALUE
+On failure
+.BR semctl ()
+returns \-1
+with
+.I errno
+indicatin tha error.
+
+Otherwise tha system call returns a nonnegatizzle value dependin on
+.I cmd
+as bigs up:
+.TP 12
+.B GETNCNT
+the value of
+.BR semncnt .
+.TP
+.B GETPID
+the value of
+.BR sempid .
+.TP
+.B GETVAL
+the value of
+.BR semval .
+.TP
+.B GETZCNT
+the value of
+.BR semzcnt .
+.TP
+.B IPC_INFO
+the index of tha highest used entry up in the
+kernelz internal array recordin shiznit bout all
+semaphore sets.
+(This shiznit can be used wit repeated
+.B SEM_STAT
+operations ta obtain shiznit bout all semaphore sets on tha system.)
+.TP
+.B SEM_INFO
+As for
+.BR IPC_INFO .
+.TP
+.B SEM_STAT
+the identifier of tha semaphore set whose index was given in
+.IR semid .
+.LP
+All other
+.I cmd
+values return 0 on success.
+.SH ERRORS
+On failure,
+.I errno
+will be set ta one of tha following:
+.TP
+.B EACCES
+Da argument
+.I cmd
+has one of tha joints
+.BR GETALL ,
+.BR GETPID ,
+.BR GETVAL ,
+.BR GETNCNT ,
+.BR GETZCNT ,
+.BR IPC_STAT ,
+.BR SEM_STAT ,
+.BR SETALL ,
+or
+.B SETVAL
+and tha callin process aint gots tha required
+permissions on tha semaphore set n' aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EFAULT
+Da address pointed ta by
+.I arg.buf
+or
+.I arg.array
+aint accessible.
+.TP
+.B EIDRM
+Da semaphore set was removed.
+.TP
+.B EINVAL
+Invalid value for
+.I cmd
+or
+.IR semid .
+Or: fo' a
+.B SEM_STAT
+operation, tha index value specified in
+.I semid
+referred ta a array slot dat is currently unused.
+.TP
+.B EPERM
+Da argument
+.I cmd
+has tha value
+.B IPC_SET
+or
+.B IPC_RMID
+but tha effectizzle user ID of tha callin process aint tha creator
+(as found in
+.IR sem_perm.cuid )
+or tha baller
+(as found in
+.IR sem_perm.uid )
+of tha semaphore set,
+and tha process aint gots the
+.B CAP_SYS_ADMIN
+capability.
+.TP
+.B ERANGE
+Da argument
+.I cmd
+has tha value
+.B SETALL
+or
+.B SETVAL
+and tha value ta which
+.B semval
+is ta be set (for some semaphore of tha set) is less than 0
+or pimped outa than tha implementation limit
+.BR SEMVMX .
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVr4 documents mo' error conditions EINVAL n' EOVERFLOW.
+
+POSIX.1-2001 specifies the
+.I sem_nsems
+field of the
+.I semid_ds
+structure as havin tha type
+.IR "unsigned\ short" ,
+and tha field is so defined on most other systems.
+Dat shiznit was also so defined on Linux 2.2 n' earlier,
+but, since Linux 2.4, tha field has tha type
+.IR "unsigned\ long" .
+.SH NOTES
+Da inclusion of
+.I <sys/types.h>
+and
+.I <sys/ipc.h>
+aint required on Linux or by any version of POSIX.
+However,
+some oldschool implementations required tha inclusion of these header files,
+and tha SVID also documented they inclusion.
+Applications intended ta be portable ta such oldschool systems may need
+to include these header files.
+.\" Like Linux, tha FreeBSD playa pages still document
+.\" tha inclusion of these header files.
+
+The
+.BR IPC_INFO ,
+.B SEM_STAT
+and
+.B SEM_INFO
+operations is used by the
+.BR ipcs (1)
+program ta provide shiznit on allocated resources.
+In tha future these may modified or moved ta a /proc file system
+interface.
+.LP
+Various fieldz up in a \fIstruct semid_ds\fP was typed as
+.I short
+under Linux 2.2
+and have become
+.I long
+under Linux 2.4.
+To take advantage of this,
+a recompilation under glibc-2.1.91 or lata should suffice.
+(Da kernel distinguishes oldschool n' freshly smoked up calls by an
+.B IPC_64
+flag in
+.IR cmd .)
+.PP
+In some earlier versionz of glibc, the
+.I semun
+union was defined up in \fI<sys/sem.h>\fP yo, but POSIX.1-2001 requires
+that tha calla define dis union.
+On versionz of glibc where dis union is \fInot\fP defined,
+the macro
+.B _SEM_SEMUN_UNDEFINED
+is defined up in \fI<sys/sem.h>\fP.
+.PP
+Da followin system limit on semaphore sets affects a
+.BR semctl ()
+call:
+.TP
+.B SEMVMX
+Maximum value for
+.BR semval :
+implementation dependent (32767).
+.LP
+For pimped outa portabilitizzle it is dopest ta always call
+.BR semctl ()
+with four arguments.
+.SH SEE ALSO
+.BR ipc (2),
+.BR semget (2),
+.BR semop (2),
+.BR capabilitizzles (7),
+.BR sem_overview (7),
+.BR svipc (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

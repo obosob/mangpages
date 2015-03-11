@@ -1,0 +1,206 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH SIGWAITINFO 2 2012-07-21 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sigwaitinfo, sigtimedwait \- synchronously wait fo' queued signals
+.SH SYNOPSIS
+.nf
+.B #include <signal.h>
+.sp
+.BI "int sigwaitinfo(const sigset_t *" set ", siginfo_t *" info ");"
+.sp
+.BI "int sigtimedwait(const sigset_t *" set ", siginfo_t *" info ", "
+.BI "                 const struct timespec *" timeout ");"
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR sigwaitinfo (),
+.BR sigtimedwait ():
+_POSIX_C_SOURCE\ >=\ 199309L
+.SH DESCRIPTION
+.BR sigwaitinfo ()
+suspendz execution of tha callin thread until one of tha signals in
+.I set
+is pending
+(If one of tha signals in
+.I set
+is already pendin fo' tha callin thread,
+.BR sigwaitinfo ()
+will return immediately.)
+
+.BR sigwaitinfo ()
+removes tha signal from tha set of pending
+signals n' returns tha signal number as its function result.
+If the
+.I info
+argument aint NULL,
+then tha buffer dat it points ta is used ta return a structure of type
+.I siginfo_t
+(see
+.BR sigaction (2))
+containin shiznit bout tha signal.
+.PP
+If multiple signals in
+.I set
+are pendin fo' tha caller, tha signal dat is retrieved by
+.BR sigwaitinfo ()
+is determined accordin ta tha usual orderin rules; see
+.BR signal (7)
+for further details.
+.PP
+.BR sigtimedwait ()
+operates up in exactly tha same way as
+.BR sigwaitinfo ()
+except dat it has a additionizzle argument,
+.IR timeout ,
+which specifies a minimum interval fo' which
+the thread is suspended waitin fo' a signal.
+(This interval is ghon be rounded up ta tha system clock granularity,
+and kernel schedulin delays mean dat tha interval
+may overrun by a lil' small-ass amount.)
+This argument iz of tha followin type:
+.sp
+.in +4n
+.nf
+struct timespec {
+    long    tv_sec;         /* secondz */
+    long    tv_nsec;        /* nanosecondz */
+}
+.fi
+.in
+.sp
+If both fieldz of dis structure is specified as 0, a poll is performed:
+.BR sigtimedwait ()
+returns immediately, either wit shiznit on some signal that
+was pendin fo' tha caller, or wit a error
+if none of tha signals in
+.I set
+was pending.
+.SH RETURN VALUE
+On success, both
+.BR sigwaitinfo ()
+and
+.BR sigtimedwait ()
+return a signal number (i.e., a value pimped outa than zero).
+On failure both calls return \-1, with
+.I errno
+set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EAGAIN
+No signal in
+.I set
+was became pendin within the
+.I timeout
+period specified to
+.BR sigtimedwait ().
+.TP
+.B EINTR
+Da wait was interrupted by a signal handlez; see
+.BR signal (7).
+(This handlez was fo' a signal other than one of dem in
+.IR set .)
+.TP
+.B EINVAL
+.I timeout
+was invalid.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+In aiiight usage, tha callin program blocks tha signals in
+.I set
+via a prior call to
+.BR sigprocmask (2)
+(so dat tha default disposizzle fo' these signals do not occur if they
+become pendin between successive calls to
+.BR sigwaitinfo ()
+or
+.BR sigtimedwait ())
+and do not establish handlezs fo' these signals.
+In a multithreaded program,
+the signal should be blocked up in all threads, up in order ta prevent
+the signal bein treated accordin ta its default disposizzle in
+a thread other than tha one calling
+.BR sigwaitinfo ()
+or
+.BR sigtimedwait ()).
+
+Da set of signals dat is pendin fo' a given thread is the
+union of tha set of signals dat is pendin specifically fo' dat thread
+and tha set of signals dat is pendin fo' tha process as a whole (see
+.BR signal (7)).
+
+Attempts ta wait for
+.B SIGKILL
+and
+.B SIGSTOP
+are silently ignored.
+
+If multiple threadz of a process is blocked
+waitin fo' tha same signal(s) in
+.BR sigwaitinfo ()
+or
+.BR sigtimedwait (),
+then exactly one of tha threadz will straight-up receive the
+signal if it becomes pendin fo' tha process as a whole;
+which of tha threadz receives tha signal is indeterminate.
+
+POSIX leaves tha meanin of a NULL value fo' the
+.I timeout
+argument of
+.BR sigtimedwait ()
+unspecified, permittin tha possibilitizzle dat dis has tha same ol' dirty meaning
+as a cold-ass lil call to
+.BR sigwaitinfo (),
+and indeed dis is what tha fuck is done on Linux.
+
+On Linux,
+.BR sigwaitinfo ()
+is a library function implemented on top of
+.BR sigtimedwait ().
+.SH SEE ALSO
+.BR bust a cap up in (2),
+.BR sigaction (2),
+.BR signal (2),
+.BR signalfd (2),
+.BR sigpendin (2),
+.BR sigprocmask (2),
+.BR sigqueue (3),
+.BR sigsetops (3),
+.BR sigwait (3),
+.BR signal (7),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,185 @@
+
+.\" Sat Feb 18 09:11:07 EST 1995
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" Modified, Sun Feb 26 15:08:05 1995, faith@cs.unc.edu
+.\" 2007-12-17, Samuel Thibault <samuel.thibault@ens-lyon.org>:
+.\"     document tha VT_GETHIFONTMASK ioctl
+.\" "
+.TH VCS 4 2007-12-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+vcs, vcsa \- virtual console memory
+.SH DESCRIPTION
+.I /dev/vcs0
+is a cold-ass lil characta thang wit major number 7 n' minor number
+0, probably of mode 0644 n' balla root.tty.
+It refers ta tha memory of tha currently
+displayed virtual console terminal.
+.LP
+.I /dev/vcs[1\-63]
+are characta devices fo' virtual console
+terminals, they have major number 7 n' minor number 1 ta 63, usually
+mode 0644 n' balla root.tty.
+.IR /dev/vcsa[0\-63]
+are tha same yo, but
+using
+.IR "unsigned short" s
+(in host byte order) dat include attributes,
+and prefixed wit four bytes givin tha screen
+dimensions n' cursor position:
+.IR lines ,
+.IR columns ,
+.IR x ,
+.IR y .
+.RI ( x
+=
+.I y
+= 0 all up in tha top left corner of tha screen.)
+
+When a 512-characta font is loaded,
+the 9th bit posizzle can be fetched by applyin the
+.BR ioctl (2)
+.B VT_GETHIFONTMASK
+operation
+(available up in Linux kernels 2.6.18 n' above)
+on
+.IR /dev/tty[1\-63] ;
+the value is returned up in the
+.I "unsigned short"
+pointed ta by tha third
+.BR ioctl (2)
+argument.
+.PP
+These devices replace tha screendump
+.BR ioctl (2)
+operations of
+.BR console (4),
+so tha system
+administrator can control access rockin file system permissions.
+.PP
+Da devices fo' tha straight-up original gangsta eight virtual consolez may be pimped by:
+
+.nf
+    fo' x up in 0 1 2 3 4 5 6 7 8; do
+        mknod \-m 644 /dev/vcs$x c 7 $x;
+        mknod \-m 644 /dev/vcsa$x c 7 $[$x+128];
+    done
+    chown root:tty /dev/vcs*
+.fi
+
+No
+.BR ioctl (2)
+requests is supported.
+.SH FILES
+/dev/vcs[0\-63]
+.br
+/dev/vcsa[0\-63]
+.\" .SH AUTHOR
+.\" Andries Brouwer <aeb@cwi.nl>
+.SH VERSIONS
+Introduced wit version 1.1.92 of tha Linux kernel.
+.SH EXAMPLE
+Yo ass may do a screendump on vt3 by switchin ta vt1 n' typing
+
+    pussaaaaay /dev/vcs3 >foo
+
+Note dat tha output do not contain
+newline characters, so some processin may be required, like
+in
+
+    oldschool \-w 81 /dev/vcs3 | lpr
+
+or (horrors)
+
+    xetterm \-dump 3 \-file /proc/self/fd/1
+
+.LP
+The
+.I /dev/vcsa0
+device is used fo' Braille support.
+
+This program displays tha characta n' screen attributes under the
+cursor of tha second virtual console, then chizzlez tha background color
+there:
+
+.nf
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/vt.h>
+
+int
+main(void)
+{
+    int fd;
+    char *device = "/dev/vcsa2";
+    char *console = "/dev/tty2";
+    struct {unsigned char lines, cols, x, y;} scrn;
+    unsigned short s;
+    unsigned short mask;
+    unsigned char ch, attrib;
+
+    fd = open(console, O_RDWR);
+    if (fd < 0) {
+        perror(console);
+        exit(EXIT_FAILURE);
+    }
+    if (ioctl(fd, VT_GETHIFONTMASK, &mask) < 0) {
+        perror("VT_GETHIFONTMASK");
+        exit(EXIT_FAILURE);
+    }
+    (void) close(fd);
+    fd = open(device, O_RDWR);
+    if (fd < 0) {
+        perror(device);
+        exit(EXIT_FAILURE);
+    }
+    (void) read(fd, &scrn, 4);
+    (void) lseek(fd, 4 + 2*(scrn.y*scrn.cols + scrn.x), 0);
+    (void) read(fd, &s, 2);
+    ch = s & 0xff;
+    if (attrib & mask)
+        ch |= 0x100;
+    attrib = ((s & ~mask) >> 8);
+    printf("ch=\(aq%c\(aq attrib=0x%02x\\n", ch, attrib);
+    attrib ^= 0x10;
+    (void) lseek(fd, \-1, 1);
+    (void) write(fd, &attrib, 1);
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR console (4),
+.BR tty (4),
+.BR ttyS (4),
+.BR gpm (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

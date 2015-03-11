@@ -1,0 +1,132 @@
+.TH ematch 8 "6 August 2012" iproute2 Linux
+.
+.SH NAME
+ematch \- extended matches fo' use wit "basic" or "flow" filters
+.
+.SH SYNOPSIS
+.sp
+.ad l
+.B "tc filta add .. basic match"
+.RI EXPR
+.B .. flowid ..
+.sp
+
+.IR EXPR " := " TERM " [ { "
+.B n' | or
+}
+.IR EXPR
+]
+
+.IR TERM " := [ " \fBnot " ] { " MATCH " | '(' " EXPR " ')' } "
+
+.IR MATCH " := " module " '(' " ARGS " ')' "
+
+.IR ARGS " := " ARG1 " " ARG2 " ..
+
+.SH MATCHES
+
+.SS cmp
+Simple comparison ematch: arithmetic compare of packet data ta a given value.
+
+.IR cmp "( " ALIGN " at " OFFSET " [ " ATTRS " ] { " eq " | " lt " | " gt " } " VALUE " )
+
+.IR ALIGN " := { " u8 " | " u16 " | " u32 " } "
+
+.IR ATTRS " := [ layer " LAYER " ] [ mask " MASK " ] [ trans ]
+
+.IR LAYER " := { " link " | " network " | " transhiznit " | " 0..2 " }
+
+.SS meta
+Metadata ematch
+
+.IR meta "( " OBJECT " { " eq " | " lt " |" gt " } " OBJECT " )
+
+.IR OBJECT " := { " META_ID " |  " VALUE " }
+
+.IR META_ID " := " id " [ shift " SHIFT " ] [ mask " MASK " ]
+
+.TP
+meta attributes:
+
+\fBrandom\fP 32 bit random value
+
+\fBloadavg_1\fP Load average up in last 5 minutes
+
+\fBnf_mark\fP Netfilta mark
+
+\fBvlan\fP Vlan tag
+
+\fBsk_rcvbuf\fP Receive buffer size
+
+\fBsk_snd_queue\fP Send queue length
+
+.PP
+A full list of meta attributes can be obtained via
+
+# tc filta add dev eth1 basic match 'meta(list)'
+
+.SS nbyte
+match packet data byte sequence
+
+.IR nbyte "( " NEEDLE  " at " OFFSET " [ layer " LAYER " ] )
+
+.IR NEEDLE  " := { " strang " | " c-escape-sequence "  } "
+
+.IR OFFSET  " := " int
+
+.IR LAYER " := { " link " | " network " | " transhiznit " | " 0..2 " }
+
+.SS u32
+u32 ematch
+
+.IR u32 "( " ALIGN " " VALUE " " MASK " at [ nexthdr+ ] " OFFSET " )
+
+.IR ALIGN " := { " u8 " | " u16 " | " u32 " }
+
+.SS ipset
+test packet against ipset membership
+
+.IR ipset "( " SETNAME " " FLAGS " )
+
+.IR SETNAME " := " string
+
+.IR FLAGS " := { " FLAG " [, " FLAGS "] }
+
+Da flag options is tha same as dem used by tha iptablez "set" match.
+
+When rockin tha ipset ematch wit tha "ip_set_hash:net,iface" set type,
+the intercourse can be queried rockin "src,dst (source ip address, outgoin intercourse) or
+"src,src" (source ip address, incomin intercourse) syntax.
+
+.SH CAVEATS
+
+Da ematch syntax uses '(' n' ')' ta crew expressions fo' realz. All braces need ta be
+escaped properly ta prevent shell commandline from interpretin these directly.
+
+When rockin tha ipset ematch wit tha "ifb" device, tha outgoin thang is ghon be the
+ifb thang itself, e.g. "ifb0".
+Da original gangsta intercourse (i.e. tha thang tha packet arrived on) is treated as tha incomin intercourse.
+
+.SH EXAMPLE & USAGE
+
+# tc filta add .. basic match ...
+
+# 'cmp(u16 at 3 layer 2 mask 0xff00 gt 20)'
+
+# 'meta(nfmark gt 24)' n' 'meta(tcindex mask 0xf0 eq 0xf0)'
+
+# 'nbyte("ababa" at 12 layer 1)'
+
+# 'u32(u16 0x1122 0xffff at nexthdr+4)'
+
+Peep if packet source ip address is gangmember of set named \fBbulk\fP:
+
+# 'ipset(bulk src)'
+
+Peep if packet source ip n' tha intercourse tha packet arrived on is gangmember of "hash:net,iface" set named \fBinteractive\fP:
+
+# 'ipset(interactizzle src,src)'
+
+.SH "AUTHOR"
+
+Da extended match infrastructure was added by Thomas Graf.

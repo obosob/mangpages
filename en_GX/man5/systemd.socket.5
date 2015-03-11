@@ -1,0 +1,488 @@
+'\" t
+.TH "SYSTEMD\&.SOCKET" "5" "" "systemd 208" "systemd.socket"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+systemd.socket \- Socket unit configuration
+.SH "SYNOPSIS"
+.PP
+\fIsocket\fR\&.socket
+.SH "DESCRIPTION"
+.PP
+A unit configuration file whose name endz in
+"\&.socket"
+encodes shiznit bout a IPC or network socket or a gangbangin' file system FIFO controlled n' supervised by systemd, fo' socket\-based activation\&.
+.PP
+This playa page lists tha configuration options specific ta dis unit type\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.unit\fR(5)
+for tha common optionz of all unit configuration files\&. Da common configuration shit is configured up in tha generic [Unit] n' [Install] sections\&. Da socket specific configuration options is configured up in tha [Socket] section\&.
+.PP
+Additionizzle options is listed in
+\fBsystemd.exec\fR(5), which define tha execution environment the
+\fBExecStartPre=\fR,
+\fBExecStartPost=\fR,
+\fBExecStopPre=\fR
+and
+\fBExecStopPost=\fR
+commandz is executed in, n' in
+\fBsystemd.kill\fR(5), which define tha way tha processes is terminated, n' in
+\fBsystemd.resource-control\fR(5), which configure resource control settings fo' tha processez of tha socket\&.
+.PP
+For each socket file, a matchin steez file must exist, describin tha steez ta start on incomin traffic on tha socket (see
+\fBsystemd.service\fR(5)
+for mo' shiznit bout \&.service files)\&. Da name of tha \&.service unit is by default tha same as tha name of tha \&.socket unit yo, but can be altered wit the
+\fBService=\fR
+option busted lyrics bout below\&. Dependin on tha settin of the
+\fBAccept=\fR
+option busted lyrics bout below, dis \&.service unit must either be named like tha \&.socket unit yo, but wit tha suffix replaced, unless overridden with
+\fBService=\fR; or it must be a template unit named tha same way\&. Example: a socket file
+foo\&.socket
+needz a matchin service
+foo\&.service
+if
+\fBAccept=false\fR
+is set\&. If
+\fBAccept=true\fR
+is set, a steez template file
+foo@\&.service
+must exist from which skillz is instantiated fo' each incomin connection\&.
+.PP
+Unless
+\fIDefaultDependencies=\fR
+is set to
+\fBfalse\fR, socket units will implicitly have dependenciez of type
+\fIRequires=\fR
+and
+\fIAfter=\fR
+on
+sysinit\&.target
+as well as dependenciez of type
+\fIConflicts=\fR
+and
+\fIBefore=\fR
+on
+shutdown\&.target\&. These ensure dat socket units pull up in basic system initialization, n' is terminated cleanly prior ta system shutdown\&. Only sockets involved wit early boot or late system shutdown should disable dis option\&.
+.PP
+Socket units gonna git a
+\fIBefore=\fR
+dependency on tha steez which they trigger added implicitly\&. No implicit
+\fIWantedBy=\fR
+or
+\fIRequiredBy=\fR
+dependency from tha socket ta tha steez be added\&. This means dat tha steez may be started without tha socket, up in which case it must be able ta open sockets by itself\&. To prevent this, a explicit
+\fIRequires=\fR
+dependency may be added\&.
+.PP
+Socket units may be used ta implement on\-demand startin of skillz, as well as parallelized startin of skillz\&. Right back up in yo muthafuckin ass. See tha Snoop Bloggy-Blogg stories linked all up in tha end fo' a introduction\&.
+.PP
+Note dat tha daemon software configured fo' socket activation wit socket units need ta be able ta accept sockets from systemd, either via systemd\*(Aqs natizzle socket passin intercourse (see
+\fBsd_listen_fds\fR(3)
+for details) or via tha traditional
+\fBinetd\fR(8)\-style socket passin (i\&.e\&. sockets passed up in via standard input n' output, using
+\fIStandardInput=socket\fR
+in tha steez file)\&.
+.SH "OPTIONS"
+.PP
+Socket filez must include a [Socket] section, which carries shiznit bout tha socket or FIFO it supervises\& fo' realz. A number of options dat may be used up in dis section is shared wit other unit types\&. These options is documented in
+\fBsystemd.exec\fR(5)
+and
+\fBsystemd.kill\fR(5)\&. Da options specific ta tha [Socket] section of socket units is tha following:
+.PP
+\fIListenStream=\fR, \fIListenDatagram=\fR, \fIListenSequentialPacket=\fR
+.RS 4
+Specifies a address ta listen on fo' a stream (\fBSOCK_STREAM\fR), datagram (\fBSOCK_DGRAM\fR), or sequential packet (\fBSOCK_SEQPACKET\fR) socket, respectively\&. Da address can be freestyled up in various formats:
+.sp
+If tha address starts wit a slash ("/"), it is read as file system socket up in the
+\fBAF_UNIX\fR
+socket crew\&.
+.sp
+If tha address starts wit a at symbol ("@"), it is read as abstract namespace socket up in the
+\fBAF_UNIX\fR
+family\&. The
+"@"
+is replaced wit a
+\fBNUL\fR
+characta before binding\&. For details, see
+\fBunix\fR(7)\&.
+.sp
+If tha address strang be a single number, it is read as port number ta listen on via IPv6\&. Dependin on tha value of
+\fIBindIPv6Only=\fR
+(see below) dis might result up in tha steez bein available via both IPv6 n' IPv4 (default) or just via IPv6\&.
+.sp
+If tha address strang be a strang up in tha format v\&.w\&.x\&.y:z, it is read as IPv4 specifier fo' listenin on a address v\&.w\&.x\&.y on a port z\&.
+.sp
+If tha address strang be a strang up in tha format [x]:y, it is read as IPv6 address x on a port y\&. Note dat dis might make tha steez available via IPv4, too, dependin on the
+\fIBindIPv6Only=\fR
+settin (see below)\&.
+.sp
+Note that
+\fBSOCK_SEQPACKET\fR
+(i\&.e\&.
+\fIListenSequentialPacket=\fR) is only available for
+\fBAF_UNIX\fR
+sockets\&.
+\fBSOCK_STREAM\fR
+(i\&.e\&.
+\fIListenStream=\fR) when used fo' IP sockets refers ta TCP sockets,
+\fBSOCK_DGRAM\fR
+(i\&.e\&.
+\fIListenDatagram=\fR) ta UDP\&.
+.sp
+These options may be specified mo' than once up in which case incomin traffic on any of tha sockets will trigger steez activation, n' all listed sockets is ghon be passed ta tha service, regardless of whether there is incomin traffic on dem or not\&. If tha empty strang be assigned ta any of these options, tha list of addresses ta listen on is reset, all prior usez of any of these options gonna git no effect\&.
+.sp
+It be also possible ta have mo' than one socket unit fo' tha same steez when using
+\fIService=\fR, n' tha steez will receive all tha sockets configured up in all tha socket units\&. Right back up in yo muthafuckin ass. Sockets configured up in one unit is passed up in tha order of configuration yo, but no orderin between socket units is specified\&.
+.sp
+If a IP address is used here, it is often desirable ta listen on it before tha intercourse it is configured on is up n' hustlin, n' even regardless of whether it is ghon be up n' hustlin at any point\&. To deal wit this, it is recommended ta set the
+\fIFreeBind=\fR
+option busted lyrics bout below\&.
+.RE
+.PP
+\fIListenFIFO=\fR
+.RS 4
+Specifies a gangbangin' file system FIFO ta listen on\&. This expects a absolute file system path as argument\&. Behavior otherwise is straight-up similar ta the
+\fIListenDatagram=\fR
+directizzle above\&.
+.RE
+.PP
+\fIListenSpecial=\fR
+.RS 4
+Specifies a special file up in tha file system ta listen on\&. This expects a absolute file system path as argument\&. Behavior otherwise is straight-up similar ta the
+\fIListenFIFO=\fR
+directizzle above\&. Use dis ta open characta thang nodes as well as special filez in
+/proc
+and
+/sys\&.
+.RE
+.PP
+\fIListenNetlink=\fR
+.RS 4
+Specifies a Netlink crew ta create a socket fo' ta listen on\&. This expects a gangbangin' finger-lickin' dirty-ass short strang referrin ta the
+\fBAF_NETLINK\fR
+family name (such as
+\fIaudit\fR
+or
+\fIkobject\-uevent\fR) as argument, optionally suffixed by a whitespace followed by a multicast crew integer\&. Behavior otherwise is straight-up similar ta the
+\fIListenDatagram=\fR
+directizzle above\&.
+.RE
+.PP
+\fIListenMessageQueue=\fR
+.RS 4
+Specifies a POSIX message queue name ta listen on\&. This expects a valid message queue name (i\&.e\&. beginnin wit /)\&. Behavior otherwise is straight-up similar ta the
+\fIListenFIFO=\fR
+directizzle above\&. On Linux message queue descriptors is straight-up file descriptors n' can be inherited between processes\&.
+.RE
+.PP
+\fIBindIPv6Only=\fR
+.RS 4
+Takes a one of
+\fBdefault\fR,
+\fBboth\fR
+or
+\fBipv6\-only\fR\&. Controls tha IPV6_V6ONLY socket option (see
+\fBipv6\fR(7)
+for details)\&. If
+\fBboth\fR, IPv6 sockets bound is ghon be accessible via both IPv4 n' IPv6\&. If
+\fBipv6\-only\fR, they is ghon be accessible via IPv6 only\&. If
+\fBdefault\fR
+(which is tha default, surprise!), tha system wide default settin is used, as controlled by
+/proc/sys/net/ipv6/bindv6only, which up in turn defaults ta tha equivalent of
+\fBboth\fR\&.
+.RE
+.PP
+\fIBacklog=\fR
+.RS 4
+Takes a unsigned integer argument\&. Right back up in yo muthafuckin ass. Specifies tha number of connections ta queue dat aint been accepted yet\&. This settin mattas only fo' stream n' sequential packet sockets\&. Right back up in yo muthafuckin ass. See
+\fBlisten\fR(2)
+for details\&. Defaults ta SOMAXCONN (128)\&.
+.RE
+.PP
+\fIBindToDevice=\fR
+.RS 4
+Specifies a network intercourse name ta bind dis socket to\&. If set, traffic will only be accepted from tha specified network intercourses\&. This controls tha SO_BINDTODEVICE socket option (see
+\fBsocket\fR(7)
+for details)\&. If dis option is used, a automatic dependency from dis socket unit on tha network intercourse thang unit (\fBsystemd.device\fR(5)
+is pimped\&.
+.RE
+.PP
+\fISocketUser=\fR, \fISocketGroup=\fR
+.RS 4
+Takes a UNIX user/group name\&. When specified all AF_UNIX sockets n' FIFO nodes up in tha file system is owned by tha specified user n' group\&. If unset (the default), tha nodes is owned by tha root user/group (if run up in system context) or tha invokin user/group (if run up in user context)\&. If only a user is specified but no group, then tha crew is derived from tha user\*(Aqs default group\&.
+.RE
+.PP
+\fISocketMode=\fR
+.RS 4
+If listenin on a gangbangin' file system socket or FIFO, dis option specifies tha file system access mode used when bustin tha file node\&. Takes a access mode up in octal notation\&. Defaults ta 0666\&.
+.RE
+.PP
+\fIDirectoryMode=\fR
+.RS 4
+If listenin on a gangbangin' file system socket or FIFO, tha parent directories is automatically pimped if needed\&. This option specifies tha file system access mode used when bustin these directories\&. Takes a access mode up in octal notation\&. Defaults ta 0755\&.
+.RE
+.PP
+\fIAccept=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If true, a steez instizzle is spawned fo' each incomin connection n' only tha connection socket is passed ta it\&. If false, all listenin sockets theyselves is passed ta tha started steez unit, n' only one steez unit is spawned fo' all connections (also peep above)\&. This value is ignored fo' datagram sockets n' FIFOs where a single steez unit unconditionally handlez all incomin traffic\&. Defaults to
+\fBfalse\fR\&. For performizzle reasons, it is recommended ta write freshly smoked up daemons only up in a way dat is suitable for
+\fBAccept=false\fR\& fo' realz. A daemon listenin on an
+\fBAF_UNIX\fR
+socket may yo, but do not need to, call
+\fBclose\fR(2)
+on tha received socket before exiting\&. But fuck dat shiznit yo, tha word on tha street is dat it must not unlink tha socket from a gangbangin' file system\&. Well shiiiit, it should not invoke
+\fBshutdown\fR(2)
+on sockets it gots with
+\fIAccept=false\fR yo, but it may do so fo' sockets it gots with
+\fIAccept=true\fR
+set\&. Right back up in yo muthafuckin ass. Setting
+\fIAccept=true\fR
+is mostly useful ta allow daemons designed fo' usage with
+\fBinetd\fR(8)
+to work unmodified wit systemd socket activation\&.
+.RE
+.PP
+\fIMaxConnections=\fR
+.RS 4
+Da maximum number of connections ta simultaneously run skillz instances for, when
+\fBAccept=true\fR
+is set\&. If mo' concurrent connections is comin in, they is ghon be refused until at least one existin connection is terminated\&. This settin has no effect on sockets configured with
+\fBAccept=false\fR
+or datagram sockets\&. Defaults ta 64\&.
+.RE
+.PP
+\fIKeepKickin It=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If true, tha TCP/IP stack will bust a keep kickin it message afta 2h (dependin on tha configuration of
+/proc/sys/net/ipv4/tcp_keepkickin it_time) fo' all TCP streams accepted on dis socket\&. This controls tha SO_KEEPALIVE socket option (see
+\fBsocket\fR(7)
+and the
+\m[blue]\fBTCP Keepkickin it HOWTO\fR\m[]\&\s-2\u[1]\d\s+2
+for details\&.) Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIPriority=\fR
+.RS 4
+Takes a integer argument controllin tha prioritizzle fo' all traffic busted from dis socket\&. This controls tha SO_PRIORITY socket option (see
+\fBsocket\fR(7)
+for details\&.)\&.
+.RE
+.PP
+\fIReceiveBuffer=\fR, \fISendBuffer=\fR
+.RS 4
+Takes a integer argument controllin tha receive or bust buffer sizez of dis socket, respectively\&. This controls tha SO_RCVBUF n' SO_SNDBUF socket options (see
+\fBsocket\fR(7)
+for details\&.)\&.
+.RE
+.PP
+\fIIPTOS=\fR
+.RS 4
+Takes a integer argument controllin tha IP Type\-Of\-Service field fo' packets generated from dis socket\&. This controls tha IP_TOS socket option (see
+\fBip\fR(7)
+for details\&.)\&. Either a numeric strang or one of
+\fBlow\-delay\fR,
+\fBthroughput\fR,
+\fBreliability\fR
+or
+\fBlow\-cost\fR
+may be specified\&.
+.RE
+.PP
+\fIIPTTL=\fR
+.RS 4
+Takes a integer argument controllin tha IPv4 Time\-To\-Live/IPv6 Hop\-Count field fo' packets generated from dis socket\&. This sets tha IP_TTL/IPV6_UNICAST_HOPS socket options (see
+\fBip\fR(7)
+and
+\fBipv6\fR(7)
+for details\&.)
+.RE
+.PP
+\fIMark=\fR
+.RS 4
+Takes a integer value\&. Controls tha firewall mark of packets generated by dis socket\&. This can be used up in tha firewall logic ta filta packets from dis socket\&. This sets tha SO_MARK socket option\&. Right back up in yo muthafuckin ass. See
+\fBiptables\fR(8)
+for details\&.
+.RE
+.PP
+\fIReusePort=\fR
+.RS 4
+Takes a funky-ass boolean value\&. If true, allows multiple
+\fBbind\fR(2)s ta dis TCP or UDP port\&. This controls tha SO_REUSEPORT socket option\&. Right back up in yo muthafuckin ass. See
+\fBsocket\fR(7)
+for details\&.
+.RE
+.PP
+\fISmackLabel=\fR, \fISmackLabelIPIn=\fR, \fISmackLabelIPOut=\fR
+.RS 4
+Takes a strang value\&. Controls tha extended attributes
+"security\&.SMACK64",
+"security\&.SMACK64IPIN"
+and
+"security\&.SMACK64IPOUT", respectively, i\&.e\&. tha securitizzle label of tha FIFO, or tha securitizzle label fo' tha incomin or outgoin connectionz of tha socket, respectively\&. Right back up in yo muthafuckin ass. See
+\m[blue]\fBSmack\&.txt\fR\m[]\&\s-2\u[2]\d\s+2
+for details\&.
+.RE
+.PP
+\fIPipeSize=\fR
+.RS 4
+Takes a integer value\&. Controls tha pipe buffer size of FIFOs configured up in dis socket unit\&. Right back up in yo muthafuckin ass. See
+\fBfcntl\fR(2)
+for details\&.
+.RE
+.PP
+\fIMessageQueueMaxLyrics=\fR, \fIMessageQueueMessageSize=\fR
+.RS 4
+These two settings take integer joints n' control tha mq_maxmsg field or tha mq_msgsize field, respectively, when bustin tha message queue\&. Note dat either none or both of these variablez need ta be set\&. Right back up in yo muthafuckin ass. See
+\fBmq_setattr\fR(3)
+for details\&.
+.RE
+.PP
+\fIFreeBind=\fR
+.RS 4
+Takes a funky-ass boolean value\&. Controls whether tha socket can be bound ta non\-local IP addresses\&. This is useful ta configure sockets listenin on specific IP addresses before dem IP addresses is successfully configured on a network intercourse\&. This sets tha IP_FREEBIND socket option\&. For robustnizz reasons it is recommended ta use dis option whenever you bind a socket ta a specific IP address\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fITransparent=\fR
+.RS 4
+Takes a funky-ass boolean value\&. Controls tha IP_TRANSPARENT socket option\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIBroadcast=\fR
+.RS 4
+Takes a funky-ass boolean value\&. This controls tha SO_BROADCAST socket option, which allows broadcast datagrams ta be busted from dis socket\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIPassCredentials=\fR
+.RS 4
+Takes a funky-ass boolean value\&. This controls tha SO_PASSCRED socket option, which allows
+\fBAF_UNIX\fR
+sockets ta receive tha credentialz of tha bustin  process up in a ancillary message\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fIPassSecurity=\fR
+.RS 4
+Takes a funky-ass boolean value\&. This controls tha SO_PASSSEC socket option, which allows
+\fBAF_UNIX\fR
+sockets ta receive tha securitizzle context of tha bustin  process up in a ancillary message\&. Defaults to
+\fBfalse\fR\&.
+.RE
+.PP
+\fITCPCongestion=\fR
+.RS 4
+Takes a strang value\&. Controls tha TCP congestion algorithm used by dis socket\&. Right back up in yo muthafuckin ass. Should be one of "westwood", "veno", "cubic", "lp" or any other available algorithm supported by tha IP stack\&. This settin applies only ta stream sockets\&.
+.RE
+.PP
+\fIExecStartPre=\fR, \fIExecStartPost=\fR
+.RS 4
+Takes one or mo' command lines, which is executed before or afta tha listenin sockets/FIFOs is pimped n' bound, respectively\&. Da first token of tha command line must be a absolute filename, then followed by arguments fo' tha process\&. Multiple command lines may be specified followin tha same scheme as used for
+\fIExecStartPre=\fR
+of steez unit files\&.
+.RE
+.PP
+\fIExecStopPre=\fR, \fIExecStopPost=\fR
+.RS 4
+Additionizzle commandz dat is executed before or afta tha listenin sockets/FIFOs is closed n' removed, respectively\&. Multiple command lines may be specified followin tha same scheme as used for
+\fIExecStartPre=\fR
+of steez unit files\&.
+.RE
+.PP
+\fITimeoutSec=\fR
+.RS 4
+Configures tha time ta wait fo' tha commandz specified in
+\fIExecStartPre=\fR,
+\fIExecStartPost=\fR,
+\fIExecStopPre=\fR
+and
+\fIExecStopPost=\fR
+to finish\&. If a cold-ass lil command do not exit within tha configured time, tha socket is ghon be considered failed n' be shut down again\& fo' realz. All commandz still hustlin is ghon be terminated forcibly via
+\fBSIGTERM\fR, n' afta another delay of dis time with
+\fBSIGKILL\fR\&. (See
+\fBKillMode=\fR
+in
+\fBsystemd.kill\fR(5)\&.) Takes a unit\-less value up in seconds, or a time span value like fuckin "5min 20s"\&. Pass
+"0"
+to disable tha timeout logic\&. Defaults to
+\fIDefaultTimeoutStartSec=\fR
+from tha manager configuration file (see
+\fBsystemd-systemd.conf\fR(5))\&.
+.RE
+.PP
+\fIService=\fR
+.RS 4
+Specifies tha steez unit name ta activate on incomin traffic\&. This settin is only allowed fo' sockets with
+\fIAccept=no\fR\&. Well shiiiit, it defaults ta tha steez dat bears tha same ol' dirty name as tha socket (with tha suffix replaced)\&. In most cases, it should not be necessary ta use dis option\&.
+.RE
+.PP
+Check
+\fBsystemd.exec\fR(5)
+and
+\fBsystemd.kill\fR(5)
+for mo' settings\&.
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fR(1),
+\fBsystemctl\fR(1),
+\fBsystemd.unit\fR(5),
+\fBsystemd.exec\fR(5),
+\fBsystemd.kill\fR(5),
+\fBsystemd.resource-control\fR(5),
+\fBsystemd.service\fR(5),
+\fBsystemd.directives\fR(7)
+.PP
+For mo' extensive descriptions peep tha "systemd fo' Developers" series:
+\m[blue]\fBSocket Activation\fR\m[]\&\s-2\u[3]\d\s+2,
+\m[blue]\fBSocket Activation, part Pt II\fR\m[]\&\s-2\u[4]\d\s+2,
+\m[blue]\fBConvertin inetd Skillz\fR\m[]\&\s-2\u[5]\d\s+2,
+\m[blue]\fBSocket Activated Internizzle Skillz n' OS Containers\fR\m[]\&\s-2\u[6]\d\s+2\&.
+.SH "NOTES"
+.IP " 1." 4
+TCP Keepkickin it HOWTO
+.RS 4
+\%http://www.tldp.org/HOWTO/html_single/TCP-Keepkickin it-HOWTO/
+.RE
+.IP " 2." 4
+Smack.txt
+.RS 4
+\%https://www.kernel.org/doc/Documentation/security/Smack.txt
+.RE
+.IP " 3." 4
+Socket Activation
+.RS 4
+\%http://0pointer.de/blog/projects/socket-activation.html
+.RE
+.IP " 4." 4
+Socket Activation, part Pt II
+.RS 4
+\%http://0pointer.de/blog/projects/socket-activation2.html
+.RE
+.IP " 5." 4
+Convertin inetd Skillz
+.RS 4
+\%http://0pointer.de/blog/projects/inetd.html
+.RE
+.IP " 6." 4
+Socket Activated Internizzle Skillz n' OS Containers
+.RS 4
+\%http://0pointer.de/blog/projects/socket-activated-containers.html
+.RE

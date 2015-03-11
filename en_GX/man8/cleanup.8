@@ -1,0 +1,433 @@
+.TH CLEANUP 8 
+.ad
+.fi
+.SH NAME
+cleanup
+\-
+canonicalize n' enqueue Postfix message
+.SH "SYNOPSIS"
+.na
+.nf
+\fBcleanup\fR [generic Postfix daemon options]
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBcleanup\fR(8) daemon processes inbound mail, bangs it
+into tha \fBincoming\fR mail queue, n' informs tha queue
+manager of its arrival.
+
+Da \fBcleanup\fR(8) daemon always performs tha followin transformations:
+.IP \(bu
+Insert missin message headers: (\fBResent-\fR) \fBFrom:\fR,
+\fBTo:\fR, \fBMessage-Id:\fR, n' \fBDate:\fR.
+.IP \(bu
+Transform envelope n' header addresses ta tha standard
+\fIuser@fully-qualified-domain\fR form dat is expected by other
+Postfix programs.
+This task is delegated ta tha \fBtrivial-rewrite\fR(8) daemon.
+.IP \(bu
+Eliminizzle duplicate envelope recipient addresses.
+.PP
+Da followin address transformations is optional:
+.IP \(bu
+Optionally, rewrite all envelope n' header addresses according
+to tha mappings specified up in tha \fBcanonical\fR(5) lookup tables.
+.IP \(bu
+Optionally, masquerade envelope sender addresses n' message
+header addresses (i.e. strip host or domain shiznit below
+all domains listed up in tha \fBmasquerade_domains\fR parameter,
+except fo' user names listed up in \fBmasquerade_exceptions\fR).
+By default, address masqueradin do not affect envelope recipients.
+.IP \(bu
+Optionally, expand envelope recipients accordin ta shiznit
+found up in tha \fBvirtual\fR(5) lookup tables.
+.PP
+Da \fBcleanup\fR(8) daemon performs sanitizzle checks on tha content of
+each message. When it findz a problem, by default it returns a
+diagnostic status ta tha client, n' leaves it up ta tha client
+to deal wit tha problem fo' realz. Alternatively, tha client can request
+the \fBcleanup\fR(8) daemon ta bounce tha message back ta tha sender
+in case of shit.
+.SH "STANDARDS"
+.na
+.nf
+RFC 822 (ARPA Internizzle Text Lyrics)
+RFC 2045 (MIME: Format of Internizzle Message Bodies)
+RFC 2046 (MIME: Media Types)
+RFC 2822 (Internizzle Message Format)
+RFC 3463 (Enhanced Status Codes)
+RFC 3464 (Delivery status notifications)
+RFC 5322 (Internizzle Message Format)
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta \fBsyslogd\fR(8).
+.SH BUGS
+.ad
+.fi
+Table-driven rewritin rulez make it hard ta express \fBif then
+else\fR n' other logical relationshizzles.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Changes ta \fBmain.cf\fR is picked up automatically, as
+\fBcleanup\fR(8)
+processes run fo' only a limited amount of time. Use tha command
+"\fBpostfix reload\fR" ta speed up a cold-ass lil chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.SH "COMPATIBILITY CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBundisclosed_recipients_header (see 'postconf -d' output)\fR"
+Message header dat tha Postfix \fBcleanup\fR(8) server bangs when a
+message gotz nuff no To: or Cc: message header.
+.PP
+Available up in Postfix version 2.1 only:
+.IP "\fBenable_errors_to (no)\fR"
+Report mail delivery errors ta tha address specified wit the
+non-standard Errors-To: message header, instead of tha envelope
+sender address (this feature is removed wit Postfix version 2.2, is
+turned off by default wit Postfix version 2.1, n' be always turned on
+with olda Postfix versions).
+.PP
+Available up in Postfix version 2.6 n' later:
+.IP "\fBalways_add_missing_headaz (no)\fR"
+Always add (Resent-) From:, To:, Date: or Message-ID: headers
+when not present.
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBenable_long_queue_idz (no)\fR"
+Enable long, non-repeating, queue IDs (queue file names).
+.SH "BUILT-IN CONTENT FILTERING CONTROLS"
+.na
+.nf
+.ad
+.fi
+Postfix built-in content filterin is meant ta stop a gangbangin' flood of
+worms or viruses. Well shiiiit, it aint a general content filter.
+.IP "\fBbody_checks (empty)\fR"
+Optionizzle lookup tablez fo' content inspection as specified in
+the \fBbody_checks\fR(5) manual page.
+.IP "\fBheader_checks (empty)\fR"
+Optionizzle lookup tablez fo' content inspection of primary non-MIME
+message headers, as specified up in tha \fBheader_checks\fR(5) manual page.
+.PP
+Available up in Postfix version 2.0 n' later:
+.IP "\fBbody_checks_size_limit (51200)\fR"
+How tha fuck much text up in a message body segment (or attachment, if you
+prefer ta use dat term) is subjected ta body_checks inspection.
+.IP "\fBmime_header_checks ($header_checks)\fR"
+Optionizzle lookup tablez fo' content inspection of MIME related
+message headers, as busted lyrics bout up in tha \fBheader_checks\fR(5) manual page.
+.IP "\fBnested_header_checks ($header_checks)\fR"
+Optionizzle lookup tablez fo' content inspection of non-MIME message
+headaz up in attached lyrics, as busted lyrics bout up in tha \fBheader_checks\fR(5)
+manual page.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP "\fBmessage_reject_charactas (empty)\fR"
+Da set of charactas dat Postfix will reject up in message
+content.
+.IP "\fBmessage_strip_charactas (empty)\fR"
+Da set of charactas dat Postfix will remove from message
+content.
+.SH "BEFORE QUEUE MILTER CONTROLS"
+.na
+.nf
+.ad
+.fi
+Az of version 2.3, Postfix supports tha Sendmail version 8
+Milta (mail filter) protocol. When mail aint received via
+the smtpd(8) server, tha cleanup(8) server will simulate
+SMTP events ta tha extent dat dis is possible. For details
+see tha MILTER_README document.
+.IP "\fBnon_smtpd_miltas (empty)\fR"
+A list of Milta (mail filter) applications fo' freshly smoked up mail that
+does not arrive via tha Postfix \fBsmtpd\fR(8) server.
+.IP "\fBmilter_protocol (6)\fR"
+Da mail filta protocol version n' optionizzle protocol extensions
+for communication wit a Milta application; prior ta Postfix 2.6
+the default protocol is 2.
+.IP "\fBmilter_default_action (tempfail)\fR"
+Da default action when a Milta (mail filter) application is
+unavailable or mis-configured.
+.IP "\fBmilter_macro_daemon_name ($myhostname)\fR"
+Da {daemon_name} macro value fo' Milta (mail filter) applications.
+.IP "\fBmilter_macro_v ($mail_name $mail_version)\fR"
+Da {v} macro value fo' Milta (mail filter) applications.
+.IP "\fBmilter_connect_timeout (30s)\fR"
+Da time limit fo' connectin ta a Milta (mail filter)
+application, n' fo' negotiatin protocol options.
+.IP "\fBmilter_command_timeout (30s)\fR"
+Da time limit fo' bustin  a SMTP command ta a Milta (mail
+filter) application, n' fo' receivin tha response.
+.IP "\fBmilter_content_timeout (300s)\fR"
+Da time limit fo' bustin  message content ta a Milta (mail
+filter) application, n' fo' receivin tha response.
+.IP "\fBmilter_connect_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta completion of a SMTP connection.
+.IP "\fBmilter_helo_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha SMTP HELO or EHLO command.
+.IP "\fBmilter_mail_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha SMTP MAIL FROM command.
+.IP "\fBmilter_rcpt_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha SMTP RCPT TO command.
+.IP "\fBmilter_data_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta version 4 or higher Milta (mail
+filter) applications afta tha SMTP DATA command.
+.IP "\fBmilter_unknown_command_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta version 3 or higher Milta (mail
+filter) applications afta a unknown SMTP command.
+.IP "\fBmilter_end_of_data_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha message end-of-data.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBmilter_end_of_header_macros (see 'postconf -d' output)\fR"
+Da macros dat is busted ta Milta (mail filter) applications
+afta tha end of tha message header.
+.PP
+Available up in Postfix version 2.7 n' later:
+.IP "\fBmilter_header_checks (empty)\fR"
+Optionizzle lookup tablez fo' content inspection of message headers
+that is produced by Milta applications.
+.SH "MIME PROCESSING CONTROLS"
+.na
+.nf
+.ad
+.fi
+Available up in Postfix version 2.0 n' later:
+.IP "\fBdisable_mime_input_processin (no)\fR"
+Turn off MIME processin while receivin mail.
+.IP "\fBmime_boundary_length_limit (2048)\fR"
+Da maximal length of MIME multipart boundary strings.
+.IP "\fBmime_nesting_limit (100)\fR"
+Da maximal recursion level dat tha MIME processor will handle.
+.IP "\fBstrict_8bitmime (no)\fR"
+Enable both strict_7bit_headaz n' strict_8bitmime_body.
+.IP "\fBstrict_7bit_headaz (no)\fR"
+Reject mail wit 8-bit text up in message headers.
+.IP "\fBstrict_8bitmime_body (no)\fR"
+Reject 8-bit message body text without 8-bit MIME content encoding
+information.
+.IP "\fBstrict_mime_encoding_domain (no)\fR"
+Reject mail wit invalid Content-Transfer-Encoding: shiznit
+for tha message/* or multipart/* MIME content types.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBdetect_8bit_encoding_header (yes)\fR"
+Automatically detect 8BITMIME body content by lookin at
+Content-Transfer-Encoding: message headers; historically, this
+behavior was hard-coded ta be "always on".
+.SH "AUTOMATIC BCC RECIPIENT CONTROLS"
+.na
+.nf
+.ad
+.fi
+Postfix can automatically add BCC (blind carbon copy)
+when mail entas tha mail system:
+.IP "\fBalways_bcc (empty)\fR"
+Optionizzle address dat receives a "blind carbon copy" of each message
+that is received by tha Postfix mail system.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBsender_bcc_maps (empty)\fR"
+Optionizzle BCC (blind carbon-copy) address lookup tables, indexed
+by sender address.
+.IP "\fBrecipient_bcc_maps (empty)\fR"
+Optionizzle BCC (blind carbon-copy) address lookup tables, indexed by
+recipient address.
+.SH "ADDRESS TRANSFORMATION CONTROLS"
+.na
+.nf
+.ad
+.fi
+Address rewritin is delegated ta tha \fBtrivial-rewrite\fR(8) daemon.
+Da \fBcleanup\fR(8) server implements table driven address mapping.
+.IP "\fBempty_address_recipient (MAILER-DAEMON)\fR"
+Da recipient of mail addressed ta tha null address.
+.IP "\fBcanonical_maps (empty)\fR"
+Optionizzle address mappin lookup tablez fo' message headaz and
+envelopes.
+.IP "\fBrecipient_canonical_maps (empty)\fR"
+Optionizzle address mappin lookup tablez fo' envelope n' header
+recipient addresses.
+.IP "\fBsender_canonical_maps (empty)\fR"
+Optionizzle address mappin lookup tablez fo' envelope n' header
+sender addresses.
+.IP "\fBmasquerade_classes (envelope_sender, header_sender, header_recipient)\fR"
+What addresses is subject ta address masquerading.
+.IP "\fBmasquerade_domains (empty)\fR"
+Optionizzle list of domains whose subdomain structure is ghon be stripped
+off up in email addresses.
+.IP "\fBmasquerade_exceptions (empty)\fR"
+Optionizzle list of user names dat is not subjected ta address
+masquerading, even when they address matches $masquerade_domains.
+.IP "\fBpropagate_unmatched_extensions (canonical, virtual)\fR"
+What address lookup tablez copy a address extension from tha lookup
+key ta tha lookup result.
+.PP
+Available before Postfix version 2.0:
+.IP "\fBvirtual_maps (empty)\fR"
+Optionizzle lookup tablez wit a) namez of domains fo' which all
+addresses is aliased ta addresses up in other local or remote domains,
+and b) addresses dat is aliased ta addresses up in other local or
+remote domains.
+.PP
+Available up in Postfix version 2.0 n' later:
+.IP "\fBvirtual_alias_maps ($virtual_maps)\fR"
+Optionizzle lookup tablez dat alias specific mail addresses or domains
+to other local or remote address.
+.PP
+Available up in Postfix version 2.2 n' later:
+.IP "\fBcanonical_classes (envelope_sender, envelope_recipient, header_sender, header_recipient)\fR"
+What addresses is subject ta canonical_maps address mapping.
+.IP "\fBrecipient_canonical_classes (envelope_recipient, header_recipient)\fR"
+What addresses is subject ta recipient_canonical_maps address
+mapping.
+.IP "\fBsender_canonical_classes (envelope_sender, header_sender)\fR"
+What addresses is subject ta sender_canonical_maps address
+mapping.
+.IP "\fBremote_header_rewrite_domain (empty)\fR"
+Don't rewrite message headaz from remote clients at all when
+this parameta is empty; otherwise, rewrite message headaz and
+append tha specified domain name ta incomplete addresses.
+.SH "RESOURCE AND RATE CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBduplicate_filter_limit (1000)\fR"
+Da maximal number of addresses remembered by tha address
+duplicate filta fo' \fBaliases\fR(5) or \fBvirtual\fR(5) alias expansion, or
+for \fBshowq\fR(8) queue displays.
+.IP "\fBheader_size_limit (102400)\fR"
+Da maximal amount of memory up in bytes fo' storin a message header.
+.IP "\fBhopcount_limit (50)\fR"
+Da maximal number of Received:  message headaz dat be allowed
+in tha primary message headers.
+.IP "\fBin_flow_delay (1s)\fR"
+Time ta pause before acceptin a freshly smoked up message, when tha message
+arrival rate exceedz tha message delivery rate.
+.IP "\fBmessage_size_limit (10240000)\fR"
+Da maximal size up in bytez of a message, includin envelope shiznit.
+.PP
+Available up in Postfix version 2.0 n' later:
+.IP "\fBheader_address_token_limit (10240)\fR"
+Da maximal number of address tokens is allowed up in a address
+message header.
+.IP "\fBmime_boundary_length_limit (2048)\fR"
+Da maximal length of MIME multipart boundary strings.
+.IP "\fBmime_nesting_limit (100)\fR"
+Da maximal recursion level dat tha MIME processor will handle.
+.IP "\fBqueue_file_attribute_count_limit (100)\fR"
+Da maximal number of (name=value) attributes dat may be stored
+in a Postfix queue file.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBvirtual_alias_expansion_limit (1000)\fR"
+Da maximal number of addresses dat virtual alias expansion produces
+from each original gangsta recipient.
+.IP "\fBvirtual_alias_recursion_limit (1000)\fR"
+Da maximal nestin depth of virtual alias expansion.
+.SH "MISCELLANEOUS CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdaemon_timeout (18000s)\fR"
+How tha fuck much time a Postfix daemon process may take ta handle a
+request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBdelay_logging_resolution_limit (2)\fR"
+Da maximal number of digits afta tha decimal point when logging
+sub-second delay joints.
+.IP "\fBdelay_warning_time (0h)\fR"
+Da time afta which tha sender receives a cold-ass lil copy of tha message
+headaz of mail dat is still queued.
+.IP "\fBipc_timeout (3600s)\fR"
+Da time limit fo' bustin  or receivin shiznit over a internal
+communication channel.
+.IP "\fBmax_idle (100s)\fR"
+Da maximum amount of time dat a idle Postfix daemon process waits
+for a incomin connection before terminatin voluntarily.
+.IP "\fBmax_use (100)\fR"
+Da maximal number of incomin connections dat a Postfix daemon
+process will steez before terminatin voluntarily.
+.IP "\fBmyhostname (see 'postconf -d' output)\fR"
+Da internizzle hostname of dis mail system.
+.IP "\fBmyorigin ($myhostname)\fR"
+Da domain name dat locally-posted mail appears ta come
+from, n' dat locally posted mail is served up to.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBqueue_directory (see 'postconf -d' output)\fR"
+Da location of tha Postfix top-level queue directory.
+.IP "\fBsoft_bounce (no)\fR"
+Safety net ta keep mail queued dat would otherwise be returned to
+the sender.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBenable_original_recipient (yes)\fR"
+Enable support fo' tha X-Original-To message header.
+.SH "FILES"
+.na
+.nf
+/etc/postfix/canonical*, canonical mappin table
+/etc/postfix/virtual*, virtual mappin table
+.SH "SEE ALSO"
+.na
+.nf
+trivial-rewrite(8), address rewriting
+qmgr(8), queue manager
+header_checks(5), message header content inspection
+body_checks(5), body parts content inspection
+canonical(5), canonical address lookup table format
+virtual(5), virtual alias lookup table format
+postconf(5), configuration parameters
+master(5), generic daemon options
+master(8), process manager
+syslogd(8), system logging
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+ADDRESS_REWRITING_README Postfix address manipulation
+CONTENT_INSPECTION_README content inspection
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

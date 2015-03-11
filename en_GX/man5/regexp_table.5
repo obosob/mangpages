@@ -1,0 +1,195 @@
+.TH REGEXP_TABLE 5 
+.ad
+.fi
+.SH NAME
+regexp_table
+\-
+format of Postfix regular expression tables
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap -q "\fIstring\fB" regexp:/etc/postfix/\fIfilename\fR
+
+\fBpostmap -q - regexp:/etc/postfix/\fIfilename\fR <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix mail system uses optionizzle tablez fo' address
+rewriting, mail routing, or access control. These tables
+are probably up in \fBdbm\fR or \fBdb\fR format.
+
+Alternatively, lookup tablez can be specified up in POSIX regular
+expression form. In dis case, each input is compared against a
+list of patterns. When a match is found, tha corresponding
+result is returned n' tha search is terminated.
+
+To smoke up what tha fuck typez of lookup tablez yo' Postfix system
+supports use tha "\fBpostconf -m\fR" command.
+
+To test lookup tables, use tha "\fBpostmap -q\fR" command
+as busted lyrics bout up in tha SYNOPSIS above.
+.SH "COMPATIBILITY"
+.na
+.nf
+.ad
+.fi
+With Postfix version 2.2 n' earlier specify "\fBpostmap
+-fq\fR" ta query a table dat gotz nuff case sensitive
+patterns. Patterns is case insensitizzle by default.
+.SH "TABLE FORMAT"
+.na
+.nf
+.ad
+.fi
+Da general form of a Postfix regular expression table is:
+.IP "\fB/\fIpattern\fB/\fIflags result\fR"
+When \fIpattern\fR matches tha input string,
+use tha correspondin \fIresult\fR value.
+.IP "\fB!/\fIpattern\fB/\fIflags result\fR"
+When \fIpattern\fR do \fBnot\fR match tha input string,
+use tha correspondin \fIresult\fR value.
+.IP "\fBif /\fIpattern\fB/\fIflags\fR"
+.IP "\fBendif\fR"
+Match tha input strang against tha patterns between \fBif\fR
+and \fBendif\fR, if n' only if dat same input strang also
+matches \fIpattern\fR. Da \fBif\fR..\fBendif\fR can nest.
+.sp
+Note: do not prepend whitespace ta patterns inside
+\fBif\fR..\fBendif\fR.
+.sp
+This feature be available up in Postfix 2.1 n' later.
+.IP "\fBif !/\fIpattern\fB/\fIflags\fR"
+.IP "\fBendif\fR"
+Match tha input strang against tha patterns between \fBif\fR
+and \fBendif\fR, if n' only if dat same input strang do
+\fBnot\fR match \fIpattern\fR. Da \fBif\fR..\fBendif\fR can nest.
+.sp
+Note: do not prepend whitespace ta patterns inside
+\fBif\fR..\fBendif\fR.
+.sp
+This feature be available up in Postfix 2.1 n' later.
+.IP "blank lines n' comments"
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP "multi-line text"
+A logical line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.PP
+Each pattern be a POSIX regular expression enclosed by a pair of
+delimiters. Da regular expression syntax is documented in
+\fBre_format\fR(7) wit 4.4BSD, up in \fBregex\fR(5) wit Solaris, n' in
+\fBregex\fR(7) wit Linux. Other systems may use other document names.
+
+Da expression delimita can be any non-alphanumerical
+character, except whitespace
+or charactas dat have special meanin (traditionally tha forward
+slash is used). Da regular expression can contain whitespace.
+
+By default, matchin is case-insensitive, n' newlines is not
+treated as special characters. Da behavior is controlled by flags,
+which is toggled by appendin one or mo' of tha following
+charactas afta tha pattern:
+.IP "\fBi\fR (default: on)"
+Togglez tha case sensitivitizzle flag. By default, matchin is case
+insensitive.
+.IP "\fBm\fR (default: off)"
+Toggle tha multi-line mode flag. When dis flag is on, tha \fB^\fR
+and \fB$\fR metacharactas match immediately afta n' immediately
+before a newline character, respectively, up in addizzle to
+matchin all up in tha start n' end of tha input string.
+.IP "\fBx\fR (default: on)"
+Togglez tha extended expression syntax flag. By default, support
+for extended expression syntax is enabled.
+.SH "TABLE SEARCH ORDER"
+.na
+.nf
+.ad
+.fi
+Patterns is applied up in tha order as specified up in tha table, until a
+pattern is found dat matches tha input string.
+
+Each pattern be applied ta tha entire input string.
+Dependin on tha application, dat strang be a entire client
+hostname, a entire client IP address, or a entire mail address.
+Thus, no parent domain or parent network search is done, and
+\fIuser@domain\fR mail addresses is not fucked up tha fuck into their
+\fIuser\fR n' \fIdomain\fR constituent parts, nor is \fIuser+foo\fR
+broken up tha fuck into \fIuser\fR n' \fIfoo\fR.
+.SH "TEXT SUBSTITUTION"
+.na
+.nf
+.ad
+.fi
+Substitution of substrings from tha matched expression tha fuck into tha result
+strin is possible rockin $1, $2, etc.;
+specify $$ ta produce a $ characta as output.
+Da macros up in tha result string
+may need ta be freestyled as ${n} or $(n) if they aren't followed
+by whitespace.
+
+Note: since negated patterns (those preceded by \fB!\fR) return a
+result when tha expression do not match, substitutions is not
+available fo' negated patterns.
+.SH "EXAMPLE SMTPD ACCESS MAP"
+.na
+.nf
+# Disallow sender-specified routing. This be a must if you relay mail
+# fo' other domains.
+/[%!@].*[%!@]/       550 Sender-specified routin rejected
+
+# Postmasta is OK, dat way they can rap ta our asses bout how tha fuck ta fix
+# they problem.
+/^postmaster@/       OK
+
+# Protect yo' outgoin majordomo exploders
+if !/^baller-/
+/^(.*)-outgoing@(.*)$/   550 Use ${1}@${2} instead
+endif
+.SH "EXAMPLE HEADER FILTER MAP"
+.na
+.nf
+# These was once common up in junk mail.
+/^Subject: make scrilla fast/     REJECT
+/^To: playa@public\\.com/       REJECT
+.SH "EXAMPLE BODY FILTER MAP"
+.na
+.nf
+# First skip over base 64 encoded text ta save CPU cycles.
+~^[[:alnum:]+/]{60,}$~          OK
+
+# Put yo' own body patterns here.
+.SH "SEE ALSO"
+.na
+.nf
+postmap(1), Postfix lookup table manager
+pcre_table(5), format of PCRE tables
+cidr_table(5), format of CIDR tables
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+.SH "AUTHOR(S)"
+.na
+.nf
+Da regexp table lookup code was originally freestyled by:
+LaMont Jones
+lamont@hp.com
+
+That code was based on tha PCRE doggtionary contributed by:
+Andrew McNamara
+andrewm@connect.com.au
+connect.com.au Pty. Ltd.
+Level 3, 213 Milla St
+Uptown Sydney, NSW, Australia
+
+Adopted n' adapted by:
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

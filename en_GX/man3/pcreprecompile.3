@@ -1,0 +1,151 @@
+.TH PCREPRECOMPILE 3 "24 June 2012" "PCRE 8.30"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "SAVING AND RE-USING PRECOMPILED PCRE PATTERNS"
+.rs
+.sp
+If yo ass is hustlin a application dat uses a big-ass number of regular
+expression patterns, it may be useful ta store dem up in a precompiled form
+instead of havin ta compile dem every last muthafuckin time tha application is run.
+If yo ass is not rockin any private characta tablez (see the
+.\" HREF
+\fBpcre_maketables()\fP
+.\"
+documentation), dis is relatively straightforward. Y'all KNOW dat shit, muthafucka! If yo ass is rockin private
+tables, it aint nuthin but a lil bit mo' fucked up. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. But fuck dat shiznit yo, tha word on tha street is dat if yo ass is rockin the
+just-in-time optimization feature, it aint possible ta save n' reload the
+JIT data.
+.P
+If you save compiled patterns ta a gangbangin' file, you can copy dem ta a gangbangin' finger-lickin' different host
+and run dem there, so peek-a-boo, clear tha way, I be comin' thru fo'sho. If tha two hosts have different endiannizz (byte order),
+you should run tha \fBpcre[16|32]_pattern_to_host_byte_order()\fP function on the
+new host before tryin ta match tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Da matchin functions return
+PCRE_ERROR_BADENDIANNESS if they detect a pattern wit tha wack endianness.
+.P
+Compilin regular expressions wit one version of PCRE fo' use wit a gangbangin' finger-lickin' different
+version aint guaranteed ta work n' may cause crashes, n' savin and
+restorin a cold-ass lil compiled pattern loses any JIT optimization data.
+.
+.
+.SH "SAVING A COMPILED PATTERN"
+.rs
+.sp
+Da value returned by \fBpcre[16|32]_compile()\fP points ta a single block of
+memory dat holdz tha compiled pattern n' associated data. Yo ass can find the
+length of dis block up in bytes by callin \fBpcre[16|32]_fullinfo()\fP wit an
+argument of PCRE_INFO_SIZE. Yo ass can then save tha data up in any appropriate
+manner n' shiznit yo. Here is sample code fo' tha 8-bit library dat compilez a pattern and
+writes it ta a gangbangin' file. Well shiiiit, it assumes dat tha variable \fIfd\fP refers ta a gangbangin' file
+that is open fo' output:
+.sp
+  int erroroffset, rc, size;
+  char *error;
+  pcre *re;
+.sp
+  re = pcre_compile("my pattern", 0, &error, &erroroffset, NULL);
+  if (re == NULL) { ... handle errors ... }
+  rc = pcre_fullinfo(re, NULL, PCRE_INFO_SIZE, &size);
+  if (rc < 0) { ... handle errors ... }
+  rc = fwrite(re, 1, size, fd);
+  if (rc != size) { ... handle errors ... }
+.sp
+In dis example, tha bytes dat comprise tha compiled pattern is copied
+exactly. Note dat dis is binary data dat may contain any of tha 256 possible
+byte joints, n' you can put dat on yo' toast. On systems dat cook up a gangbangin' finger-lickin' distinction between binary n' non-binary
+data, be shizzle dat tha file is opened fo' binary output.
+.P
+If you wanna write mo' than one pattern ta a gangbangin' file, yo big-ass booty is ghon gotta devise a
+way of separatin em. For binary data, precedin each pattern wit its length
+is probably da most thugged-out straightforward approach fo' realz. Another possibilitizzle is ta write
+out tha data up in hexadecimal instead of binary, one pattern ta a line.
+.P
+Savin compiled patterns up in a gangbangin' file is only one possible way of storin dem for
+lata use. They could equally well be saved up in a thugged-out database, or up in tha memory of
+some daemon process dat passes dem via sockets ta tha processes dat want
+them.
+.P
+If tha pattern has been studied, it be also possible ta save tha aiiight study
+data up in a similar way ta tha compiled pattern itself. But fuck dat shiznit yo, tha word on tha street is dat if the
+PCRE_STUDY_JIT_COMPILE was used, tha just-in-time data dat is pimped cannot
+be saved cuz it is too dependent on tha current environment. When studying
+generates additionizzle shiznit, \fBpcre[16|32]_study()\fP returns a pointa ta a
+\fBpcre[16|32]_extra\fP data block. Its format is defined up in the
+.\" HTML <a href="pcreapi.html#extradata">
+.\" </a>
+section on matchin a pattern
+.\"
+in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation. I aint talkin' bout chicken n' gravy biatch. Da \fIstudy_data\fP field points ta tha binary study data, and
+this is what tha fuck you must save (not tha \fBpcre[16|32]_extra\fP block itself). The
+length of tha study data can be obtained by callin \fBpcre[16|32]_fullinfo()\fP
+with a argument of PCRE_INFO_STUDYSIZE. Remember ta check that
+\fBpcre[16|32]_study()\fP did return a non-NULL value before tryin ta save the
+study data.
+.
+.
+.SH "RE-USING A PRECOMPILED PATTERN"
+.rs
+.sp
+Re-usin a precompiled pattern is straightforward. Y'all KNOW dat shit, muthafucka! Havin reloaded it tha fuck into main
+memory, called \fBpcre[16|32]_pattern_to_host_byte_order()\fP if necessary,
+you pass its pointa ta \fBpcre[16|32]_exec()\fP or \fBpcre[16|32]_dfa_exec()\fP in
+the usual way.
+.P
+But fuck dat shiznit yo, tha word on tha street is dat if you passed a pointa ta custom characta tablez when tha pattern
+was compiled (the \fItableptr\fP argument of \fBpcre[16|32]_compile()\fP), you
+must now pass a similar pointa ta \fBpcre[16|32]_exec()\fP or
+\fBpcre[16|32]_dfa_exec()\fP, cuz tha value saved wit tha compiled pattern
+will obviously be nonsense fo' realz. A field up in a \fBpcre[16|32]_extra()\fP block is used
+to pass dis data, as busted lyrics bout up in the
+.\" HTML <a href="pcreapi.html#extradata">
+.\" </a>
+section on matchin a pattern
+.\"
+in the
+.\" HREF
+\fBpcreapi\fP
+.\"
+documentation.
+.P
+If you did not provide custom characta tablez when tha pattern was compiled,
+the pointa up in tha compiled pattern is NULL, which causes tha matching
+functions ta use PCREz internal tables. Thus, you do not need ta take any
+special action at run time up in dis case.
+.P
+If you saved study data wit tha compiled pattern, you need ta create yo' own
+\fBpcre[16|32]_extra\fP data block n' set tha \fIstudy_data\fP field ta point ta the
+reloaded study data. Yo ass must also set tha PCRE_EXTRA_STUDY_DATA bit up in the
+\fIflags\fP field ta indicate dat study data is present. Then pass the
+\fBpcre[16|32]_extra\fP block ta tha matchin function up in tha usual way. If the
+pattern was studied fo' just-in-time optimization, dat data cannot be saved,
+and so is lost by a save/restore cycle.
+.
+.
+.SH "COMPATIBILITY WITH DIFFERENT PCRE RELEASES"
+.rs
+.sp
+In general, it is safest ta recompile all saved patterns when you update ta a
+new PCRE release, though not all thugged-out shiznit straight-up require all dis bullshit.
+.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 24 June 2012
+Copyright (c) 1997-2012 Universitizzle of Cambridge.
+.fi

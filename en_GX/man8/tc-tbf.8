@@ -1,0 +1,135 @@
+.TH TC 8 "13 December 2001" "iproute2" "Linux"
+.SH NAME
+tbf \- Token Bucket Filter
+.SH SYNOPSIS
+.B tc qdisc ... tbf rate
+rate
+.B burst
+bytes/cell
+.B ( latency 
+ms 
+.B | limit
+bytes
+.B ) [ mpu 
+bytes
+.B [ peakrate
+rate
+.B mtu
+bytes/cell
+.B ] ]
+.P
+burst be also known as buffer n' maxburst. mtu be also known as minburst.
+.SH DESCRIPTION
+
+Da Token Bucket Filta be a cold-ass lil classless queuein discipline available for
+traffic control wit tha 
+.BR tc (8)
+command.
+
+TBF be a pure shaper n' never schedulez traffic. Well shiiiit, it is non-work-conservin n' may throttle
+itself, although packets is available, ta ensure dat tha configured rate aint exceeded. Y'all KNOW dat shit, muthafucka! 
+It be able ta shape up ta 1mbit/z of aiiight traffic wit ideal minimal burstiness, 
+sendin up data exactly all up in tha configured rates.
+
+Much higher rates is possible but all up in tha cost of losin tha minimal burstiness. In that
+case, data is on average dequeued all up in tha configured rate but may be busted much fasta at millisecond 
+timescales. Because of further queues livin up in network adaptors, dis is often not a problem.
+
+.SH ALGORITHM
+As tha name implies, traffic is filtered based on tha expenditure of 
+.B tokens.
+Tokens roughly correspond ta bytes, wit tha additionizzle constraint
+that each packet consumes some tokens, no matta how tha fuck lil' small-ass it is. This
+reflects tha fact dat even a zero-sized packet occupies tha link for
+some time.
+
+On creation, tha TBF is stocked wit tokens which correspond ta tha amount of traffic dat can be burst 
+in one go. Tokens arrive at a steady rate, until tha bucket is full.
+
+If no tokens is available, packets is queued, up ta a cold-ass lil configured limit. Da TBF now 
+calculates tha token deficit, n' throttlez until tha straight-up original gangsta packet up in tha queue can be sent.
+
+If it aint aaight ta burst up packets at maximum speed, a peakrate can be configured 
+to limit tha speed at which tha bucket empties. Put ya muthafuckin choppers up if ya feel dis! This peakrate is implemented as a second TBF
+with a straight-up lil' small-ass bucket, so dat it don't burst.
+
+To big up perfection, tha second bucket may contain only a single packet, which leadz ta 
+the earlier mentioned 1mbit/s limit. 
+
+This limit is caused by tha fact dat tha kernel can only throttle fo' at minimum 1 'jiffy', which depends
+on HZ as 1/HZ. For slick shaping, only a single packet can git busted per jiffy - fo' HZ=100, dis means 100 
+packetz of on average 1000 bytes each, which roughly correspondz ta 1mbit/s.
+
+.SH PARAMETERS
+See 
+.BR tc (8)
+for how tha fuck ta specify tha unitz of these joints.
+.TP
+limit or latency
+Limit is tha number of bytes dat can be queued waitin fo' tokens ta become
+available. Yo ass can also specify dis tha other way round by settin the
+latency parameter, which specifies tha maximum amount of time a packet can
+sit up in tha TBF. Da latta calculation takes tha fuck into account tha size of the
+bucket, tha rate n' possibly tha peakrate (if set). These two parameters
+are mutually exclusive. 
+.TP
+burst
+Also known as buffer or maxburst.
+Size of tha bucket, up in bytes. This is tha maximum amount of bytes dat tokens can be available fo' instantaneously. 
+In general, larger shapin rates require a larger buffer n' shit. For 10mbit/s on Intel, you need at least 10kbyte buffer 
+if you wanna reach yo' configured rate!
+
+If yo' buffer is too small, packets may be dropped cuz mo' tokens arrive per timer tick than fit up in yo' bucket.
+Da minimum buffer size can be calculated by dividin tha rate by HZ.
+
+Token usage calculations is performed rockin a table which by default has a resolution of 8 packets, n' you can put dat on yo' toast. 
+This resolution can be chizzled by specifyin tha 
+.B cell
+size wit tha burst. For example, ta specify a 6000 byte buffer wit a 16
+byte cell size, set a funky-ass burst of 6000/16. Yo ass will probably never gotta set
+this. Must be a integral juice of 2.
+.TP
+mpu
+A zero-sized packet do not use zero bandwidth. For ethernet, no packet uses less than 64 bytes. Da Minimum Packet Unit 
+determines tha minimal token usage (specified up in bytes) fo' a packet. Defaults ta zero.
+.TP
+rate
+Da speed knob. Right back up in yo muthafuckin ass. See remarks above bout limits muthafucka! See 
+.BR tc (8)
+for units.
+.PP
+Furthermore, if a peakrate is desired, tha followin parametas is available:
+
+.TP
+peakrate
+Maximum depletion rate of tha bucket.  Da peakrate do not
+need ta be set, it is only necessary if slick millisecond timescale
+shapin is required.
+
+.TP
+mtu/minburst
+Specifies tha size of tha peakrate bucket. For slick accuracy, should be set ta tha MTU of tha intercourse.
+If a peakrate is needed yo, but some burstinizz be acceptable, dis size can be raised. Y'all KNOW dat shit, muthafucka! A 3000 byte minburst
+allows round 3mbit/z of peakrate, given 1000 byte packets.
+
+Like tha regular burstsize you can also specify a 
+.B cell
+size.
+.SH EXAMPLE & USAGE
+
+To attach a TBF wit a sustained maximum rate of 0.5mbit/s, a peakrate of 1.0mbit/s,
+a 5kilobyte buffer, wit a pre-bucket queue size limit calculated so tha TBF causes
+at most 70mz of latency, wit slick peakrate behaviour, issue:
+.P
+# tc qdisc add dev eth0 root tbf rate 0.5mbit \\
+  burst 5kb latency 70ms peakrate 1mbit       \\
+  minburst 1540
+
+.SH SEE ALSO
+.BR tc (8)
+
+.SH AUTHOR
+Alexey N. Kuznetsov, <kuznet@ms2.inr.ac.ru>. This manpage maintained by
+bert hubert <ahu@ds9a.nl>
+
+

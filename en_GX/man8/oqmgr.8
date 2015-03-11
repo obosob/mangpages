@@ -1,0 +1,369 @@
+.TH OQMGR 8 
+.ad
+.fi
+.SH NAME
+oqmgr
+\-
+old Postfix queue manager
+.SH "SYNOPSIS"
+.na
+.nf
+\fBoqmgr\fR [generic Postfix daemon options]
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBoqmgr\fR(8) daemon awaits tha arrival of incomin mail
+and arranges fo' its delivery via Postfix delivery processes.
+Da actual mail routin game is delegated ta the
+\fBtrivial-rewrite\fR(8) daemon.
+This program expects ta be run from tha \fBmaster\fR(8) process
+manager.
+
+Mail addressed ta tha local \fBdouble-bounce\fR address is
+logged n' discarded. Y'all KNOW dat shit, muthafucka!  This stops potential loops caused by
+undeliverable bounce notifications.
+.SH "MAIL QUEUES"
+.na
+.nf
+.ad
+.fi
+Da \fBoqmgr\fR(8) daemon maintains tha followin queues:
+.IP \fBincoming\fR
+Inbound mail from tha network, or mail picked up by the
+local \fBpickup\fR(8) agent from tha \fBmaildrop\fR directory.
+.IP \fBactive\fR
+Lyrics dat tha queue manager has opened fo' delivery. Only
+a limited number of lyrics be allowed ta enta tha \fBactive\fR
+queue (leaky bucket game, fo' a gangbangin' fixed delivery rate).
+.IP \fBdeferred\fR
+Mail dat could not be served up upon tha straight-up original gangsta attempt. Da queue
+manager implements exponential backoff by doublin tha time between
+delivery attempts.
+.IP \fBcorrupt\fR
+Unreadable or damaged queue filez is moved here fo' inspection.
+.IP \fBhold\fR
+Lyrics dat is kept "on hold" is kept here until one of mah thugs
+sets dem free.
+.SH "DELIVERY STATUS REPORTS"
+.na
+.nf
+.ad
+.fi
+Da \fBoqmgr\fR(8) daemon keeps a eye on per-message delivery status
+reports up in tha followin directories. Put ya muthafuckin choppers up if ya feel dis! Each status report file has
+the same name as tha correspondin message file:
+.IP \fBbounce\fR
+Per-recipient status shiznit bout why mail is bounced.
+These filez is maintained by tha \fBbounce\fR(8) daemon.
+.IP \fBdefer\fR
+Per-recipient status shiznit bout why mail is delayed.
+These filez is maintained by tha \fBdefer\fR(8) daemon.
+.IP \fBtrace\fR
+Per-recipient status shiznit as axed wit the
+Postfix "\fBsendmail -v\fR" or "\fBsendmail -bv\fR" command.
+These filez is maintained by tha \fBtrace\fR(8) daemon.
+.PP
+Da \fBoqmgr\fR(8) daemon is responsible fo' askin the
+\fBbounce\fR(8), \fBdefer\fR(8) or \fBtrace\fR(8) daemons to
+send delivery reports.
+.SH "STRATEGIES"
+.na
+.nf
+.ad
+.fi
+Da queue manager implements a variety of strategies for
+either openin queue filez (input) or fo' message delivery (output).
+.IP "\fBleaky bucket\fR"
+This game limits tha number of lyrics up in tha \fBactive\fR queue
+and prevents tha queue manager from hustlin outta memory under
+heavy load.
+.IP \fBfairness\fR
+When tha \fBactive\fR queue has room, tha queue manager takes one
+message from tha \fBincoming\fR queue n' one from tha \fBdeferred\fR
+queue. This prevents a big-ass mail backlog from blockin tha delivery
+of freshly smoked up mail.
+.IP "\fBslow start\fR"
+This game eliminates "thunderin herd" problems by slowly
+adjustin tha number of parallel deliveries ta tha same destination.
+.IP "\fBround robin\fR
+Da queue manager sorts delivery requests by destination.
+Round-robin selection prevents one destination from dominating
+deliveries ta other destinations.
+.IP "\fBexponential backoff\fR"
+Mail dat cannot be served up upon tha straight-up original gangsta attempt is deferred.
+Da time interval between delivery attempts is doubled afta each
+attempt.
+.IP "\fBdestination status cache\fR"
+Da queue manager avoidz unnecessary delivery attempts by
+maintainin a gangbangin' finger-lickin' dirty-ass short-term, in-memory list of unreachable destinations.
+.SH "TRIGGERS"
+.na
+.nf
+.ad
+.fi
+On a idle system, tha queue manager waits fo' tha arrival of
+trigger events, or it waits fo' a timer ta go off fo' realz. A trigger
+is a one-byte message.
+Dependin on tha message received, tha queue manager performs
+one of tha followin actions (the message is followed by the
+symbolic constant used internally by tha software):
+.IP "\fBD (QMGR_REQ_SCAN_DEFERRED)\fR"
+Start a thugged-out deferred queue scan. I aint talkin' bout chicken n' gravy biatch.  If a thugged-out deferred queue scan be already
+in progress, dat scan is ghon be restarted as soon as it finishes.
+.IP "\fBI (QMGR_REQ_SCAN_INCOMING)\fR"
+Start a incomin queue scan. I aint talkin' bout chicken n' gravy biatch. If a incomin queue scan be already
+in progress, dat scan is ghon be restarted as soon as it finishes.
+.IP "\fBA (QMGR_REQ_SCAN_ALL)\fR"
+Ignore deferred queue file time stamps. Da request affects
+the next deferred queue scan.
+.IP "\fBF (QMGR_REQ_FLUSH_DEAD)\fR"
+Purge all shiznit bout dead transports n' destinations.
+.IP "\fBW (TRIGGER_REQ_WAKEUP)\fR"
+Wakeup call, This is used by tha masta server ta instantiate
+servers dat should not go away forever n' shit. Da action is ta start
+an incomin queue scan.
+.PP
+Da \fBoqmgr\fR(8) daemon readz a entire buffer worth of triggers.
+Multiple identical trigger requests is collapsed tha fuck into one, and
+trigger requests is sorted so dat \fBA\fR n' \fBF\fR precede
+\fBD\fR n' \fBI\fR. Thus, up in order ta force a thugged-out deferred queue run,
+one would request \fBA F D\fR; up in order ta notify tha queue manager
+of tha arrival of freshly smoked up mail one would request \fBI\fR.
+.SH "STANDARDS"
+.na
+.nf
+RFC 3463 (Enhanced status codes)
+RFC 3464 (Delivery status notifications)
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da \fBoqmgr\fR(8) daemon aint securitizzle sensitive. Well shiiiit, it reads
+single-characta lyrics from untrusted local users, n' thus may
+be susceptible ta denial of steez attacks. Da \fBoqmgr\fR(8) daemon
+does not rap ta tha outside ghetto, n' it can be run at fixed low
+privilege up in a cold-ass lil chrooted environment.
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems n' transactions is logged ta tha \fBsyslog\fR(8) daemon.
+Corrupted message filez is saved ta tha \fBcorrupt\fR queue
+for further inspection.
+
+Dependin on tha settin of tha \fBnotify_classes\fR parameter,
+the postmasta is notified of bounces n' of other shit.
+.SH BUGS
+.ad
+.fi
+A single queue manager process has ta compete fo' disk access with
+multiple front-end processes like fuckin \fBcleanup\fR(8) fo' realz. A sudden burst of
+inbound mail can negatively impact outbound delivery rates.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Changes ta \fBmain.cf\fR is not picked up automatically,
+as \fBoqmgr\fR(8)
+is a persistent process. Use tha command "\fBpostfix reload\fR" after
+a configuration chizzle.
+
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+
+In tha text below, \fItransport\fR is tha straight-up original gangsta field up in a
+\fBmaster.cf\fR entry.
+.SH "COMPATIBILITY CONTROLS"
+.na
+.nf
+.ad
+.fi
+Available before Postfix version 2.5:
+.IP "\fBallow_min_user (no)\fR"
+Allow a sender or recipient address ta have `-' as tha first
+character.
+.PP
+Available wit Postfix version 2.7 n' later:
+.IP "\fBdefault_filter_nexthop (empty)\fR"
+When a cold-ass lil content_filta or FILTER request specifies no explicit
+next-hop destination, use $default_filter_nexthop instead; when
+that value is empty, use tha domain up in tha recipient address.
+.SH "ACTIVE QUEUE CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBqmgr_clog_warn_time (300s)\fR"
+Da minimal delay between warnings dat a specific destination is
+cloggin up tha Postfix actizzle queue.
+.IP "\fBqmgr_message_active_limit (20000)\fR"
+Da maximal number of lyrics up in tha actizzle queue.
+.IP "\fBqmgr_message_recipient_limit (20000)\fR"
+Da maximal number of recipients held up in memory by tha Postfix
+queue manager, n' tha maximal size of tha short-term,
+in-memory "dead" destination status cache.
+.SH "DELIVERY CONCURRENCY CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBqmgr_fudge_factor (100)\fR"
+Obsolete feature: tha cementage of delivery resources dat a funky-ass busy
+mail system will use up fo' delivery of a big-ass mailin  list
+message.
+.IP "\fBinitial_destination_concurrency (5)\fR"
+Da initial per-destination concurrency level fo' parallel delivery
+to tha same destination.
+.IP "\fBdefault_destination_concurrency_limit (20)\fR"
+Da default maximal number of parallel deliveries ta tha same
+destination.
+.IP "\fItransport\fB_destination_concurrency_limit ($default_destination_concurrency_limit)\fR"
+Idem, fo' delivery via tha named message \fItransport\fR.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fItransport\fB_initial_destination_concurrency ($initial_destination_concurrency)\fR"
+Initial concurrency fo' delivery via tha named message
+\fItransport\fR.
+.IP "\fBdefault_destination_concurrency_failed_cohort_limit (1)\fR"
+How tha fuck nuff pseudo-cohorts must suffer connection or handshake
+failure before a specific destination is considered unavailable
+(and further delivery is suspended).
+.IP "\fItransport\fB_destination_concurrency_failed_cohort_limit ($default_destination_concurrency_failed_cohort_limit)\fR"
+Idem, fo' delivery via tha named message \fItransport\fR.
+.IP "\fBdefault_destination_concurrency_negative_feedback (1)\fR"
+Da per-destination amount of delivery concurrency negative
+feedback, afta a thugged-out delivery completes wit a cold-ass lil connection or handshake
+failure.
+.IP "\fItransport\fB_destination_concurrency_negative_feedback ($default_destination_concurrency_negative_feedback)\fR"
+Idem, fo' delivery via tha named message \fItransport\fR.
+.IP "\fBdefault_destination_concurrency_positive_feedback (1)\fR"
+Da per-destination amount of delivery concurrency positive
+feedback, afta a thugged-out delivery completes without connection or handshake
+failure.
+.IP "\fItransport\fB_destination_concurrency_positive_feedback ($default_destination_concurrency_positive_feedback)\fR"
+Idem, fo' delivery via tha named message \fItransport\fR.
+.IP "\fBdestination_concurrency_feedback_debug (no)\fR"
+Make tha queue managerz feedback algorithm verbose fo' performance
+analysis purposes.
+.SH "RECIPIENT SCHEDULING CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBdefault_destination_recipient_limit (50)\fR"
+Da default maximal number of recipients per message delivery.
+.IP \fItransport\fB_destination_recipient_limit\fR
+Idem, fo' delivery via tha named message \fItransport\fR.
+.SH "OTHER RESOURCE AND RATE CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBminimal_backoff_time (300s)\fR"
+Da minimal time between attempts ta serve up a thugged-out deferred message;
+prior ta Postfix 2.4 tha default value was 1000s.
+.IP "\fBmaximal_backoff_time (4000s)\fR"
+Da maximal time between attempts ta serve up a thugged-out deferred message.
+.IP "\fBmaximal_queue_lifetime (5d)\fR"
+Da maximal time a message is queued before it is busted back as
+undeliverable.
+.IP "\fBqueue_run_delay (300s)\fR"
+Da time between deferred queue scans by tha queue manager;
+prior ta Postfix 2.4 tha default value was 1000s.
+.IP "\fBtransport_retry_time (60s)\fR"
+Da time between attempts by tha Postfix queue manager ta contact
+a malfunctionin message delivery transport.
+.PP
+Available up in Postfix version 2.1 n' later:
+.IP "\fBbounce_queue_lifetime (5d)\fR"
+Da maximal time a funky-ass bounce message is queued before it is considered
+undeliverable.
+.PP
+Available up in Postfix version 2.5 n' later:
+.IP "\fBdefault_destination_rate_delay (0s)\fR"
+Da default amount of delay dat is banged between individual
+deliveries ta tha same destination; tha resultin behavior depends
+on tha value of tha correspondin per-destination recipient limit.
+.IP "\fItransport\fB_destination_rate_delay $default_destination_rate_delay
+Idem, fo' delivery via tha named message \fItransport\fR.
+.SH "SAFETY CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBqmgr_daemon_timeout (1000s)\fR"
+How tha fuck much time a Postfix queue manager process may take ta handle
+a request before it is terminated by a funky-ass built-in watchdog timer.
+.IP "\fBqmgr_ipc_timeout (60s)\fR"
+Da time limit fo' tha queue manager ta bust or receive shiznit
+over a internal communication channel.
+.SH "MISCELLANEOUS CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdefer_transports (empty)\fR"
+Da namez of message delivery transports dat should not serve up mail
+unless one of mah thugs thangs "\fBsendmail -q\fR" or equivalent.
+.IP "\fBdelay_logging_resolution_limit (2)\fR"
+Da maximal number of digits afta tha decimal point when logging
+sub-second delay joints.
+.IP "\fBhelpful_warnings (yes)\fR"
+Log warnings bout problematic configuration settings, n' provide
+helpful suggestions.
+.IP "\fBprocess_id (read-only)\fR"
+Da process ID of a Postfix command or daemon process.
+.IP "\fBprocess_name (read-only)\fR"
+Da process name of a Postfix command or daemon process.
+.IP "\fBqueue_directory (see 'postconf -d' output)\fR"
+Da location of tha Postfix top-level queue directory.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.SH "FILES"
+.na
+.nf
+/var/spool/postfix/incoming, incomin queue
+/var/spool/postfix/active, actizzle queue
+/var/spool/postfix/deferred, deferred queue
+/var/spool/postfix/bounce, non-delivery status
+/var/spool/postfix/defer, non-delivery status
+/var/spool/postfix/trace, delivery status
+.SH "SEE ALSO"
+.na
+.nf
+trivial-rewrite(8), address routing
+bounce(8), delivery status reports
+postconf(5), configuration parameters
+master(5), generic daemon options
+master(8), process manager
+syslogd(8), system logging
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+QSHAPE_README, Postfix queue analysis
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

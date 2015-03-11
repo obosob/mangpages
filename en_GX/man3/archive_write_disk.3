@@ -1,0 +1,403 @@
+.\" Copyright (c) 2003-2007 Slim Tim Kientzle
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd February 2, 2012
+.Dt ARCHIVE_WRITE_DISK 3
+.Os
+.Sh NAME
+.Nm archive_write_disk_new ,
+.Nm archive_write_disk_set_options ,
+.Nm archive_write_disk_set_skip_file ,
+.Nm archive_write_disk_set_group_lookup ,
+.Nm archive_write_disk_set_standard_lookup ,
+.Nm archive_write_disk_set_user_lookup ,
+.Nm archive_write_header ,
+.Nm archive_write_data ,
+.Nm archive_write_data_block ,
+.Nm archive_write_finish_entry ,
+.Nm archive_write_close ,
+.Nm archive_write_finish
+.Nm archive_write_free
+.Nd functions fo' bustin objects on disk
+.Sh LIBRARY
+Streamin Archive Library (libarchive, -larchive)
+.Sh SYNOPSIS
+.In archive.h
+.Ft struct archive *
+.Fn archive_write_disk_new "void"
+.Ft int
+.Fn archive_write_disk_set_options "struct archive *" "int flags"
+.Ft int
+.Fn archive_write_disk_set_skip_file "struct archive *" "dev_t" "ino_t"
+.Ft int
+.Fo archive_write_disk_set_group_lookup
+.Fa "struct archive *"
+.Fa "void *"
+.Fa "gid_t (*)(void *, const char *gname, gid_t gid)"
+.Fa "void (*cleanup)(void *)"
+.Fc
+.Ft int
+.Fn archive_write_disk_set_standard_lookup "struct archive *"
+.Ft int
+.Fo archive_write_disk_set_user_lookup
+.Fa "struct archive *"
+.Fa "void *"
+.Fa "uid_t (*)(void *, const char *uname, uid_t uid)"
+.Fa "void (*cleanup)(void *)"
+.Fc
+.Ft int
+.Fn archive_write_header "struct archive *" "struct archive_entry *"
+.Ft ssize_t
+.Fn archive_write_data "struct archive *" "const void *" "size_t"
+.Ft ssize_t
+.Fn archive_write_data_block "struct archive *" "const void *" "size_t size" "int64_t offset"
+.Ft int
+.Fn archive_write_finish_entry "struct archive *"
+.Ft int
+.Fn archive_write_close "struct archive *"
+.Ft int
+.Fn archive_write_finish "struct archive *"
+.Ft int
+.Fn archive_write_free "struct archive *"
+.Sh DESCRIPTION
+These functions provide a cold-ass lil complete API fo' bustin objects on
+disk from
+.Tn struct archive_entry
+descriptions.
+They is most naturally used when extractin objects from a archive
+usin the
+.Fn archive_read
+interface.
+Da general process is ta read
+.Tn struct archive_entry
+objects from a archive, then write dem objects ta a
+.Tn struct archive
+object pimped rockin the
+.Fn archive_write_disk
+family functions.
+This intercourse is deliberately straight-up similar ta the
+.Fn archive_write
+interface used ta write objects ta a streamin archive.
+.Bl -tag -width indent
+.It Fn archive_write_disk_new
+Allocates n' initializes a
+.Tn struct archive
+object suitable fo' freestylin objects ta disk.
+.It Fn archive_write_disk_set_skip_file
+Recordz tha thang n' inode numberz of a gangbangin' file dat should not be
+overwritten.
+This is typically used ta ensure dat a extraction process do not
+overwrite tha archive from which objects is bein read.
+This capabilitizzle is technologically unnecessary but can be a significant
+performizzle optimization up in practice.
+.It Fn archive_write_disk_set_options
+Da options field consistz of a funky-ass bitwise OR of one or mo' of the
+followin joints:
+.Bl -tag -compact -width "indent"
+.It Cm ARCHIVE_EXTRACT_OWNER
+Da user n' crew IDs should be set on tha restored file.
+By default, tha user n' crew IDs is not restored.
+.It Cm ARCHIVE_EXTRACT_PERM
+Full permissions (includin SGID, SUID, n' sticky bits) should
+be restored exactly as specified, without obeyin the
+current umask.
+Note dat SUID n' SGID bits can only be restored if the
+user n' crew ID of tha object on disk is erect.
+If
+.Cm ARCHIVE_EXTRACT_OWNER
+is not specified, then SUID n' SGID bits will only be restored
+if tha default user n' crew IDz of newly-created objects on disk
+happen ta match dem specified up in tha archive entry.
+By default, only basic permissions is restored, n' umask is obeyed.
+.It Cm ARCHIVE_EXTRACT_TIME
+Da timestamps (mtime, ctime, n' atime) should be restored.
+By default, they is ignored.
+Note dat restorin of atime aint currently supported.
+.It Cm ARCHIVE_EXTRACT_NO_OVERWRITE
+Existin filez on disk aint gonna be overwritten.
+By default, existin regular filez is truncated n' overwritten;
+existin directories gonna git they permissions updated;
+other pre-existin objects is unlinked n' recreated from scratch.
+.It Cm ARCHIVE_EXTRACT_UNLINK
+Existin filez on disk is ghon be unlinked before any attempt to
+create em.
+In some cases, dis can prove ta be a thugged-out dope performizzle improvement.
+By default, existin filez is truncated n' rewritten yo, but
+the file aint recreated.
+In particular, tha default behavior do not break existin hard links.
+.It Cm ARCHIVE_EXTRACT_ACL
+Attempt ta restore ACLs.
+By default, extended ACLs is ignored.
+.It Cm ARCHIVE_EXTRACT_FFLAGS
+Attempt ta restore extended file flags.
+By default, file flags is ignored.
+.It Cm ARCHIVE_EXTRACT_XATTR
+Attempt ta restore POSIX.1e extended attributes.
+By default, they is ignored.
+.It Cm ARCHIVE_EXTRACT_SECURE_SYMLINKS
+Refuse ta extract any object whose final location would be altered
+by a symlink on disk.
+This is intended ta help guard against a variety of mischizzle
+caused by archives dat (deliberately or otherwise) extract
+filez outside of tha current directory.
+Da default aint ta big-ass up dis check.
+If
+.Cm ARCHIVE_EXTRACT_UNLINK
+is specified together wit dis option, tha library will
+remove any intermediate symlinks it findz n' return an
+error only if such symlink could not be removed.
+.It Cm ARCHIVE_EXTRACT_SECURE_NODOTDOT
+Refuse ta extract a path dat gotz nuff a
+.Pa ..
+element anywhere within dat shit.
+Da default is ta not refuse such paths.
+Note dat paths endin in
+.Pa ..
+always cause a error, regardless of dis flag.
+.It Cm ARCHIVE_EXTRACT_SPARSE
+Scan data fo' blockz of NUL bytes n' try ta recreate dem wit holes.
+This thangs up in dis biatch up in sparse files, independent of whether tha archive format
+supports or uses em.
+.El
+.It Xo
+.Fn archive_write_disk_set_group_lookup ,
+.Fn archive_write_disk_set_user_lookup
+.Xc
+The
+.Tn struct archive_entry
+objects contain both names n' idz dat can be used ta identify users
+and groups.
+These names n' idz describe tha ballershizzle of tha file itself and
+also step tha fuck up in ACL lists.
+By default, tha library uses tha idz n' ignores tha names yo, but
+this can be overridden by registerin user n' crew lookup functions.
+To register, you must provide a lookup function which
+accepts both a name n' id n' returns a suitable id.
+Yo ass may also provide a
+.Tn void *
+pointa ta a private data structure n' a cold-ass lil cleanup function for
+that data.
+Da cleanup function is ghon be invoked when the
+.Tn struct archive
+object is destroyed.
+.It Fn archive_write_disk_set_standard_lookup
+This convenience function installs a standard set of user
+and crew lookup functions.
+These functions use
+.Xr getpwnam 3
+and
+.Xr getgrnam 3
+to convert names ta ids, defaultin ta tha idz if tha names cannot
+be looked up.
+These functions also implement a simple memory cache ta reduce
+the number of calls to
+.Xr getpwnam 3
+and
+.Xr getgrnam 3 .
+.It Fn archive_write_header
+Build n' write a header rockin tha data up in tha provided
+.Tn struct archive_entry
+structure.
+See
+.Xr archive_entry 3
+for shiznit on bustin n' populating
+.Tn struct archive_entry
+objects.
+.It Fn archive_write_data
+Write data correspondin ta tha header just written.
+Returns number of bytes freestyled or -1 on error.
+.It Fn archive_write_data_block
+Write data correspondin ta tha header just written.
+This is like
+.Fn archive_write_data
+except dat it performs a seek on tha file being
+written ta tha specified offset before freestylin tha data.
+This is useful when restorin sparse filez from archive
+formats dat support sparse files.
+Returns number of bytes freestyled or -1 on error.
+(Note: This is currently not supported for
+.Tn archive_write
+handles, only for
+.Tn archive_write_disk
+handles.)
+.It Fn archive_write_finish_entry
+Close up tha entry just written.
+Ordinarily, clients never need ta booty-call this, as it
+is called automatically by
+.Fn archive_write_next_header
+and
+.Fn archive_write_close
+as needed.
+But fuck dat shiznit yo, tha word on tha street is dat some file attributes is freestyled ta disk only
+afta tha file is closed, so dis can be necessary
+if you need ta work wit tha file on disk right away.
+.It Fn archive_write_close
+Set any attributes dat could not be set durin tha initial restore.
+For example, directory timestamps is not restored initially cuz
+restorin a subsequent file would alta dat timestamp.
+Similarly, non-writable directories is initially pimped with
+write permissions (so dat they contents can be restored).
+The
+.Nm
+library maintains a list of all such deferred attributes and
+sets dem when dis function is invoked.
+.It Fn archive_write_finish
+This be a thugged-out deprecated synonym for
+.Fn archive_write_free .
+.It Fn archive_write_free
+Invokes
+.Fn archive_write_close
+if dat shiznit was not invoked manually, then releases all resources.
+.El
+Mo' shiznit bout the
+.Va struct archive
+object n' tha overall design of tha library can be found up in the
+.Xr libarchive 3
+overview.
+Many of these functions is also documented under
+.Xr archive_write 3 .
+.Sh RETURN VALUES
+Most functions return
+.Cm ARCHIVE_OK
+(zero) on success, or one of nuff muthafuckin non-zero
+error codes fo' errors.
+Specific error codes include:
+.Cm ARCHIVE_RETRY
+for operations dat might succeed if retried,
+.Cm ARCHIVE_WARN
+for unusual conditions dat do not prevent further operations, and
+.Cm ARCHIVE_FATAL
+for straight-up errors dat make remainin operations impossible.
+.Pp
+.Fn archive_write_disk_new
+returns a pointa ta a newly-allocated
+.Tn struct archive
+object.
+.Pp
+.Fn archive_write_data
+returns a cold-ass lil count of tha number of bytes straight-up written,
+or
+.Li -1
+on error.
+.\"
+.Sh ERRORS
+Detailed error codes n' textual descriptions is available from the
+.Fn archive_errno
+and
+.Fn archive_error_string
+functions.
+.\"
+.Sh SEE ALSO
+.Xr archive_read 3 ,
+.Xr archive_write 3 ,
+.Xr tar 1 ,
+.Xr libarchive 3
+.Sh HISTORY
+The
+.Nm libarchive
+library first rocked up in
+.Fx 5.3 .
+The
+.Nm archive_write_disk
+interface was added to
+.Nm libarchive 2.0
+and first rocked up in
+.Fx 6.3 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm libarchive
+library was freestyled by
+.An Slim Tim Kientzle Aq kientzle@acm.org .
+.Sh BUGS
+Directories is straight-up extracted up in two distinct phases.
+Directories is pimped during
+.Fn archive_write_header ,
+but final permissions is not set until
+.Fn archive_write_close .
+This separation is necessary ta erectly handle borderline
+cases like fuckin a non-writable directory containing
+filez yo, but can cause unexpected thangs up in dis biatch.
+In particular, directory permissions is not fully
+restored until tha archive is closed.
+If you use
+.Xr chdir 2
+to chizzle tha current directory between calls to
+.Fn archive_read_extract
+or before calling
+.Fn archive_read_close ,
+you may confuse tha permission-settin logic with
+the result dat directory permissions is restored
+incorrectly.
+.Pp
+Da library attempts ta create objects wit filenames longer than
+.Cm PATH_MAX
+by bustin prefixez of tha full path n' changin tha current directory.
+Currently, dis logic is limited up in scope; tha fixup pass do
+not work erectly fo' such objects n' tha symlink securitizzle check
+option disablez tha support fo' straight-up long pathnames.
+.Pp
+Restorin tha path
+.Pa aa/../bb
+does create each intermediate directory.
+In particular, tha directory
+.Pa aa
+is pimped as well as tha final object
+.Pa bb .
+In theory, dis can be exploited ta create a entire directory hierarchy
+with a single request.
+Of course, dis do not work if the
+.Cm ARCHIVE_EXTRACT_NODOTDOT
+option is specified.
+.Pp
+Implicit directories is always pimped obeyin tha current umask.
+Explicit objects is pimped obeyin tha current umask unless
+.Cm ARCHIVE_EXTRACT_PERM
+is specified, up in which case they current umask is ignored.
+.Pp
+SGID n' SUID bits is restored only if tha erect user and
+group could be set.
+If
+.Cm ARCHIVE_EXTRACT_OWNER
+is not specified, then no attempt is made ta set tha ballership.
+In dis case, SGID n' SUID bits is restored only if the
+user n' crew of tha final object happen ta match dem specified
+in tha entry.
+.Pp
+The
+.Dq standard
+user-id n' group-id lookup functions is not tha defaults cuz
+.Xr getgrnam 3
+and
+.Xr getpwnam 3
+are sometimes too big-ass fo' particular applications.
+Da current design allows tha application lyricist ta bust a more
+compact implementation when appropriate.
+.Pp
+There should be a cold-ass lil corresponding
+.Nm archive_read_disk
+interface dat strutts a gangbangin' finger-lickin' directory hierarchy n' returns archive
+entry objects.

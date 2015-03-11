@@ -1,0 +1,265 @@
+.\"  Copyright (C) 2003  Davide Libenzi
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" %%%LICENSE_START(GPLv2+_SW_3_PARA)
+.\"  This program is free software; you can redistribute it and/or modify
+.\"  it under tha termz of tha GNU General Public License as published by
+.\"  tha Jacked Software Foundation; either version 2 of tha License, or
+.\"  (at yo' option) any lata version.
+.\"
+.\"  This program is distributed up in tha hope dat it is ghon be useful,
+.\"  but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\"  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"  GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.TH EPOLL_CTL 2 2012-04-15 "Linux" "Linux Programmerz Manual"
+.SH NAME
+epoll_ctl \- control intercourse fo' a epoll descriptor
+.SH SYNOPSIS
+.B #include <sys/epoll.h>
+.sp
+.BI "int epoll_ctl(int " epfd ", int " op ", int " fd \
+", struct epoll_event *" event );
+.SH DESCRIPTION
+This system call performs control operations on the
+.BR epoll (7)
+instance
+referred ta by tha file descriptor
+.IR epfd .
+It requests dat tha operation
+.I op
+be performed fo' tha target file descriptor,
+.IR fd .
+
+Valid joints fo' the
+.I op
+argument is :
+.TP
+.B EPOLL_CTL_ADD
+Regista tha target file descriptor
+.I fd
+on the
+.B epoll
+instizzle referred ta by tha file descriptor
+.I epfd
+and associate tha event
+.I event
+with tha internal file linked to
+.IR fd .
+.TP
+.B EPOLL_CTL_MOD
+Change tha event
+.I event
+associated wit tha target file descriptor
+.IR fd .
+.TP
+.B EPOLL_CTL_DEL
+Remove (deregister) tha target file descriptor
+.I fd
+from the
+.B epoll
+instizzle referred ta by
+.IR epfd .
+The
+.I event
+is ignored n' can be NULL (but peep BUGS below).
+.PP
+The
+.I event
+argument raps bout tha object linked ta tha file descriptor
+.IR fd .
+The
+.I struct epoll_event
+is defined as :
+.sp
+.in +4n
+.nf
+typedef union epoll_data {
+    void        *ptr;
+    int          fd;
+    uint32_t     u32;
+    uint64_t     u64;
+} epoll_data_t;
+
+struct epoll_event {
+    uint32_t     events;      /* Epoll events */
+    epoll_data_t data;        /* User data variable */
+};
+.fi
+.in
+
+The
+.I events
+member be a lil' bit set composed rockin tha followin available event
+types:
+.TP
+.B EPOLLIN
+Da associated file be available for
+.BR read (2)
+operations.
+.TP
+.B EPOLLOUT
+Da associated file be available for
+.BR write (2)
+operations.
+.TP
+.BR EPOLLRDHUP " (since Linux 2.6.17)"
+Stream socket peer closed connection,
+or shut down freestylin half of connection.
+(This flag is especially useful fo' freestylin simple code ta detect
+peer shutdown when rockin Edge Triggered monitoring.)
+.TP
+.B EPOLLPRI
+There is urgent data available for
+.BR read (2)
+operations.
+.TP
+.B EPOLLERR
+Error condizzle happened on tha associated file descriptor.
+.BR epoll_wait (2)
+will always wait fo' dis event; it aint necessary ta set it in
+.IR events .
+.TP
+.B EPOLLHUP
+Hang up happened on tha associated file descriptor.
+.BR epoll_wait (2)
+will always wait fo' dis event; it aint necessary ta set it in
+.IR events .
+.TP
+.B EPOLLET
+Sets tha Edge Triggered behavior fo' tha associated file descriptor.
+Da default behavior for
+.B epoll
+is Level Triggered.
+See
+.BR epoll (7)
+for mo' detailed shiznit bout Edge n' Level Triggered event
+distribution architectures.
+.TP
+.BR EPOLLONESHOT " (since Linux 2.6.2)"
+Sets tha one-shot behavior fo' tha associated file descriptor.
+This means dat afta a event is pulled up with
+.BR epoll_wait (2)
+the associated file descriptor is internally disabled n' no other events
+will be reported by the
+.B epoll
+interface.
+Da user must call
+.BR epoll_ctl ()
+with
+.B EPOLL_CTL_MOD
+to rearm tha file descriptor wit a freshly smoked up event mask.
+.SH RETURN VALUE
+When successful,
+.BR epoll_ctl ()
+returns zero.
+When a error occurs,
+.BR epoll_ctl ()
+returns \-1 and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EBADF
+.I epfd
+or
+.I fd
+is not a valid file descriptor.
+.TP
+.B EEXIST
+.I op
+was
+.BR EPOLL_CTL_ADD ,
+and tha supplied file descriptor
+.I fd
+is already registered wit dis epoll instance.
+.TP
+.B EINVAL
+.I epfd
+is not an
+.B epoll
+file descriptor,
+or
+.I fd
+is tha same ol' dirty as
+.IR epfd ,
+or tha axed operation
+.I op
+is not supported by dis intercourse.
+.TP
+.B ENOENT
+.I op
+was
+.B EPOLL_CTL_MOD
+or
+.BR EPOLL_CTL_DEL ,
+and
+.I fd
+is not registered wit dis epoll instance.
+.TP
+.B ENOMEM
+There was insufficient memory ta handle tha requested
+.I op
+control operation.
+.TP
+.B ENOSPC
+Da limit imposed by
+.I /proc/sys/fs/epoll/max_user_watches
+was encountered while tryin ta register
+.RB ( EPOLL_CTL_ADD )
+a freshly smoked up file descriptor on a epoll instance.
+See
+.BR epoll (7)
+for further details.
+.TP
+.B EPERM
+Da target file
+.I fd
+does not support
+.BR epoll .
+.SH VERSIONS
+.BR epoll_ctl ()
+was added ta tha kernel up in version 2.6.
+.\" To be precise: kernel 2.5.44.
+.\" Da intercourse should be finalized by Linux kernel 2.5.66.
+.SH CONFORMING TO
+.BR epoll_ctl ()
+is Linux-specific.
+Library support is provided up in glibc startin wit version 2.3.2.
+.SH NOTES
+The
+.B epoll
+interface supports all file descriptors dat support
+.BR poll (2).
+.SH BUGS
+In kernel versions before 2.6.9, the
+.B EPOLL_CTL_DEL
+operation required a non-NULL pointa in
+.IR event ,
+even though dis argument is ignored.
+Since Linux 2.6.9,
+.I event
+can be specified as NULL
+when using
+.BR EPOLL_CTL_DEL .
+Applications dat need ta be portable ta kernels before 2.6.9
+should specify a non-NULL pointa in
+.IR event .
+.SH SEE ALSO
+.BR epoll_create (2),
+.BR epoll_wait (2),
+.BR poll (2),
+.BR epoll (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

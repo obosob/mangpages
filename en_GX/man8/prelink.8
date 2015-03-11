@@ -1,0 +1,309 @@
+.TH prelink 8 "01 March 2007"
+.SH NAME
+prelink \- prelink ELF shared libraries n' binaries ta speed up startup time
+.SH SYNOPSIS
+prelink
+.RB [OPTION...]\ [FILES]
+.SH DESCRIPTION
+.B prelink
+is a program dat modifies ELF shared libraries n' ELF dynamically linked
+binaries up in such a way dat tha time needed fo' tha dynamic linker ta 
+perform relocations at startup hella decreases.  
+Cuz of fewer relocations, the
+run-time memory consumption decreases as well (especially tha 
+number of unshareable pages).  
+Da prelinkin shiznit is only used at startup time if none of tha 
+dependent libraries have chizzled since prelinking; otherwise programs are
+relocated normally.
+.PP
+.B prelink
+first collects ELF binaries ta be prelinked n' all tha ELF shared
+libraries they depend on. I aint talkin' bout chicken n' gravy biatch. Then it assigns a unique virtual address space
+slot ta each library n' relinks tha shared library ta dat base address.
+When tha dynamic linker attempts ta load such a library, unless dat virtual
+address space slot be already occupied, it maps tha library tha fuck into tha given 
+slot.
+Afta dis is done,
+.BR prelink ,
+with tha help of dynamic linker, resolves all relocations up in tha binary or
+library against its dependent libraries n' stores tha relocations tha fuck into the
+ELF object.
+It also stores a list of all dependent libraries together wit their
+checksums tha fuck into tha binary or library.
+For binaries, it also computes a list of
+.IR conflicts
+(relocations dat resolve differently up in tha binaryz symbol search scope
+than up in tha smalla search scope up in which tha dependent library was
+resolved) n' stores it tha fuck into a special ELF section.
+.PP
+At runtime, tha dynamic linker first checks whether all dependent libraries
+were successfully mapped tha fuck into they designated address space slots, and
+whether they aint chizzled since tha prelinkin was done.
+If all checks is successful, tha dynamic linker just replays tha list of
+conflicts (which is probably hella shorta than total number of
+relocations) instead of relocatin each library.
+.SH OPTIONS
+.TP
+.B \-v\ \-\-verbose
+Verbose mode.
+Print tha virtual address slots assigned ta libraries n' what tha fuck binary
+or library is currently bein prelinked.
+.TP
+.B \-n\ \-\-dry\-run
+Don't straight-up prelink anything; just collect tha binaries/libraries, assign
+them addresses, n' with
+.B \-v 
+print what tha fuck would be prelinked.
+.TP
+.B \-a \-\-all
+Prelink all binaries n' dependent libraries found up in directory hierarchies
+specified in
+.IR /etc/prelink.conf .
+Normally, only binaries specified on tha command line n' they dependent
+libraries is prelinked.
+.TP
+.B \-m \-\-conserve\-memory
+When assignin addresses ta libraries, allow overlap of address space slots
+provided dat tha two libraries is not present together up in any of the
+binaries or libraries. Put ya muthafuckin choppers up if ya feel dis! This thangs up in dis biatch up in a smalla virtual address space range
+used fo' libraries. Put ya muthafuckin choppers up if ya feel dis!  On tha other hand, if 
+.B prelink
+sees a funky-ass binary durin incremenstrual prelinkin 
+which puts together two libraries which was not present
+together up in any other binary n' was given tha same virtual address space
+slots, then tha binary cannot be prelinked.
+Without dis option, 
+each library be assigned a unique virtual address space slot.
+.TP
+.B \-R \-\-random
+When assignin addresses ta libraries, start wit a random address within
+the architecture-dependent virtual address space range.
+This can cook up some fuckin buffer overflow attacks slightly harder ta exploit,
+because libraries is not present on tha same addresses across different
+machines.
+Normally, assignin virtual addresses starts all up in tha bottom of tha 
+architecture-dependent range.
+.TP
+.B \-r \-\-reloc\-only=ADDRESS
+Instead of prelinking, just relink given shared libraries ta tha specified
+base address.
+.TP
+.B \-N \-\-no\-update\-cache
+Don't save tha cache file afta prelinking. 
+Normally, tha list of libraries (and with
+.B \-m
+binaries also) is stored tha fuck into the
+.I /etc/prelink.cache
+file together wit they given address space slots n' dependencies, so
+the cache can be used durin incremenstrual prelinkin (prelinkin without
+.B \-a
+option).
+.TP
+.B \-c \-\-config\-file=CONFIG
+Specify a alternate config file instead of default
+.IR /etc/prelink.conf .
+.TP
+.B \-C \-\-cache\-file=CACHE
+Specify a alternate cache file instead of default
+.IR /etc/prelink.cache .
+.TP
+.B \-f \-\-force
+Force re-prelinkin even fo' already prelinked objects whose 
+dependencies is unchanged. Y'all KNOW dat shit, muthafucka! 
+This option causes freshly smoked up virtual address space slots to
+be assigned ta all libraries.
+Normally, only binaries or libraries which is either not prelinked yet, or
+whose dependencies have chizzled, is prelinked.
+.TP
+.B \-q \-\-quick
+Run prelink up in quick mode.  This mode checks just mtime n' ctime timestamps
+of libraries n' binaries stored up in tha cache file.  If they is unchanged
+from tha last prelink run, it be assumed dat tha library up in question did
+not chizzle, without parsin or verifyin its ELF headers.
+.TP
+.B \-p \-\-print\-cache
+Print tha contentz of tha cache file (normally
+.IR /etc/prelink.cache )
+and exit.
+.TP
+.B \-\-dynamic\-linker=LDSO
+Specify a alternate dynamic linker instead of tha default.
+.TP
+.B \-\-ld\-library\-path=PATH
+Specify a special
+.IR LD_LIBRARY_PATH
+to be used when
+.B prelink
+queries tha dynamic linker bout symbol resolution details.
+.TP
+.B \-\-libs\-only
+Only prelink ELF shared libraries, don't prelink any binaries.
+.TP
+.B \-h \-\-dereference
+When processin command line directory arguments, follow symbolic links when
+walkin directory hierarchies.
+.TP
+.B \-l \-\-one\-file\-system
+When processin command line directory arguments, limit directory tree strutt
+to a single file system.
+.TP
+.B \-u \-\-undo
+Revert binaries n' libraries ta they original gangsta content before they were
+prelinked.
+Without the
+.I \-a
+option, dis causes only tha binaries n' libraries specified on tha command
+line ta be reverted ta they original gangsta state (and e.g. not their
+dependencies). If used together wit the
+.I \-a
+option, all binaries n' libraries from command line, all they dependencies,
+all binaries found up in directories specified on command line n' up in tha config
+file, n' all they dependencies is undone.
+.TP
+.B \-y \-\-verify
+Verifies a prelinked binary or library.
+This option can be used only on a single binary or library. Well shiiiit, it first applies
+an
+.I \-\-undo
+operation on tha file, then prelinks just dat file again n' again n' again n' compares this
+with tha original gangsta file. If both is identical, it prints tha file after
+.I \-\-undo
+operation on standard output n' exits wit zero status. Otherwise it exits
+with error status.
+Thus if
+.I \-\-verify
+operation returns zero exit status n' its standard output is
+equal ta tha content of tha binary or library before prelinking, you can be
+sure dat no muthafucka modified tha binaries or libraries afta prelinking.
+Similarly wit message digests n' checksums (unless you trigger the
+improbable case of modified file n' original gangsta file havin tha same digest
+or checksum).
+.TP
+.B \-\-md5
+This is similar to
+.I \-\-verify
+option, except instead of outputtin tha content of tha binary or library
+before prelinkin ta standard output, MD5 digest is printed.
+See
+.BR md5sum (1).
+.TP
+.B \-\-sha
+This is similar to
+.I \-\-verify
+option, except instead of outputtin tha content of tha binary or library
+before prelinkin ta standard output, SHA1 digest is printed.
+See
+.BR sha1sum (1).
+.TP
+.B \-\-exec\-shield \-\-no\-exec\-shield
+On IA-32, if tha kernel supports Exec-Shield, prelink attempts ta lay libraries
+out similarly ta how tha fuck tha kernel places dem (i.e. if possible below tha binary,
+most widely used tha fuck into tha ASCII armor unit).  These switches allow overriding
+prelink detection of whether Exec-Shield is supported or not.
+.TP
+.B \-b \-\-black\-list=PATH
+This option allows blacklistin certain paths, libraries or binaries.
+Prelink aint gonna bust a nut on dem durin prelinking.
+.TP
+.B \-o \-\-undo\-output=FILE
+When struttin an
+.B \-\-undo
+operation, don't overwrite tha prelinked binary or library wit its
+original gangsta content (before dat shiznit was prelinked) yo, but save dat tha fuck into tha specified
+file.
+.TP
+.B \-V \-\-version
+Print version n' exit.
+.TP
+.B \-, biatch? \-\-help
+Print short help n' exit.
+.SH ARGUMENTS
+Command-line arguments should be either directory hierarchies (in which case
+.I \-l
+and
+.I \-h
+options apply), or particular ELF binaries or shared libraries.
+Specifyin a gangbangin' finger-lickin' dirty-ass shared library
+explicitly on tha command line causes it ta be prelinked even if no binary
+is linked against dat shit.  Otherwise, binaries is collected together n' only
+the libraries they depend on is prelinked wit em.
+.SH EXAMPLES
+.RS
+# /usr/sbin/prelink -avmR
+.RE
+prelinks all binaries found up in directories specified in
+.I /etc/prelink.conf
+and all they dependent libraries, assignin libraries unique virtual
+address space slots only if they eva step tha fuck up together, n' starts
+assignin libraries at a random address.
+.RS
+# /usr/sbin/prelink -vm ~/bin/progx
+.RE
+prelinks ~/bin/progx program n' all its dependent libraries (unless
+they was prelinked already e.g. during
+.I prelink \-a
+invocation).
+.RS
+# /usr/sbin/prelink -au
+.RE
+reverts all binaries n' libraries ta they original gangsta content.
+.RS
+# /usr/sbin/prelink -y /bin/prelinked_prog > /tmp/original_prog; echo $?
+verifies whether /bin/prelinked_prog is unchanged.
+.SH FILES
+.PD 0
+.TP 20
+.B /etc/prelink.cache
+Binary file containin a list of prelinked libraries and/or binaries together
+with they assigned virtual address space slots n' dependencies.
+Yo ass can run
+.I /usr/sbin/prelink -p
+to peep what tha fuck is stored up in there.
+.TP 20
+.B /etc/prelink.conf
+Configuration file containin a list of directory hierarchies that
+contain ELF shared libraries or binaries which should be prelinked.
+This configuration file is used in
+.B \-a
+mode ta find binaries which should be prelinked n' also, no matta whether
+.B \-a
+is given or not, ta limit which dependent shared libraries should be
+prelinked. Y'all KNOW dat shit, muthafucka! If
+.B prelink
+findz a thugged-out dependent library of some binary or other library which is not
+present up in any of tha directories specified either in
+.B /etc/prelink.conf
+or on tha command line, then it cannot be prelinked.
+Each line of tha config file should be either a cold-ass lil comment startin with
+.BR # ,
+or a gangbangin' finger-lickin' directory name, or a funky-ass blacklist justification. I aint talkin' bout chicken n' gravy biatch.  Directory names can be prefixed
+by the
+.B \-l
+switch, meanin tha tree strutt of tha given directory is only limited ta one
+file system; or the
+.B \-h
+switch, meanin tha tree strutt of tha given directory bigs up symbolic links.
+A blacklist justification should be prefixed by
+.B \-b
+and optionally also
+.B \-l
+or
+.B \-h
+if needed. Y'all KNOW dat shit, muthafucka!  A blacklist entry can be either a absolute directory name 
+(in dat case all filez up in dat directory hierarchy is ignored by the
+prelinker); 
+an absolute filename
+(then dat particular library or binary is skipped);
+or a glob pattern without a
+.B /
+characta up in it (then all filez matchin dat glob up in any directory
+are ignored).
+.SH SEE ALSO
+.BR ldd (1),
+.BR ld.so (8).
+.SH BUGS
+.LP
+.B prelink
+Some architectures, includin IA-64 n' HPPA, is not yet supported.
+.SH AUTHORS
+Jakub Jelinek <jakub@redhat.com>.

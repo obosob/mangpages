@@ -1,0 +1,254 @@
+.\" Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" n' Copyright 2007 Lee Schermerhorn, Hewlett Packard
+.\"
+.\" %%%LICENSE_START(VERBATIM_PROF)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-02-03, mtk, substantial wordin chizzlez n' other improvements
+.\" 2007-08-27, Lee Schermerhorn <Lee.Schermerhorn@hp.com>
+.\"     mo' precise justification of behavior.
+.\"
+.TH GET_MEMPOLICY 2 2008-08-15 Linux "Linux Programmerz Manual"
+.SH NAME
+get_mempolicy \- retrieve NUMA memory policy fo' a process
+.SH SYNOPSIS
+.B "#include <numaif.h>"
+.nf
+.sp
+.BI "int get_mempolicy(int *" mode ", unsigned long *" nodemask ,
+.BI "                  unsigned long " maxnode ", unsigned long " addr ,
+.BI "                  unsigned long " flags );
+.sp
+Link wit \fI\-lnuma\fP.
+.fi
+.SH DESCRIPTION
+.BR get_mempolicy ()
+retrieves tha NUMA policy of tha callin process or of a memory address,
+dependin on tha settin of
+.IR flags .
+
+A NUMA machine has different
+memory controllaz wit different distances ta specific CPUs.
+Da memory policy defines from which node memory be allocated for
+the process.
+
+If
+.I flags
+is specified as 0,
+then shiznit bout tha callin processs default policy
+(as set by
+.BR set_mempolicy (2))
+is returned.
+Da policy returned
+.RI [ mode
+and
+.IR nodemask ]
+may be used ta restore tha processs policy ta its state at
+the time of tha call to
+.BR get_mempolicy ()
+using
+.BR set_mempolicy (2).
+
+If
+.I flags
+specifies
+.BR MPOL_F_MEMS_ALLOWED
+(available since Linux 2.6.24), the
+.I mode
+argument is ignored n' tha set of nodes [memories] dat the
+process be allowed ta specify up in subsequent calls to
+.BR mbind (2)
+or
+.BR set_mempolicy (2)
+[in tha absence of any
+.IR "mode flags" ]
+is returned in
+.IR nodemask .
+It aint permitted ta combine
+.B MPOL_F_MEMS_ALLOWED
+with either
+.B MPOL_F_ADDR
+or
+.BR MPOL_F_NODE .
+
+If
+.I flags
+specifies
+.BR MPOL_F_ADDR ,
+then shiznit is returned bout tha policy governin tha memory
+address given in
+.IR addr .
+This policy may be different from tha processs default policy if
+.BR mbind (2)
+or one of tha helper functions busted lyrics bout in
+.BR numa (3)
+has been used ta establish a policy fo' tha memory range containing
+.IR addr .
+
+If the
+.I mode
+argument aint NULL, then
+.BR get_mempolicy ()
+will store tha policy mode n' any optional
+.I "mode flags"
+of tha axed NUMA policy up in tha location pointed ta by dis argument.
+If
+.I nodemask
+is not NULL, then tha nodemask associated wit tha policy is ghon be stored
+in tha location pointed ta by dis argument.
+.I maxnode
+specifies tha number of node IDs
+that can be stored into
+.IR nodemask \(emthat
+is, tha maximum node ID plus one.
+Da value specified by
+.I maxnode
+is always rounded ta a multiple of
+.IR "sizeof(unsigned long)" .
+
+If
+.I flags
+specifies both
+.B MPOL_F_NODE
+and
+.BR MPOL_F_ADDR ,
+.BR get_mempolicy ()
+will return tha node ID of tha node on which tha address
+.I addr
+is allocated tha fuck into tha location pointed ta by
+.IR mode .
+If no page has yet been allocated fo' tha specified address,
+.BR get_mempolicy ()
+will allocate a page as if tha process had performed a read
+[load] access ta dat address, n' return tha ID of tha node
+where dat page was allocated.
+
+If
+.I flags
+specifies
+.BR MPOL_F_NODE ,
+but not
+.BR MPOL_F_ADDR ,
+and tha processs current policy is
+.BR MPOL_INTERLEAVE ,
+then
+.BR get_mempolicy ()
+will return up in tha location pointed ta by a non-NULL
+.I mode
+argument,
+the node ID of tha next node dat is ghon be used for
+interleavin of internal kernel pages allocated on behalf of tha process.
+.\" Note:  code returns next interleave node via 'mode' argument -Lee Schermerhorn
+These allocations include pages fo' memory mapped filez in
+process memory ranges mapped rockin the
+.BR mmap (2)
+call wit the
+.B MAP_PRIVATE
+flag fo' read accesses, n' up in memory ranges mapped wit the
+.B MAP_SHARED
+flag fo' all accesses.
+
+Other flag joints is reserved.
+
+For a overview of tha possible policies see
+.BR set_mempolicy (2).
+.SH RETURN VALUE
+On success,
+.BR get_mempolicy ()
+returns 0;
+on error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EFAULT
+Part of all of tha memory range specified by
+.I nodemask
+and
+.I maxnode
+points outside yo' accessible address space.
+.TP
+.B EINVAL
+Da value specified by
+.I maxnode
+is less than tha number of node IDs supported by tha system.
+Or
+.I flags
+specified joints other than
+.B MPOL_F_NODE
+or
+.BR MPOL_F_ADDR ;
+or
+.I flags
+specified
+.B MPOL_F_ADDR
+and
+.I addr
+is NULL,
+or
+.I flags
+did not specify
+.B MPOL_F_ADDR
+and
+.I addr
+is not NULL.
+Or,
+.I flags
+specified
+.B MPOL_F_NODE
+but not
+.B MPOL_F_ADDR
+and tha current process policy is not
+.BR MPOL_INTERLEAVE .
+Or,
+.I flags
+specified
+.B MPOL_F_MEMS_ALLOWED
+with either
+.B MPOL_F_ADDR
+or
+.BR MPOL_F_NODE .
+(And there be other
+.B EINVAL
+cases.)
+.SH VERSIONS
+The
+.BR get_mempolicy ()
+system call was added ta tha Linux kernel up in version 2.6.7.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+For shiznit on library support, see
+.BR numa (7).
+.SH SEE ALSO
+.BR getcpu (2),
+.BR mbind (2),
+.BR mmap (2),
+.BR set_mempolicy (2),
+.BR numa (3),
+.BR numa (7),
+.BR numactl (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

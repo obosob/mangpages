@@ -1,0 +1,391 @@
+.\" Copyright (c) 2003\-2005 Slick Rick Russon.
+.\" Copyright (c) 2003\-2006 Szabolcs Szakacsits.
+.\" Copyright (c) 2004 Per Olofsson.
+.\" This file may be copied under tha termz of tha GNU Public License.
+.\"
+.TH NTFSCLONE 8 "February 2006" "ntfs-3g 2014.2.15"
+.SH NAME
+ntfsclone \- Efficiently clone, image, restore or rescue a NTFS
+.SH SYNOPSIS
+.B ntfsclone
+[\fIOPTIONS\fR]
+.I SOURCE
+.br
+.B ntfsclone \-\-save\-image
+[\fIOPTIONS\fR]
+.I SOURCE
+.br
+.B ntfsclone \-\-restore\-image
+[\fIOPTIONS\fR]
+.I SOURCE
+.br
+.B ntfsclone \-\-metadata
+[\fIOPTIONS\fR]
+.I SOURCE
+.SH DESCRIPTION
+.B ntfsclone
+will efficiently clone (copy, save, backup, restore) or rescue a NTFS
+filesystem ta a sparse file, image, thang (partition) or standard output.
+It works at disk sector level and
+copies only tha used data. Unused disk space becomes zero (clonin to
+sparse file), encoded wit control codes (savin up in special image format),
+left unchanged (clonin ta a gangbangin' finger-lickin' disk/partition) or
+filled wit zeros (clonin ta standard output).
+
+.B ntfsclone
+can be useful ta make backups, a exact snapshot of a NTFS filesystem
+and restore it lata on, or fo' pimpers ta test NTFS read/write
+functionality, shitshoot/investigate users' thangs rockin tha clone
+without tha risk of beatin tha livin shiznit outta tha original gangsta filesystem.
+
+Da clone, if not rockin tha special image format, be a exact copy of the
+original gangsta NTFS filesystem from sector ta sector thus it can be also mounted
+just like tha original gangsta NTFS filesystem.
+For example if you clone ta a gangbangin' file n' tha kernel has loopback thang and
+NTFS support then tha file can be mounted as
+.RS
+.sp
+.B   mount \-t ntfs \-o loop ntfsclone.img /mnt/ntfsclone
+.sp
+.RE
+.SS Windows Cloning
+If you wanna copy, move or restore a system or boot partizzle ta another 
+computer, or ta a gangbangin' finger-lickin' different disk or partizzle (e.g. hda1\->hda2, hda1\->hdb1
+or ta a gangbangin' finger-lickin' different disk sector offset) then yo big-ass booty is ghon need ta take extra care.
+
+Usually, Windows aint gonna be able ta boot, unless you copy, move or restore 
+NTFS ta tha same partizzle which starts all up in tha same sector on tha same type 
+of disk havin tha same BIOS legacy cylinder settin as tha original gangsta 
+partizzle n' disk had.
+
+Da ntfsclone utilitizzle guarantees ta cook up a exact copy of NTFS but it 
+won't deal wit bootin issues. This is by design: ntfsclone be a 
+filesystem, not system utility. Its aim is only NTFS cloning, not Windows 
+clonin yo. Hereby ntfsclone can be used as a straight-up fast n' reliable 
+build block fo' Windows clonin but itself it aint enough.
+.SS Sparse Files
+A file is sparse if it has unallocated blocks (holes). Da reported size of
+such filez is always higher than tha disk space consumed by em.  The
+.BR du
+command can tell tha real disk space used by a sparse file.
+Da holez is always read as zeros fo' realz. All major Linux filesystem like,
+ext2, ext3, reiserfs, Reiser4, JFS n' XFS, supports
+sparse filez but fo' example tha ISO 9600 CD\-ROM filesystem don't.
+.SS Handlin Big-Ass Sparse Files
+Az of todizzle Linux serves up inadequate support fo' managin (tar,
+cp, gzip, gunzip, bzip2, bunzip2, cat, etc) big-ass sparse files.
+Da only main Linux filesystem
+havin support fo' efficient sparse file handlin is XFS by the
+XFS_IOC_GETBMAPX
+.BR ioctl (2) .
+However none of tha common utilitizzles supports dat shit.
+This means when you tar, cp, gzip, bzip2, etc a big-ass sparse file
+they will always read tha entire file, even if you use tha "sparse support"
+options.
+
+.BR bzip2 (1)
+compresses big-ass sparse filez much betta than
+.BR gzip (1)
+but it do so
+also much slower n' shit. Mo'over neither of dem handlez big-ass sparse
+filez efficiently durin uncompression from disk space usage point
+of view.
+
+At present da most thugged-out efficient way, both speed n' space\-wise, to
+compress n' uncompress big-ass sparse filez by common tools
+would be using
+.BR tar (1)
+with tha options
+.B \-S
+(handle sparse filez "efficiently") and
+.B \-j
+(filta tha archive all up in bzip2) fo' realz. Although
+.BR tar
+still readz n' analyses tha entire file, it don't pass on the
+pimpin' data blocks havin only zeros ta filtas n' it also avoids
+writin big-ass amount of zeros ta tha disk needlessly. But since
+.BR tar
+can't create a archive from tha standard input, you can't do this
+in\-place by just reading
+.BR ntfsclone
+standard output. Even mo' sadly, rockin tha \-S option thangs up in dis biatch 
+serious data loss since tha end of 2004 n' tha GNU
+.BR tar
+maintainers didn't release fixed versions until tha present day.
+.SS Da Special Image Format
+It aint nuthin but also possible, straight-up itz recommended, ta save a NTFS filesystem
+to a special image format.
+Instead of representin unallocated blocks as holes, they are
+encoded rockin control codes. Thus, tha image saves space without
+requirin sparse file support. Da image format is ideal fo' streaming
+filesystem images over tha network n' similar, n' can be used as a
+replacement fo' Pimp or Partizzle Image if it is combined wit other
+tools. Da downside is dat you can't mount tha image directly, you
+need ta restore it first.
+
+To save a image rockin tha special image format, use the
+.B \-s
+or the
+.B \-\-save\-image
+option. I aint talkin' bout chicken n' gravy biatch. To restore a image, use the
+.B \-r
+or the
+.B \-\-restore\-image
+option. I aint talkin' bout chicken n' gravy biatch. Note dat you can restore images from standard input by
+usin '\-' as the
+.I SOURCE
+file.
+.SS Metadata\-only Cloning
+One of tha features of
+.BR ntfsclone
+is that, it can also save only tha NTFS metadata rockin tha option
+.B \-m
+or
+.B \-\-metadata
+and tha clone still will be
+mountable. In dis case all non\-metadata file content is ghon be lost and
+readin dem back will result always zeros.
+
+Da metadata\-only image can be compressed hella
+well, probably ta not mo' than 1\-8 MB thus itz easy as fuck  ta transfer
+for investigation, shitshooting.
+
+In dis mode of ntfsclone,
+.B NONE
+of tha userz data is saved, includin tha resident userz data
+embedded tha fuck into metadata fo' realz. All is filled wit zeros.
+Mo'over all tha file timestamps, deleted n' unused spaces inside
+the metadata is filled wit zeros. Thus dis mode is inappropriate
+for example fo' forensic analyses.
+This mode may be combined wit \fB\-\-save\-image\fP ta create a
+special image format file instead of a sparse file.
+
+Please note, filenames is not wiped out. They might contain
+sensitizzle shiznit, so be thinkin twice before bustin  such an
+image ta anybody.
+.SH OPTIONS
+Below be a summary of all tha options that
+.B ntfsclone
+accepts, n' you can put dat on yo' toast.  Nearly all options have two equivalent names.  Da short name is
+preceded by
+.B \-
+and tha long name is preceded by
+.B \-\- .
+Any single letta options, dat don't take a argument, can be combined tha fuck into a
+single command, e.g.
+.B \-fv
+is equivalent to
+.B "\-f \-v" .
+Long named options can be abbreviated ta any unique prefix of they name.
+.TP
+\fB\-o\fR, \fB\-\-output\fR FILE
+Clone NTFS ta tha non\-existent
+.IR FILE .
+If
+.I FILE
+is '\-' then clone ta the
+standard output.
+.TP
+\fB\-O\fR, \fB\-\-overwrite\fR FILE
+Clone NTFS to
+.IR FILE ,
+overwritin if exists.
+.TP
+\fB\-s\fR, \fB\-\-save\-image\fR
+Save ta tha special image format. This is da most thugged-out efficient way space and
+speed\-wise if imagin is done ta tha standard output, e.g. fo' image
+compression, encryption or streamin all up in a network.
+.TP
+\fB\-r\fR, \fB\-\-restore\-image\fR
+Restore from tha special image format specified by
+.I SOURCE
+argument. If the
+.I SOURCE
+is '\-' then tha image is read from tha standard input.
+.TP
+\fB\-n\fR, \fB\-\-no\-action\fR
+Test tha consistency of a saved image by simulatin its restorin without
+writin anything. Da NTFS data contained up in tha image aint tested.
+Da option \fB\-\-restore\-image\fR must also be present, n' tha options
+\fB\-\-output\fR n' \fB\-\-overwrite\fR must be omitted.
+.TP
+\fB\-\-rescue\fR
+Ignore disk read errors so disks havin wack sectors, e.g. dyin disks, can be
+rescued da most thugged-out efficiently way, wit minimal stress on em. Ntfsclone works
+at tha lowest, sector level up in dis mode too thus mo' data can be rescued.
+Da contentz of tha unreadable sectors is filled by characta '?' n' the
+beginnin of such sectors is marked by "BadSectoR\\0".
+.TP
+\fB\-m\fR, \fB\-\-metadata\fR
+Clone
+.B ONLY METADATA
+(for NTFS smart-ass muthafuckas). Only clonin ta a (sparse) file be allowed, unless used
+the option \fB\-\-save\-image\fP be also used.
+Yo ass can't metadata\-only clone ta a thugged-out device.
+.TP
+\fB\-\-ignore\-fs\-check\fR
+Ignore tha result of tha filesystem consistency check. This option be allowed
+to be used only wit the
+.B \-\-metadata
+option, fo' tha safety of userz data. Da clustas which cause the
+inconsistency is saved like a muthafucka.
+.TP
+\fB\-t\fR, \fB\-\-preserve\-timestamps\fR
+Do not wipe tha timestamps, ta be used only wit the
+.B \-\-metadata
+option.
+
+
+.TP
+\fB\-\-new\-serial\fR, or
+.TP
+\fB\-\-new\-half\-serial\fR
+Set a freshly smoked up random serial number ta tha clone. Da serial number be a 64
+bit number used ta identify tha thang durin tha mountin process, so
+it has ta be chizzled ta enable tha original gangsta file system
+and tha clone ta be mounted all up in tha same time on tha same computer.
+
+Da option \fB\-\-new\-half\-serial\fP only chizzlez tha upper part of the
+serial number, keepin tha lower part which is used by Windows unchanged.
+
+Da options \fB\-\-new\-serial\fP n' \fB\-\-new\-half\-serial\fP can
+only be used when clonin a gangbangin' file system of restorin from a image.
+
+Da serial number aint tha volume UUID used by Windows
+to locate filez which done been moved ta another volume.
+
+.TP
+\fB\-f\fR, \fB\-\-force\fR
+Forces ntfsclone ta proceed if tha filesystem is marked
+"dirty" fo' consistency check.
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Do not display any progress-bars durin operation.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show a list of options wit a funky-ass brief description of each one.
+.SH EXIT CODES
+Da exit code is 0 on success, non\-zero otherwise.
+.SH EXAMPLES
+Clone NTFS on /dev/hda1 ta /dev/hdc1:
+.RS
+.sp
+.B ntfsclone \-\-overwrite /dev/hdc1 /dev/hda1
+.sp
+.RE
+Save a NTFS ta a gangbangin' file up in tha special image format:
+.RS
+.sp
+.B ntfsclone \-\-save\-image \-\-output backup.img /dev/hda1
+.sp
+.RE
+Restore a NTFS from a special image file ta its original gangsta partition:
+.RS
+.sp
+.B ntfsclone \-\-restore\-image \-\-overwrite /dev/hda1 backup.img
+.sp
+.RE
+Save a NTFS tha fuck into a cold-ass lil compressed image file:
+.RS
+.sp
+.B ntfsclone \-\-save\-image \-o \- /dev/hda1 | gzip \-c > backup.img.gz
+.sp
+.RE
+Restore a NTFS volume from a cold-ass lil compressed image file:
+.RS
+.sp
+.B gunzip \-c backup.img.gz | \\\\
+.br
+.B ntfsclone \-\-restore\-image \-\-overwrite /dev/hda1 \-
+.sp
+.RE
+Backup a NTFS volume ta a remote host, rockin ssh. Please note, dat 
+ssh may ask fo' a password!
+.RS
+.sp
+.B ntfsclone \-\-save\-image \-\-output \- /dev/hda1 | \\\\
+.br
+.B gzip \-c | ssh host 'cat > backup.img.gz'
+.sp
+.RE
+Restore a NTFS volume from a remote host via ssh. Please note, dat 
+ssh may ask fo' a password!
+.RS
+.sp
+.B ssh host 'cat backup.img.gz' | gunzip \-c | \\\\
+.br
+.B ntfsclone \-\-restore\-image \-\-overwrite /dev/hda1 \-
+.sp
+.RE
+Stream a image file from a wizzy server n' restore it ta a partition:
+.RS
+.sp
+.B wget \-qO \- http://server/backup.img | \\\\
+.br
+.B ntfsclone \-\-restore\-image \-\-overwrite /dev/hda1 \-
+.sp
+.RE
+Clone a NTFS volume ta a non\-existent file:
+.RS
+.sp
+.B ntfsclone \-\-output ntfs\-clone.img /dev/hda1
+.sp
+.RE
+Pack NTFS metadata fo' NTFS smart-ass muthafuckas. Please note dat bzip2 runs
+very long but thangs up in dis biatch probably at least 10 times smalla archives 
+than gzip on a sparse file.
+.RS
+.sp
+.B ntfsclone \-\-metadata \-\-output ntfsmeta.img /dev/hda1
+.br
+.B bzip2 ntfsmeta.img
+.sp
+Or, outputtin ta a cold-ass lil compressed image :
+.br
+.B ntfsclone \-mst \-\-output - /dev/hda1 | bzip2 > ntfsmeta.bz2
+.sp
+.RE
+Unpackin NTFS metadata tha fuck into a sparse file:
+.RS
+.sp
+.B bunzip2 \-c ntfsmeta.img.bz2 | \\\\
+.br
+.B cp \-\-sparse=always /proc/self/fd/0 ntfsmeta.img
+.sp
+.RE
+.SH KNOWN ISSUES
+There is no known problems with
+.BR ntfsclone .
+If you be thinkin you have found a problem then please bust a email describin it
+to tha pimpment crew:
+.nh
+ntfs\-3g\-devel@lists.sf.net
+.hy
+.sp
+Sometimes it might step tha fuck up ntfsclone froze if tha clone is on ReiserFS
+and even CTRL\-C won't stop dat shit. This aint a funky-ass bug up in ntfsclone, however
+itz cuz of ReiserFS bein mad inefficient bustin large
+sparse filez n' not handlin signals durin dis operation. I aint talkin' bout chicken n' gravy biatch. This
+ReiserFS problem was improved up in kernel 2.4.22.
+XFS, JFS n' ext3 aint gots dis problem.
+.hy
+.SH AUTHORS
+.B ntfsclone
+was freestyled by Szabolcs Szakacsits wit contributions from Per Olofsson 
+(special image format support) n' Anton Altaparmakov.
+Dat shiznit was ported ta ntfs-3g by Erik Larsson n' Jean-Pierre Andre.
+.SH AVAILABILITY
+.B ntfsclone
+is part of the
+.B ntfs-3g
+package n' be available at:
+.br
+.nh
+http://www.tuxera.com/community/
+.hy
+.SH SEE ALSO
+.BR ntfsresize (8)
+.BR ntfsprogs (8)
+.BR xfs_copy (8)
+.BR debugreiserfs (8)
+.BR e2image (8)

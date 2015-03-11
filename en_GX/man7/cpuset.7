@@ -1,0 +1,1512 @@
+.\" Copyright (c) 2008 Silicon Graphics, Inc.
+.\"
+.\" Author: Pizzle Jackson (http://oss.sgi.com/projects/cpusets)
+.\"
+.\" %%%LICENSE_START(GPLv2_MISC)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License
+.\" version 2 as published by tha Jacked Software Foundation.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.TH CPUSET 7 2013-02-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+cpuset \- confine processes ta processor n' memory node subsets
+.SH DESCRIPTION
+Da cpuset file system be a pseudo-file-system intercourse
+to tha kernel cpuset mechanism,
+which is used ta control tha processor placement
+and memory placement of processes.
+It be commonly mounted at
+.IR /dev/cpuset .
+.PP
+On systems wit kernels compiled wit built up in support fo' cpusets,
+all processes is attached ta a cold-ass lil cpuset, n' cpusets is always present.
+If a system supports cpusets, then it gonna git tha entry
+.B nodev cpuset
+in tha file
+.IR /proc/filesystems .
+By mountin tha cpuset file system (see the
+.B EXAMPLE
+section below),
+the administrator can configure tha cpusets on a system
+to control tha processor n' memory placement of processes
+on dat system.
+By default, if tha cpuset configuration
+on a system aint modified or if tha cpuset file
+system aint even mounted, then tha cpuset mechanism,
+though present, has no affect on tha systemz behavior.
+.PP
+A cpuset defines a list of CPUs n' memory nodes.
+.PP
+Da CPUz of a system include all tha logical processing
+units on which a process can execute, including, if present,
+multiple processor cores within a package n' Hyper-Threads
+within a processor core.
+Memory nodes include all distinct
+bankz of main memory; lil' small-ass n' SMP systems typically have
+just one memory node dat gotz nuff all tha systemz main memory,
+while NUMA (non-uniform memory access) systems have multiple memory nodes.
+.PP
+Cpusets is represented as directories up in a hierarchical
+pseudo-file system, where tha top directory up in tha hierarchy
+.RI ( /dev/cpuset )
+represents tha entire system (all online CPUs n' memory nodes)
+and any cpuset dat is tha lil pimp (descendant) of
+another parent cpuset gotz nuff a subset of dat parent's
+CPUs n' memory nodes.
+Da directories n' filez representin cpusets have normal
+file-system permissions.
+.PP
+Every process up in tha system belongs ta exactly one cpuset.
+A process is confined ta run only on tha CPUs in
+the cpuset it belongs to, n' ta allocate memory only
+on tha memory nodes up in dat cpuset.
+When a process
+.BR fork (2)s,
+the lil pimp process is placed up in tha same cpuset as its parent.
+With sufficient privilege, a process may be moved from one
+cpuset ta another n' tha allowed CPUs n' memory nodes
+of a existin cpuset may be chizzled.
+.PP
+When tha system begins booting, a single cpuset is
+defined dat includes all CPUs n' memory nodes on the
+system, n' all processes is up in dat cpuset.
+Durin tha boot process, or lata durin aiiight system operation,
+other cpusets may be pimped, as subdirectoriez of dis top cpuset,
+under tha control of tha system administrator,
+and processes may be placed up in these other cpusets.
+.PP
+Cpusets is integrated wit the
+.BR sched_setaffinitizzle (2)
+schedulin affinitizzle mechanizzle n' the
+.BR mbind (2)
+and
+.BR set_mempolicy (2)
+memory-placement mechanizzlez up in tha kernel.
+Neither of these mechanizzlez let a process make use
+of a CPU or memory node dat aint allowed by dat processs cpuset.
+If chizzlez ta a processs cpuset placement conflict wit these
+other mechanisms, then cpuset placement is enforced
+even if it means overridin these other mechanisms.
+Da kernel accomplishes dis overridin by silently
+restrictin tha CPUs n' memory nodes axed by
+these other mechanizzlez ta dem allowed by the
+invokin processs cpuset.
+This can result up in these
+other calls returnin a error, if fo' example, such
+a call endz up requestin a empty set of CPUs or
+memory nodes, afta dat request is restricted to
+the invokin processs cpuset.
+.PP
+Typically, a cold-ass lil cpuset is used ta manage
+the CPU n' memory-node confinement fo' a set of
+cooperatin processes like fuckin a funky-ass batch schedula thang, n' these
+other mechanizzlez is used ta manage tha placement of
+individual processes or memory regions within dat set or thang.
+.SH FILES
+Each directory below
+.I /dev/cpuset
+represents a cold-ass lil cpuset n' gotz nuff a gangbangin' fixed set of pseudo-files
+describin tha state of dat cpuset.
+.PP
+New cpusets is pimped rockin the
+.BR mkdir (2)
+system call or the
+.BR mkdir (1)
+command.
+Da propertizzlez of a cold-ass lil cpuset, like fuckin its flags, allowed
+CPUs n' memory nodes, n' attached processes, is queried n' modified
+by readin or freestylin ta tha appropriate file up in dat cpusetz directory,
+as listed below.
+.PP
+Da pseudo-filez up in each cpuset directory is automatically pimped when
+the cpuset is pimped, as a result of the
+.BR mkdir (2)
+invocation.
+It aint possible ta directly add or remove these pseudo-files.
+.PP
+A cpuset directory dat gotz nuff no lil pimp cpuset directories,
+and has no attached processes, can be removed using
+.BR rmdir (2)
+or
+.BR rmdir (1).
+It aint necessary, or possible,
+to remove tha pseudo-filez inside tha directory before removin dat shit.
+.PP
+Da pseudo-filez up in each cpuset directory are
+small text filez dat may be read and
+written rockin traditionizzle shell utilitizzles such as
+.BR pussaaaaay (1),
+and
+.BR echo (1),
+or from a program by rockin file I/O library functions or system calls,
+such as
+.BR open (2),
+.BR read (2),
+.BR write (2),
+and
+.BR close (2).
+.PP
+Da pseudo-filez up in a cold-ass lil cpuset directory represent internal kernel
+state n' aint gots any persistent image on disk.
+Each of these per-cpuset filez is listed n' busted lyrics bout below.
+.\" ====================== tasks ======================
+.TP
+.I tasks
+List of tha process IDs (PIDs) of tha processes up in dat cpuset.
+Da list is formatted as a seriez of ASCII
+decimal numbers, each followed by a newline.
+A process may be added ta a cold-ass lil cpuset (automatically removing
+it from tha cpuset dat previously contained it) by freestylin its
+PID ta dat cpuset's
+.I tasks
+file (with or without a trailin newline.)
+
+.B Warning:
+only one PID may be freestyled ta the
+.I tasks
+file at a time.
+If a strang is freestyled dat gotz nuff more
+than one PID, only tha straight-up original gangsta one is ghon be used.
+.\" =================== notify_on_release ===================
+.TP
+.I notify_on_release
+Flag (0 or 1).
+If set (1), dat cpuset will receive special handling
+afta it is busted out, dat is, afta all processes cease using
+it (i.e., terminizzle or is moved ta a gangbangin' finger-lickin' different cpuset)
+and all lil pimp cpuset directories done been removed.
+See tha \fBNotify On Release\fR section, below.
+.\" ====================== cpus ======================
+.TP
+.I cpuset.cpus
+List of tha physical numberz of tha CPUs on which processes
+in dat cpuset is allowed ta execute.
+See \fBList Format\fR below fo' a thugged-out description of the
+format of
+.IR cpus .
+
+Da CPUs allowed ta a cold-ass lil cpuset may be chizzled by
+writin a freshly smoked up list ta its
+.I cpus
+file.
+.\" ==================== cpu_exclusive ====================
+.TP
+.I cpuset.cpu_exclusive
+Flag (0 or 1).
+If set (1), tha cpuset has exclusive use of
+its CPUs (no siblin or cousin cpuset may overlap CPUs).
+By default dis is off (0).
+Newly pimped cpusets also initially default dis ta off (0).
+
+Two cpusets are
+.I sibling
+cpusets if they share tha same parent cpuset up in the
+.I /dev/cpuset
+hierarchy.
+Two cpusets are
+.I cousin
+cpusets if neither is tha ancestor of tha other.
+Regardless of the
+.I cpu_exclusive
+setting, if one cpuset is tha ancestor of another,
+and if both of these cpusets have nonempty
+.IR cpus ,
+then their
+.I cpus
+must overlap, cuz the
+.I cpus
+of any cpuset is always a subset of the
+.I cpus
+of its parent cpuset.
+.\" ====================== mems ======================
+.TP
+.I cpuset.mems
+List of memory nodes on which processes up in dis cpuset are
+allowed ta allocate memory.
+See \fBList Format\fR below fo' a thugged-out description of the
+format of
+.IR mems .
+.\" ==================== mem_exclusive ====================
+.TP
+.I cpuset.mem_exclusive
+Flag (0 or 1).
+If set (1), tha cpuset has exclusive use of
+its memory nodes (no siblin or cousin may overlap).
+Also if set (1), tha cpuset be a \fBHardwall\fR cpuset (see below.)
+By default dis is off (0).
+Newly pimped cpusets also initially default dis ta off (0).
+
+Regardless of the
+.I mem_exclusive
+setting, if one cpuset is tha ancestor of another,
+then they memory nodes must overlap, cuz tha memory
+nodez of any cpuset is always a subset of tha memory nodes
+of dat cpusetz parent cpuset.
+.\" ==================== mem_hardwall ====================
+.TP
+.IR cpuset.mem_hardwall " (since Linux 2.6.26)"
+Flag (0 or 1).
+If set (1), tha cpuset be a \fBHardwall\fR cpuset (see below.)
+Unlike \fBmem_exclusive\fR,
+there is no constraint on whether cpusets
+marked \fBmem_hardwall\fR may have overlapping
+memory nodes wit siblin or cousin cpusets.
+By default dis is off (0).
+Newly pimped cpusets also initially default dis ta off (0).
+.\" ==================== memory_migrate ====================
+.TP
+.IR cpuset.memory_migrate " (since Linux 2.6.16)"
+Flag (0 or 1).
+If set (1), then memory migration is enabled.
+By default dis is off (0).
+See tha \fBMemory Migration\fR section, below.
+.\" ==================== memory_heat ====================
+.TP
+.IR cpuset.memory_heat " (since Linux 2.6.16)"
+A measure of how tha fuck much memory heat tha processes up in this
+cpuset is causing.
+See tha \fBMemory Pressure\fR section, below.
+Unless
+.I memory_pressure_enabled
+is enabled, always has value zero (0).
+This file is read-only.
+See the
+.B WARNINGS
+section, below.
+.\" ================= memory_pressure_enabled =================
+.TP
+.IR cpuset.memory_pressure_enabled " (since Linux 2.6.16)"
+Flag (0 or 1).
+This file is present only up in tha root cpuset, normally
+.IR /dev/cpuset .
+If set (1), the
+.I memory_pressure
+calculations is enabled fo' all cpusets up in tha system.
+By default dis is off (0).
+See the
+\fBMemory Pressure\fR section, below.
+.\" ================== memory_spread_page ==================
+.TP
+.IR cpuset.memory_spread_page " (since Linux 2.6.17)"
+Flag (0 or 1).
+If set (1), pages up in tha kernel page cache
+(file-system buffers) is uniformly spread across tha cpuset.
+By default dis is off (0) up in tha top cpuset,
+and inherited from tha parent cpuset in
+newly pimped cpusets.
+See tha \fBMemory Spread\fR section, below.
+.\" ================== memory_spread_slab ==================
+.TP
+.IR cpuset.memory_spread_slab " (since Linux 2.6.17)"
+Flag (0 or 1).
+If set (1), tha kernel slab caches
+for file I/O (directory n' inode structures) are
+uniformly spread across tha cpuset.
+By default dis is off (0) up in tha top cpuset,
+and inherited from tha parent cpuset in
+newly pimped cpusets.
+See tha \fBMemory Spread\fR section, below.
+.\" ================== sched_load_balizzle ==================
+.TP
+.IR cpuset.sched_load_balizzle " (since Linux 2.6.24)"
+Flag (0 or 1).
+If set (1, tha default) tha kernel will
+automatically load balizzle processes up in dat cpuset over
+the allowed CPUs up in dat cpuset.
+If cleared (0) the
+kernel will avoid load balancin processes up in dis cpuset,
+.I unless
+some other cpuset wit overlappin CPUs has its
+.I sched_load_balance
+flag set.
+See \fBSchedula Load Balancing\fR, below, fo' further details.
+.\" ================== sched_relax_domain_level ==================
+.TP
+.IR cpuset.sched_relax_domain_level " (since Linux 2.6.26)"
+Integer, between \-1 n' a lil' small-ass positizzle value.
+The
+.I sched_relax_domain_level
+controls tha width of tha range of CPUs over which tha kernel scheduler
+performs immediate rebalancin of runnable tasks across CPUs.
+If
+.I sched_load_balance
+is disabled, then tha settin of
+.I sched_relax_domain_level
+does not matter, as no such load balancin is done.
+If
+.I sched_load_balance
+is enabled, then tha higher tha value of the
+.IR sched_relax_domain_level ,
+the wider
+the range of CPUs over which immediate load balancin be attempted.
+See \fBSchedula Relax Domain Level\fR, below, fo' further details.
+.\" ================== proc cpuset ==================
+.PP
+In addizzle ta tha above pseudo-filez up in each directory below
+.IR /dev/cpuset ,
+each process has a pseudo-file,
+.IR /proc/<pid>/cpuset ,
+that displays tha path of tha processs cpuset directory
+relatizzle ta tha root of tha cpuset file system.
+.\" ================== proc status ==================
+.PP
+Also the
+.I /proc/<pid>/status
+file fo' each process has four added lines,
+displayin tha process's
+.I Cpus_allowed
+(on which CPUs it may be scheduled) and
+.I Mems_allowed
+(on which memory nodes it may obtain memory),
+in tha two formats \fBMask Format\fR n' \fBList Format\fR (see below)
+as shown up in tha followin example:
+.PP
+.RS
+.nf
+Cpus_allowed:   ffffffff,ffffffff,ffffffff,ffffffff
+Cpus_allowed_list:     0-127
+Mems_allowed:   ffffffff,ffffffff
+Mems_allowed_list:     0-63
+.fi
+.RE
+.PP
+Da "allowed" fieldz was added up in Linux 2.6.24;
+the "allowed_list" fieldz was added up in Linux 2.6.26.
+.\" ================== EXTENDED CAPABILITIES ==================
+.SH EXTENDED CAPABILITIES
+In addizzle ta controllin which
+.I cpus
+and
+.I mems
+a process be allowed ta use, cpusets provide tha following
+extended capabilities.
+.\" ================== Exclusive Cpusets ==================
+.SS Exclusive cpusets
+If a cold-ass lil cpuset is marked
+.I cpu_exclusive
+or
+.IR mem_exclusive ,
+no other cpuset, other than a gangbangin' finger-lickin' direct ancestor or descendant,
+may share any of tha same CPUs or memory nodes.
+.PP
+A cpuset dat is
+.I mem_exclusive
+restricts kernel allocations for
+buffer cache pages n' other internal kernel data pages
+commonly shared by tha kernel across
+multiple users.
+All cpusets, whether
+.I mem_exclusive
+or not, restrict allocationz of memory fo' user space.
+This enablez configurin a
+system so dat nuff muthafuckin independent thangs can share common kernel data,
+while isolatin each thangz user allocation in
+its own cpuset.
+To do this, construct a large
+.I mem_exclusive
+cpuset ta hold all tha thangs, n' construct child,
+.RI non- mem_exclusive
+cpusets fo' each individual thang.
+Only a lil' small-ass amount of kernel memory,
+like fuckin requests from interrupt handlezs, be allowed ta be
+placed on memory nodes
+outside even a
+.I mem_exclusive
+cpuset.
+.\" ================== Hardwall ==================
+.SS Hardwall
+A cpuset dat has
+.I mem_exclusive
+or
+.I mem_hardwall
+set be a
+.I hardwall
+cpuset.
+A
+.I hardwall
+cpuset restricts kernel allocations fo' page, buffer,
+and other data commonly shared by tha kernel across multiple users.
+All cpusets, whether
+.I hardwall
+or not, restrict allocationz of memory fo' user space.
+.PP
+This enablez configurin a system so dat nuff muthafuckin independent
+jobs can share common kernel data, like fuckin file system pages,
+while isolatin each thangz user allocation up in its own cpuset.
+To do this, construct a large
+.I hardwall
+cpuset ta hold
+all tha thangs, n' construct lil pimp cpusets fo' each individual
+job which is not
+.I hardwall
+cpusets.
+.PP
+Only a lil' small-ass amount of kernel memory, like fuckin requests from
+interrupt handlezs, be allowed ta be taken outside even a
+.I hardwall
+cpuset.
+.\" ================== Notify On Release ==================
+.SS Notify on release
+If the
+.I notify_on_release
+flag is enabled (1) up in a cold-ass lil cpuset,
+then whenever tha last process up in tha cpuset leaves
+(exits or attaches ta some other cpuset)
+and tha last lil pimp cpuset of dat cpuset is removed,
+the kernel will run tha command
+.IR /sbin/cpuset_release_agent ,
+supplyin tha pathname (relatizzle ta tha mount point of the
+cpuset file system) of tha abandoned cpuset.
+This enablez automatic removal of abandoned cpusets.
+.PP
+Da default value of
+.I notify_on_release
+in tha root cpuset at system boot is disabled (0).
+Da default value of other cpusets at creation
+is tha current value of they parent's
+.I notify_on_release
+setting.
+.PP
+Da command
+.I /sbin/cpuset_release_agent
+is invoked, wit tha name
+.RI ( /dev/cpuset
+relatizzle path)
+of tha to-be-released cpuset in
+.IR argv[1] .
+.PP
+Da usual contentz of tha command
+.I /sbin/cpuset_release_agent
+is simply tha shell script:
+.in +4n
+.nf
+
+#!/bin/sh
+rmdir /dev/cpuset/$1
+.fi
+.in
+.PP
+As wit other flag joints below, dis flag can
+be chizzled by freestylin a ASCII
+number 0 or 1 (with optionizzle trailin newline)
+into tha file, ta clear or set tha flag, respectively.
+.\" ================== Memory Pressure ==================
+.SS Memory pressure
+The
+.I memory_pressure
+of a cold-ass lil cpuset serves up a simple per-cpuset hustlin average of
+the rate dat tha processes up in a cold-ass lil cpuset is attemptin ta free up in-use
+memory on tha nodez of tha cpuset ta satisfy additionizzle memory requests.
+.PP
+This enablez batch managers dat is monitorin thangs hustlin up in dedicated
+cpusets ta efficiently detect what tha fuck level of memory heat dat thang
+is causing.
+.PP
+This is useful both on tightly managed systems hustlin a wide mix of
+submitted thangs, which may chizzle ta terminizzle or reprioritize thangs that
+are tryin ta use mo' memory than allowed on tha nodes assigned them,
+and wit tightly coupled, long-running, massively parallel scientific
+computin thangs dat will dramatically fail ta hook up required performance
+goals if they start ta use mo' memory than allowed ta em.
+.PP
+This mechanizzle serves up a straight-up economical way fo' tha batch manager
+to monitor a cold-ass lil cpuset fo' signz of memory pressure.
+It aint nuthin but up ta tha batch manager or other user code ta decide
+what action ta take if it detects signz of memory pressure.
+.PP
+Unless memory heat calculation is enabled by settin tha pseudo-file
+.IR /dev/cpuset/cpuset.memory_pressure_enabled ,
+it aint computed fo' any cpuset, n' readz from any
+.I memory_pressure
+always return zero, as represented by tha ASCII strang "0\en".
+See tha \fBWARNINGS\fR section, below.
+.PP
+A per-cpuset, hustlin average is employed fo' tha followin reasons:
+.IP * 3
+Because dis meta is per-cpuset rather than per-process or per virtual
+memory region, tha system load imposed by a funky-ass batch schedula monitoring
+this metric is sharply reduced on big-ass systems, cuz a scan of
+the tasklist can be avoided on each set of queries.
+.IP *
+Because dis meta be a hustlin average rather than a accumulating
+counter, a funky-ass batch schedula can detect memory heat wit a
+single read, instead of havin ta read n' accumulate thangs up in dis biatch
+for a period of time.
+.IP *
+Because dis meta is per-cpuset rather than per-process,
+the batch schedula can obtain tha key shiznit\(emmemory
+heat up in a cold-ass lil cpuset\(emwith a single read, rather than havin to
+query n' accumulate thangs up in dis biatch over all tha (dynamically changing)
+set of processes up in tha cpuset.
+.PP
+The
+.I memory_pressure
+of a cold-ass lil cpuset is calculated rockin a per-cpuset simple digital filter
+that is kept within tha kernel.
+For each cpuset, dis filta tracks
+the recent rate at which processes attached ta dat cpuset enta the
+kernel direct reclaim code.
+.PP
+Da kernel direct reclaim code is entered whenever a process has to
+satisfy a memory page request by first findin some other page to
+repurpose, cuz of lack of any readily available already free pages.
+Dirty file system pages is repurposed by first freestylin them
+to disk.
+Unmodified file system buffer pages is repurposed
+by simply droppin them, though if dat page is needed again, it
+will gotta be reread from disk.
+.PP
+The
+.I cpuset.memory_pressure
+file serves up a integer number representin tha recent (half-life of
+10 seconds) rate of entries ta tha direct reclaim code caused by any
+process up in tha cpuset, up in unitz of reclaims attempted per second,
+times 1000.
+.\" ================== Memory Spread ==================
+.SS Memory spread
+There is two Boolean flag filez per cpuset dat control where the
+kernel allocates pages fo' tha file-system buffers n' related
+in-kernel data structures.
+They is called
+.I cpuset.memory_spread_page
+and
+.IR cpuset.memory_spread_slab .
+.PP
+If tha per-cpuset Boolean flag file
+.I cpuset.memory_spread_page
+is set, then
+the kernel will spread tha file-system buffers (page cache) evenly
+over all tha nodes dat tha faultin process be allowed ta use, instead
+of preferrin ta put dem pages on tha node where tha process is hustlin.
+.PP
+If tha per-cpuset Boolean flag file
+.I cpuset.memory_spread_slab
+is set,
+then tha kernel will spread some file-system-related slab caches,
+like fuckin dem fo' inodes n' directory entries, evenly over all tha nodes
+that tha faultin process be allowed ta use, instead of preferrin to
+put dem pages on tha node where tha process is hustlin.
+.PP
+Da settin of these flags do not affect tha data segment
+(see
+.BR brk (2))
+or stack segment pagez of a process.
+.PP
+By default, both kindz of memory spreadin is off n' tha kernel
+prefers ta allocate memory pages on tha node local ta where the
+requestin process is hustlin.
+If dat node aint allowed by the
+processs NUMA memory policy or cpuset configuration or if there are
+insufficient free memory pages on dat node, then tha kernel looks
+for tha nearest node dat be allowed n' has sufficient free memory.
+.PP
+When freshly smoked up cpusets is pimped, they inherit tha memory spread settings
+of they parent.
+.PP
+Settin memory spreadin causes allocations fo' tha affected page or
+slab caches ta ignore tha processs NUMA memory policy n' be spread
+instead.
+But fuck dat shiznit yo, tha word on tha street is dat tha effect of these chizzlez up in memory placement
+caused by cpuset-specified memory spreadin is hidden from the
+.BR mbind (2)
+or
+.BR set_mempolicy (2)
+calls.
+These two NUMA memory policy calls always step tha fuck up ta behave as if
+no cpuset-specified memory spreadin is up in effect, even if it is.
+If cpuset memory spreadin is subsequently turned off, tha NUMA
+memory policy most recently specified by these calls be automatically
+reapplied.
+.PP
+Both
+.I cpuset.memory_spread_page
+and
+.I cpuset.memory_spread_slab
+are Boolean flag files.
+By default they contain "0", meanin dat tha feature is off
+for dat cpuset.
+If a "1" is freestyled ta dat file, dat turns tha named feature on.
+.PP
+Cpuset-specified memory spreadin behaves similarly ta what tha fuck is known
+(in other contexts) as round-robin or interleave memory placement.
+.PP
+Cpuset-specified memory spreadin can provide substantial performance
+improvements fo' thangs that:
+.IP a) 3
+need ta place thread-local data on
+memory nodes close ta tha CPUs which is hustlin tha threadz dat most
+frequently access dat data; but also
+.IP b)
+need ta access big-ass file-system data sets dat must ta be spread
+across tha nuff muthafuckin nodes up in tha thangz cpuset up in order ta fit.
+.PP
+Without dis policy,
+the memory allocation across tha nodes up in tha thangz cpuset
+can become straight-up uneven,
+especially fo' thangs dat might have just a single
+thread initializin or readin up in tha data set.
+.\" ================== Memory Migration ==================
+.SS Memory migration
+Normally, under tha default settin (disabled) of
+.IR cpuset.memory_migrate ,
+once a page be allocated (given a physical page
+of main memory) then dat page stays on whatever node it
+was allocated, so long as it remains allocated, even if the
+cpusetz memory-placement policy
+.I mems
+subsequently chizzles.
+.PP
+When memory migration is enabled up in a cold-ass lil cpuset, if the
+.I mems
+settin of tha cpuset is chizzled, then any memory page up in use by any
+process up in tha cpuset dat is on a memory node dat is no longer
+allowed is ghon be migrated ta a memory node dat be allowed.
+.PP
+Furthermore, if a process is moved tha fuck into a cold-ass lil cpuset with
+.I memory_migrate
+enabled, any memory pages it uses dat was on memory nodes allowed
+in its previous cpuset yo, but which is not allowed up in its freshly smoked up cpuset,
+will be migrated ta a memory node allowed up in tha freshly smoked up cpuset.
+.PP
+Da relatizzle placement of a migrated page within
+the cpuset is preserved durin these migration operations if possible.
+For example,
+if tha page was on tha second valid node of tha prior cpuset,
+then tha page is ghon be placed on tha second valid node of tha freshly smoked up cpuset,
+if possible.
+.\" ================== Schedula Load Balancin ==================
+.SS Schedula load balancing
+Da kernel schedula automatically load balances processes.
+If one CPU is underutilized,
+the kernel will look fo' processes on other more
+overloaded CPUs n' move dem processes ta tha underutilized CPU,
+within tha constraintz of such placement mechanizzlez as cpusets and
+.BR sched_setaffinitizzle (2).
+.PP
+Da algorithmic cost of load balancin n' its impact on key shared
+kernel data structures like fuckin tha process list increases mo' than
+linearly wit tha number of CPUs bein balanced.
+For example, it
+costs mo' ta load balizzle across one big-ass set of CPUs than it do
+to balizzle across two smalla setz of CPUs, each of half tha size
+of tha larger set.
+(Da precise relationshizzle between tha number of CPUs bein balanced
+and tha cost of load balancin depends
+on implementation detailz of tha kernel process scheduler, which is
+subject ta chizzle over time, as improved kernel schedula algorithms
+are implemented.)
+.PP
+Da per-cpuset flag
+.I sched_load_balance
+provides a mechanizzle ta suppress dis automatic schedula load
+balancin up in cases where it aint needed n' suppressin it would have
+worthwhile performizzle benefits.
+.PP
+By default, load balancin is done across all CPUs, except them
+marked isolated rockin tha kernel boot time "isolcpus=" argument.
+(See \fBSchedula Relax Domain Level\fR, below, ta chizzle dis default.)
+.PP
+This default load balancin across all CPUs aint well suited to
+the followin two thangs:
+.IP * 3
+On big-ass systems, load balancin across nuff CPUs is expensive.
+If tha system is managed rockin cpusets ta place independent thangs
+on separate setz of CPUs, full load balancin is unnecessary.
+.IP *
+Systems supportin real-time on some CPUs need ta minimize
+system overhead on dem CPUs, includin avoidin process load
+balancin if dat aint needed.
+.PP
+When tha per-cpuset flag
+.I sched_load_balance
+is enabled (the default setting),
+it requests load balancin across
+all tha CPUs up in dat cpusetz allowed CPUs,
+ensurin dat load balancin can move a process (not otherwise pinned,
+as by
+.BR sched_setaffinitizzle (2))
+from any CPU up in dat cpuset ta any other.
+.PP
+When tha per-cpuset flag
+.I sched_load_balance
+is disabled, then the
+schedula will avoid load balancin across tha CPUs up in dat cpuset,
+\fIexcept\fR up in so far as is necessary cuz some overlappin cpuset
+has
+.I sched_load_balance
+enabled.
+.PP
+So, fo' example, if tha top cpuset has tha flag
+.I sched_load_balance
+enabled, then tha schedula will load balizzle across all
+CPUs, n' tha settin of the
+.I sched_load_balance
+flag up in other cpusets has no effect,
+as we already straight-up load balancing.
+.PP
+Therefore up in tha above two thangs, tha flag
+.I sched_load_balance
+should be disabled up in tha top cpuset, n' only a shitload of tha smaller,
+child cpusets would have dis flag enabled.
+.PP
+When bustin this, you don't probably wanna leave any unpinned processes in
+the top cpuset dat might use nontrivial amountz of CPU, as such processes
+may be artificially constrained ta some subset of CPUs, dependin on
+the particularz of dis flag settin up in descendant cpusets.
+Even if such a process could use spare CPU cyclez up in some other CPUs,
+the kernel schedula might not consider tha possibilitizzle of
+load balancin dat process ta tha underused CPU.
+.PP
+Of course, processes pinned ta a particular CPU can be left up in a cold-ass lil cpuset
+that disables
+.I sched_load_balance
+as dem processes aren't goin anywhere else anyway.
+.\" ================== Schedula Relax Domain Level ==================
+.SS Schedula chillax domain level
+Da kernel schedula performs immediate load balancin whenever
+a CPU becomes free or another task becomes runnable.
+This load
+balancin works ta ensure dat as nuff CPUs as possible is usefully
+employed hustlin tasks.
+Da kernel also performs periodic load
+balancin off tha software clock busted lyrics bout in
+.IR time (7).
+Da settin of
+.I sched_relax_domain_level
+applies only ta immediate load balancing.
+Regardless of the
+.I sched_relax_domain_level
+setting, periodic load balancin be attempted over all CPUs
+(unless disabled by turnin off
+.IR sched_load_balizzle .)
+In any case, of course, tasks is ghon be scheduled ta run only on
+CPUs allowed by they cpuset, as modified by
+.BR sched_setaffinitizzle (2)
+system calls.
+.PP
+On lil' small-ass systems, like fuckin dem wit just all dem CPUs, immediate load
+balancin is useful ta improve system interactivitizzle n' ta minimize
+wasteful idle CPU cycles.
+But on big-ass systems, attemptin immediate
+load balancin across a big-ass number of CPUs can be mo' costly than
+it is worth, dependin on tha particular performizzle characteristics
+of tha thang mix n' tha hardware.
+.PP
+Da exact meanin of tha lil' small-ass integer joints of
+.I sched_relax_domain_level
+will depend on internal
+implementation detailz of tha kernel schedula code n' on the
+non-uniform architecture of tha hardware.
+Both of these will evolve
+over time n' vary by system architecture n' kernel version.
+.PP
+Az of dis writing, when dis capabilitizzle was introduced up in Linux
+2.6.26, on certain ghettofab architectures, tha positizzle joints of
+.I sched_relax_domain_level
+have tha followin meanings.
+.sp
+.PD 0
+.IP \fB(1)\fR 4
+Perform immediate load balancin across Hyper-Thread
+siblings on tha same core.
+.IP \fB(2)\fR
+Perform immediate load balancin across other cores up in tha same package.
+.IP \fB(3)\fR
+Perform immediate load balancin across other CPUs
+on tha same node or blade.
+.IP \fB(4)\fR
+Perform immediate load balancin across over several
+(implementation detail) nodes [On NUMA systems].
+.IP \fB(5)\fR
+Perform immediate load balancin across over all CPUs
+in system [On NUMA systems].
+.PD
+.PP
+The
+.I sched_relax_domain_level
+value of zero (0) always means
+don't big-ass up immediate load balancing,
+hence dat load balancin is done only periodically,
+not immediately when a CPU becomes available or another task becomes
+runnable.
+.PP
+The
+.I sched_relax_domain_level
+value of minus one (\-1)
+always means use tha system default value.
+Da system default value can vary by architecture n' kernel version.
+This system default value can be chizzled by kernel
+boot-time "relax_domain_level=" argument.
+.PP
+In tha case of multiple overlappin cpusets which have conflicting
+.I sched_relax_domain_level
+values, then tha highest such value
+applies ta all CPUs up in any of tha overlappin cpusets.
+In such cases,
+the value \fBminus one (\-1)\fR is tha lowest value, overridden by any
+other value, n' tha value \fBzero (0)\fR is tha next lowest value.
+.SH FORMATS
+Da followin formats is used ta represent sets of
+CPUs n' memory nodes.
+.\" ================== Mask Format ==================
+.SS Mask format
+Da \fBMask Format\fR is used ta represent CPU n' memory-node bit masks
+in the
+.I /proc/<pid>/status
+file.
+.PP
+This format displays each 32-bit
+word up in hexadecimal (usin ASCII charactas "0" - "9" n' "a" - "f");
+wordz is filled wit leadin zeros, if required.
+For masks longer than one word, a cold-ass lil comma separator is used between lyrics.
+Lyrics is displayed up in big-endian
+order, which has da most thugged-out dope bit first.
+Da hex digits within a word is also up in big-endian order.
+.PP
+Da number of 32-bit lyrics displayed is tha minimum number needed to
+display all bitz of tha bit mask, based on tha size of tha bit mask.
+.PP
+Examplez of tha \fBMask Format\fR:
+.PP
+.RS
+.nf
+00000001                        # just bit 0 set
+40000000,00000000,00000000      # just bit 94 set
+00000001,00000000,00000000      # just bit 64 set
+000000ff,00000000               # bits 32-39 set
+00000000,000E3862               # 1,5,6,11-13,17-19 set
+.fi
+.RE
+.PP
+A mask wit bits 0, 1, 2, 4, 8, 16, 32, n' 64 set displays as:
+.PP
+.RS
+.nf
+00000001,00000001,00010117
+.fi
+.RE
+.PP
+Da first "1" is fo' bit 64, the
+second fo' bit 32, tha third fo' bit 16, tha fourth fo' bit 8, the
+fifth fo' bit 4, n' tha "7" is fo' bits 2, 1, n' 0.
+.\" ================== List Format ==================
+.SS List format
+Da \fBList Format\fR for
+.I cpus
+and
+.I mems
+is a cold-ass lil comma-separated list of CPU or memory-node
+numbers n' rangez of numbers, up in ASCII decimal.
+.PP
+Examplez of tha \fBList Format\fR:
+.PP
+.RS
+.nf
+0-4,9           # bits 0, 1, 2, 3, 4, n' 9 set
+0-2,7,12-14     # bits 0, 1, 2, 7, 12, 13, n' 14 set
+.fi
+.RE
+.\" ================== RULES ==================
+.SH RULES
+Da followin rulez apply ta each cpuset:
+.IP * 3
+Its CPUs n' memory nodes must be a (possibly equal)
+subset of its parent's.
+.IP *
+It can be marked
+.IR cpu_exclusive
+only if its parent is.
+.IP *
+It can be marked
+.IR mem_exclusive
+only if its parent is.
+.IP *
+If it is
+.IR cpu_exclusive ,
+its CPUs may not overlap any sibling.
+.IP *
+If it is
+.IR memory_exclusive ,
+its memory nodes may not overlap any sibling.
+.\" ================== PERMISSIONS ==================
+.SH PERMISSIONS
+Da permissionz of a cold-ass lil cpuset is determined by tha permissions
+of tha directories n' pseudo-filez up in tha cpuset file system,
+normally mounted at
+.IR /dev/cpuset .
+.PP
+For instance, a process can put itself up in some other cpuset (than
+its current one) if it can write the
+.I tasks
+file fo' dat cpuset.
+This requires execute permission on tha encompassin directories
+and write permission on the
+.I tasks
+file.
+.PP
+An additionizzle constraint be applied ta requests ta place some
+other process up in a cold-ass lil cpuset.
+One process may not attach another to
+a cpuset unless it would have permission ta bust dat process
+a signal (see
+.BR bust a cap up in (2)).
+.PP
+A process may create a cold-ass lil lil pimp cpuset if it can access n' write the
+parent cpuset directory.
+It can modify tha CPUs or memory nodes
+in a cold-ass lil cpuset if it can access dat cpusetz directory (execute
+permissions on tha each of tha parent directories) n' write the
+corresponding
+.I cpus
+or
+.I mems
+file.
+.PP
+There is one minor difference between tha manner up in which these
+permissions is evaluated n' tha manner up in which aiiight file-system
+operation permissions is evaluated.
+Da kernel interprets
+relatizzle pathnames startin at a processs current hustlin directory.
+Even if one is operatin on a cold-ass lil cpuset file, relatizzle pathnames
+are interpreted relatizzle ta tha processs current hustlin directory,
+not relatizzle ta tha processs current cpuset.
+Da only ways that
+cpuset paths relatizzle ta a processs current cpuset can be used are
+if either tha processs current hustlin directory is its cpuset
+(it first did a
+.B cd
+or
+.BR chdir (2)
+to its cpuset directory beneath
+.IR /dev/cpuset ,
+which be a lil' bit unusual)
+or if some user code converts tha relatizzle cpuset path ta a
+full file-system path.
+.PP
+In theory, dis means dat user code should specify cpusets
+usin absolute pathnames, which requires knowin tha mount point of
+the cpuset file system (usually yo, but not necessarily,
+.IR /dev/cpuset ).
+In practice, all user level code dat dis lyricist be aware of
+simply assumes dat if tha cpuset file system is mounted, then
+it is mounted at
+.IR /dev/cpuset .
+Furthermore, it is common practice fo' carefully written
+user code ta verify tha presence of tha pseudo-file
+.I /dev/cpuset/tasks
+in order ta verify dat tha cpuset pseudo-file system
+is currently mounted.
+.\" ================== WARNINGS ==================
+.SH WARNINGS
+.SS Enablin memory_pressure
+By default, tha per-cpuset file
+.I cpuset.memory_pressure
+always gotz nuff zero (0).
+Unless dis feature is enabled by freestylin "1" ta tha pseudo-file
+.IR /dev/cpuset/cpuset.memory_pressure_enabled ,
+the kernel do
+not compute per-cpuset
+.IR memory_heat .
+.SS Usin tha echo command
+When rockin the
+.B echo
+command all up in tha shell prompt ta chizzle tha jointz of cpuset files,
+beware dat tha built-in
+.B echo
+command up in some shells do not display a error message if the
+.BR write (2)
+system call fails.
+.\" Gack!  csh(1)z echo do this
+For example, if tha command:
+.in +4n
+.nf
+
+echo 19 > cpuset.mems
+
+.fi
+.in
+failed cuz memory node 19 was not allowed (like
+the current system aint gots a memory node 19), then the
+.B echo
+command might not display any error.
+It be betta ta use the
+.B /bin/echo
+external command ta chizzle cpuset file settings, as this
+command will display
+.BR write (2)
+errors, as up in tha example:
+.in +4n
+.nf
+
+/bin/echo 19 > cpuset.mems
+/bin/echo: write error: Invalid argument
+.fi
+.in
+.\" ================== EXCEPTIONS ==================
+.SH EXCEPTIONS
+.SS Memory placement
+Not all allocationz of system memory is constrained by cpusets,
+for tha followin reasons.
+.PP
+If hot-plug functionalitizzle is used ta remove all tha CPUs dat are
+currently assigned ta a cold-ass lil cpuset, then tha kernel will automatically
+update the
+.I cpus_allowed
+of all processes attached ta CPUs up in dat cpuset
+to allow all CPUs.
+When memory hot-plug functionalitizzle fo' removing
+memory nodes be available, a similar exception is sposed ta fuckin apply
+there as well.
+In general, tha kernel prefers ta violate cpuset placement,
+rather than starvin a process dat has had all its allowed CPUs or
+memory nodes taken offline.
+User code should reconfigure cpusets ta refer only ta online CPUs
+and memory nodes when rockin hot-plug ta add or remove such resources.
+.PP
+A few kernel-critical, internal memory-allocation requests, marked
+GFP_ATOMIC, must be satisfied immediately.
+Da kernel may drop some
+request or malfunction if one of these allocations fail.
+If such a request cannot be satisfied within tha current processs cpuset,
+then we chillax tha cpuset, n' look fo' memory anywhere we can find dat shit.
+It aint nuthin but betta ta violate tha cpuset than stress tha kernel.
+.PP
+Allocationz of memory axed by kernel drivers while processing
+an interrupt lack any relevant process context, n' is not confined
+by cpusets.
+.SS Renamin cpusets
+Yo ass can use the
+.BR rename (2)
+system call ta rename cpusets.
+Only simple renamin is supported; dat is, changin tha name of a cold-ass lil cpuset
+directory is permitted yo, but movin a gangbangin' finger-lickin' directory into
+a different directory aint permitted.
+.\" ================== ERRORS ==================
+.SH ERRORS
+Da Linux kernel implementation of cpusets sets
+.I errno
+to specify tha reason fo' a gangbangin' failed system call affectin cpusets.
+.PP
+Da possible
+.I errno
+settings n' they meanin when set on
+a failed cpuset call is as listed below.
+.TP
+.B E2BIG
+Attempted a
+.BR write (2)
+on a special cpuset file
+with a length larger than some kernel-determined upper
+limit on tha length of such writes.
+.TP
+.B EACCES
+Attempted to
+.BR write (2)
+the process ID (PID) of a process ta a cold-ass lil cpuset
+.I tasks
+file when one lacks permission ta move dat process.
+.TP
+.B EACCES
+Attempted ta add, using
+.BR write (2),
+a CPU or memory node ta a cold-ass lil cpuset, when dat CPU or memory node was
+not already up in its parent.
+.TP
+.B EACCES
+Attempted ta set, using
+.BR write (2),
+.I cpuset.cpu_exclusive
+or
+.I cpuset.mem_exclusive
+on a cold-ass lil cpuset whose parent lacks tha same ol' dirty setting.
+.TP
+.B EACCES
+Attempted to
+.BR write (2)
+a
+.I cpuset.memory_pressure
+file.
+.TP
+.B EACCES
+Attempted ta create a gangbangin' file up in a cold-ass lil cpuset directory.
+.TP
+.B EBUSY
+Attempted ta remove, using
+.BR rmdir (2),
+a cpuset wit attached processes.
+.TP
+.B EBUSY
+Attempted ta remove, using
+.BR rmdir (2),
+a cpuset wit lil pimp cpusets.
+.TP
+.B EBUSY
+Attempted ta remove
+a CPU or memory node from a cold-ass lil cpuset
+that be also up in a cold-ass lil lil pimp of dat cpuset.
+.TP
+.B EEXIST
+Attempted ta create, using
+.BR mkdir (2),
+a cpuset dat already exists.
+.TP
+.B EEXIST
+Attempted to
+.BR rename (2)
+a cpuset ta a name dat already exists.
+.TP
+.B EFAULT
+Attempted to
+.BR read (2)
+or
+.BR write (2)
+a cpuset file using
+a buffer dat is outside tha freestylin processes accessible address space.
+.TP
+.B EINVAL
+Attempted ta chizzle a cold-ass lil cpuset, using
+.BR write (2),
+in a way dat would violate a
+.I cpu_exclusive
+or
+.I mem_exclusive
+attribute of dat cpuset or any of its siblings.
+.TP
+.B EINVAL
+Attempted to
+.BR write (2)
+an empty
+.I cpuset.cpus
+or
+.I cpuset.mems
+list ta a cold-ass lil cpuset which has attached processes or lil pimp cpusets.
+.TP
+.B EINVAL
+Attempted to
+.BR write (2)
+a
+.I cpuset.cpus
+or
+.I cpuset.mems
+list which included a range wit tha second number smalla than
+the first number.
+.TP
+.B EINVAL
+Attempted to
+.BR write (2)
+a
+.I cpuset.cpus
+or
+.I cpuset.mems
+list which included a invalid characta up in tha string.
+.TP
+.B EINVAL
+Attempted to
+.BR write (2)
+a list ta a
+.I cpuset.cpus
+file dat did not include any online CPUs.
+.TP
+.B EINVAL
+Attempted to
+.BR write (2)
+a list ta a
+.I cpuset.mems
+file dat did not include any online memory nodes.
+.TP
+.B EINVAL
+Attempted to
+.BR write (2)
+a list ta a
+.I cpuset.mems
+file dat included a node dat held no memory.
+.TP
+.B EIO
+Attempted to
+.BR write (2)
+a strang ta a cold-ass lil cpuset
+.I tasks
+file that
+does not begin wit a ASCII decimal integer.
+.TP
+.B EIO
+Attempted to
+.BR rename (2)
+a cpuset tha fuck into a gangbangin' finger-lickin' different directory.
+.TP
+.B ENAMETOOLONG
+Attempted to
+.BR read (2)
+a
+.I /proc/<pid>/cpuset
+file fo' a cold-ass lil cpuset path dat is longer than tha kernel page size.
+.TP
+.B ENAMETOOLONG
+Attempted ta create, using
+.BR mkdir (2),
+a cpuset whose base directory name is longer than 255 characters.
+.TP
+.B ENAMETOOLONG
+Attempted ta create, using
+.BR mkdir (2),
+a cpuset whose full pathname,
+includin tha mount point (typically "/dev/cpuset/") prefix,
+is longer than 4095 characters.
+.TP
+.B ENODEV
+Da cpuset was removed by another process all up in tha same time as a
+.BR write (2)
+was attempted on one of tha pseudo-filez up in tha cpuset directory.
+.TP
+.B ENOENT
+Attempted ta create, using
+.BR mkdir (2),
+a cpuset up in a parent cpuset dat don't exist.
+.TP
+.B ENOENT
+Attempted to
+.BR access (2)
+or
+.BR open (2)
+a nonexistent file up in a cold-ass lil cpuset directory.
+.TP
+.B ENOMEM
+Insufficient memory be available within tha kernel; can occur
+on a variety of system calls affectin cpusets yo, but only if the
+system is mad short of memory.
+.TP
+.B ENOSPC
+Attempted to
+.BR write (2)
+the process ID (PID)
+of a process ta a cold-ass lil cpuset
+.I tasks
+file when tha cpuset had a empty
+.I cpuset.cpus
+or empty
+.I cpuset.mems
+setting.
+.TP
+.B ENOSPC
+Attempted to
+.BR write (2)
+an empty
+.I cpuset.cpus
+or
+.I cpuset.mems
+settin ta a cold-ass lil cpuset that
+has tasks attached.
+.TP
+.B ENOTDIR
+Attempted to
+.BR rename (2)
+a nonexistent cpuset.
+.TP
+.B EPERM
+Attempted ta remove a gangbangin' file from a cold-ass lil cpuset directory.
+.TP
+.B ERANGE
+Specified a
+.I cpuset.cpus
+or
+.I cpuset.mems
+list ta tha kernel which included a number too big-ass fo' tha kernel
+to set up in its bit masks.
+.TP
+.B ESRCH
+Attempted to
+.BR write (2)
+the process ID (PID) of a nonexistent process ta a cold-ass lil cpuset
+.I tasks
+file.
+.\" ================== VERSIONS ==================
+.SH VERSIONS
+Cpusets rocked up in version 2.6.12 of tha Linux kernel.
+.\" ================== NOTES ==================
+.SH NOTES
+Despite its name, the
+.I pid
+parameta is straight-up a thread ID,
+and each thread up in a threaded crew can be attached ta a gangbangin' finger-lickin' different
+cpuset.
+Da value returned from a cold-ass lil call to
+.BR gettid (2)
+can be passed up in tha argument
+.IR pid .
+.\" ================== BUGS ==================
+.SH BUGS
+.I cpuset.memory_pressure
+cpuset filez can be opened
+for writing, creation, or truncation yo, but then the
+.BR write (2)
+fails with
+.I errno
+set to
+.BR EACCES ,
+and tha creation n' truncation options on
+.BR open (2)
+have no effect.
+.\" ================== EXAMPLE ==================
+.SH EXAMPLE
+Da followin examplez demonstrate queryin n' settin cpuset
+options rockin shell commands.
+.SS Creatin n' attachin ta a cold-ass lil cpuset.
+To create a freshly smoked up cpuset n' attach tha current command shell ta it,
+the steps are:
+.sp
+.PD 0
+.IP 1) 4
+mkdir /dev/cpuset (if not already done)
+.IP 2)
+mount \-t cpuset none /dev/cpuset (if not already done)
+.IP 3)
+Smoke tha freshly smoked up cpuset using
+.BR mkdir (1).
+.IP 4)
+Assign CPUs n' memory nodes ta tha freshly smoked up cpuset.
+.IP 5)
+Attach tha shell ta tha freshly smoked up cpuset.
+.PD
+.PP
+For example, tha followin sequence of commandz will set up a cold-ass lil cpuset
+named "Charlie", containin just CPUs 2 n' 3, n' memory node 1,
+and then attach tha current shell ta dat cpuset.
+.in +4n
+.nf
+
+.RB "$" " mkdir /dev/cpuset"
+.RB "$" " mount \-t cpuset cpuset /dev/cpuset"
+.RB "$" " cd /dev/cpuset"
+.RB "$" " mkdir Charlie"
+.RB "$" " cd Charlie"
+.RB "$" " /bin/echo 2-3 > cpuset.cpus"
+.RB "$" " /bin/echo 1 > cpuset.mems"
+.RB "$" " /bin/echo $$ > tasks"
+# Da current shell is now hustlin up in cpuset Charlie
+# Da next line should display '/Charlie'
+.RB "$" " pussaaaaay /proc/self/cpuset"
+.fi
+.in
+.SS Migratin a thang ta different memory nodes.
+To migrate a thang (the set of processes attached ta a cold-ass lil cpuset)
+to different CPUs n' memory nodes up in tha system, includin moving
+the memory pages currently allocated ta dat thang,
+perform tha followin steps.
+.sp
+.PD 0
+.IP 1) 4
+Letz say we wanna move tha thang up in cpuset
+.I alpha
+(CPUs 4-7 n' memory nodes 2-3) ta a freshly smoked up cpuset
+.I beta
+(CPUs 16-19 n' memory nodes 8-9).
+.IP 2)
+First create tha freshly smoked up cpuset
+.IR beta .
+.IP 3)
+Then allow CPUs 16-19 n' memory nodes 8-9 in
+.IR beta .
+.IP 4)
+Then enable
+.I memory_migration
+in
+.IR beta .
+.IP 5)
+Then move each process from
+.I alpha
+to
+.IR beta .
+.PD
+.PP
+Da followin sequence of commandz accomplishes all dis bullshit.
+.in +4n
+.nf
+
+.RB "$" " cd /dev/cpuset"
+.RB "$" " mkdir beta"
+.RB "$" " cd beta"
+.RB "$" " /bin/echo 16-19 > cpuset.cpus"
+.RB "$" " /bin/echo 8-9 > cpuset.mems"
+.RB "$" " /bin/echo 1 > cpuset.memory_migrate"
+.RB "$" " while read i; do /bin/echo $i; done < ../alpha/tasks > tasks"
+.fi
+.in
+.PP
+Da above should move any processes in
+.I alpha
+to
+.IR beta ,
+and any memory held by these processes on memory nodes 2-3 ta memory
+nodes 8-9, respectively.
+.PP
+Notice dat tha last step of tha above sequence did not do:
+.in +4n
+.nf
+
+.RB "$" " cp ../alpha/tasks tasks"
+.fi
+.in
+.PP
+The
+.I while
+loop, rather than tha seemingly easier use of the
+.BR cp (1)
+command, was necessary cuz
+only one process PID at a time may be freestyled ta the
+.I tasks
+file.
+.PP
+Da same effect (writin one PID at a time) as the
+.I while
+loop can be accomplished mo' efficiently, up in fewer keystrokes n' in
+syntax dat works on any shell yo, but alas mo' obscurely, by rockin the
+.B \-u
+(unbuffered) option of
+.BR sed (1):
+.in +4n
+
+.nf
+.RB "$" " sed \-un p < ../alpha/tasks > tasks"
+.fi
+.in
+.\" ================== SEE ALSO ==================
+.SH SEE ALSO
+.BR taskset (1),
+.BR get_mempolicy (2),
+.BR getcpu (2),
+.BR mbind (2),
+.BR sched_getaffinitizzle (2),
+.BR sched_setaffinitizzle (2),
+.BR sched_setschedula (2),
+.BR set_mempolicy (2),
+.BR CPU_SET (3),
+.BR proc (5),
+.BR numa (7),
+.BR migratepages (8),
+.BR numactl (8)
+.PP
+.IR Documentation/cpusets.txt
+in tha Linux kernel source tree
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

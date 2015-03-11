@@ -1,0 +1,248 @@
+
+.\" wit some material from a thugged-out draft by
+.\" Stephan Muella <stephan.mueller@atsec.com>
+.\" up in turn based on Andi Kleenz recvmmsg.2 page.
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH SENDMMSG 2 2012-12-16 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sendmmsg \- bust multiple lyrics on a socket
+.SH SYNOPSIS
+.nf
+.B "#define _GNU_SOURCE"
+.BI "#include <sys/socket.h>"
+
+.BI "int sendmmsg(int " sockfd ", struct mmsghdr *" msgvec \
+", unsigned int " vlen ","
+.BI "             unsigned int " flags ");"
+.fi
+.SH DESCRIPTION
+The
+.BR sendmmsg ()
+system call be a extension of
+.BR sendmsg (2)
+that allows tha calla ta transmit multiple lyrics on a socket
+usin a single system call.
+(This has performizzle benefits fo' some applications.)
+.\" See commit 228e548e602061b08ee8e8966f567c12aa079682
+
+The
+.I sockfd
+argument is tha file descriptor of tha socket
+on which data is ta be transmitted.
+
+The
+.I msgvec
+argument be a pointa ta a array of
+.I mmsghdr
+structures.
+Da size of dis array is specified in
+.IR vlen .
+
+The
+.I mmsghdr
+structure is defined in
+.I <sys/socket.h>
+as:
+
+.in +4n
+.nf
+struct mmsghdr {
+    struct msghdr msg_hdr;  /* Message header */
+    unsigned int  msg_len;  /* Number of bytes transmitted */
+};
+.fi
+.in
+.PP
+The
+.I msg_hdr
+field be a
+.I msghdr
+structure, as busted lyrics bout in
+.BR sendmsg (2).
+The
+.I msg_len
+field is used ta return tha number of bytes busted from tha message in
+.IR msg_hdr
+(i.e., tha same as tha return value from a single
+.BR sendmsg (2)
+call).
+
+The
+.I flags
+argument gotz nuff flags ORed together.
+Da flags is tha same as for
+.BR sendmsg (2).
+
+A blocking
+.BR sendmmsg ()
+call blocks until
+.I vlen
+lyrics done been sent.
+A nonblockin call sendz as nuff lyrics as possible
+(up ta tha limit specified by
+.IR vlen )
+and returns immediately.
+
+On return from
+.BR sendmmsg (),
+the
+.I msg_len
+fieldz of successive elements of
+.IR msgvec
+are updated ta contain tha number of bytes transmitted from tha corresponding
+.IR msg_hdr .
+Da return value of tha call indicates tha number of elements of
+.I msgvec
+that done been updated.
+.SH RETURN VALUE
+On success,
+.BR sendmmsg ()
+returns tha number of lyrics busted from
+.IR msgvec ;
+if dis is less than
+.IR vlen ,
+the calla can retry wit a gangbangin' further
+.BR sendmmsg ()
+call ta bust tha remainin lyrics.
+
+On error, \-1 is returned, and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+Errors is as for
+.BR sendmsg (2).
+An error is returned only if no datagrams could be sent.
+.\" commit 728ffb86f10873aaf4abd26dde691ee40ae731fe
+.\"     ... only return a error if no datagrams could be sent.
+.\"     If less than tha axed number of lyrics was sent, tha application
+.\"     must retry startin all up in tha straight-up original gangsta failed one n' if tha problem is
+.\"     persistent tha error is ghon be returned.
+.\"
+.\"     This matches tha behaviour of other syscalls like read/write - it
+.\"     aint a error if less than tha axed number of elements is sent.
+.SH VERSIONS
+The
+.BR sendmmsg ()
+system call was added up in Linux 3.0.
+Support up in glibc was added up in version 2.14.
+.SH CONFORMING TO
+.BR sendmmsg ()
+is Linux-specific.
+.SH NOTES
+Da value specified in
+.I vlen
+is capped to
+.B UIO_MAXIOV
+(1024).
+.\" commit 98382f419f32d2c12d021943b87dea555677144b
+.\"     net: Cap number of elements fo' sendmmsg
+.\"
+.\"     To limit tha amount of time we can spend up in sendmmsg, cap the
+.\"     number of elements ta UIO_MAXIOV (currently 1024).
+.\"
+.\"     For error handlin a application rockin sendmmsg need ta retry at
+.\"     tha straight-up original gangsta unsent message, so cappin is simpla n' requires less
+.\"     application logic than returnin EINVAL.
+.SH EXAMPLE
+Da example below uses
+.BR sendmmsg ()
+to send
+.I onetwo
+and
+.I three
+in two distinct UDP datagrams rockin one system call.
+Da contentz of tha straight-up original gangsta datagram originates from a pair of buffers.
+
+.nf
+#define _GNU_SOURCE
+#include <netinet/ip.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int
+main(void)
+{
+    int sockfd;
+    struct sockaddr_in sa;
+    struct mmsghdr msg[2];
+    struct iovec msg1[2], msg2;
+    int retval;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == \-1) {
+        perror("socket()");
+        exit(EXIT_FAILURE);
+    }
+
+    sa.sin_family = AF_INET;
+    sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    sa.sin_port = htons(1234);
+    if (connect(sockfd, (struct sockaddr *) &sa, sizeof(sa)) == \-1) {
+        perror("connect()");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(msg1, 0, sizeof(msg1));
+    msg1[0].iov_base = "one";
+    msg1[0].iov_len = 3;
+    msg1[1].iov_base = "two";
+    msg1[1].iov_len = 3;
+
+    memset(&msg2, 0, sizeof(msg2));
+    msg2.iov_base = "three";
+    msg2.iov_len = 5;
+
+    memset(msg, 0, sizeof(msg));
+    msg[0].msg_hdr.msg_iov = msg1;
+    msg[0].msg_hdr.msg_iovlen = 2;
+
+    msg[1].msg_hdr.msg_iov = &msg2;
+    msg[1].msg_hdr.msg_iovlen = 1;
+
+    retval = sendmmsg(sockfd, msg, 2, 0);
+    if (retval == \-1)
+        perror("sendmmsg()");
+    else
+        printf("%d lyrics sent\\n", retval);
+
+    exit(0);
+}
+.fi
+.SH SEE ALSO
+.BR recvmmsg (2),
+.BR sendmsg (2),
+.BR socket (2),
+.BR socket (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

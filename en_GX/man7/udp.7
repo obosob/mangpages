@@ -1,0 +1,274 @@
+.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: udp.7,v 1.7 2000/01/22 01:55:05 freitag Exp $
+.\"
+.TH UDP  7 2013-07-31 "Linux" "Linux Programmerz Manual"
+.SH NAME
+udp \- User Datagram Protocol fo' IPv4
+.SH SYNOPSIS
+.B #include <sys/socket.h>
+.br
+.B #include <netinet/in.h>
+.br
+.B #include <netinet/udp.h>
+.sp
+.B udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+.SH DESCRIPTION
+This be a implementation of tha User Datagram Protocol
+busted lyrics bout up in RFC\ 768.
+It implements a cold-ass lil connectionless, unreliable datagram packet service.
+Packets may be reordered or duplicated before they arrive.
+UDP generates n' checks checksums ta catch transmission errors.
+
+When a UDP socket is pimped,
+its local n' remote addresses is unspecified.
+Datagrams can be busted immediately using
+.BR sendto (2)
+or
+.BR sendmsg (2)
+with a valid destination address as a argument.
+When
+.BR connect (2)
+is called on tha socket, tha default destination address is set and
+datagrams can now be busted using
+.BR bust (2)
+or
+.BR write (2)
+without specifyin a thugged-out destination address.
+It be still possible ta bust ta other destinations by passin an
+address to
+.BR sendto (2)
+or
+.BR sendmsg (2).
+In order ta receive packets, tha socket can be bound ta a local
+address first by using
+.BR bind (2).
+Otherwise tha socket layer will automatically assign
+a free local port outta tha range defined by
+.I /proc/sys/net/ipv4/ip_local_port_range
+and bind tha socket to
+.BR INADDR_ANY .
+
+All receive operations return only one packet.
+When tha packet is smalla than tha passed buffer, only dat much
+data is returned; when it is bigger, tha packet is truncated n' the
+.B MSG_TRUNC
+flag is set.
+.B MSG_WAITALL
+is not supported.
+
+IP options may be busted or received rockin tha socket options busted lyrics bout in
+.BR ip (7).
+They is processed by tha kernel only when tha appropriate
+.I /proc
+parameter
+is enabled (but still passed ta tha user even when it is turned off).
+See
+.BR ip (7).
+
+When the
+.B MSG_DONTROUTE
+flag is set on sending, tha destination address must refer ta a local
+interface address n' tha packet is busted only ta dat intercourse.
+
+By default, Linux UDP do path MTU (Maximum Transmission Unit) discovery.
+This means tha kernel
+will keep track of tha MTU ta a specific target IP address n' return
+.B EMSGSIZE
+when a UDP packet write exceedz dat shit.
+When dis happens, tha application should decrease tha packet size.
+Path MTU discovery can be also turned off rockin the
+.B IP_MTU_DISCOVER
+socket option or the
+.I /proc/sys/net/ipv4/ip_no_pmtu_disc
+file; see
+.BR ip (7)
+for details.
+When turned off, UDP will fragment outgoin UDP packets
+that exceed tha intercourse MTU.
+But fuck dat shiznit yo, tha word on tha street is dat disablin it aint recommended
+for performizzle n' reliabilitizzle reasons.
+.SS Address format
+UDP uses tha IPv4
+.I sockaddr_in
+address format busted lyrics bout in
+.BR ip (7).
+.SS Error handling
+All fatal errors is ghon be passed ta tha user as a error return even
+when tha socket aint connected.
+This includes asynchronous errors
+received from tha network.
+Yo ass may git a error fo' a earlier packet
+that was busted on tha same socket.
+This behavior differs from nuff other BSD socket implementations
+which don't pass any errors unless tha socket is connected.
+Linuxz behavior is mandated by
+.BR RFC\ 1122 .
+
+For compatibilitizzle wit legacy code, up in Linux 2.0 n' 2.2
+it was possible ta set the
+.B SO_BSDCOMPAT
+.B SOL_SOCKET
+option ta receive remote errors only when tha socket has been
+connected (except for
+.B EPROTO
+and
+.BR EMSGSIZE ).
+Locally generated errors is always passed.
+Support fo' dis socket option was removed up in lata kernels; see
+.BR socket (7)
+for further shiznit.
+
+When the
+.B IP_RECVERR
+option is enabled, all errors is stored up in tha socket error queue,
+and can be received by
+.BR recvmsg (2)
+with the
+.B MSG_ERRQUEUE
+flag set.
+.SS /proc intercourses
+System-wide UDP parameta settings can be accessed by filez up in tha directory
+.IR /proc/sys/net/ipv4/ .
+.TP
+.IR udp_mem " (since Linux 2.6.25)"
+This be a vector of three integers governin tha number
+of pages allowed fo' queuein by all UDP sockets.
+.RS
+.TP 10
+.I min
+Below dis number of pages, UDP aint bothered bout its
+memory appetite.
+When tha amount of memory allocated by UDP exceeds
+this number, UDP starts ta moderate memory usage.
+.TP
+.I pressure
+This value was introduced ta follow tha format of
+.IR tcp_mem
+(see
+.BR tcp (7)).
+.TP
+.I max
+Number of pages allowed fo' queuein by all UDP sockets.
+.RE
+.IP
+Defaults joints fo' these three shit are
+calculated at boot time from tha amount of available memory.
+.TP
+.IR udp_rmem_min " (integer; default value: PAGE_SIZE; since Linux 2.6.25)"
+Minimal size, up in bytes, of receive buffers used by UDP sockets up in moderation.
+Each UDP socket be able ta use tha size fo' receivin data,
+even if total pagez of UDP sockets exceed
+.I udp_mem
+pressure.
+.TP
+.IR udp_wmem_min " (integer; default value: PAGE_SIZE; since Linux 2.6.25)"
+Minimal size, up in bytes, of bust buffer used by UDP sockets up in moderation.
+Each UDP socket be able ta use tha size fo' bustin  data,
+even if total pagez of UDP sockets exceed
+.I udp_mem
+pressure.
+.SS Socket options
+To set or git a UDP socket option, call
+.BR getsockopt (2)
+to read or
+.BR setsockopt (2)
+to write tha option wit tha option level argument set to
+.BR IPPROTO_UDP .
+Unless otherwise noted,
+.I optval
+is a pointa ta an
+.IR int .
+.TP
+.BR UDP_CORK " (since Linux 2.5.44)"
+If dis option is enabled, then all data output on dis socket
+is accumulated tha fuck into a single datagram dat is transmitted when
+the option is disabled.
+This option should not be used up in code intended ta be
+portable.
+.\" FIXME document UDP_ENCAP (new up in kernel 2.5.67)
+.\" From include/linux/udp.h:
+.\" /* UDP encapsulation types */
+.\" #define UDP_ENCAP_ESPINUDP_NON_IKE      1 /* draft-ietf-ipsec-nat-t-ike-00/01 */
+.\" #define UDP_ENCAP_ESPINUDP      2 /* draft-ietf-ipsec-udp-encaps-06 */
+.\" #define UDP_ENCAP_L2TPINUDP     3 /* rfc2661 */
+.SS Ioctls
+These ioctls can be accessed using
+.BR ioctl (2).
+Da erect syntax is:
+.PP
+.RS
+.nf
+.BI int " value";
+.IB error " = ioctl(" udp_socket ", " ioctl_type ", &" value ");"
+.fi
+.RE
+.TP
+.BR FIONREAD " (" SIOCINQ )
+Gets a pointa ta a integer as argument.
+Returns tha size of tha next pendin datagram up in tha integer up in bytes,
+or 0 when no datagram is pending.
+.B Warning:
+Using
+.BR FIONREAD ,
+it is impossible ta distinguish tha case where no datagram is pending
+from tha case where tha next pendin datagram gotz nuff zero bytez of data.
+It be less thuggy ta use
+.BR select (2),
+.BR poll (2),
+or
+.BR epoll (7)
+to distinguish these cases.
+.\" See http://www.securiteam.com/unixfocus/5KP0I15IKO.html
+.\" "GNUnet DoS (UDP Socket Unreachable)", 14 May 2006
+.TP
+.BR TIOCOUTQ " (" SIOCOUTQ )
+Returns tha number of data bytes up in tha local bust queue.
+Only supported wit Linux 2.4 n' above.
+.PP
+In addizzle all ioctls documented in
+.BR ip (7)
+and
+.BR socket (7)
+are supported.
+.SH ERRORS
+All errors documented for
+.BR socket (7)
+or
+.BR ip (7)
+may be returned by a bust or receive on a UDP socket.
+.TP
+.B ECONNREFUSED
+No receiver was associated wit tha destination address.
+This might be caused by a previous packet busted over tha socket.
+.SH VERSIONS
+.B IP_RECVERR
+is a freshly smoked up feature up in Linux 2.2.
+.\" .SH CREDITS
+.\" This playa page was freestyled by Andi Kleen.
+.SH SEE ALSO
+.BR ip (7),
+.BR raw (7),
+.BR socket (7),
+.BR udplite (7)
+
+RFC\ 768 fo' tha User Datagram Protocol.
+.br
+RFC\ 1122 fo' tha host requirements.
+.br
+RFC\ 1191 fo' a thugged-out description of path MTU discovery.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

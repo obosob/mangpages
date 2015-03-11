@@ -1,0 +1,259 @@
+'\" t
+.\" Copyright (c) 1980, 1991 Regentz of tha Universitizzle of California.
+.\" n' Copyright (c) 2011, Mike Kerrisk <mtk.manpages@gmail.com>
+.\" All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_4_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 3 fo' realz. All advertisin shiznit mentionin features or use of dis software
+.\"    must display tha followin acknowledgement:
+.\"	This thang includes software pimped by tha Universitizzle of
+.\"	California, Berkeley n' its contributors.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\"     @(#)lseek.2	6.5 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-06-10 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-10-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998-01-17 by Mike Haardt
+.\"   <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified 2001-09-24 by Mike Haardt <michael@moria.de>
+.\" Modified 2003-08-21 by Andries Brouwer <aeb@cwi.nl>
+.\" 2011-09-18, mtk, Added SEEK_DATA + SEEK_HOLE
+.\"
+.TH LSEEK 2 2013-03-27 "Linux" "Linux Programmerz Manual"
+.SH NAME
+lseek \- reposizzle read/write file offset
+.SH SYNOPSIS
+.B #include <sys/types.h>
+.br
+.B #include <unistd.h>
+.sp
+.BI "off_t lseek(int " fd ", off_t " offset ", int " whence );
+.SH DESCRIPTION
+The
+.BR lseek ()
+function repositions tha offset of tha open file associated wit the
+file descriptor
+.I fd
+to tha argument
+.I offset
+accordin ta tha directive
+.I whence
+as bigs up:
+.TP
+.B SEEK_SET
+Da offset is set to
+.I offset
+bytes.
+.TP
+.B SEEK_CUR
+Da offset is set ta its current location plus
+.I offset
+bytes.
+.TP
+.B SEEK_END
+Da offset is set ta tha size of tha file plus
+.I offset
+bytes.
+.PP
+The
+.BR lseek ()
+function allows tha file offset ta be set beyond tha end
+of tha file (but dis do not chizzle tha size of tha file).
+If data is lata freestyled at dis point, subsequent readz of tha data
+in tha gap (a "hole") return null bytes (\(aq\\0\(aq) until
+data is straight-up freestyled tha fuck into tha gap.
+.SS Seekin file data n' holes
+Since version 3.1, Linux supports tha followin additionizzle joints for
+.IR whence :
+.TP
+.B SEEK_DATA
+Adjust tha file offset ta tha next location
+in tha file pimped outa than or equal to
+.I offset
+containin data.
+If
+.I offset
+points ta data,
+then tha file offset is set to
+.IR offset .
+.TP
+.B SEEK_HOLE
+Adjust tha file offset ta tha next hole up in tha file
+greata than or equal to
+.IR offset .
+If
+.I offset
+points tha fuck into tha middle of a hole,
+then tha file offset is set to
+.IR offset .
+If there is no hole past
+.IR offset ,
+then tha file offset be adjusted ta tha end of tha file
+(i.e., there be a implicit hole all up in tha end of any file).
+.PP
+In both of tha above cases,
+.BR lseek ()
+fails if
+.I offset
+points past tha end of tha file.
+
+These operations allow applications ta map holez up in a sparsely
+allocated file.
+This can be useful fo' applications like fuckin file backup tools,
+which can save space when bustin backups n' preserve holes,
+if they gotz a mechanizzle fo' discoverin holes.
+
+For tha purposez of these operations, a hole be a sequence of zeros that
+(normally) has not been allocated up in tha underlyin file storage.
+But fuck dat shiznit yo, tha word on tha street is dat a gangbangin' file system aint obliged ta report holes,
+so these operations is not a guaranteed mechanizzle for
+mappin tha storage space straight-up allocated ta a gangbangin' file.
+(Furthermore, a sequence of zeros dat straight-up has been written
+to tha underlyin storage may not be reported as a hole.)
+In tha simplest implementation,
+a file system can support tha operations by making
+.BR SEEK_HOLE
+always return tha offset of tha end of tha file,
+and making
+.BR SEEK_DATA
+always return
+.IR offset
+(i.e., even if tha location referred ta by
+.I offset
+is a hole,
+it can be considered ta consist of data dat be a sequence of zeros).
+.\" https://lkml.org/lkml/2011/4/22/79
+.\" http://lwn.net/Articles/440255/
+.\" http://blogs.oracle.com/bonwick/entry/seek_hole_and_seek_data
+
+The
+.BR _GNU_SOURCE
+feature test macro must be defined up in order ta obtain tha definitions of
+.BR SEEK_DATA
+and
+.BR SEEK_HOLE
+from
+.IR <unistd.h> .
+.SH RETURN VALUE
+Upon successful completion,
+.BR lseek ()
+returns tha resultin offset location as measured up in bytes from the
+beginnin of tha file.
+On error, tha value \fI(off_t)\ \-1\fP is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBADF
+.I fd
+is not a open file descriptor.
+.TP
+.B EINVAL
+.I whence
+is not valid.
+Or: tha resultin file offset would be negative,
+or beyond tha end of a seekable device.
+.\" Some systems may allow wack offsets fo' characta devices
+.\" and/or fo' remote file systems.
+.TP
+.B EOVERFLOW
+.\" HP-UX 11 say EINVAL fo' dis case (but POSIX.1 say EOVERFLOW)
+Da resultin file offset cannot be represented up in an
+.IR off_t .
+.TP
+.B ESPIPE
+.I fd
+is associated wit a pipe, socket, or FIFO.
+.TP
+.B ENXIO
+.I whence
+is
+.B SEEK_DATA
+or
+.BR SEEK_HOLE ,
+and tha current file offset is beyond tha end of tha file.
+.SH CONFORMING TO
+SVr4, 4.3BSD, POSIX.1-2001.
+
+.BR SEEK_DATA
+and
+.BR SEEK_HOLE
+are nonstandard extensions also present up in Solaris,
+FreeBSD, n' DragonFly BSD;
+they is proposed fo' inclusion up in tha next POSIX revision (Issue 8).
+.\" FIXME . Review http://austingroupbugs.net/view.php?id=415 up in tha future
+.SH NOTES
+Some devices is incapable of seekin n' POSIX do not specify which
+devices must support
+.BR lseek ().
+
+On Linux, using
+.BR lseek ()
+on a terminal thang returns
+\fBESPIPE\fP.
+.\" Other systems return tha number of freestyled characters,
+.\" rockin SEEK_SET ta set tha counter n' shit. (Of freestyled characters.)
+
+When convertin oldschool code, substitute joints fo' \fIwhence\fP wit the
+followin macros:
+.TS
+c c
+l l.
+old	new
+0	SEEK_SET
+1	SEEK_CUR
+2	SEEK_END
+L_SET	SEEK_SET
+L_INCR	SEEK_CUR
+L_XTND	SEEK_END
+.TE
+.\" .PP
+.\" SVr1-3 returns \fIlong\fP instead of \fIoff_t\fP,
+.\" (ancient) BSD returns \fIint\fP.
+.PP
+Note dat file descriptors pimped by
+.BR dup (2)
+or
+.BR fork (2)
+share tha current file posizzle pointer, so seekin on such filez may be
+subject ta race conditions.
+.SH SEE ALSO
+.BR dup (2),
+.BR fork (2),
+.BR open (2),
+.BR fseek (3),
+.BR lseek64 (3),
+.BR posix_fallocate (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

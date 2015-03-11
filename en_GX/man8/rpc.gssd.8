@@ -1,0 +1,305 @@
+.\"
+.\" rpc.gssd(8)
+.\"
+.\" Copyright (C) 2003 J. Bruce Fieldz <bfields@umich.edu>
+.\"
+.TH rpc.gssd 8 "20 Feb 2013"
+.SH NAME
+rpc.gssd \- RPCSEC_GSS daemon
+.SH SYNOPSIS
+.B rpc.gssd
+.RB [ \-DfMnlvr ]
+.RB [ \-k
+.IR keytab ]
+.RB [ \-p
+.IR pipefsdir ]
+.RB [ \-d
+.IR ccachedir ]
+.RB [ \-t
+.IR timeout ]
+.RB [ \-R
+.IR realm ]
+.SH INTRODUCTION
+Da RPCSEC_GSS protocol, defined up in RFC 5403, is used ta provide
+strong securitizzle fo' RPC-based protocols like fuckin NFS.
+.P
+Before exchangin RPC requests rockin RPCSEC_GSS, a RPC client must
+establish a GSS
+.IR "securitizzle context" .
+A securitizzle context is shared state on each
+end of a network transhiznit dat enablez GSS-API securitizzle skillz.
+.P
+Securitizzle contexts is established using
+.IR "securitizzle credentials" .
+A credential grants temporary access ta a secure network service,
+much as a railway ticket grants temporary access ta bust a rail service.
+.P
+A user typically obtains a cold-ass lil credential by providin a password ta the
+.BR kinit (1)
+command, or via a PAM library at login time.
+A credential acquired wit a
+.I user principal
+is known as a
+.I user credential
+(see
+.BR kerberos (1)
+for mo' on principals).
+.P
+For certain operations, a cold-ass lil credential is required
+which represents no user,
+is otherwise unprivileged,
+and be always available.
+This is referred ta as a
+.IR "machine credential" .
+.P
+Machine credentials is typically established rockin a
+.IR "service principal" ,
+whose encrypted password, called its
+.IR key ,
+is stored up in a gangbangin' file, called a
+.IR keytab ,
+to avoid requirin a user prompt.
+A machine credential effectively do not expire cuz tha system
+can renew it as needed without user intervention.
+.P
+Once obtained, credentials is typically stored up in local temporary files
+with well-known pathnames.
+.SH DESCRIPTION
+To establish GSS securitizzle contexts rockin these credential files,
+the Linux kernel RPC client dependz on a userspace daemon called
+.BR rpc.gssd .
+The
+.B rpc.gssd
+daemon uses tha rpc_pipefs filesystem ta rap wit tha kernel.
+.SS User Credentials
+When a user authenticates rockin a cold-ass lil command such as
+.BR kinit (1),
+the resultin credential is stored up in a gangbangin' file wit a well-known name
+constructed rockin tha userz UID.
+.P
+To interact wit a NFS server
+on behalf of a particular Kerberos-authenticated user,
+the Linux kernel RPC client requests that
+.B rpc.gssd
+initialize a securitizzle context wit tha credential
+in dat userz credential file.
+.P
+Typically, credential filez is placed in
+.IR /tmp .
+However,
+.B rpc.gssd
+can search fo' credential filez up in mo' than one directory.
+See tha description of the
+.B -d
+option fo' details.
+.SS Machine Credentials
+A user credential is established by a user and
+is then shared wit tha kernel and
+.BR rpc.gssd .
+A machine credential is established by
+.B rpc.gssd
+for tha kernel when there is no user.
+Therefore
+.B rpc.gssd
+must already have tha shiznit on hand ta establish dis credential
+without requirin user intervention.
+.P
+.B rpc.gssd
+searches tha local systemz keytab fo' a principal n' key ta use
+to establish tha machine credential.
+By default,
+.B rpc.gssd
+assumes tha file
+.I /etc/krb5.keytab
+gotz nuff principals n' keys dat can be used ta obtain machine credentials.
+.P
+.B rpc.gssd
+searches up in tha followin order fo' a principal ta use.
+Da first matchin credential is used.
+For tha search, <hostname> n' <REALM> is replaced wit tha local
+systemz hostname n' Kerberos realm.
+.sp
+   <HOSTNAME>$@<REALM>
+.br
+   root/<hostname>@<REALM>
+.br
+   nfs/<hostname>@<REALM>
+.br
+   host/<hostname>@<REALM>
+.br
+   root/<anyname>@<REALM>
+.br
+   nfs/<anyname>@<REALM>
+.br
+   host/<anyname>@<REALM>
+.sp
+Da <anyname> entries match on tha steez name n' realm yo, but ignore tha hostname.
+These can be used if a principal matchin tha local hostz name aint found.
+.P
+Note dat tha straight-up original gangsta principal up in tha search order be a user principal
+that enablez Kerberized NFS when tha local system is joined
+to a Actizzle Directory domain rockin Samba.
+A password fo' dis principal must be provided up in tha local systemz keytab.
+.P
+Yo ass can specify another keytab by rockin the
+.B -k
+option if
+.I /etc/krb5.keytab
+does not exist or do not provide one of these principals.
+.SS Credentials fo' UID 0
+UID 0 be a special case.
+By default
+.B rpc.gssd
+uses tha systemz machine credentials fo' UID 0 accesses
+that require GSS authentication.
+This limits tha privilegez of tha root user
+when accessin network resources dat require authentication.
+.P
+Specify the
+.B -n
+option when starting
+.B rpc.gssd
+if you'd like ta force tha root user ta obtain a user credential
+rather than use tha local systemz machine credential.
+.P
+When
+.B -n
+is specified,
+the kernel continues ta request a GSS context established
+with a machine credential fo' NFSv4 operations,
+like fuckin SETCLIENTID or RENEW, dat manage state.
+If
+.B rpc.gssd
+cannot obtain a machine credential (say, tha local system has
+no keytab), NFSv4 operations dat require machine credentials will fail.
+.SS Encryption types
+A realm administrator can chizzle ta add keys encoded up in a fuckin shitload of different
+encryption types ta tha local systemz keytab.
+For instance, a host/ principal might have keys fo' the
+.BR aes256-cts-hmac-sha1-96 ,
+.BR aes128-cts-hmac-sha1-96 ,
+.BR des3-cbc-sha1 ", and"
+.BR arcfour-hmac " encryption types."
+This permits
+.B rpc.gssd
+to chizzle a appropriate encryption type dat tha target NFS server
+supports.
+.P
+These encryption types is stronger than legacy single-DES encryption types.
+To interoperate up in environments where servers support
+only weak encryption types,
+you can restrict yo' client ta use only single-DES encryption types
+by specifyin the
+.B -l
+option when starting
+.BR rpc.gssd .
+.SH OPTIONS
+.TP
+.B \-D
+Da server name passed ta GSSAPI fo' authentication is normally the
+name exactly as requested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  e.g. fo' NFS
+it is tha server name up in tha "servername:/path" mount request.  Only if this
+servername appears ta be a IP address (IPv4 or IPv6) or an
+unqualified name (no dots) will a reverse DNS lookup
+will be performed ta git tha canoncial server name.
+
+If
+.B \-D
+is present, a reverse DNS lookup will
+.I always
+be used, even if tha server name be lookin like a cold-ass lil canonical name.  So it
+is needed if partially qualified, or non canonical names is regularly
+used.
+
+Using
+.B \-D
+can introduce a securitizzle vulnerability, so it is recommended that
+.B \-D
+not be used, n' dat canonical names always be used when requesting
+skillz.
+.TP
+.B -f
+Runs
+.B rpc.gssd
+in tha foreground n' sendz output ta stderr (as opposed ta syslogd)
+.TP
+.B -n
+When specified, UID 0 is forced ta obtain user credentials
+which is used instead of tha local systemz machine credentials.
+.TP
+.BI "-k " keytab
+Tells
+.B rpc.gssd
+to use tha keys found in
+.I keytab
+to obtain machine credentials.
+Da default value is
+.IR /etc/krb5.keytab .
+.TP
+.B -l
+When specified, restricts
+.B rpc.gssd
+to sessions ta weak encryption types such as
+.BR des-cbc-crc .
+This option be available only when tha local systemz Kerberos library
+supports settable encryption types.
+.TP
+.BI "-p " path
+Tells
+.B rpc.gssd
+where ta look fo' tha rpc_pipefs filesystem.  Da default value is
+.IR /var/lib/nfs/rpc_pipefs .
+.TP
+.BI "-d " search-path
+This option specifies a cold-ass lil colon separated list of directories that
+.B rpc.gssd
+searches fo' credential files.  Da default value is
+.IR /tmp:/run/user/%U .
+Da literal sequence "%U" can be specified ta substitue tha UID
+of tha user fo' whom credentials is bein searched.
+.TP
+.B -M
+By default, machine credentials is stored up in filez up in tha first
+directory up in tha credential directory search path (see the
+.B -d
+option).  When
+.B -M
+is set,
+.B rpc.gssd
+stores machine credentials up in memory instead.
+.TP
+.B -v
+Increases tha verbositizzle of tha output (can be specified multiple times).
+.TP
+.B -r
+If tha RPCSEC_GSS library supports settin debug level,
+increases tha verbositizzle of tha output (can be specified multiple times).
+.TP
+.BI "-R " realm
+Kerberos tickets from this
+.I realm
+will be preferred when scannin available credentials cache filez ta be
+used ta create a cold-ass lil context.  By default, tha default realm, as configured
+in tha Kerberos configuration file, is preferred.
+.TP
+.BI "-t " timeout
+Timeout, up in seconds, fo' kernel GSS contexts, n' you can put dat on yo' toast. This option allows you ta force 
+new kernel contexts ta be negotiated after
+.I timeout
+seconds, which allows changin Kerberos tickets n' identitizzles frequently.
+Da default is no explicit timeout, which means tha kernel context will live
+the gametime of tha Kerberos steez ticket used up in its creation.
+.SH SEE ALSO
+.BR rpc.svcgssd (8),
+.BR kerberos (1),
+.BR kinit (1),
+.BR krb5.conf (5)
+.SH AUTHORS
+.br
+Dug Song <dugsong@umich.edu>
+.br
+Andy Adamson <andros@umich.edu>
+.br
+Marius Aamodt Eriksen <marius@umich.edu>
+.br
+J. Bruce Fieldz <bfields@umich.edu>

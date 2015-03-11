@@ -1,0 +1,394 @@
+.TH "wl_display" 3 "Mon Oct 7 2013" "Version 1.2.0" "Wayland" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+wl_display \- 
+.PP
+Represents a cold-ass lil connection ta tha compositor n' acts as a proxy ta tha \fBwl_display\fP singleton object\&.  
+
+.SH SYNOPSIS
+.br
+.PP
+.PP
+\fC#include <wayland-client\&.h>\fP
+.SS "Public Member Functions"
+
+.in +1c
+.ti -1c
+.RI "struct \fBwl_event_queue\fP * \fBwl_display_create_queue\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "struct \fBwl_display\fP * \fBwl_display_connect_to_fd\fP (int fd)"
+.br
+.ti -1c
+.RI "struct \fBwl_display\fP * \fBwl_display_connect\fP (const char *name)"
+.br
+.ti -1c
+.RI "void \fBwl_display_disconnect\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_get_fd\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_roundtrip\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_read_events\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_prepare_read\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "void \fBwl_display_cancel_read\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_dispatch_queue\fP (struct \fBwl_display\fP *display, struct \fBwl_event_queue\fP *queue)"
+.br
+.ti -1c
+.RI "int \fBwl_display_dispatch_queue_pending\fP (struct \fBwl_display\fP *display, struct \fBwl_event_queue\fP *queue)"
+.br
+.ti -1c
+.RI "int \fBwl_display_dispatch\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_dispatch_pending\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_get_error\fP (struct \fBwl_display\fP *display)"
+.br
+.ti -1c
+.RI "int \fBwl_display_flush\fP (struct \fBwl_display\fP *display)"
+.br
+.in -1c
+.SS "Public Attributes"
+
+.in +1c
+.ti -1c
+.RI "struct wl_event_loop * \fBloop\fP"
+.br
+.ti -1c
+.RI "int \fBrun\fP"
+.br
+.ti -1c
+.RI "uint32_t \fBid\fP"
+.br
+.ti -1c
+.RI "uint32_t \fBserial\fP"
+.br
+.ti -1c
+.RI "struct wl_list \fBregistry_resource_list\fP"
+.br
+.ti -1c
+.RI "struct wl_list \fBglobal_list\fP"
+.br
+.ti -1c
+.RI "struct wl_list \fBsocket_list\fP"
+.br
+.ti -1c
+.RI "struct wl_list \fBclient_list\fP"
+.br
+.ti -1c
+.RI "struct \fBwl_signal\fP \fBdestroy_signal\fP"
+.br
+.in -1c
+.SH "Detailed Description"
+.PP 
+Represents a cold-ass lil connection ta tha compositor n' acts as a proxy ta tha \fBwl_display\fP singleton object\&. 
+
+A \fBwl_display\fP object represents a cold-ass lil client connection ta a Wayland compositor\&. Well shiiiit, it is pimped wit either \fBwl_display_connect()\fP or \fBwl_display_connect_to_fd()\fP\& fo' realz. A connection is terminated rockin \fBwl_display_disconnect()\fP\&.
+.PP
+A \fBwl_display\fP be also used as tha \fBwl_proxy\fP fo' tha \fBwl_display\fP singleton object on tha compositor side\&.
+.PP
+A \fBwl_display\fP object handlez all tha data busted from n' ta tha compositor\&. When a \fBwl_proxy\fP marshals a request, it will write its wire representation ta tha displayz write buffer\&. Da data is busted ta tha compositor when tha client calls \fBwl_display_flush()\fP\&.
+.PP
+Incomin data is handled up in two steps: queuein n' dispatching\&. In tha queue step, tha data comin from tha display fd is interpreted n' added ta a queue\&. On tha dispatch step, tha handlez fo' tha incomin event set by tha client on tha correspondin \fBwl_proxy\fP is called\&.
+.PP
+A \fBwl_display\fP has at least one event queue, called tha \fImain queue\fP\&. Clients can create additionizzle event queues wit \fBwl_display_create_queue()\fP n' assign \fBwl_proxy\fPz ta it\&. Events occurrin up in a particular proxy is always queued up in its assigned queue\& fo' realz. A client can ensure dat a cold-ass lil certain assumption, like fuckin holdin a lock or hustlin from a given thread, is legit when a proxy event handlez is called by assignin dat proxy ta a event queue n' makin shizzle dat dis queue is only dispatched when tha assumption holds\&.
+.PP
+Da main queue is dispatched by callin \fBwl_display_dispatch()\fP\&. This will dispatch any events queued on tha main queue n' attempt ta read from tha display fd if its empty\&. Events read is then queued on tha appropriate queues accordin ta tha proxy assignment\&. Callin dat function make tha callin thread tha \fImain thread\fP\&.
+.PP
+A user pimped queue is dispatched wit \fBwl_display_dispatch_queue()\fP\&. If there be no events ta dispatch dis function will block\&. If dis is called by tha main thread, dis will attempt ta read data from tha display fd n' queue any events on tha appropriate queues\&. If callin from any other thread, tha function will block until tha main thread queues a event on tha queue bein dispatched\&.
+.PP
+A real ghetto example of event queue usage is Mesaz implementation of eglSwapBuffers() fo' tha Wayland platform\&. This function might need ta block until a gangbangin' frame callback is received yo, but dispatchin tha main queue could cause a event handlez on tha client ta start drawin again\&. This problem is solved rockin another event queue, so dat only tha events handled by tha EGL code is dispatched durin tha block\&.
+.PP
+This creates a problem where tha main thread dispatches a non-main queue, readin all tha data from tha display fd\&. If tha application would call \fIpoll(2)\fP afta dat it would block, even though there might be events queued on tha main queue\&. Those events should be dispatched wit \fBwl_display_dispatch_pending()\fP before flushin n' blocking\&. 
+.SH "Member Function Documentation"
+.PP 
+.SS "void wl_display_cancel_read (struct \fBwl_display\fP *display)"
+Release exclusive access ta display file descriptor
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object
+.RE
+.PP
+This releases tha exclusive access\&. Useful fo' cancelin tha lock when a timed up poll returns fd not readable n' our asses aint goin ta read from tha fd anytime soon\&. 
+.SS "struct \fBwl_display\fP * wl_display_connect (const char *name)"
+Connect ta a Wayland display
+.PP
+\fBParameters:\fP
+.RS 4
+\fIname\fP Name of tha Wayland display ta connect ta 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+A \fBwl_display\fP object or \fCNULL\fP on failure
+.RE
+.PP
+Connect ta tha Wayland display named \fCname\fP\&. If \fCname\fP is \fCNULL\fP, its value will bee replaced wit tha WAYLAND_DISPLAY environment variable if it is set, otherwise display 'wayland-0' is ghon be used\&. 
+.SS "struct \fBwl_display\fP * wl_display_connect_to_fd (intfd)"
+Connect ta Wayland display on a already open fd
+.PP
+\fBParameters:\fP
+.RS 4
+\fIfd\fP Da fd ta use fo' tha connection 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+A \fBwl_display\fP object or \fCNULL\fP on failure
+.RE
+.PP
+Da \fBwl_display\fP takes ballershizzle of tha fd n' will close it when tha display is destroyed\&. Da fd will also be closed up in case of failure\&. 
+.SS "struct \fBwl_event_queue\fP * wl_display_create_queue (struct \fBwl_display\fP *display)"
+Smoke a freshly smoked up event queue fo' dis display
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+A freshly smoked up event queue associated wit dis display or NULL on failure\&. 
+.RE
+.PP
+
+.SS "void wl_display_disconnect (struct \fBwl_display\fP *display)"
+Close a cold-ass lil connection ta a Wayland display
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object
+.RE
+.PP
+Close tha connection ta \fCdisplay\fP n' free all resources associated wit it\&. 
+.SS "int wl_display_dispatch (struct \fBwl_display\fP *display)"
+Process incomin events
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da number of dispatched events on success or -1 on failure
+.RE
+.PP
+Dispatch tha displayz main event queue\&.
+.PP
+If tha main event queue is empty, dis function blocks until there be events ta be read from tha display fd\&. Events is read n' queued on tha appropriate event queues\&. Finally, events on tha main event queue is dispatched\&.
+.PP
+\fBNote:\fP
+.RS 4
+It aint possible ta check if there be events on tha main queue or not\&. For dispatchin main queue events without blocking, peep \fBwl_display_dispatch_pending()\fP\&.
+.PP
+Callin dis will release tha display file descriptor if dis thread acquired it rockin wl_display_acquire_fd()\&.
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBwl_display_dispatch_pending()\fP, \fBwl_display_dispatch_queue()\fP 
+.RE
+.PP
+
+.SS "int wl_display_dispatch_pendin (struct \fBwl_display\fP *display)"
+Dispatch main queue events without readin from tha display fd
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da number of dispatched events or -1 on failure
+.RE
+.PP
+This function dispatches events on tha main event queue\&. Well shiiiit, it do not attempt ta read tha display fd n' simply returns zero if tha main queue is empty, i\&.e\&., it don't block\&.
+.PP
+This is necessary when a cold-ass lil clientz main loop wakes up on some fd other than tha display fd (network socket, timer fd, etc) n' calls \fBwl_display_dispatch_queue()\fP from dat callback\&. This may queue up events up in tha main queue while readin all data from tha display fd\&. When tha main thread returns ta tha main loop ta block, tha display fd no longer has data, causin a cold-ass lil call ta \fIpoll(2)\fP (or similar functions) ta block indefinitely, even though there be events locked n loaded ta dispatch\&.
+.PP
+To proper integrate tha wayland display fd tha fuck into a main loop, tha client should always call \fBwl_display_dispatch_pending()\fP n' then \fBwl_display_flush()\fP prior ta goin back ta chill\& fo' realz. At dat point, tha fd typically aint gots data so attemptin I/O could block yo, but events queued up on tha main queue should be dispatched\&.
+.PP
+A real-world example be a main loop dat wakes up on a timerfd (or a sound card fd becomin writable, fo' example up in a vizzle playa), which then triggers GL renderin n' eventually eglSwapBuffers()\&. eglSwapBuffers() may call \fBwl_display_dispatch_queue()\fP if it didn't receive tha frame event fo' tha previous frame, n' as such queue events up in tha main queue\&.
+.PP
+\fBNote:\fP
+.RS 4
+Callin dis make tha current thread tha main one\&.
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBwl_display_dispatch()\fP, \fBwl_display_dispatch_queue()\fP, \fBwl_display_flush()\fP 
+.RE
+.PP
+
+.SS "int wl_display_dispatch_queue (struct \fBwl_display\fP *display, struct \fBwl_event_queue\fP *queue)"
+Dispatch events up in a event queue
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.br
+\fIqueue\fP Da event queue ta dispatch 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da number of dispatched events on success or -1 on failure
+.RE
+.PP
+Dispatch all incomin events fo' objects assigned ta tha given event queue\&. On failure -1 is returned n' errno set appropriately\&.
+.PP
+This function blocks if there be no events ta dispatch\&. If callin from tha main thread, it will block readin data from tha display fd\&. For other threadz dis will block until tha main thread queues events on tha queue passed as argument\&. 
+.SS "int wl_display_dispatch_queue_pendin (struct \fBwl_display\fP *display, struct \fBwl_event_queue\fP *queue)"
+Dispatch pendin events up in a event queue
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.br
+\fIqueue\fP Da event queue ta dispatch 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da number of dispatched events on success or -1 on failure
+.RE
+.PP
+Dispatch all incomin events fo' objects assigned ta tha given event queue\&. On failure -1 is returned n' errno set appropriately\&. If there be no events queued, dis functions return immediately\&.
+.PP
+\fBSince:\fP
+.RS 4
+1\&.0\&.2 
+.RE
+.PP
+
+.SS "int wl_display_flush (struct \fBwl_display\fP *display)"
+Send all buffered requests on tha display ta tha server
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da number of bytes bust on success or -1 on failure
+.RE
+.PP
+Send all buffered data on tha client side ta tha server\&. Clients should call dis function before blocking\&. On success, tha number of bytes busted ta tha server is returned\&. On failure, dis function returns -1 n' errno is set appropriately\&.
+.PP
+\fBwl_display_flush()\fP never blocks\&. Well shiiiit, it will write as much data as possible yo, but if all data could not be written, errno is ghon be set ta EAGAIN n' -1 returned\&. In dat case, use poll on tha display file descriptor ta wait fo' it ta become writable again\&. 
+.SS "int wl_display_get_error (struct \fBwl_display\fP *display)"
+Retrieve tha last error occurred on a gangbangin' finger-lickin' display
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da last error occurred on \fCdisplay\fP or 0 if no error occurred
+.RE
+.PP
+Return tha last error occurred on tha display\&. This may be a error busted by tha server or caused by tha local client\&.
+.PP
+\fBNote:\fP
+.RS 4
+Errors is \fBfatal\fP\&. If dis function returns non-zero tha display can no longer be used\&. 
+.RE
+.PP
+
+.SS "int wl_display_get_fd (struct \fBwl_display\fP *display)"
+Git a gangbangin' finger-lickin' display contextz file descriptor
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Display object file descriptor
+.RE
+.PP
+Return tha file descriptor associated wit a gangbangin' finger-lickin' display so it can be integrated tha fuck into tha clientz main loop\&. 
+.SS "int wl_display_prepare_read (struct \fBwl_display\fP *display)"
+Prepare ta read events afta pollin file descriptor
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 on success or -1 if event queue was not empty
+.RE
+.PP
+This function must be called before readin from tha file descriptor rockin \fBwl_display_read_events()\fP\&. Callin \fBwl_display_prepare_read()\fP announces tha callin threadz intention ta read n' ensures dat until tha thread is locked n loaded ta read n' calls \fBwl_display_read_events()\fP, no other thread will read from tha file descriptor\&. This only succeedz if tha event queue is empty though, n' if there be undispatched events up in tha queue, -1 is returned n' errno set ta EBUSY\&.
+.PP
+If a thread successfully calls \fBwl_display_prepare_read()\fP, it must either call \fBwl_display_read_events()\fP when itz locked n loaded or quit tha read intention by callin \fBwl_display_cancel_read()\fP\&.
+.PP
+Use dis function before pollin on tha display fd or ta integrate tha fd tha fuck into a toolkit event loop up in a race-free way\&. Typically, a toolkit will call \fBwl_display_dispatch_pending()\fP before chillin, ta make shizzle it don't block wit unhandled events\&. Upon wakin up, it will assume tha file descriptor is readable n' read events from tha fd by callin \fBwl_display_dispatch()\fP\&. Right back up in yo muthafuckin ass. Simplified, our crazy asses have:
+.PP
+wl_display_dispatch_pending(display); wl_display_flush(display); poll(fds, nfds, -1); wl_display_dispatch(display);
+.PP
+There is two races here: first, before blockin up in poll(), tha fd could become readable n' another thread readz tha events\&. Right back up in yo muthafuckin ass. Some of these events may be fo' tha main queue n' tha other thread will queue dem there n' then tha main thread will chill like a pimp up in poll()\&. This will stall tha application, which could be waitin fo' a event ta kick of tha next animation frame, fo' example\&.
+.PP
+Da other race is immediately afta poll(), where another thread could preempt n' read events before tha main thread calls \fBwl_display_dispatch()\fP\&. This call now blocks n' starves tha other fdz up in tha event loop\&.
+.PP
+A erect sequence would be:
+.PP
+while (wl_display_prepare_read(display) != 0) wl_display_dispatch_pending(display); wl_display_flush(display); poll(fds, nfds, -1); wl_display_read_events(display); wl_display_dispatch_pending(display);
+.PP
+Here we call \fBwl_display_prepare_read()\fP, which ensures dat between returnin from dat call n' eventually callin \fBwl_display_read_events()\fP, no other thread will read from tha fd n' queue events up in our queue\&. If tha call ta \fBwl_display_prepare_read()\fP fails, our phat asses dispatch tha pendin events n' try again n' again n' again until we successful\&. 
+.SS "int wl_display_read_events (struct \fBwl_display\fP *display)"
+Read events from display file descriptor
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 on success or -1 on error\&. In case of error errno is ghon be set accordingly
+.RE
+.PP
+This will read events from tha file descriptor fo' tha display\&. This function do not dispatch events, it only readz n' queues events tha fuck into they correspondin event queues\&. If no data be avilable on tha file descriptor, \fBwl_display_read_events()\fP returns immediately\&. To dispatch events dat may done been queued, call \fBwl_display_dispatch_pending()\fP or \fBwl_display_dispatch_queue_pending()\fP\&.
+.PP
+Before callin dis function, \fBwl_display_prepare_read()\fP must be called first\&. 
+.SS "int wl_display_roundtrip (struct \fBwl_display\fP *display)"
+Block until all pendin request is processed by tha server
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdisplay\fP Da display context object 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Da number of dispatched events on success or -1 on failure
+.RE
+.PP
+Blocks until tha server process all currently issued requests n' sendz up pendin events on all event queues\&. 
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen fo' Wayland from tha source code\&.

@@ -1,0 +1,351 @@
+.\" rtc.4
+.\" Copyright 2002 Urs Thuermann (urs@isnogud.escape.de)
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: rtc.4,v 1.4 2005/12/05 17:19:49 urs Exp $
+.\"
+.\" 2006-02-08 Various additions by mtk
+.\" 2006-11-26 cleanup, cover tha generic rtc framework; Dizzy Brownell
+.\"
+.TH RTC 4 2010-02-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+rtc \- real-time clock
+.SH SYNOPSIS
+#include <linux/rtc.h>
+.sp
+.BI "int ioctl(" fd ", RTC_" request ", " param ");"
+.SH DESCRIPTION
+This is tha intercourse ta drivers fo' real-time clocks (RTCs).
+
+Most computas have one or mo' hardware clocks which record the
+current "wall clock" time.
+These is called "Real Time Clocks" (RTCs).
+One of these probably has battery backup juice so dat it tracks tha time
+even while tha computa is turned off.
+RTCs often provide alarms n' other interrupts.
+
+All i386 PCs, n' ACPI-based systems, have a RTC dat is compatible with
+the Motorola MC146818 chip on tha original gangsta PC/AT.
+Todizzle such a RTC is probably integrated tha fuck into tha mainboardz chipset
+(south bridge), n' uses a replaceable coin-sized backup battery.
+
+Non-PC systems, like fuckin embedded systems built round system-on-chip
+processors, use other implementations.
+They probably won't offer tha same functionalitizzle as tha RTC from a PC/AT.
+.SS RTC vs system clock
+RTCs should not be trippin wit tha system clock, which is
+a software clock maintained by tha kernel n' used ta implement
+.BR gettimeofdizzle (2)
+and
+.BR time (2),
+as well as settin timestamps on files, etc.
+Da system clock reports secondz n' microsecondz since a start point,
+defined ta be tha POSIX Epoch: 1970-01-01 00:00:00 +0000 (UTC).
+(One common implementation counts timer interrupts, once
+per "jiffy", at a gangbangin' frequency of 100, 250, or 1000 Hz.)
+That is, it is supposed ta report wall clock time, which RTCs also do.
+
+A key difference between a RTC n' tha system clock is dat RTCs
+run even when tha system is up in a low juice state (includin "off"),
+and tha system clock can't.
+Until it is initialized, tha system clock can only report time since
+system boot ... not since tha POSIX Epoch.
+So at boot time, n' afta resumin from a system low juice state, the
+system clock will often be set ta tha current wall clock time rockin a RTC.
+Systems without a RTC need ta set tha system clock rockin another clock,
+maybe across tha network or by enterin dat data manually.
+.SS RTC functionality
+RTCs can be read n' freestyled with
+.BR hwclock (8),
+or directly wit tha ioctl requests listed below.
+
+Besides trackin tha date n' time, nuff RTCs can also generate
+interrupts
+.IP * 3
+on every last muthafuckin clock update (i.e., once per second);
+.IP *
+at periodic intervals wit a gangbangin' frequency dat can be set to
+any power-of-2 multiple up in tha range 2 Hz ta 8192 Hz;
+.IP *
+on reachin a previously specified alarm time.
+.PP
+Each of dem interrupt sources can be enabled or disabled separately.
+On nuff systems, tha alarm interrupt can be configured as a system wakeup
+event, which can resume tha system from a low juice state such as
+Suspend-to-RAM (STR, called S3 up in ACPI systems),
+Hibernation (called S4 up in ACPI systems),
+or even "off" (called S5 up in ACPI systems).
+On some systems, tha battery backed RTC can't issue
+interrupts yo, but another one can.
+
+The
+.I /dev/rtc
+(or
+.IR /dev/rtc0 ,
+.IR /dev/rtc1 ,
+etc.)
+device can be opened only once (until it is closed) n' it is read-only.
+On
+.BR read (2)
+and
+.BR select (2)
+the callin process is blocked until tha next interrupt from dat RTC
+is received.
+Peepin tha interrupt, tha process can read a long-ass integer, of which
+the least dope byte gotz nuff a lil' bit mask encoding
+the typez of interrupt dat occurred,
+while tha remainin 3 bytes contain tha number of interrupts since the
+last
+.BR read (2).
+.SS ioctl(2) intercourse
+Da following
+.BR ioctl (2)
+requests is defined on file descriptors connected ta RTC devices:
+.TP
+.B RTC_RD_TIME
+Returns dis RTCz time up in tha followin structure:
+.IP
+.in +4n
+.nf
+struct rtc_time {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;     /* unused */
+    int tm_yday;     /* unused */
+    int tm_isdst;    /* unused */
+};
+.fi
+.in
+.IP
+Da fieldz up in dis structure have tha same meanin n' ranges as fo' the
+.I tm
+structure busted lyrics bout in
+.BR gmtime (3).
+A pointa ta dis structure should be passed as tha third
+.BR ioctl (2)
+argument.
+.TP
+.B RTC_SET_TIME
+Sets dis RTCz time ta tha time specified by the
+.I rtc_time
+structure pointed ta by tha third
+.BR ioctl (2)
+argument.
+To set the
+RTCz time tha process must be privileged (i.e., have the
+.B CAP_SYS_TIME
+capability).
+.TP
+.BR RTC_ALM_READ ", " RTC_ALM_SET
+Read n' set tha alarm time, fo' RTCs dat support alarms.
+Da alarm interrupt must be separately enabled or disabled rockin the
+.BR RTC_AIE_ON ", " RTC_AIE_OFF
+requests.
+Da third
+.BR ioctl (2)
+argument be a pointa ta an
+.I rtc_time
+structure.
+Only the
+.IR tm_sec ,
+.IR tm_min ,
+and
+.I tm_hour
+fieldz of dis structure is used.
+.TP
+.BR RTC_IRQP_READ ", " RTC_IRQP_SET
+Read n' set tha frequency fo' periodic interrupts,
+for RTCs dat support periodic interrupts.
+Da periodic interrupt must be separately enabled or disabled rockin the
+.BR RTC_PIE_ON ", " RTC_PIE_OFF
+requests.
+Da third
+.BR ioctl (2)
+argument be an
+.I "unsigned long\ *"
+or an
+.IR "unsigned long" ,
+respectively.
+Da value is tha frequency up in interrupts per second.
+Da set of allowable frequencies is tha multiplez of two
+in tha range 2 ta 8192.
+Only a privileged process (i.e., one havin the
+.B CAP_SYS_RESOURCE
+capability) can set frequencies above tha value specified in
+.IR /proc/sys/dev/rtc/max-user-freq .
+(This file gotz nuff tha value 64 by default.)
+.TP
+.BR RTC_AIE_ON ", " RTC_AIE_OFF
+Enable or disable tha alarm interrupt, fo' RTCs dat support alarms.
+Da third
+.BR ioctl (2)
+argument is ignored.
+.TP
+.BR RTC_UIE_ON ", " RTC_UIE_OFF
+Enable or disable tha interrupt on every last muthafuckin clock update,
+for RTCs dat support dis once-per-second interrupt.
+Da third
+.BR ioctl (2)
+argument is ignored.
+.TP
+.BR RTC_PIE_ON ", " RTC_PIE_OFF
+Enable or disable tha periodic interrupt,
+for RTCs dat support these periodic interrupts.
+Da third
+.BR ioctl (2)
+argument is ignored.
+Only a privileged process (i.e., one havin the
+.B CAP_SYS_RESOURCE
+capability) can enable tha periodic interrupt if tha frequency is
+currently set above tha value specified in
+.IR /proc/sys/dev/rtc/max-user-freq .
+.TP
+.BR RTC_EPOCH_READ ", " RTC_EPOCH_SET
+Many RTCs encode tha year up in a 8-bit regista which is either
+interpreted as a 8-bit binary number or as a BCD number.
+In both cases,
+the number is interpreted relatizzle ta dis RTCz Epoch.
+Da RTCz Epoch is
+initialized ta 1900 on most systems but on Alpha n' MIPS it might
+also be initialized ta 1952, 1980, or 2000, dependin on tha value of
+an RTC regista fo' tha year.
+With some RTCs,
+these operations can be used ta read or ta set tha RTCz Epoch,
+respectively.
+Da third
+.BR ioctl (2)
+argument be a
+.I "unsigned long\ *"
+or a
+.IR "unsigned long" ,
+respectively, n' tha value returned (or assigned) is tha Epoch.
+To set tha RTCz Epoch tha process must be privileged (i.e., have the
+.B CAP_SYS_TIME
+capability).
+.TP
+.BR RTC_WKALM_RD ", " RTC_WKALM_SET
+Some RTCs support a mo' bangin alarm intercourse, rockin these ioctls
+to read or write tha RTCz alarm time (respectively) wit dis structure:
+.PP
+.RS
+.in +4n
+.nf
+struct rtc_wkalrm {
+    unsigned char enabled;
+    unsigned char pending;
+    struct rtc_time time;
+};
+.fi
+.in
+.RE
+.IP
+The
+.I enabled
+flag is used ta enable or disable tha alarm interrupt,
+or ta read its current status; when rockin these calls,
+.BR RTC_AIE_ON " n' " RTC_AIE_OFF
+are not used.
+The
+.I pending
+flag is used by
+.B RTC_WKALM_RD
+to report a pendin interrupt
+(so itz mostly useless on Linux, except when rappin'
+to tha RTC managed by EFI firmware).
+The
+.I time
+field be as used with
+.B RTC_ALM_READ
+and
+.B RTC_ALM_SET
+except dat the
+.IR tm_mdizzle ,
+.IR tm_mon ,
+and
+.I tm_year
+fieldz is also valid.
+A pointa ta dis structure should be passed as tha third
+.BR ioctl (2)
+argument.
+.SH FILES
+.IR /dev/rtc ", "
+.IR /dev/rtc0 ", "
+.IR /dev/rtc1 ", "
+etc: RTC special characta thang files.
+
+.IR /proc/driver/rtc :
+statuz of tha (first) RTC.
+.SH NOTES
+When tha kernelz system time is synchronized wit a external
+reference using
+.BR adjtimex (2)
+it will update a thugged-out designated RTC periodically every last muthafuckin 11 minutes.
+To do so, tha kernel has ta briefly turn off periodic interrupts;
+this might affect programs rockin dat RTC.
+
+An RTCz Epoch has not a god damn thang ta do wit tha POSIX Epoch which is
+used only fo' tha system clock.
+
+If tha year accordin ta tha RTCz Epoch n' tha year regista is
+less than 1970 it be assumed ta be 100 muthafuckin years later, dat is, between 2000
+and 2069.
+
+Some RTCs support "wildcard" joints up in alarm fields, ta support
+scenarios like periodic alarms at fifteen minutes afta every last muthafuckin hour,
+or on tha straight-up original gangsta dizzle of each month.
+Such usage is nonportable;
+portable user-space code only expects a single alarm interrupt, and
+will either disable or reinitialize tha alarm afta receivin dat shit.
+
+Some RTCs support periodic interrupts wit periodz dat is multiples
+of a second rather than fractionz of a second;
+multiple alarms;
+programmable output clock signals;
+nonvolatile memory;
+and other hardware
+capabilitizzles dat is not currently exposed by dis API.
+.SH SEE ALSO
+.BR date (1),
+.BR adjtimex (2),
+.BR gettimeofdizzle (2),
+.BR settimeofdizzle (2),
+.BR stime (2),
+.BR time (2),
+.BR gmtime (3),
+.BR time (7),
+.BR hwclock (8)
+
+.I Documentation/rtc.txt
+in tha Linux kernel source tree
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

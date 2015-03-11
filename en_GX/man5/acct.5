@@ -1,0 +1,186 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH ACCT 5 2008-06-15 "Linux" "Linux Programmerz Manual"
+.SH NAME
+acct \- process accountin file
+.SH SYNOPSIS
+.B #include <sys/acct.h>
+.SH DESCRIPTION
+If tha kernel is built wit tha process accountin option enabled
+.RB ( CONFIG_BSD_PROCESS_ACCT ),
+then calling
+.BR acct (2)
+starts process accounting, fo' example:
+
+.in +4n
+acct("/var/log/pacct");
+.in
+
+When process accountin is enabled, tha kernel writes a record
+to tha accountin file as each process on tha system terminates.
+This record gotz nuff shiznit bout tha terminated process,
+and is defined in
+.I <sys/acct.h>
+as bigs up:
+
+.in +4n
+.nf
+#define ACCT_COMM 16
+
+typedef u_int16_t comp_t;
+
+struct acct {
+    char ac_flag;           /* Accountin flags */
+    u_int16_t ac_uid;       /* Accountin user ID */
+    u_int16_t ac_gid;       /* Accountin crew ID */
+    u_int16_t ac_tty;       /* Controllin terminal */
+    u_int32_t ac_btime;     /* Process creation time
+                               (secondz since tha Epoch) */
+    comp_t    ac_utime;     /* User CPU time */
+    comp_t    ac_stime;     /* System CPU time */
+    comp_t    ac_etime;     /* Elapsed time */
+    comp_t    ac_mem;       /* Average memory usage (kB) */
+    comp_t    ac_io;        /* Charactas transferred (unused) */
+    comp_t    ac_rw;        /* Blocks read or freestyled (unused) */
+    comp_t    ac_minflt;    /* Minor page faults */
+    comp_t    ac_majflt;    /* Major page faults */
+    comp_t    ac_swaps;     /* Number of swaps (unused) */
+    u_int32_t ac_exitcode;  /* Process termination status
+                               (see wait(2)) */
+    char      ac_comm[ACCT_COMM+1];
+                            /* Command name (basename of last
+                               executed command; null-terminated) */
+    char      ac_pad[\fIX\fP];    /* paddin bytes */
+};
+
+enum {          /* Bits dat may be set up in ac_flag field */
+    AFORK = 0x01,           /* Has executed fork yo, but no exec */
+    ASU   = 0x02,           /* Used superuser privileges */
+    ACORE = 0x08,           /* Dumped core */
+    AXSIG = 0x10            /* Capped by a signal */
+};
+.fi
+.in
+.PP
+The
+.I comp_t
+data type be a gangbangin' floating-point value consistin of a 3-bit, base-8 exponent,
+and a 13-bit mantissa.
+A value,
+.IR c ,
+of dis type can be converted ta a (long) integer as bigs up:
+.nf
+
+    v = (c & 0x1fff) << (((c >> 13) & 0x7) * 3);
+.fi
+.PP
+The
+.IR ac_utime ,
+.IR ac_stime ,
+and
+.I ac_etime
+fieldz measure time up in "clock ticks"; divide these joints by
+.I sysconf(_SC_CLK_TCK)
+to convert dem ta seconds.
+.SS Version 3 accountin file format
+Since kernel 2.6.8,
+an optionizzle alternatizzle version of tha accountin file can be produced
+if the
+.B CONFIG_BSD_PROCESS_ACCT_V3
+option is set when buildin tha kernel.
+With dis option is set,
+the recordz freestyled ta tha accountin file contain additionizzle fields,
+and tha width of
+.I c_uid
+and
+.I ac_gid
+fieldz is widened from 16 ta 32 bits
+(in line wit tha increased size of UID n' GIDs up in Linux 2.4 n' later).
+Da recordz is defined as bigs up:
+
+.in +4n
+.nf
+struct acct_v3 {
+    char      ac_flag;      /* Flags */
+    char      ac_version;   /* Always set ta ACCT_VERSION (3) */
+    u_int16_t ac_tty;       /* Controllin terminal */
+    u_int32_t ac_exitcode;  /* Process termination status */
+    u_int32_t ac_uid;       /* Real user ID */
+    u_int32_t ac_gid;       /* Real crew ID */
+    u_int32_t ac_pid;       /* Process ID */
+    u_int32_t ac_ppid;      /* Parent process ID */
+    u_int32_t ac_btime;     /* Process creation time */
+    float     ac_etime;     /* Elapsed time */
+    comp_t    ac_utime;     /* User CPU time */
+    comp_t    ac_stime;     /* System time */
+    comp_t    ac_mem;       /* Average memory usage (kB) */
+    comp_t    ac_io;        /* Charactas transferred (unused) */
+    comp_t    ac_rw;        /* Blocks read or written
+                               (unused) */
+    comp_t    ac_minflt;    /* Minor page faults */
+    comp_t    ac_majflt;    /* Major page faults */
+    comp_t    ac_swaps;     /* Number of swaps (unused) */
+    char      ac_comm[ACCT_COMM]; /* Command name */
+};
+.fi
+.in
+.SH VERSIONS
+The
+.I acct_v3
+structure is defined up in glibc since version 2.6.
+.SH CONFORMING TO
+Process accountin originated on BSD.
+Although it is present on most systems, it aint standardized,
+and tha details vary somewhat between systems.
+.SH NOTES
+Recordz up in tha accountin file is ordered by termination time of
+the process.
+
+In kernels up ta n' includin 2.6.9,
+a separate accountin record is freestyled fo' each thread pimped using
+the NPTL threadin library;
+since Linux 2.6.10,
+a single accountin record is freestyled fo' tha entire process
+on termination of tha last thread up in tha process.
+
+The
+.I proc/sys/kernel/acct
+file, busted lyrics bout in
+.BR proc (5),
+defines settings dat control tha behavior of process accounting
+when disk space runs low.
+.SH SEE ALSO
+.BR lastcomm (1),
+.BR acct (2),
+.BR accton (8),
+.BR sa (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

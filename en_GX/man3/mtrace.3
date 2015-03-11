@@ -1,0 +1,179 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH MTRACE 3 2012-04-18 "GNU" "Linux Programmerz Manual"
+.SH NAME
+mtrace, muntrace \- malloc tracing
+.SH SYNOPSIS
+.B "#include <mcheck.h>"
+.sp
+.B "void mtrace(void);"
+.sp
+.B "void muntrace(void);"
+.SH DESCRIPTION
+The
+.BR mtrace ()
+function installs hook functions fo' tha memory-allocation functions
+.RB ( malloc (3),
+.BR realloc (3)
+.BR memalign (3),
+.BR free (3)).
+These hook functions record tracin shiznit bout memory allocation
+and deallocation.
+Da tracin shiznit can be used ta discover memory leaks and
+attempts ta free nonallocated memory up in a program.
+
+The
+.BR muntrace ()
+function disablez tha hook functions installed by
+.BR mtrace (),
+so dat tracin shiznit is no longer recorded
+for tha memory-allocation functions.
+If no hook functions was successfully installed by
+.BR mtrace (),
+.BR muntrace ()
+does nothing.
+
+When
+.BR mtrace ()
+is called, it checks tha value of tha environment variable
+.BR MALLOC_TRACE ,
+which should contain tha pathname of a gangbangin' file up in which
+the tracin shiznit is ta be recorded.
+If tha pathname is successfully opened, it is truncated ta zero length.
+
+If
+.BR MALLOC_TRACE
+is not set,
+or tha pathname it specifies is invalid or not writable,
+then no hook functions is installed, and
+.BR mtrace ()
+has no effect.
+In set-user-ID n' set-group-ID programs,
+.BR MALLOC_TRACE
+is ignored, and
+.BR mtrace ()
+has no effect.
+.SH CONFORMING TO
+These functions is GNU extensions.
+.SH NOTES
+In aiiight usage,
+.BR mtrace ()
+is called once all up in tha start of execution of a program, and
+.BR muntrace ()
+is never called.
+
+Da tracin output produced afta a cold-ass lil call to
+.BR mtrace ()
+is textual yo, but not designed ta be human readable.
+Da GNU C library serves up a Perl script,
+.BR mtrace (1),
+that interprets tha trace log n' produces human-readable output.
+For dopest thangs up in dis biatch,
+the traced program should be compiled wit debuggin enabled,
+so dat line-number shiznit is recorded up in tha executable.
+
+Da tracin performed by
+.BR mtrace ()
+incurs a performizzle penalty (if
+.B MALLOC_TRACE
+points ta a valid, writable pathname).
+.SH BUGS
+Da line-number shiznit produced by
+.BR mtrace (1)
+is not always precise:
+the line number references may refer ta tha previous or followin (non-blank)
+line of tha source code.
+.SH EXAMPLE
+Da shell session below demonstrates tha use of the
+.BR mtrace ()
+function n' the
+.BR mtrace (1)
+command up in a program dat has memory leaks at two different locations.
+Da demonstration uses tha followin program:
+.in +4
+.nf
+
+.RB "$ " "cat t_mtrace.c"
+#include <mcheck.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int
+main(int argc, char *argv[])
+{
+    int j;
+
+    mtrace();
+
+    fo' (j = 0; j < 2; j++)
+        malloc(100);            /* Never freed\-\-a memory leak */
+
+    calloc(16, 16);             /* Never freed\-\-a memory leak */
+    exit(EXIT_SUCCESS);
+}
+
+.fi
+.in
+When we run tha program as bigs up, we peep that
+.BR mtrace ()
+diagnosed memory leaks at two different locations up in tha program:
+.in +4n
+.nf
+
+.RB "$ " "cc \-g t_mtrace.c \-o t_mtrace"
+.RB "$ " "export MALLOC_TRACE=/tmp/t"
+.RB "$ " "./t_mtrace"
+.RB "$ " "mtrace ./t_mtrace $MALLOC_TRACE"
+Memory not freed:
+-----------------
+   Address     Size     Caller
+0x084c9378     0x64  at /home/cecilia/t_mtrace.c:12
+0x084c93e0     0x64  at /home/cecilia/t_mtrace.c:12
+0x084c9448    0x100  at /home/cecilia/t_mtrace.c:16
+.fi
+.in
+
+Da first two lyrics bout unfreed memory correspond ta tha two
+.BR malloc (3)
+calls inside the
+.I for
+loop.
+Da final message correspondz ta tha call to
+.BR calloc (3)
+(which up in turn calls
+.BR malloc (3)).
+.SH SEE ALSO
+.BR mtrace (1),
+.BR malloc (3),
+.BR malloc_hook (3),
+.BR mcheck (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

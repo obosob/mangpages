@@ -1,0 +1,252 @@
+.TH MEMCACHE_TABLE 5 
+.ad
+.fi
+.SH NAME
+memcache_table
+\-
+Postfix memcache client configuration
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap -q "\fIstring\fB" memcache:/etc/postfix/filename\fR
+
+\fBpostmap -q - memcache:/etc/postfix/\fIfilename\fR <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix mail system uses optionizzle tablez fo' address
+rewritin or mail routing. These tablez is probably in
+\fBdbm\fR or \fBdb\fR format.
+
+Alternatively, lookup tablez can be specified as memcache
+instances.  To use memcache lookups, define a memcache
+source as a lookup table up in main.cf, fo' example:
+
+.nf
+    virtual_alias_maps = memcache:/etc/postfix/memcache-aliases.cf
+.fi
+
+Da file /etc/postfix/memcache-aliases.cf has tha same
+format as tha Postfix main.cf file, n' specifies the
+parametas busted lyrics bout below.
+
+Da Postfix memcache client supports tha lookup, update,
+delete n' sequence (first/next) operations. Da sequence
+operation requires a funky-ass backup database dat supports the
+operation.
+.SH "MEMCACHE MAIN PARAMETERS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBmemcache (default: inet:localhost:11211)\fR"
+Da memcache server (note: singular) dat Postfix will try
+to connect to.  For a TCP server specify "inet:" followed by
+a hostname or address, ":", n' a port name or number.
+Specify a IPv6 address inside "[]".
+For a UNIX-domain server specify "unix:" followed by the
+socket pathname. Examples:
+
+.nf
+    memcache = inet:memcache.example.com:11211
+    memcache = inet:127.0.0.1:11211
+    memcache = inet:[fc00:8d00:189::3]:11211
+    memcache = unix:/path/to/socket
+.fi
+
+NOTE: ta access a UNIX-domain socket wit tha proxymap(8)
+server, tha socket must be accessible by tha unprivileged
+postfix user.
+.IP "\fBbackup (default: undefined)\fR"
+An optionizzle Postfix database dat serves up persistent backup
+for tha memcache database. Da Postfix memcache client will
+update tha memcache database whenever it looks up or chizzles
+information up in tha persistent database. Right back up in yo muthafuckin ass. Specify a Postfix
+"type:table" database. Examples:
+
+.nf
+    # Non-shared postscreen cache.
+    backup = btree:/var/lib/postfix/postscreen_cache_map
+
+    # Shared postscreen cache fo' processes on tha same host.
+    backup = proxy:btree:/var/lib/postfix/postscreen_cache_map
+.fi
+
+Access ta remote proxymap servers is under pimpment.
+
+NOTE 1: When pluggin a persistent \fBpostscreen\fR(8) or
+\fBverify\fR(8) cache, disable automatic cache cleanup (set
+*_cache_cleanup_interval = 0) except wit one Postfix
+instizzle dat is ghon be responsible fo' cache cleanup.
+
+NOTE 2: When different tablez share tha same memcache
+database, each table should use tha \fBkey_format\fR feature
+(see below) ta prepend its own unique strang ta tha lookup
+key.  Otherwise, automatic \fBpostscreen\fR(8) or \fBverify\fR(8)
+cache cleanup may not work.
+
+NOTE 3: When tha backup database be accessed wit "proxy:"
+lookups, tha full backup database name (includin the
+"proxy:" prefix) must be specified up in tha proxymap server's
+proxy_read_maps or proxy_write_maps settin (dependin on
+whether tha access is read-only or read-write).
+.IP "\fBflags (default: 0)\fR"
+Optionizzle flags dat should be stored along wit a memcache
+update. Da flags is ignored when lookin up shiznit.
+.IP "\fBttl (default: 3600)\fR"
+Da expiration time up in secondz of memcache thugged-out shit.
+
+NOTE 1: When rockin a memcache table as \fBpostscreen\fR(8)
+or \fBverify\fR(8) cache without persistent backup, specify
+a zero *_cache_cleanup_interval value wit all Postfix
+instances dat use tha memcache, n' specify tha phattest
+\fBpostscreen\fR(8) *_ttl value or \fBverify\fR(8) *_expire_time
+value as tha memcache tablez \fBttl\fR value.
+
+NOTE 2: Accordin ta memcache protocol documentation, a
+value pimped outa than 30 minutes (2592000 seconds) specifies
+absolute UNIX
+time. Right back up in yo muthafuckin ass. Smalla joints is relatizzle ta tha time of tha update.
+.SH "MEMCACHE KEY PARAMETERS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBkey_format (default: %s)\fB"
+Format of tha lookup n' update keys up in memcache requests.
+By default, these is tha same as tha lookup n' update
+keys dat is given ta tha Postfix memcache client.
+
+NOTE 1: Da \fBkey_format\fR feature aint used fo' \fBbackup\fR
+database requests.
+
+NOTE 2: When different tablez share tha same memcache
+database, each table should prepend its own unique string
+to tha lookup key.  Otherwise, automatic \fBpostscreen\fR(8)
+or \fBverify\fR(8) cache cleanup may not work.
+
+Examples:
+
+.nf
+    key_format = aliases:%s
+    key_format = verify:%s
+    key_format = postscreen:%s
+.fi
+
+Da \fBkey_format\fR parameta supports tha followin '%'
+expansions:
+.RS
+.IP "\fB\fB%%\fR\fR"
+This is replaced by a literal '%' character.
+.IP "\fB\fB%s\fR\fR"
+This is replaced by tha memcache client input key.
+.IP "\fB\fB%u\fR\fR"
+When tha input key be a address of tha form user@domain,
+\fB%u\fR is replaced by tha SQL quoted local part of the
+address.  Otherwise, \fB%u\fR is replaced by tha entire
+search string.  If tha localpart is empty, a lookup is
+silently suppressed n' returns no thangs up in dis biatch (an update is
+skipped wit a warning).
+.IP "\fB\fB%d\fR\fR"
+When tha input key be a address of tha form user@domain,
+\fB%d\fR is replaced by tha domain part of tha address.
+Otherwise, a lookup is silently suppressed n' returns no
+results (an update is skipped wit a warning).
+.IP "\fB\fB%[SUD]\fR\fR"
+Da upper-case equivalentz of tha above expansions behave
+in tha \fBkey_format\fR parameta identically ta their
+lower-case counter-parts.
+.IP "\fB\fB%[1-9]\fR\fR"
+Da patterns %1, %2, ... %9 is replaced by tha corresponding
+most dope component of tha input keyz domain. I aint talkin' bout chicken n' gravy biatch. If
+the input key is \fIuser@mail.example.com\fR, then %1 is
+\fBcom\fR, %2 is \fBexample\fR n' %3 is \fBmail\fR. If the
+input key is unqualified or aint gots enough domain
+components ta satisfy all tha specified patterns, a lookup
+is silently suppressed n' returns no thangs up in dis biatch (an update
+is skipped wit a warning).
+.RE
+.IP "\fBdomain (default: no domain list)\fR"
+This feature can hella reduce database server load.
+Specify a list of domain names, paths ta files, or "type:table"
+databases.
+When specified, only straight-up qualified search keys wit a
+*non-empty* localpart n' a matchin domain is eligible
+for lookup or update: bare 'user' lookups, bare domain
+lookups n' "@domain" lookups is silently skipped (updates
+are skipped wit a warning).  Example:
+
+.nf
+    domain = example.com, hash:/etc/postfix/searchdomains
+.fi
+.SH "MEMCACHE ERROR CONTROLS"
+.na
+.nf
+.ad
+.fi
+.IP "\fBdata_size_limit (default: 10240)\fR"
+Da maximal memcache reply data length up in bytes.
+.IP "\fBline_size_limit (default: 1024)\fR"
+Da maximal memcache reply line length up in bytes.
+.IP "\fBmax_try (default: 2)\fR"
+Da number of times ta try a memcache command before giving
+up.  Da memcache client do not retry a cold-ass lil command when the
+memcache server accepts no connection.
+.IP "\fBretry_pause (default: 1)\fR"
+Da time up in secondz before retryin a gangbangin' failed memcache command.
+.IP "\fBtimeout (default: 2)\fR"
+Da time limit fo' bustin  a memcache command n' for
+receivin a memcache reply.
+.SH BUGS
+.ad
+.fi
+Da Postfix memcache client cannot be used fo' security-sensitive
+tablez like fuckin \fBalias_maps\fR (these may contain
+"\fI|command\fR n' "\fI/file/name\fR" destinations), or
+\fBvirtual_uid_maps\fR, \fBvirtual_gid_maps\fR and
+\fBvirtual_mailbox_maps\fR (these specify UNIX process
+privileges or "\fI/file/name\fR" destinations).  In a typical
+deployment a memcache database is writable by any process
+that can rap ta tha memcache server; up in contrast,
+security-sensitizzle tablez must never be writable by the
+unprivileged Postfix user.
+
+Da Postfix memcache client requires additionizzle configuration
+when used as \fBpostscreen\fR(8) or \fBverify\fR(8) cache.
+For details peep tha \fBbackup\fR n' \fBttl\fR parameter
+raps up in tha MEMCACHE MAIN PARAMETERS section above.
+.SH "SEE ALSO"
+.na
+.nf
+postmap(1), Postfix lookup table manager
+postconf(5), configuration parameters
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+MEMCACHE_README, Postfix memcache client guide
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+.ad
+.fi
+Memcache support was introduced wit Postfix version 2.9.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

@@ -1,0 +1,614 @@
+
+.\" n' clean-ups n' additions (C) 2010 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" References: http://people.redhat.com/drepper/asynchnl.pdf,
+.\"     http://www.imperialviolet.org/2005/06/01/asynchronous-dns-lookups-with-glibc.html
+.\"
+.TH GETADDRINFO_A 3 2010-09-27 "GNU" "Linux Programmerz Manual"
+.SH NAME
+getaddrinfo_a, gai_suspend, gai_error, gai_cancel \- asynchronous
+network address n' steez translation
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <netdb.h>
+.sp
+.BI "int getaddrinfo_a(int " "mode" ", struct gaicb *" "list[]" ,
+.BI "                int " "nitems" ", struct sigevent *" "sevp" );
+.sp
+.BI "int gai_suspend(struct gaicb *" "list[]" ", int " "nitems" ,
+.BI "                struct timespec *" "timeout" );
+.sp
+.BI "int gai_error(struct gaicb *" "req" );
+.sp
+.BI "int gai_cancel(struct gaicb *" "req" );
+.sp
+Link wit \fI\-lanl\fP.
+.fi
+.SH DESCRIPTION
+The
+.BR getaddrinfo_a ()
+function performs tha same ol' dirty task as
+.BR getaddrinfo (3),
+but allows multiple name look-ups ta be performed asynchronously,
+with optionizzle notification on completion of look-up operations.
+
+The
+.I mode
+argument has one of tha followin joints:
+.TP
+.B GAI_WAIT
+Perform tha look-ups synchronously.
+Da call blocks until tha look-ups have completed.
+.TP
+.B GAI_NOWAIT
+Perform tha look-ups asynchronously.
+Da call returns immediately,
+and tha requests is resolved up in tha background.
+See tha rap of the
+.I sevp
+argument below.
+.PP
+Da array
+.I list
+specifies tha look-up requests ta process.
+The
+.I nitems
+argument specifies tha number of elements in
+.IR list .
+Da axed look-up operations is started up in parallel.
+NULL elements in
+.I list
+are ignored.
+Each request is busted lyrics bout by a
+.I gaicb
+structure, defined as bigs up:
+.sp
+.in +4n
+.nf
+struct gaicb {
+    const char            *ar_name;
+    const char            *ar_service;
+    const struct addrinfo *ar_request;
+    struct addrinfo       *ar_result;
+};
+.fi
+.in
+
+Da elementz of dis structure correspond ta tha arguments of
+.BR getaddrinfo (3).
+Thus,
+.I ar_name
+correspondz ta the
+.I node
+argument and
+.I ar_service
+to the
+.I service
+argument, identifyin a Internizzle host n' a service.
+The
+.I ar_request
+element correspondz ta the
+.I hints
+argument, specifyin tha criteria fo' selecting
+the returned socket address structures.
+Finally,
+.I ar_result
+correspondz ta the
+.I res
+argument; you do not need ta initialize dis element,
+it is ghon be automatically set when tha request
+is resolved.
+The
+.I addrinfo
+structure referenced by tha last two elements is busted lyrics bout in
+.BR getaddrinfo (3).
+
+When
+.I mode
+is specified as
+.BR GAI_NOWAIT ,
+notifications bout resolved requests
+can be obtained by employin the
+.I sigevent
+structure pointed ta by the
+.I sevp
+argument.
+For tha definizzle n' general detailz of dis structure, see
+.BR sigevent (7).
+The
+.I sevp\->sigev_notify
+field can have tha followin joints:
+.TP
+.BR SIGEV_NONE
+Don't provide any notification.
+.TP
+.BR SIGEV_SIGNAL
+When a look-up completes, generate tha signal
+.I sigev_signo
+for tha process.
+See
+.BR sigevent (7)
+for general details.
+The
+.I si_code
+field of the
+.I siginfo_t
+structure is ghon be set to
+.BR SI_ASYNCNL .
+.\" si_pid n' si_uid is also set, ta tha jointz of tha callin process,
+.\" which don't provide useful shiznit, so we'll skip mentionin dat shit.
+.TP
+.BR SIGEV_THREAD
+When a look-up completes, invoke
+.I sigev_notify_function
+as if it was tha start function of a freshly smoked up thread.
+See
+.BR sigevent (7)
+for details.
+.PP
+For
+.BR SIGEV_SIGNAL
+and
+.BR SIGEV_THREAD ,
+it may be useful ta point
+.IR sevp\->sigev_value.sival_ptr
+to
+.IR list .
+
+The
+.BR gai_suspend ()
+function suspendz execution of tha callin thread,
+waitin fo' tha completion of one or mo' requests up in tha array
+.IR list .
+The
+.I nitems
+argument specifies tha size of tha array
+.IR list .
+Da call blocks until one of tha followin occurs:
+.IP * 3
+One or mo' of tha operations in
+.I list
+completes.
+.IP *
+Da call is interrupted by a signal dat is caught.
+.IP *
+Da time interval specified in
+.I timeout
+elapses.
+This argument specifies a timeout up in secondz plus nanosecondz (see
+.BR nanosleep (2)
+for detailz of the
+.I timespec
+structure).
+If
+.I timeout
+is NULL, then tha call blocks indefinitely
+(until one of tha events above occurs).
+.PP
+No explicit indication of which request was completed is given;
+you must determine which request(s) have completed by iteratin with
+.BR gai_error ()
+over tha list of requests.
+
+The
+.BR gai_error ()
+function returns tha statuz of tha request
+.IR req :
+either
+.B EAI_INPROGRESS
+if tha request was not completed yet,
+0 if dat shiznit was handled successfully,
+or a error code if tha request could not be resolved.
+
+The
+.BR gai_cancel ()
+function cancels tha request
+.IR req .
+If tha request has been canceled successfully,
+the error statuz of tha request is ghon be set to
+.B EAI_CANCELLED
+and aiiight asynchronous notification is ghon be performed.
+Da request cannot be canceled if it is currently bein processed;
+in dat case, it is ghon be handled as if
+.BR gai_cancel ()
+has never been called.
+If
+.I req
+is NULL, a attempt is made ta quit all outstandin requests
+that tha process has made.
+.SH RETURN VALUE
+The
+.BR getaddrinfo_a ()
+function returns 0 if all of tha requests done been enqueued successfully,
+or one of tha followin nonzero error codes:
+.TP
+.B EAI_AGAIN
+Da resources necessary ta enqueue tha look-up requests was not available.
+Da application may check tha error statuz of each
+request ta determine which ones failed.
+.TP
+.B EAI_MEMORY
+Out of memory.
+.TP
+.B EAI_SYSTEM
+.I mode
+is invalid.
+.PP
+The
+.BR gai_suspend ()
+function returns 0 if at least one of tha listed requests has been completed.
+Otherwise, it returns one of tha followin nonzero error codes:
+.TP
+.B EAI_AGAIN
+Da given timeout expired before any of tha requests could be completed.
+.TP
+.B EAI_ALLDONE
+There was no actual requests given ta tha function.
+.TP
+.B EAI_INTR
+A signal has interrupted tha function.
+Note dat dis interruption might have been
+caused by signal notification of some completed look-up request.
+.PP
+The
+.BR gai_error ()
+function can return
+.B EAI_INPROGRESS
+for a unfinished look-up request,
+0 fo' a successfully completed look-up
+(as busted lyrics bout above), one of tha error codes dat could be returned by
+.BR getaddrinfo (3),
+or tha error code
+.B EAI_CANCELLED
+if tha request has been canceled explicitly before it could be finished.
+
+The
+.BR gai_cancel ()
+function can return one of these joints:
+.TP
+.B EAI_CANCELLED
+Da request has been canceled successfully.
+.TP
+.B EAI_NOTCANCELLED
+Da request has not been canceled.
+.TP
+.B EAI_ALLDONE
+Da request has already completed.
+.PP
+The
+.BR gai_strerror (3)
+function translates these error codes ta a human readable string,
+suitable fo' error reporting.
+.SH CONFORMING TO
+These functions is GNU extensions;
+they first rocked up in glibc up in version 2.2.3.
+.SH NOTES
+Da intercourse of
+.BR getaddrinfo_a ()
+was modeled afta the
+.BR lio_listio (3)
+interface.
+.SH EXAMPLE
+Two examplez is provided: a simple example dat resolves
+several requests up in parallel synchronously, n' a cold-ass lil complex example
+showin a shitload of tha asynchronous capabilities.
+.SS Synchronous example
+Da program below simply resolves nuff muthafuckin hostnames up in parallel,
+givin a speed-up compared ta resolvin tha hostnames sequentially using
+.BR getaddrinfo (3).
+Da program might be used like this:
+.in +4n
+.nf
+
+$ \fB./a.out ftp.us.kernel.org enoent.linuxfoundation.org gnu.cz\fP
+ftp.us.kernel.org: 128.30.2.36
+enoent.linuxfoundation.org: Name or steez not known
+gnu.cz: 87.236.197.13
+.fi
+.in
+.PP
+Here is tha program source code
+.nf
+
+#define _GNU_SOURCE
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    int i, ret;
+    struct gaicb *reqs[argc \- 1];
+    char host[NI_MAXHOST];
+    struct addrinfo *res;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s HOST...\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fo' (i = 0; i < argc \- 1; i++) {
+        reqs[i] = malloc(sizeof(*reqs[0]));
+        if (reqs[i] == NULL) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+        memset(reqs[i], 0, sizeof(*reqs[0]));
+        reqs[i]\->ar_name = argv[i + 1];
+    }
+
+    ret = getaddrinfo_a(GAI_WAIT, reqs, argc \- 1, NULL);
+    if (ret != 0) {
+        fprintf(stderr, "getaddrinfo_a() failed: %s\\n",
+                gai_strerror(ret));
+        exit(EXIT_FAILURE);
+    }
+
+    fo' (i = 0; i < argc \- 1; i++) {
+        printf("%s: ", reqs[i]\->ar_name);
+        ret = gai_error(reqs[i]);
+        if (ret == 0) {
+            res = reqs[i]\->ar_result;
+
+            ret = getnameinfo(res\->ai_addr, res\->ai_addrlen,
+                    host, sizeof(host),
+                    NULL, 0, NI_NUMERICHOST);
+            if (ret != 0) {
+                fprintf(stderr, "getnameinfo() failed: %s\\n",
+                        gai_strerror(ret));
+                exit(EXIT_FAILURE);
+            }
+            puts(host);
+
+        } else {
+            puts(gai_strerror(ret));
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SS Asynchronous example
+This example shows a simple interactive
+.BR getaddrinfo_a ()
+front-end.
+Da notification facilitizzle aint demonstrated.
+.PP
+An example session might be lookin like this:
+.in +4n
+.nf
+
+$ \fB./a.out\fP
+> a gangbangin' ftp.us.kernel.org enoent.linuxfoundation.org gnu.cz
+> c 2
+[2] gnu.cz: Request not canceled
+> w 0 1
+[00] ftp.us.kernel.org: Finished
+> l
+[00] ftp.us.kernel.org: 216.165.129.139
+[01] enoent.linuxfoundation.org: Processin request up in progress
+[02] gnu.cz: 87.236.197.13
+> l
+[00] ftp.us.kernel.org: 216.165.129.139
+[01] enoent.linuxfoundation.org: Name or steez not known
+[02] gnu.cz: 87.236.197.13
+.fi
+.in
+.PP
+Da program source be as bigs up:
+
+.nf
+#define _GNU_SOURCE
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static struct gaicb **reqs = NULL;
+static int nreqs = 0;
+
+static char *
+getcmd(void)
+{
+    static char buf[256];
+
+    fputs("> ", stdout); fflush(stdout);
+    if (fgets(buf, sizeof(buf), stdin) == NULL)
+        return NULL;
+
+    if (buf[strlen(buf) \- 1] == \(aq\\n\(aq)
+        buf[strlen(buf) \- 1] = 0;
+
+    return buf;
+}
+
+/* Add requests fo' specified hostnames */
+static void
+add_requests(void)
+{
+    int nreqs_base = nreqs;
+    char *host;
+    int ret;
+
+    while ((host = strtok(NULL, " "))) {
+        nreqs++;
+        reqs = realloc(reqs, nreqs * sizeof(reqs[0]));
+
+        reqs[nreqs \- 1] = calloc(1, sizeof(*reqs[0]));
+        reqs[nreqs \- 1]\->ar_name = strdup(host);
+    }
+
+    /* Queue nreqs_base..nreqs requests, n' you can put dat on yo' toast. */
+
+    ret = getaddrinfo_a(GAI_NOWAIT, &reqs[nreqs_base],
+                        nreqs \- nreqs_base, NULL);
+    if (ret) {
+        fprintf(stderr, "getaddrinfo_a() failed: %s\\n",
+                gai_strerror(ret));
+        exit(EXIT_FAILURE);
+    }
+}
+
+/* Wait until at least one of specified requests completes */
+static void
+wait_requests(void)
+{
+    char *id;
+    int i, ret, n;
+    struct gaicb const **wait_reqs = calloc(nreqs, sizeof(*wait_reqs));
+                /* NULL elements is ignored by gai_suspend(). */
+
+    while ((id = strtok(NULL, " ")) != NULL) {
+        n = atoi(id);
+
+        if (n >= nreqs) {
+            printf("Wack request number: %s\\n", id);
+            return;
+        }
+
+        wait_reqs[n] = reqs[n];
+    }
+
+    ret = gai_suspend(wait_reqs, nreqs, NULL);
+    if (ret) {
+        printf("gai_suspend(): %s\\n", gai_strerror(ret));
+        return;
+    }
+
+    fo' (i = 0; i < nreqs; i++) {
+        if (wait_reqs[i] == NULL)
+            continue;
+
+        ret = gai_error(reqs[i]);
+        if (ret == EAI_INPROGRESS)
+            continue;
+
+        printf("[%02d] %s: %s\\n", i, reqs[i]\->ar_name,
+               ret == 0 , biatch? "Finished" : gai_strerror(ret));
+    }
+}
+
+/* Cancel specified requests */
+static void
+cancel_requests(void)
+{
+    char *id;
+    int ret, n;
+
+    while ((id = strtok(NULL, " ")) != NULL) {
+        n = atoi(id);
+
+        if (n >= nreqs) {
+            printf("Wack request number: %s\\n", id);
+            return;
+        }
+
+        ret = gai_cancel(reqs[n]);
+        printf("[%s] %s: %s\\n", id, reqs[atoi(id)]\->ar_name,
+               gai_strerror(ret));
+    }
+}
+
+/* List all requests */
+static void
+list_requests(void)
+{
+    int i, ret;
+    char host[NI_MAXHOST];
+    struct addrinfo *res;
+
+    fo' (i = 0; i < nreqs; i++) {
+        printf("[%02d] %s: ", i, reqs[i]\->ar_name);
+        ret = gai_error(reqs[i]);
+
+        if (!ret) {
+            res = reqs[i]\->ar_result;
+
+            ret = getnameinfo(res\->ai_addr, res\->ai_addrlen,
+                              host, sizeof(host),
+                              NULL, 0, NI_NUMERICHOST);
+            if (ret) {
+                fprintf(stderr, "getnameinfo() failed: %s\\n",
+                        gai_strerror(ret));
+                exit(EXIT_FAILURE);
+            }
+            puts(host);
+        } else {
+            puts(gai_strerror(ret));
+        }
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    char *cmdline;
+    char *cmd;
+
+    while ((cmdline = getcmd()) != NULL) {
+        cmd = strtok(cmdline, " ");
+
+        if (cmd == NULL) {
+            list_requests();
+        } else {
+            switch (cmd[0]) {
+            case \(aqa\(aq:
+                add_requests();
+                break;
+            case \(aqw\(aq:
+                wait_requests();
+                break;
+            case \(aqc\(aq:
+                cancel_requests();
+                break;
+            case \(aql\(aq:
+                list_requests();
+                break;
+            default:
+                fprintf(stderr, "Wack command: %c\\n", cmd[0]);
+                break;
+            }
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR getaddrinfo (3),
+.BR inet (3),
+.BR lio_listio (3),
+.BR hostname (7),
+.BR ip (7),
+.BR sigevent (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

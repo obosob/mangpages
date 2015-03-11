@@ -1,0 +1,690 @@
+'\" t
+.TH "SYSTEMD\&.SERVICE" "5" "" "systemd 208" "systemd.service"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+systemd.service \- Service unit configuration
+.SH "SYNOPSIS"
+.PP
+\fIservice\fR\&.service
+.SH "DESCRIPTION"
+.PP
+A unit configuration file whose name endz in
+\&.service
+encodes shiznit on some process controlled n' supervised by systemd\&.
+.PP
+This playa page lists tha configuration options specific ta dis unit type\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.unit\fR(5)
+for tha common optionz of all unit configuration files\&. Da common configuration shit is configured up in tha generic
+"[Unit]"
+and
+"[Install]"
+sections\&. Da steez specific configuration options is configured up in the
+"[Service]"
+section\&.
+.PP
+Additionizzle options is listed in
+\fBsystemd.exec\fR(5), which define tha execution environment tha commandz is executed in, n' in
+\fBsystemd.kill\fR(5), which define tha way tha processez of tha steez is terminated, n' in
+\fBsystemd.resource-control\fR(5), which configure resource control settings fo' tha processez of tha service\&.
+.PP
+Unless
+\fIDefaultDependencies=\fR
+is set to
+\fBfalse\fR, steez units will implicitly have dependenciez of type
+\fIRequires=\fR
+and
+\fIAfter=\fR
+on
+basic\&.target
+as well as dependenciez of type
+\fIConflicts=\fR
+and
+\fIBefore=\fR
+on
+shutdown\&.target\&. These ensure dat aiiight steez units pull up in basic system initialization, n' is terminated cleanly prior ta system shutdown\&. Only skillz involved wit early boot or late system shutdown should disable dis option\&.
+.PP
+If a steez be axed under a cold-ass lil certain name but no unit configuration file is found, systemd looks fo' a SysV init script by tha same name (with the
+\&.service
+suffix removed) n' dynamically creates a steez unit from dat script\&. This is useful fo' compatibilitizzle wit SysV\&. Note dat dis compatibilitizzle is like comprehensive but not 100%\&. For details bout tha incompatibilities, peep the
+\m[blue]\fBIncompatibilitizzles wit SysV\fR\m[]\&\s-2\u[1]\d\s+2
+document\&.
+.SH "OPTIONS"
+.PP
+Service filez must include a
+"[Service]"
+section, which carries shiznit bout tha steez n' tha process it supervises\& fo' realz. A number of options dat may be used up in dis section is shared wit other unit types\&. These options is documented in
+\fBsystemd.exec\fR(5)
+and
+\fBsystemd.kill\fR(5)\&. Da options specific ta the
+"[Service]"
+section of steez units is tha following:
+.PP
+\fIType=\fR
+.RS 4
+Configures tha process start\-up type fo' dis steez unit\&. One of
+\fBsimple\fR,
+\fBforking\fR,
+\fBoneshot\fR,
+\fBdbus\fR,
+\fBnotify\fR
+or
+\fBidle\fR\&.
+.sp
+If set to
+\fBsimple\fR
+(the default value if neither
+\fIType=\fR
+nor
+\fIBusName=\fR
+are specified), it is expected dat tha process configured with
+\fIExecStart=\fR
+is tha main process of tha service\&. In dis mode, if tha process offers functionalitizzle ta other processes on tha system, its communication channels should be installed before tha daemon is started up (e\&.g\&. sockets set up by systemd, via socket activation), as systemd will immediately proceed startin follow\-up units\&.
+.sp
+If set to
+\fBforking\fR, it is expected dat tha process configured with
+\fIExecStart=\fR
+will call
+\fBfork()\fR
+as part of its start\-up\&. Da parent process is sposed ta fuckin exit when start\-up is complete n' all communication channels is set up\&. Da lil pimp continues ta run as tha main daemon process\&. This is tha behavior of traditionizzle UNIX daemons\&. If dis settin is used, it is recommended ta also use the
+\fIPIDFile=\fR
+option, so dat systemd can identify tha main process of tha daemon\&. systemd will proceed wit startin follow\-up units as soon as tha parent process exits\&.
+.sp
+Behavior of
+\fBoneshot\fR
+is similar to
+\fBsimple\fR; however, it is expected dat tha process has ta exit before systemd starts follow\-up units\&.
+\fIRemainAfterExit=\fR
+is particularly useful fo' dis type of service\&.
+.sp
+Behavior of
+\fBdbus\fR
+is similar to
+\fBsimple\fR; however, it is expected dat tha daemon acquires a name on tha D\-Bus bus, as configured by
+\fIBusName=\fR\&. systemd will proceed wit startin follow\-up units afta tha D\-Bus bus name has been acquired\&. Right back up in yo muthafuckin ass. Service units wit dis option configured implicitly bust dependencies on the
+dbus\&.socket
+unit\&. This type is tha default if
+\fIBusName=\fR
+is specified\&.
+.sp
+Behavior of
+\fBnotify\fR
+is similar to
+\fBsimple\fR; however, it is expected dat tha daemon sendz a notification message via
+\fBsd_notify\fR(3)
+or a equivalent call when it has finished startin up\&. systemd will proceed wit startin follow\-up units afta dis notification message has been sent\&. If dis option is used,
+\fINotifyAccess=\fR
+(see below) should be set ta open access ta tha notification socket provided by systemd\&. If
+\fINotifyAccess=\fR
+is not set, it is ghon be implicitly set to
+\fBmain\fR\&. Note dat currently
+\fIType=\fR\fBnotify\fR
+will not work if used up in combination with
+\fIPrivateNetwork=\fR\fByes\fR\&.
+.sp
+Behavior of
+\fBidle\fR
+is straight-up similar to
+\fBsimple\fR; however, actual execution of tha steez binary is delayed until all thangs is dispatched\&. This may be used ta avoid interleavin of output of shell skillz wit tha status output on tha console\&.
+.RE
+.PP
+\fIRemainAfterExit=\fR
+.RS 4
+Takes a funky-ass boolean value dat specifies whether tha steez shall be considered actizzle even when all its processes exited\&. Defaults to
+\fBno\fR\&.
+.RE
+.PP
+\fIGuessMainPID=\fR
+.RS 4
+Takes a funky-ass boolean value dat specifies whether systemd should try ta guess tha main PID of a steez if it cannot be determined reliably\&. This option is ignored unless
+\fBType=forking\fR
+is set and
+\fBPIDFile=\fR
+is unset cuz fo' tha other types or wit a explicitly configured PID file, tha main PID be always known\&. Da guessin algorithm might come ta incorrect conclusions if a thugged-out daemon consistz of mo' than one process\&. If tha main PID cannot be determined, failure detection n' automatic restartin of a steez aint gonna work reliably\&. Defaults to
+\fByes\fR\&.
+.RE
+.PP
+\fIPIDFile=\fR
+.RS 4
+Takes a absolute file name pointin ta tha PID file of dis daemon\&. Use of dis option is recommended fo' skillz where
+\fIType=\fR
+is set to
+\fBforking\fR\&. systemd will read tha PID of tha main process of tha daemon afta start\-up of tha service\&. systemd aint gonna write ta tha file configured here\&.
+.RE
+.PP
+\fIBusName=\fR
+.RS 4
+Takes a D\-Bus bus name dat dis steez is reachable as\&. This option is mandatory fo' skillz where
+\fIType=\fR
+is set to
+\fBdbus\fR yo, but its use is otherwise recommended if tha process takes a name on tha D\-Bus bus\&.
+.RE
+.PP
+\fIExecStart=\fR
+.RS 4
+Commandz wit they arguments dat is executed when dis steez is started\&. For each of tha specified commands, tha straight-up original gangsta argument must be a absolute n' literal path ta a executable\&.
+.sp
+When
+\fIType\fR
+is not
+\fBoneshot\fR, only one command may be given\&. When
+\fIType=oneshot\fR
+is used, mo' than one command may be specified\&. Multiple command lines may be concatenated up in a single directizzle by separatin dem wit semicolons (these semicolons must be passed as separate lyrics)\& fo' realz. Alternatively, dis directizzle may be specified mo' than once wit tha same effect\&. Lone semicolons may be escaped as
+"\e;"\&. If tha empty strang be assigned ta dis option, tha list of commandz ta start is reset, prior assignmentz of dis option gonna git no effect\&.
+.sp
+Each command line is split on whitespace, wit tha straight-up original gangsta item bein tha command ta execute, n' tha subsequent shit bein tha arguments\&. Double quotes ("\&.\&.\&.") n' single quotes (\*(Aq\&.\&.\&.\*(Aq) may be used, up in which case every last muthafuckin thang until tha next matchin quote becomes part of tha same argument\&. Quotes theyselves is removed afta parsing\&. In addition, a trailin backslash ("\e") may be used ta merge lines\&. This syntax is intended ta be straight-up similar ta shell syntax yo, but only tha meta\-charactas n' expansions busted lyrics bout up in tha followin paragraphs is understood\&. Right back up in yo muthafuckin ass. Specifically, redirection using
+"<",
+"<<",
+">", and
+">>", pipes using
+"|", n' hustlin programs up in tha background using
+"&"
+and
+\fIother elementz of shell syntax is not supported\fR\&.
+.sp
+If mo' than one command is specified, tha commandz is invoked sequentially up in tha order they step tha fuck up in tha unit file\&. If one of tha commandz fails (and aint prefixed with
+"\-"), other lines is not executed, n' tha unit is considered failed\&.
+.sp
+Unless
+\fIType=forking\fR
+is set, tha process started via dis command line is ghon be considered tha main process of tha daemon\&.
+.sp
+Da command line accepts
+"%"
+specifiers as busted lyrics bout in
+\fBsystemd.unit\fR(5)\&. Note dat tha straight-up original gangsta argument of tha command line (i\&.e\&. tha program ta execute) may not include specifiers\&.
+.sp
+Basic environment variable substitution is supported\&. Use
+"${FOO}"
+as part of a word, or as a word of its own, on tha command line, up in which case it is ghon be replaced by tha value of tha environment variable includin all whitespace it gotz nuff, resultin up in a single argument\&. Use
+"$FOO"
+as a separate word on tha command line, up in which case it is ghon be replaced by tha value of tha environment variable split at whitespace, resultin up in zero or mo' arguments\&. To pass a literal dollar sign, use
+"$$"\&. Variablez whose value aint known at expansion time is treated as empty strings\&. Note dat tha straight-up original gangsta argument (i\&.e\&. tha program ta execute) may not be a variable\&.
+.sp
+Variablez ta be used up in dis fashizzle may be defined through
+\fIEnvironment=\fR
+and
+\fIEnvironmentFile=\fR\&. In addition, variablez listed up in tha section "Environment variablez up in spawned processes" in
+\fBsystemd.exec\fR(5), which is considered "static configuration", may be used (this includes e\&.g\&.
+\fI$USER\fR yo, but not
+\fI$TERM\fR)\&.
+.sp
+Optionally, if tha absolute file name is prefixed with
+"@", tha second token is ghon be passed as
+"argv[0]"
+to tha executed process, followed by tha further arguments specified\&. If tha absolute filename is prefixed with
+"\-", a exit code of tha command normally considered a gangbangin' failure (i\&.e\&. non\-zero exit status or abnormal exit cuz of signal) is ignored n' considered success\&. If both
+"\-"
+and
+"@"
+are used, they can step tha fuck up in either order\&.
+.sp
+Note dat dis settin do not directly support shell command lines\&. If shell command lines is ta be used, they need ta be passed explicitly ta a gangbangin' finger-lickin' dirty-ass shell implementation of some kind\&. Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ExecStart=/bin/sh \-c \*(Aqdmesg | tac\*(Aq
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ExecStart=/bin/echo one ; /bin/echo "two two"
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This will execute
+\fB/bin/echo\fR
+two times, each time wit one argument:
+"one"
+and
+"two two", respectively\&. Because two commandz is specified,
+\fIType=oneshot\fR
+must be used\&.
+.sp
+Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ExecStart=/bin/echo / >/dev/null & \e; \e
+/bin/ls
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This will execute
+\fB/bin/echo\fR
+with five arguments:
+"/",
+">/dev/null",
+"&",
+";", and
+"/bin/ls"\&.
+.sp
+Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Environment="ONE=one" \*(AqTWO=two two\*(Aq
+ExecStart=/bin/echo $ONE $TWO ${TWO}
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This will execute
+\fB/bin/echo\fR
+with four arguments:
+"one",
+"two",
+"two", and
+"two two"\&.
+.RE
+.PP
+\fIExecStartPre=\fR, \fIExecStartPost=\fR
+.RS 4
+Additionizzle commandz dat is executed before or afta tha command in
+\fIExecStart=\fR, respectively\&. Right back up in yo muthafuckin ass. Syntax is tha same ol' dirty as for
+\fIExecStart=\fR, except dat multiple command lines is allowed n' tha commandz is executed one afta tha other, serially\&.
+.sp
+If any of dem commandz (not prefixed with
+"\-") fail, tha rest is not executed n' tha unit is considered failed\&.
+.RE
+.PP
+\fIExecReload=\fR
+.RS 4
+Commandz ta execute ta trigger a cold-ass lil configuration reload up in tha service\&. This argument takes multiple command lines, followin tha same scheme as busted lyrics bout for
+\fIExecStart=\fR
+above\&. Use of dis settin is optional\&. Right back up in yo muthafuckin ass. Specifier n' environment variable substitution is supported here followin tha same scheme as for
+\fIExecStart=\fR\&.
+.sp
+One additional, special environment variable is set: if known,
+\fI$MAINPID\fR
+is set ta tha main process of tha daemon, n' may be used fo' command lines like tha following:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+/bin/kill \-HUP $MAINPID
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Note however dat reloadin a thugged-out daemon by bustin  a signal (as wit tha example line above) is probably not a phat chizzle, cuz dis be a asynchronous operation n' hence not suitable ta order reloadz of multiple skillz against each other\&. Well shiiiit, it is straight fuckin recommended ta set
+\fIExecReload=\fR
+to a cold-ass lil command dat no only triggers a cold-ass lil configuration reload of tha daemon yo, but also synchronously waits fo' it complete\&.
+.RE
+.PP
+\fIExecStop=\fR
+.RS 4
+Commandz ta execute ta stop tha steez started via
+\fIExecStart=\fR\&. This argument takes multiple command lines, followin tha same scheme as busted lyrics bout for
+\fIExecStart=\fR
+above\&. Use of dis settin is optional\& fo' realz. Afta tha commandz configured up in dis option is run, all processes remainin fo' a steez is terminated accordin ta the
+\fIKillMode=\fR
+settin (see
+\fBsystemd.kill\fR(5))\&. If dis option aint specified, tha process is terminated immediately when steez stop is requested\&. Right back up in yo muthafuckin ass. Specifier n' environment variable substitution is supported (including
+\fI$MAINPID\fR, peep above)\&.
+.RE
+.PP
+\fIExecStopPost=\fR
+.RS 4
+Additionizzle commandz dat is executed afta tha steez was stopped\&. This includes cases where tha commandz configured in
+\fIExecStop=\fR
+were used, where tha steez aint gots any
+\fIExecStop=\fR
+defined, or where tha steez exited unexpectedly\&. This argument takes multiple command lines, followin tha same scheme as busted lyrics bout for
+\fIExecStart\fR\&. Use of these settings is optional\&. Right back up in yo muthafuckin ass. Specifier n' environment variable substitution is supported\&.
+.RE
+.PP
+\fIRestartSec=\fR
+.RS 4
+Configures tha time ta chill before restartin a steez (as configured with
+\fIRestart=\fR)\&. Takes a unit\-less value up in seconds, or a time span value like fuckin "5min 20s"\&. Defaults ta 100ms\&.
+.RE
+.PP
+\fITimeoutStartSec=\fR
+.RS 4
+Configures tha time ta wait fo' start\-up\&. If a thugged-out daemon steez do not signal start\-up completion within tha configured time, tha steez is ghon be considered failed n' is ghon be shut down again\&. Takes a unit\-less value up in seconds, or a time span value like fuckin "5min 20s"\&. Pass
+"0"
+to disable tha timeout logic\&. Defaults to
+\fIDefaultTimeoutStartSec=\fR
+from tha manager configuration file, except when
+\fIType=oneshot\fR
+is used, up in which case tha timeout is disabled by default (see
+\fBsystemd-systemd.conf\fR(5))\&.
+.RE
+.PP
+\fITimeoutStopSec=\fR
+.RS 4
+Configures tha time ta wait fo' stop\&. If a steez be axed ta stop yo, but do not terminizzle up in tha specified time, it is ghon be terminated forcibly via
+\fBSIGTERM\fR, n' afta another timeout of equal duration with
+\fBSIGKILL\fR
+(see
+\fIKillMode=\fR
+in
+\fBsystemd.kill\fR(5))\&. Takes a unit\-less value up in seconds, or a time span value like fuckin "5min 20s"\&. Pass
+"0"
+to disable tha timeout logic\&. Defaults to
+\fIDefaultTimeoutStopSec=\fR
+from tha manager configuration file (see
+\fBsystemd-systemd.conf\fR(5))\&.
+.RE
+.PP
+\fITimeoutSec=\fR
+.RS 4
+A shorthand fo' configurin both
+\fITimeoutStartSec=\fR
+and
+\fITimeoutStopSec=\fR
+to tha specified value\&.
+.RE
+.PP
+\fIWatchdogSec=\fR
+.RS 4
+Configures tha watchdog timeout fo' a service\&. Da watchdog be activated when tha start\-up is completed\&. Da steez must call
+\fBsd_notify\fR(3)
+regularly with
+"WATCHDOG=1"
+(i\&.e\&. tha "keep\-kickin it ping")\&. If tha time between two such calls is larger than tha configured time, then tha steez is placed up in a gangbangin' failed state\&. By setting
+\fIRestart=\fR
+to
+\fBon\-failure\fR
+or
+\fBalways\fR, tha steez is ghon be automatically restarted\&. Da time configured here is ghon be passed ta tha executed steez process up in the
+\fIWATCHDOG_USEC=\fR
+environment variable\&. This allows daemons ta automatically enable tha keep\-kickin it pingin logic if watchdog support is enabled fo' tha service\&. If dis option is used,
+\fINotifyAccess=\fR
+(see below) should be set ta open access ta tha notification socket provided by systemd\&. If
+\fINotifyAccess=\fR
+is not set, it is ghon be implicitly set to
+\fBmain\fR\&. Defaults ta 0, which disablez dis feature\&.
+.RE
+.PP
+\fIRestart=\fR
+.RS 4
+Configures whether tha steez shall be restarted when tha steez process exits, is capped, or a timeout is reached\&. Da steez process may be tha main steez process yo, but it may also be one of tha processes specified with
+\fIExecStartPre=\fR,
+\fIExecStartPost=\fR,
+\fIExecStop=\fR,
+\fIExecStopPost=\fR, or
+\fIExecReload=\fR\&. When tha dirtnap of tha process be a result of systemd operation (e\&.g\&. steez stop or restart), tha steez aint gonna be restarted\&. Timeouts include missin tha watchdog "keep\-kickin it ping" deadline n' a steez start, reload, n' stop operation timeouts\&.
+.sp
+Takes one of
+\fBno\fR,
+\fBon\-success\fR,
+\fBon\-failure\fR,
+\fBon\-watchdog\fR,
+\fBon\-abort\fR, or
+\fBalways\fR\&. If set to
+\fBno\fR
+(the default), tha steez aint gonna be restarted\&. If set to
+\fBon\-success\fR, it is ghon be restarted only when tha steez process exits cleanly\&. In dis context, a cold-ass lil clean exit means a exit code of 0, or one of tha signals
+\fBSIGHUP\fR,
+\fBSIGINT\fR,
+\fBSIGTERM\fR, or
+\fBSIGPIPE\fR, n' additionally, exit statuses n' signals specified in
+\fISuccessExitStatus=\fR\&. If set to
+\fBon\-failure\fR, tha steez is ghon be restarted when tha process exits wit a non\-zero exit code, is terminated by a signal (includin on core dump), when a operation (like fuckin steez reload) times out, n' when tha configured watchdog timeout is triggered\&. If set to
+\fBon\-abort\fR, tha steez is ghon be restarted only if tha steez process exits cuz of a uncaught signal not specified as a cold-ass lil clean exit status\&. If set to
+\fBon\-watchdog\fR, tha steez is ghon be restarted only if tha watchdog timeout fo' tha steez expires\&. If set to
+\fBalways\fR, tha steez is ghon be restarted regardless of whether it exited cleanly or not, gots terminated abnormally by a signal, or hit a timeout\&.
+.sp
+In addizzle ta tha above settings, tha steez aint gonna be restarted if tha exit code or signal is specified in
+\fIRestartPreventExitStatus=\fR
+(see below)\&.
+.RE
+.PP
+\fISuccessExitStatus=\fR
+.RS 4
+Takes a list of exit status definitions dat when returned by tha main steez process is ghon be considered successful termination, up in addizzle ta tha aiiight successful exit code 0 n' tha signals
+\fBSIGHUP\fR,
+\fBSIGINT\fR,
+\fBSIGTERM\fR, and
+\fBSIGPIPE\fR\&. Exit status definitions can either be numeric exit codes or termination signal names, separated by spaces\&. For example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+SuccessExitStatus=1 2 8 \fBSIGKILL\fR
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+ensures dat exit codes 1, 2, 8 n' tha termination signal
+\fBSIGKILL\fR
+are considered clean steez terminations\&.
+.sp
+Note dat if a process has a signal handlez installed n' exits by calling
+\fB_exit\fR(2)
+in response ta a signal, tha shiznit bout tha signal is lost\&. Programs should instead big-ass up cleanup n' bust a cap up in theyselves wit tha same signal instead\&. Right back up in yo muthafuckin ass. See
+\m[blue]\fBProper handlin of SIGINT/SIGQUIT \(em How tha fuck ta be a proper program\fR\m[]\&\s-2\u[2]\d\s+2\&.
+.sp
+This option may step tha fuck up mo' than once, up in which case tha list of successful exit statuses is merged\&. If tha empty strang be assigned ta dis option, tha list is reset, all prior assignmentz of dis option gonna git no effect\&.
+.RE
+.PP
+\fIRestartPreventExitStatus=\fR
+.RS 4
+Takes a list of exit status definitions dat when returned by tha main steez process will prevent automatic steez restarts, regardless of tha restart settin configured with
+\fIRestart=\fR\&. Exit status definitions can either be numeric exit codes or termination signal names, n' is separated by spaces\&. Defaults ta tha empty list, so that, by default, no exit status is excluded from tha configured restart logic\&. Example:
+"RestartPreventExitStatus=1 6 SIGABRT", ensures dat exit codes 1 n' 6 n' tha termination signal
+\fBSIGABRT\fR
+will not result up in automatic steez restarting\&. This option may step tha fuck up mo' than once, up in which case tha list of restart\-preventin statuses is merged\&. If tha empty strang be assigned ta dis option, tha list is reset n' all prior assignmentz of dis option gonna git no effect\&.
+.RE
+.PP
+\fIPermissionsStartOnly=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If true, tha permission\-related execution options, as configured with
+\fIUser=\fR
+and similar options (see
+\fBsystemd.exec\fR(5)
+for mo' shiznit), is only applied ta tha process started with
+\fIExecStart=\fR, n' not ta tha various other
+\fIExecStartPre=\fR,
+\fIExecStartPost=\fR,
+\fIExecReload=\fR,
+\fIExecStop=\fR, and
+\fIExecStopPost=\fR
+commands\&. If false, tha settin be applied ta all configured commandz tha same ol' dirty way\&. Defaults ta false\&.
+.RE
+.PP
+\fIRootDirectoryStartOnly=\fR
+.RS 4
+Takes a funky-ass boolean argument\&. If true, tha root directory, as configured wit the
+\fIRootDirectory=\fR
+option (see
+\fBsystemd.exec\fR(5)
+for mo' shiznit), is only applied ta tha process started with
+\fIExecStart=\fR, n' not ta tha various other
+\fIExecStartPre=\fR,
+\fIExecStartPost=\fR,
+\fIExecReload=\fR,
+\fIExecStop=\fR, and
+\fIExecStopPost=\fR
+commands\&. If false, tha settin be applied ta all configured commandz tha same ol' dirty way\&. Defaults ta false\&.
+.RE
+.PP
+\fINonBlocking=\fR
+.RS 4
+Set the
+\fBO_NONBLOCK\fR
+flag fo' all file descriptors passed via socket\-based activation\&. If true, all file descriptors >= 3 (i\&.e\&. all except stdin, stdout, n' stderr) gonna git the
+\fBO_NONBLOCK\fR
+flag set n' hence is up in non\-blockin mode\&. This option is only useful up in conjunction wit a socket unit, as busted lyrics bout in
+\fBsystemd.socket\fR(5)\&. Defaults ta false\&.
+.RE
+.PP
+\fINotifyAccess=\fR
+.RS 4
+Controls access ta tha steez status notification socket, as accessible via the
+\fBsd_notify\fR(3)
+call\&. Takes one of
+\fBnone\fR
+(the default),
+\fBmain\fR
+or
+\fBall\fR\&. If
+\fBnone\fR, no daemon status thugged-out shiznit is accepted from tha steez processes, all status update lyrics is ignored\&. If
+\fBmain\fR, only steez thugged-out shiznit busted from tha main process of tha steez is accepted\&. If
+\fBall\fR, all skillz thugged-out shiznit from all thugz of tha service\*(Aqs control crew is accepted\&. This option should be set ta open access ta tha notification socket when using
+\fIType=notify\fR
+or
+\fIWatchdogSec=\fR
+(see above)\&. If dem options is used but
+\fINotifyAccess=\fR
+is not configured, it is ghon be implicitly set to
+\fBmain\fR\&.
+.RE
+.PP
+\fISockets=\fR
+.RS 4
+Specifies tha name of tha socket units dis steez shall inherit tha sockets from when tha steez is started\&. Normally it should not be necessary ta use dis settin as all sockets whose unit shares tha same ol' dirty name as tha steez (ignorin tha different suffix of course) is passed ta tha spawned process\&.
+.sp
+Note dat tha same socket may be passed ta multiple processes all up in tha same time\& fo' realz. Also note dat a gangbangin' finger-lickin' different steez may be activated on incomin traffic than dat which inherits tha sockets\&. Or up in other lyrics: the
+\fIService=\fR
+settin of
+\&.socket
+units do not gotta match tha inverse of the
+\fISockets=\fR
+settin of the
+\&.service
+it refers to\&.
+.sp
+This option may step tha fuck up mo' than once, up in which case tha list of socket units is merged\&. If tha empty strang be assigned ta dis option, tha list of sockets is reset, n' all prior usez of dis settin gonna git no effect\&.
+.RE
+.PP
+\fIStartLimitInterval=\fR, \fIStartLimitBurst=\fR
+.RS 4
+Configure steez start rate limiting\&. By default, skillz which is started mo' than 5 times within 10 secondz is not permitted ta start any mo' times until tha 10 second interval ends\&. With these two options, dis rate limitin may be modified\&. Use
+\fIStartLimitInterval=\fR
+to configure tha checkin interval (defaults to
+\fIDefaultStartLimitInterval=\fR
+in manager configuration file, set ta 0 ta disable any kind of rate limiting)\&. Use
+\fIStartLimitBurst=\fR
+to configure how tha fuck nuff starts per interval is allowed (defaults to
+\fIDefaultStartLimitBurst=\fR
+in manager configuration file)\&. These configuration options is particularly useful up in conjunction with
+\fIRestart=\fR; however, they apply ta all kindz of starts (includin manual), not just dem triggered by the
+\fIRestart=\fR
+logic\&. Note dat units which is configured for
+\fIRestart=\fR
+and which reach tha start limit is not attempted ta be restarted no mo'; however, they may still be restarted manually at a lata point, from which point on, tha restart logic be again n' again n' again activated\&. Note that
+\fBsystemctl reset\-failed\fR
+will cause tha restart rate counta fo' a steez ta be flushed, which is useful if tha administrator wants ta manually start a steez n' tha start limit interferes wit that\&.
+.RE
+.PP
+\fIStartLimitAction=\fR
+.RS 4
+Configure tha action ta take if tha rate limit configured with
+\fIStartLimitInterval=\fR
+and
+\fIStartLimitBurst=\fR
+is hit\&. Takes one of
+\fBnone\fR,
+\fBreboot\fR,
+\fBreboot\-force\fR, or
+\fBreboot\-immediate\fR\&. If
+\fBnone\fR
+is set, hittin tha rate limit will trigger no action besides dat tha start aint gonna be permitted\&.
+\fBreboot\fR
+causes a reboot followin tha aiiight shutdown procedure (i\&.e\&. equivalent to
+\fBsystemctl reboot\fR)\&.
+\fBreboot\-force\fR
+causes a gangbangin' forced reboot which will terminizzle all processes forcibly but should cause no dirty file systems on reboot (i\&.e\&. equivalent to
+\fBsystemctl reboot \-f\fR) and
+\fBreboot\-immediate\fR
+causes immediate execution of the
+\fBreboot\fR(2)
+system call, which might result up in data loss\&. Defaults to
+\fBnone\fR\&.
+.RE
+.PP
+Check
+\fBsystemd.exec\fR(5)
+and
+\fBsystemd.kill\fR(5)
+for mo' settings\&.
+.SH "COMPATIBILITY OPTIONS"
+.PP
+Da followin options is also available up in the
+"[Service]"
+section yo, but exist purely fo' compatibilitizzle reasons n' should not be used up in newly freestyled steez files\&.
+.PP
+\fISysVStartPriority=\fR
+.RS 4
+Set tha SysV start prioritizzle ta use ta order dis steez up in relation ta SysV skillz lackin LSB headers\&. This option is only necessary ta fix orderin up in relation ta legacy SysV skillz dat have no orderin shiznit encoded up in tha script headers\& fo' realz. As such, it should only be used as a temporary compatibilitizzle option n' should not be used up in freshly smoked up unit files\& fo' realz. Almost always, it aint nuthin but a funky-ass betta chizzle ta add explicit orderin directives via
+\fIAfter=\fR
+or
+\fIBefore=\fR, instead\&. For mo' details, see
+\fBsystemd.unit\fR(5)\&. If used, pass a integer value up in tha range 0\-99\&.
+.RE
+.PP
+\fIFsckPassNo=\fR
+.RS 4
+Set tha fsck passno prioritizzle ta use ta order dis steez up in relation ta other file system checkin skillz\&. This option is only necessary ta fix orderin up in relation ta fsck thangs automatically pimped fo' all
+/etc/fstab
+entries wit a value up in tha fs_passno column > 0\& fo' realz. As such it should only be used as option fo' fsck skillz\& fo' realz. Almost always it aint nuthin but a funky-ass betta chizzle ta add explicit orderin directives via
+\fIAfter=\fR
+or
+\fIBefore=\fR, instead\&. For mo' details see
+\fBsystemd.unit\fR(5)\&. If used, pass a integer value up in tha same range as
+/etc/fstab\*(Aqs fs_passno column\&. Right back up in yo muthafuckin ass. See
+\fBfstab\fR(5)
+for details\&.
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fR(1),
+\fBsystemctl\fR(1),
+\fBsystemd.unit\fR(5),
+\fBsystemd.exec\fR(5),
+\fBsystemd.resource-control\fR(5),
+\fBsystemd.kill\fR(5),
+\fBsystemd.directives\fR(7)
+.SH "NOTES"
+.IP " 1." 4
+Incompatibilitizzles wit SysV
+.RS 4
+\%http://www.freedesktop.org/wiki/Software/systemd/Incompatibilities
+.RE
+.IP " 2." 4
+Proper handlin of SIGINT/SIGQUIT \(em How tha fuck ta be a proper program
+.RS 4
+\%http://www.cons.org/cracauer/sigint.html
+.RE

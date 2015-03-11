@@ -1,0 +1,368 @@
+.\" Copyright (c) 2008 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREAD_GETATTR_NP 3 2010-09-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthread_getattr_np \- git attributez of pimped thread
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.B #include <pthread.h>
+
+.BI "int pthread_getattr_np(pthread_t " thread ", pthread_attr_t *" attr );
+.sp
+Compile n' link wit \fI\-pthread\fP.
+.fi
+.SH DESCRIPTION
+The
+.BR pthread_getattr_np ()
+function initializes tha thread attributes object referred ta by
+.I attr
+so dat it gotz nuff actual attribute joints describin tha hustlin thread
+.IR thread .
+
+Da returned attribute joints may differ from
+the correspondin attribute joints passed up in the
+.I attr
+object dat was used ta create tha thread using
+.BR pthread_create (3).
+In particular, tha followin attributes may differ:
+.IP * 2
+the detach state, since a joinable thread may have detached itself
+afta creation;
+.IP *
+the stack size,
+which tha implementation may align ta a suitable boundary.
+.IP *
+and tha guard size,
+which tha implementation may round upward ta a multiple of tha page size,
+or ignore (i.e., treat as 0),
+if tha application be allocatin its own stack.
+.PP
+Furthermore, if tha stack address attribute was not set
+in tha thread attributes object used ta create tha thread,
+then tha returned thread attributes object will report tha actual
+stack address dat tha implementation selected fo' tha thread.
+
+When tha thread attributes object returned by
+.BR pthread_getattr_np ()
+is no longer required, it should be destroyed using
+.BR pthread_attr_destroy (3).
+.SH RETURN VALUE
+On success, dis function returns 0;
+on error, it returns a nonzero error number.
+.SH ERRORS
+.TP
+.B ENOMEM
+.\" Can happen (but unlikely) while tryin ta allocate memory fo' cpuset
+Insufficient memory.
+.PP
+In addition, if
+.I thread
+refers ta tha main thread, then
+.BR pthread_getattr_np ()
+can fail cuz of errors from various underlyin calls:
+.BR fopen (3),
+if
+.IR /proc/self/maps
+can't be opened;
+and
+.BR getrlimit (2),
+if the
+.BR RLIMIT_STACK
+resource limit aint supported.
+.SH VERSIONS
+This function be available up in glibc since version 2.2.3.
+.SH CONFORMING TO
+This function be a nonstandard GNU extension;
+hence tha suffix "_np" (nonportable) up in tha name.
+.SH EXAMPLE
+Da program below demonstrates tha use of
+.BR pthread_getattr_np ().
+Da program creates a thread dat then uses
+.BR pthread_getattr_np ()
+to retrieve n' display its guard size, stack address,
+and stack size attributes.
+Command-line arguments can be used ta set these attributes
+to joints other than tha default when bustin tha thread.
+Da shell sessions below demonstrate tha use of tha program.
+
+In tha straight-up original gangsta run, on a x86-32 system,
+a thread is pimped rockin default attributes:
+
+.in +4n
+.nf
+.RB "$" " ulimit \-s" "      # No stack limit ==> default stack size is 2MB"
+unlimited
+.RB "$" " ./a.out"
+Attributez of pimped thread:
+        Guard size          = 4096 bytes
+        Stack address       = 0x40196000 (EOS = 0x40397000)
+        Stack size          = 0x201000 (2101248) bytes
+.fi
+.in
+
+In tha followin run, we peep dat if a guard size is specified,
+it is rounded up ta tha next multiple of tha system page size
+(4096 bytes on x86-32):
+
+.in +4n
+.nf
+.RB "$" " ./a.out \-g 4097"
+Thread attributes object afta initializations:
+        Guard size          = 4097 bytes
+        Stack address       = (nil)
+        Stack size          = 0x0 (0) bytes
+
+Attributez of pimped thread:
+        Guard size          = 8192 bytes
+        Stack address       = 0x40196000 (EOS = 0x40397000)
+        Stack size          = 0x201000 (2101248) bytes
+.fi
+.in
+.\".in +4n
+.\".nf
+.\"$ ./a.out \-s 0x8000
+.\"Thread attributes object afta initializations:
+.\"        Guard size          = 4096 bytes
+.\"        Stack address       = 0xffff8000 (EOS = (nil))
+.\"        Stack size          = 0x8000 (32768) bytes
+.\"
+.\"Attributez of pimped thread:
+.\"        Guard size          = 4096 bytes
+.\"        Stack address       = 0x4001e000 (EOS = 0x40026000)
+.\"        Stack size          = 0x8000 (32768) bytes
+.\".fi
+.\".in
+
+In tha last run, tha program manually allocates a stack fo' tha thread.
+In dis case, tha guard size attribute is ignored.
+
+.in +4n
+.nf
+.RB "$" " ./a.out \-g 4096 \-s 0x8000 \-a"
+Allocated thread stack at 0x804d000
+
+Thread attributes object afta initializations:
+        Guard size          = 4096 bytes
+        Stack address       = 0x804d000 (EOS = 0x8055000)
+        Stack size          = 0x8000 (32768) bytes
+
+Attributez of pimped thread:
+        Guard size          = 0 bytes
+        Stack address       = 0x804d000 (EOS = 0x8055000)
+        Stack size          = 0x8000 (32768) bytes
+.fi
+.in
+.SS Program source
+\&
+.nf
+#define _GNU_SOURCE     /* To git pthread_getattr_np() declaration */
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define handle_error_en(en, msg) \\
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void
+display_stack_related_attributes(pthread_attr_t *attr, char *prefix)
+{
+    int s;
+    size_t stack_size, guard_size;
+    void *stack_addr;
+
+    s = pthread_attr_getguardsize(attr, &guard_size);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_getguardsize");
+    printf("%sGuard size          = %d bytes\\n", prefix, guard_size);
+
+    s = pthread_attr_getstack(attr, &stack_addr, &stack_size);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_getstack");
+    printf("%sStack address       = %p", prefix, stack_addr);
+    if (stack_size > 0)
+        printf(" (EOS = %p)", (char *) stack_addr + stack_size);
+    printf("\\n");
+    printf("%sStack size          = 0x%x (%d) bytes\\n",
+            prefix, stack_size, stack_size);
+}
+
+static void
+display_thread_attributes(pthread_t thread, char *prefix)
+{
+    int s;
+    pthread_attr_t attr;
+
+    s = pthread_getattr_np(thread, &attr);
+    if (s != 0)
+        handle_error_en(s, "pthread_getattr_np");
+
+    display_stack_related_attributes(&attr, prefix);
+
+    s = pthread_attr_destroy(&attr);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_destroy");
+}
+
+static void *           /* Start function fo' thread we create */
+thread_start(void *arg)
+{
+    printf("Attributez of pimped thread:\\n");
+    display_thread_attributes(pthread_self(), "\\t");
+
+    exit(EXIT_SUCCESS);         /* Terminizzle all threadz */
+}
+
+static void
+usage(char *pname, char *msg)
+{
+    if (msg != NULL)
+        fputs(msg, stderr);
+    fprintf(stderr, "Usage: %s [\-s stack\-size [\-a]]"
+            " [\-g guard\-size]\\n", pname);
+    fprintf(stderr, "\\t\\t\-a means program should allocate stack\\n");
+    exit(EXIT_FAILURE);
+}
+
+static pthread_attr_t *   /* Git thread attributes from command line */
+get_thread_attributes_from_cl(int argc, char *argv[],
+                              pthread_attr_t *attrp)
+{
+    int s, opt, allocate_stack;
+    long stack_size, guard_size;
+            void *stack_addr;
+    pthread_attr_t *ret_attrp = NULL;   /* Set ta attrp if we initialize
+                                           a thread attributes object */
+    allocate_stack = 0;
+    stack_size = \-1;
+    guard_size = \-1;
+
+    while ((opt = getopt(argc, argv, "ag:s:")) != \-1) {
+        switch (opt) {
+        case \(aqa\(aq:   allocate_stack = 1;                     break;
+        case \(aqg\(aq:   guard_size = strtoul(optarg, NULL, 0);  break;
+        case \(aqs\(aq:   stack_size = strtoul(optarg, NULL, 0);  break;
+        default:    usage(argv[0], NULL);
+        }
+    }
+
+    if (allocate_stack && stack_size == \-1)
+        usage(argv[0], "Specifyin \-a without \-s make no sense\\n");
+
+    if (argc > optind)
+        usage(argv[0], "Extraneous command\-line arguments\\n");
+
+    if (stack_size >= 0 || guard_size > 0) {
+        ret_attrp = attrp;
+
+        s = pthread_attr_init(attrp);
+        if (s != 0)
+            handle_error_en(s, "pthread_attr_init");
+    }
+
+    if (stack_size >= 0) {
+        if (!allocate_stack) {
+            s = pthread_attr_setstacksize(attrp, stack_size);
+            if (s != 0)
+                handle_error_en(s, "pthread_attr_setstacksize");
+        } else {
+            s = posix_memalign(&stack_addr, sysconf(_SC_PAGESIZE),
+                               stack_size);
+            if (s != 0)
+                handle_error_en(s, "posix_memalign");
+            printf("Allocated thread stack at %p\\n\\n", stack_addr);
+
+            s = pthread_attr_setstack(attrp, stack_addr, stack_size);
+            if (s != 0)
+                handle_error_en(s, "pthread_attr_setstacksize");
+        }
+    }
+
+    if (guard_size >= 0) {
+        s = pthread_attr_setguardsize(attrp, guard_size);
+        if (s != 0)
+            handle_error_en(s, "pthread_attr_setstacksize");
+    }
+
+    return ret_attrp;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int s;
+    pthread_t thr;
+    pthread_attr_t attr;
+    pthread_attr_t *attrp = NULL;    /* Set ta &attr if we initialize
+                                        a thread attributes object */
+
+    attrp = get_thread_attributes_from_cl(argc, argv, &attr);
+
+    if (attrp != NULL) {
+        printf("Thread attributes object afta initializations:\\n");
+        display_stack_related_attributes(attrp, "\\t");
+        printf("\\n");
+    }
+
+    s = pthread_create(&thr, attrp, &thread_start, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_create");
+
+    if (attrp != NULL) {
+        s = pthread_attr_destroy(attrp);
+        if (s != 0)
+            handle_error_en(s, "pthread_attr_destroy");
+    }
+
+    pause();    /* Terminates when other thread calls exit() */
+}
+.fi
+.SH SEE ALSO
+.ad l
+.nh
+.BR pthread_attr_getaffinity_np (3),
+.BR pthread_attr_getdetachstate (3),
+.BR pthread_attr_getguardsize (3),
+.BR pthread_attr_getinheritsched (3),
+.BR pthread_attr_getschedparam (3),
+.BR pthread_attr_getschedpolicy (3),
+.BR pthread_attr_getscope (3),
+.BR pthread_attr_getstack (3),
+.BR pthread_attr_getstackaddr (3),
+.BR pthread_attr_getstacksize (3),
+.BR pthread_attr_init (3),
+.BR pthread_create (3),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

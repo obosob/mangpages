@@ -1,0 +1,227 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2008-06-24, mtk: added some details bout where jiffies come into
+.\"     play; added section on high-resolution timers.
+.\"
+.TH TIME 7 2012-10-28 "Linux" "Linux Programmerz Manual"
+.SH NAME
+time \- overview of time n' timers
+.SH DESCRIPTION
+.SS Real time n' process time
+.I "Real time"
+is defined as time measured from some fixed point,
+either from a standard point up in tha past
+(see tha description of tha Epoch n' calendar time below),
+or from some point (e.g., tha start) up in tha game of a process
+.RI ( "elapsed time" ).
+
+.I "Process time"
+is defined as tha amount of CPU time used by a process.
+This is sometimes divided into
+.I user
+and
+.I system
+components.
+User CPU time is tha time dropped executin code up in user mode.
+System CPU time is tha time dropped by tha kernel executing
+in system mode on behalf of tha process (e.g., executin system calls).
+The
+.BR time (1)
+command can be used ta determine tha amount of CPU time consumed
+durin tha execution of a program.
+A program can determine tha amount of CPU time it has consumed using
+.BR times (2),
+.BR getrusage (2),
+or
+.BR clock (3).
+.SS Da hardware clock
+Most computas gotz a (battery-powered) hardware clock which tha kernel
+readz at boot time up in order ta initialize tha software clock.
+For further details, see
+.BR rtc (4)
+and
+.BR hwclock (8).
+.SS Da software clock, HZ, n' jiffies
+Da accuracy of various system calls dat set timeouts,
+(e.g.,
+.BR select (2),
+.BR sigtimedwait (2))
+.\" semtimedop(), mq_timedwait(), io_getevents(), poll() is tha same
+.\" futexes n' thus sem_timedwait() seem ta use high-res timers.
+and measure CPU time (e.g.,
+.BR getrusage (2))
+is limited by tha resolution of the
+.IR "software clock" ,
+a clock maintained by tha kernel which measures time in
+.IR jiffies .
+Da size of a jiffy is determined by tha value of tha kernel constant
+.IR HZ .
+
+Da value of
+.I HZ
+varies across kernel versions n' hardware platforms.
+On i386 tha thang be as bigs up:
+on kernels up ta n' includin 2.4.x, HZ was 100,
+givin a jiffy value of 0.01 seconds;
+startin wit 2.6.0, HZ was raised ta 1000, givin a jiffy of
+0.001 seconds.
+Since kernel 2.6.13, tha HZ value be a kernel
+configuration parameta n' can be 100, 250 (the default) or 1000,
+yieldin a jiffies value of, respectively, 0.01, 0.004, or 0.001 seconds.
+Since kernel 2.6.20, a gangbangin' further frequency be available:
+300, a number dat divides evenly fo' tha common vizzle
+frame rates (PAL, 25 HZ; NTSC, 30 HZ).
+
+The
+.BR times (2)
+system call be a special case.
+It reports times wit a granularitizzle defined by tha kernel constant
+.IR USER_HZ .
+User-space applications can determine tha value of dis constant using
+.IR sysconf(_SC_CLK_TCK) .
+.\" glibc gets dis info wit a lil help from tha ELF loader;
+.\" peep glibc elf/dl-support.c n' kernel fs/binfmt_elf.c.
+.\"
+.SS High-resolution timers
+Before Linux 2.6.21, tha accuracy of timer n' chill system calls
+(see below) was also limited by tha size of tha jiffy.
+
+Since Linux 2.6.21, Linux supports high-resolution timers (HRTs),
+optionally configurable via
+.BR CONFIG_HIGH_RES_TIMERS .
+On a system dat supports HRTs, tha accuracy of chill n' timer
+system calls is no longer constrained by tha jiffy,
+but instead can be as accurate as tha hardware allows
+(microsecond accuracy is typical of modern hardware).
+Yo ass can determine whether high-resolution timers is supported by
+checkin tha resolution returned by a cold-ass lil call to
+.BR clock_getres (2)
+or lookin all up in tha "resolution" entries in
+.IR /proc/timer_list .
+
+HRTs is not supported on all hardware architectures.
+(Support is provided on x86, arm, n' powerpc, among others.)
+.SS Da Epoch
+UNIX systems represent time up in secondz since the
+.IR Epoch ,
+1970-01-01 00:00:00 +0000 (UTC).
+
+A program can determine the
+.I "calendar time"
+using
+.BR gettimeofdizzle (2),
+which returns time (in secondz n' microseconds) dat have
+elapsed since tha Epoch;
+.BR time (2)
+provides similar shiznit yo, but only wit accuracy ta the
+nearest second.
+Da system time can be chizzled using
+.BR settimeofdizzle (2).
+.SS Broken-down time
+Certain library functions bust a structure of
+type
+.I tm
+to represent
+.IR "broken-down time" ,
+which stores time value separated up tha fuck into distinct components
+(year, month, day, hour, minute, second, etc.).
+This structure is busted lyrics bout in
+.BR ctime (3),
+which also raps bout functions dat convert between calendar time and
+broken-down time.
+Functions fo' convertin between broken-down time n' printable
+strin representationz of tha time is busted lyrics bout in
+.BR ctime (3),
+.BR strftime (3),
+and
+.BR strptime (3).
+.SS Chillin n' settin timers
+Various system calls n' functions allow a program ta chill
+(suspend execution) fo' a specified period of time; see
+.BR nanosleep (2),
+.BR clock_nanosleep (2),
+and
+.BR chill (3).
+
+Various system calls allow a process ta set a timer dat expires
+at some point up in tha future, n' optionally at repeated intervals;
+see
+.BR alarm (2),
+.BR getitimer (2),
+.BR timerfd_create (2),
+and
+.BR timer_create (2).
+.SS Timer slack
+Since Linux 2.6.28, it is possible ta control tha "timer slack"
+value fo' a thread.
+Da timer slack is tha length of time by
+which tha kernel may delay tha wake-up of certain
+system calls dat block wit a timeout.
+Permittin dis delay allows tha kernel ta coalesce wake-up events,
+thus possibly reducin tha number of system wake-ups n' savin power.
+For mo' details, peep tha description of
+.B PR_SET_TIMERSLACK
+in
+.BR prctl (2).
+.SH SEE ALSO
+.ad l
+.nh
+.BR date (1),
+.BR time (1),
+.BR adjtimex (2),
+.BR alarm (2),
+.BR clock_gettime (2),
+.BR clock_nanosleep (2),
+.BR getitimer (2),
+.BR getrlimit (2),
+.BR getrusage (2),
+.BR gettimeofdizzle (2),
+.BR nanosleep (2),
+.BR stat (2),
+.BR time (2),
+.BR timer_create (2),
+.BR timerfd_create (2),
+.BR times (2),
+.BR utime (2),
+.BR adjtime (3),
+.BR clock (3),
+.BR clock_getcpuclockid (3),
+.BR ctime (3),
+.BR pthread_getcpuclockid (3),
+.BR chill (3),
+.BR strftime (3),
+.BR strptime (3),
+.BR timeradd (3),
+.BR usleep (3),
+.BR rtc (4),
+.BR hwclock (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

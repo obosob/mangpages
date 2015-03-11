@@ -1,0 +1,566 @@
+'\" t
+.\"     Title: sssd-ad
+.\"    Author: Da SSSD upstream - http://fedorahosted.org/sssd
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 12/11/2014
+.\"    Manual: File Formats n' Conventions
+.\"    Source: SSSD
+.\"  Language: Gangsta
+.\"
+.TH "SSSD\-AD" "5" "12/11/2014" "SSSD" "File Formats n' Conventions"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+sssd-ad \- tha configuration file fo' SSSD
+.SH "DESCRIPTION"
+.PP
+This manual page raps bout tha configuration of tha AD provider for
+\fBsssd\fR(8)\&. For a thugged-out detailed syntax reference, refer ta the
+\(lqFILE FORMAT\(rq
+section of the
+\fBsssd.conf\fR(5)
+manual page\&.
+.PP
+Da AD provider be a funky-ass back end used ta connect ta a Actizzle Directory server\&. This provider requires dat tha machine be joined ta tha AD domain n' a keytab be available\&.
+.PP
+Da AD provider supports connectin ta Actizzle Directory 2008 R2 or later\&. Earlier versions may work yo, but is unsupported\&.
+.PP
+Da AD provider be able ta provide identitizzle shiznit n' authentication fo' entitizzles from trusted domains as well\&. Currently only trusted domains up in tha same forest is recognized\&.
+.PP
+Da AD provider accepts tha same ol' dirty options used by the
+\fBsssd-ldap\fR(5)
+identitizzle provider n' the
+\fBsssd-krb5\fR(5)
+authentication provider wit some exceptions busted lyrics bout below\&.
+.PP
+But fuck dat shiznit yo, tha word on tha street is dat it is neither necessary nor recommended ta set these options\&. Da AD provider can also be used as a access, chpass n' sudo provider\&. No configuration of tha access provider is required on tha client side\&.
+.PP
+By default, tha AD provider will map UID n' GID joints from tha objectSID parameta up in Actizzle Directory\&. For details on this, peep the
+\(lqID MAPPING\(rq
+section below\&. If you wanna disable ID mappin n' instead rely on POSIX attributes defined up in Actizzle Directory, you should set
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ldap_id_mappin = False
+            
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+In order ta retrieve playas n' crews rockin POSIX attributes from trusted domains, tha AD administrator must make shizzle dat tha POSIX attributes is replicated ta tha Global Catalog\&.
+.PP
+Users, crews n' other entitizzles served by SSSD is always treated as case\-insensitizzle up in tha AD provider fo' compatibilitizzle wit Actizzle Directory\*(Aqs LDAP implementation\&.
+.SH "CONFIGURATION OPTIONS"
+.PP
+Refer ta tha section
+\(lqDOMAIN SECTIONS\(rq
+of the
+\fBsssd.conf\fR(5)
+manual page fo' details on tha configuration of a SSSD domain\&.
+.PP
+ad_domain (string)
+.RS 4
+Specifies tha name of tha Actizzle Directory domain\&. This is optional\&. If not provided, tha configuration domain name is used\&.
+.sp
+For proper operation, dis option should be specified as tha lower\-case version of tha long version of tha Actizzle Directory domain\&.
+.sp
+Da short domain name (also known as tha NetBIOS or tha flat name) be autodetected by tha SSSD\&.
+.RE
+.PP
+ad_server, ad_backup_server (string)
+.RS 4
+Da comma\-separated list of hostnamez of tha AD servers ta which SSSD should connect up in order of preference\&. For mo' shiznit on failover n' server redundancy, peep the
+\(lqFAILOVER\(rq
+section\&. This is optionizzle if autodiscovery is enabled\&. For mo' shiznit on steez discovery, refer ta the
+\(lqSERVICE DISCOVERY\(rq
+section\&.
+.RE
+.PP
+ad_hostname (string)
+.RS 4
+Optional\&. May be set on machines where tha hostname(5) do not reflect tha straight-up qualified name used up in tha Actizzle Directory domain ta identify dis host\&.
+.sp
+This field is used ta determine tha host principal up in use up in tha keytab\&. Well shiiiit, it must match tha hostname fo' which tha keytab was issued\&.
+.RE
+.PP
+ad_enable_dns_sites (boolean)
+.RS 4
+Enablez DNS cribs \- location based steez discovery\&.
+.sp
+If legit n' steez discovery (see Service Discovery paragraph all up in tha bottom of tha playa page) is enabled, tha SSSD will first attempt ta discover tha Actizzle Directory server ta connect ta rockin tha Actizzle Directory Joint Discovery n' fall back ta tha DNS SRV recordz if no AD joint is found\&. Da DNS SRV configuration, includin tha discovery domain, is used durin joint discovery as well\&.
+.sp
+Default: true
+.RE
+.PP
+ad_access_filta (boolean)
+.RS 4
+This option specifies LDAP access control filta dat tha user must match up in order ta be allowed access\&. Please note dat the
+\(lqaccess_provider\(rq
+option must be explicitly set to
+\(lqad\(rq
+in order fo' dis option ta have a effect\&.
+.sp
+Da option also supports specifyin different filtas per domain or forest\&. This extended filta would consist of:
+\(lqKEYWORD:NAME:FILTER\(rq\&. Da keyword can be either
+\(lqDOM\(rq,
+\(lqFOREST\(rq
+or missing\&.
+.sp
+If tha keyword equals to
+\(lqDOM\(rq
+or is missing, then
+\(lqNAME\(rq
+specifies tha domain or subdomain tha filta applies to\&. If tha keyword equals to
+\(lqFOREST\(rq, then tha filta equals ta all domains from tha forest specified by
+\(lqNAME\(rq\&.
+.sp
+Multiple filtas can be separated wit the
+\(lq?\(rq
+character, similarly ta how tha fuck search bases work\&.
+.sp
+Da most specific match be always used\&. For example, if tha option specified filta fo' a thugged-out domain tha user be a gangmember of n' a global filter, tha per\-domain filta would be applied\&. If there be mo' matches wit tha same justification, tha straight-up original gangsta one is used\&.
+.sp
+Examples:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# apply filta on domain called dom1 only:
+dom1:(memberOf=cn=admins,ou=groups,dc=dom1,dc=com)
+
+# apply filta on domain called dom2 only:
+DOM:dom2:(memberOf=cn=admins,ou=groups,dc=dom2,dc=com)
+
+# apply filta on forest called EXAMPLE\&.COM only:
+FOREST:EXAMPLE\&.COM:(memberOf=cn=admins,ou=groups,dc=example,dc=com)
+                        
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Default: Not set
+.RE
+.PP
+ad_enable_gc (boolean)
+.RS 4
+By default, tha SSSD connects ta tha Global Catalog first ta retrieve playas from trusted domains n' uses tha LDAP port ta retrieve crew memberships or as a gangbangin' fallback\&. Disablin dis option make tha SSSD only connect ta tha LDAP port of tha current AD server\&.
+.sp
+Please note dat disablin Global Catalog support do not disable retrievin playas from trusted domains\&. Da SSSD would connect ta tha LDAP port of trusted domains instead\&. But fuck dat shiznit yo, tha word on tha street is dat Global Catalog must be used up in order ta resolve cross\-domain crew memberships\&.
+.sp
+Default: true
+.RE
+.PP
+dyndns_update (boolean)
+.RS 4
+Optional\&. This option  drops some lyrics ta SSSD ta automatically update tha Actizzle Directory DNS server wit tha IP address of dis client\&. Da update is secured rockin GSS\-TSIG\& fo' realz. As a cold-ass lil consequence, tha Actizzle Directory administrator only need ta allow secure thugged-out shiznit fo' tha DNS unit\&. Da IP address of tha AD LDAP connection is used fo' tha thugged-out shit, if it aint otherwise specified by rockin the
+\(lqdyndns_iface\(rq
+option\&.
+.sp
+NOTE: On olda systems (like fuckin RHEL 5), fo' dis behavior ta work reliably, tha default Kerberos realm must be set properly up in /etc/krb5\&.conf
+.sp
+Default: true
+.RE
+.PP
+dyndns_ttl (integer)
+.RS 4
+Da TTL ta apply ta tha client DNS record when uppimpin it\&. If dyndns_update is false dis has no effect\&. This will override tha TTL serverside if set by a administrator\&.
+.sp
+Default: 3600 (seconds)
+.RE
+.PP
+dyndns_iface (string)
+.RS 4
+Optional\& fo' realz. Applicable only when dyndns_update is true\&. Chizzle tha intercourse whose IP address should be used fo' dynamic DNS thugged-out shit\&.
+.sp
+Default: Use tha IP address of tha AD LDAP connection
+.RE
+.PP
+dyndns_refresh_interval (integer)
+.RS 4
+How tha fuck often should tha back end big-ass up periodic DNS update up in addizzle ta tha automatic update performed when tha back end goes online\&. This option is optionizzle n' applicable only when dyndns_update is true\&.
+.sp
+Default: 86400 (24 hours)
+.RE
+.PP
+dyndns_update_ptr (bool)
+.RS 4
+Whether tha PTR record should also be explicitly updated when uppimpin tha client\*(Aqs DNS records\& fo' realz. Applicable only when dyndns_update is true\&.
+.sp
+Default: True
+.RE
+.PP
+dyndns_force_tcp (bool)
+.RS 4
+Whether tha nsupdate utilitizzle should default ta rockin TCP fo' communicatin wit tha DNS server\&.
+.sp
+Default: False (let nsupdate chizzle tha protocol)
+.RE
+.PP
+override_homedir (string)
+.RS 4
+Override tha user\*(Aqs home directory\&. Yo ass can either provide a absolute value or a template\&. In tha template, tha followin sequences is substituted:
+.PP
+%u
+.RS 4
+login name
+.RE
+.PP
+%U
+.RS 4
+UID number
+.RE
+.PP
+%d
+.RS 4
+domain name
+.RE
+.PP
+%f
+.RS 4
+fully qualified user name (user@domain)
+.RE
+.PP
+%o
+.RS 4
+Da original gangsta home directory retrieved from tha identitizzle provider\&.
+.RE
+.PP
+%H
+.RS 4
+Da value of configure option
+\fIhomedir_substring\fR\&.
+.RE
+.PP
+%%
+.RS 4
+a literal \*(Aq%\*(Aq
+.RE
+.sp
+This option can also be set per\-domain\&.
+.sp
+example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+override_homedir = /home/%u
+        
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Default: Not set (SSSD will use tha value retrieved from LDAP)
+.RE
+.PP
+homedir_substrin (string)
+.RS 4
+Da value of dis option is ghon be used up in tha expansion of the
+\fIoverride_homedir\fR
+option if tha template gotz nuff tha format string
+\fI%H\fR\& fo' realz. An LDAP directory entry can directly contain dis template so dat dis option can be used ta expand tha home directory path fo' each client machine (or operatin system)\&. Well shiiiit, it can be set per\-domain or globally up in tha [nss] section\& fo' realz. A value specified up in a thugged-out domain section will override one set up in tha [nss] section\&.
+.sp
+Default: /home
+.RE
+.PP
+krb5_use_enterprise_principal (boolean)
+.RS 4
+Specifies if tha user principal should be treated as enterprise principal\&. Right back up in yo muthafuckin ass. See section 5 of RFC 6806 fo' mo' details bout enterprise principals\&.
+.sp
+Default: true
+.sp
+Note dat dis default differs from tha traditionizzle Kerberos provider back end\&.
+.RE
+.SH "FAILOVER"
+.PP
+Da failover feature allows back endz ta automatically switch ta a gangbangin' finger-lickin' different server if tha current server fails\&.
+.SS "Failover Syntax"
+.PP
+Da list of servers is given as a cold-ass lil comma\-separated list; any number of spaces be allowed round tha comma\&. Da servers is listed up in order of preference\&. Da list can contain any number of servers\&.
+.PP
+For each failover\-enabled config option, two variants exist:
+\fIprimary\fR
+and
+\fIbackup\fR\&. Da scam is dat servers up in tha primary list is preferred n' backup servers is only searched if no primary servers can be reached\&. If a funky-ass backup server is selected, a timeout of 31 secondz is set\& fo' realz. Afta dis timeout SSSD will periodically try ta reconnect ta one of tha primary servers\&. If it succeeds, it will replace tha current actizzle (backup) server\&.
+.SS "Da Failover Mechanism"
+.PP
+Da failover mechanizzle distinguishes between a machine n' a service\&. Da back end first tries ta resolve tha hostname of a given machine; if dis resolution attempt fails, tha machine is considered offline\&. No further attempts is made ta connect ta dis machine fo' any other service\&. If tha resolution attempt succeeds, tha back end tries ta connect ta a steez on dis machine\&. If tha steez connection attempt fails, then only dis particular steez is considered offline n' tha back end automatically switches over ta tha next service\&. Da machine is still considered online n' might still be tried fo' another service\&.
+.PP
+Further connection attempts is made ta machines or skillz marked as offline afta a specified period of time; dis is currently hard coded ta 30 seconds\&.
+.PP
+If there be no mo' machines ta try, tha back end as a whole switches ta offline mode, n' then attempts ta reconnect every last muthafuckin 30 seconds\&.
+.SH "SERVICE DISCOVERY"
+.PP
+Da steez discovery feature allows back endz ta automatically find tha appropriate servers ta connect ta rockin a special DNS query\&. This feature aint supported fo' backup servers\&.
+.SS "Configuration"
+.PP
+If no servers is specified, tha back end automatically uses steez discovery ta try ta find a server\&. Optionally, tha user may chizzle ta use both fixed server addresses n' steez discovery by insertin a special keyword,
+\(lq_srv_\(rq, up in tha list of servers\&. Da order of preference is maintained\&. This feature is useful if, fo' example, tha user prefers ta use steez discovery whenever possible, n' fall back ta a specific server when no servers can be discovered rockin DNS\&.
+.SS "Da domain name"
+.PP
+Please refer ta the
+\(lqdns_discovery_domain\(rq
+parameta up in the
+\fBsssd.conf\fR(5)
+manual page fo' mo' details\&.
+.SS "Da protocol"
+.PP
+Da queries probably specify _tcp as tha protocol\&. Exceptions is documented up in respectizzle option description\&.
+.SS "See Also"
+.PP
+For mo' shiznit on tha steez discovery mechanism, refer ta RFC 2782\&.
+.SH "ID MAPPING"
+.PP
+Da ID\-mappin feature allows SSSD ta act as a cold-ass lil client of Actizzle Directory without requirin administrators ta extend user attributes ta support POSIX attributes fo' user n' crew identifiers\&.
+.PP
+NOTE: When ID\-mappin is enabled, tha uidNumber n' gidNumber attributes is ignored\&. This is ta avoid tha possibilitizzle of conflicts between automatically\-assigned n' manually\-assigned joints\&. If you need ta use manually\-assigned joints, ALL joints must be manually\-assigned\&.
+.PP
+Please note dat changin tha ID mappin related configuration options will cause user n' crew IDs ta chizzle\& fo' realz. At tha moment, SSSD do not support changin IDs, so tha SSSD database must be removed\&. Because cached passwordz is also stored up in tha database, removin tha database should only be performed while tha authentication servers is reachable, otherwise playas might git locked out\&. In order ta cache tha password, a authentication must be performed\&. Well shiiiit, it aint sufficient ta use
+\fBsss_cache\fR(8)
+to remove tha database, rather tha process consists of:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Makin shizzle tha remote servers is reachable
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Stoppin tha SSSD service
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Removin tha database
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Startin tha SSSD service
+.RE
+.sp
+Mo'over, as tha chizzle of IDs might necessitate tha adjustment of other system propertizzles like fuckin file n' directory ballership, it\*(Aqs advisable ta plan ahead n' test tha ID mappin configuration thoroughly\&.
+.SS "Mappin Algorithm"
+.PP
+Actizzle Directory serves up a objectSID fo' every last muthafuckin user n' crew object up in tha directory\&. This objectSID can be fucked up tha fuck into components dat represent tha Actizzle Directory domain identitizzle n' tha relatizzle identifier (RID) of tha user or crew object\&.
+.PP
+Da SSSD ID\-mappin algorithm takes a range of available UIDs n' divides it tha fuck into equally\-sized component sections \- called "slices"\-\&. Each slice represents tha space available ta a Actizzle Directory domain\&.
+.PP
+When a user or crew entry fo' a particular domain is encountered fo' tha last time, tha SSSD allocates one of tha available slices fo' dat domain\&. In order ta make dis slice\-assignment repeatable on different client machines, we select tha slice based on tha followin algorithm:
+.PP
+Da SID strang is passed all up in tha murmurhash3 algorithm ta convert it ta a 32\-bit hashed value\&. We then take tha moduluz of dis value wit tha total number of available slices ta pick tha slice\&.
+.PP
+NOTE: It be possible ta encounta collisions up in tha hash n' subsequent modulus\&. In these thangs, we will select tha next available slice yo, but it may not be possible ta reproduce tha same exact set of slices on other machines (since tha order dat they is encountered will determine they slice)\&. In dis thang, it is recommended ta either switch ta rockin explicit POSIX attributes up in Actizzle Directory (disablin ID\-mapping) or configure a thugged-out default domain ta guarantee dat at least one be always consistent\&. Right back up in yo muthafuckin ass. See
+\(lqConfiguration\(rq
+for details\&.
+.SS "Configuration"
+.PP
+Minimum configuration (in the
+\(lq[domain/DOMAINNAME]\(rq
+section):
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+ldap_id_mappin = True
+ldap_schema = ad
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Da default configuration thangs up in dis biatch up in configurin 10,000 slices, each capable of holdin up ta 200,000 IDs, startin from 10,001 n' goin up ta 2,000,100,000\&. This should be sufficient fo' most deployments\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBAdvanced Configuration\fR
+.RS 4
+.PP
+ldap_idmap_range_min (integer)
+.RS 4
+Specifies tha lower bound of tha range of POSIX IDs ta use fo' mappin Actizzle Directory user n' crew SIDs\&.
+.sp
+NOTE: This option is different from
+\(lqmin_id\(rq
+in that
+\(lqmin_id\(rq
+acts ta filta tha output of requests ta dis domain, whereas dis option controls tha range of ID assignment\&. This be a subtle distinction yo, but tha phat general lyrics would be ta have
+\(lqmin_id\(rq
+be less\-than or equal to
+\(lqldap_idmap_range_min\(rq
+.sp
+Default: 200000
+.RE
+.PP
+ldap_idmap_range_max (integer)
+.RS 4
+Specifies tha upper bound of tha range of POSIX IDs ta use fo' mappin Actizzle Directory user n' crew SIDs\&.
+.sp
+NOTE: This option is different from
+\(lqmax_id\(rq
+in that
+\(lqmax_id\(rq
+acts ta filta tha output of requests ta dis domain, whereas dis option controls tha range of ID assignment\&. This be a subtle distinction yo, but tha phat general lyrics would be ta have
+\(lqmax_id\(rq
+be pimped outer\-than or equal to
+\(lqldap_idmap_range_max\(rq
+.sp
+Default: 2000200000
+.RE
+.PP
+ldap_idmap_range_size (integer)
+.RS 4
+Specifies tha number of IDs available fo' each slice\&. If tha range size do not divide evenly tha fuck into tha min n' max joints, it will create as nuff complete slices as it can\&.
+.sp
+Default: 200000
+.RE
+.PP
+ldap_idmap_default_domain_sid (string)
+.RS 4
+Specify tha domain SID of tha default domain\&. This will guarantee dat dis domain will always be assigned ta slice zero up in tha ID map, bypassin tha murmurhash algorithm busted lyrics bout above\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_idmap_default_domain (string)
+.RS 4
+Specify tha name of tha default domain\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_idmap_autorid_compat (boolean)
+.RS 4
+Changes tha behavior of tha ID\-mappin algorithm ta behave mo' similarly ta winbind\*(Aqs
+\(lqidmap_autorid\(rq
+algorithm\&.
+.sp
+When dis option is configured, domains is ghon be allocated startin wit slice zero n' increasin monatomically wit each additionizzle domain\&.
+.sp
+NOTE: This algorithm is non\-deterministic (it dependz on tha order dat playas n' crews is requested)\&. If dis mode is required fo' compatibilitizzle wit machines hustlin winbind, it is recommended ta also use the
+\(lqldap_idmap_default_domain_sid\(rq
+option ta guarantee dat at least one domain is consistently allocated ta slice zero\&.
+.sp
+Default: False
+.RE
+.RE
+.SH "EXAMPLE"
+.PP
+Da followin example assumes dat SSSD is erectly configured n' example\&.com is one of tha domains up in the
+\fI[sssd]\fR
+section\&. This example shows only tha AD provider\-specific options\&.
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+[domain/EXAMPLE]
+id_provider = ad
+auth_provider = ad
+access_provider = ad
+chpass_provider = ad
+
+ad_server = dc1\&.example\&.com
+ad_hostname = client\&.example\&.com
+ad_domain = example\&.com
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "NOTES"
+.PP
+Da AD access control provider checks if tha account is expired\&. Well shiiiit, it has tha same ol' dirty effect as tha followin configuration of tha LDAP provider:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+access_provider = ldap
+ldap_access_order = expire
+ldap_account_expire_policy = ad
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+But fuck dat shiznit yo, tha word on tha street is dat unless the
+\(lqad\(rq
+access control provider is explicitly configured, tha default access provider is
+\(lqpermit\(rq\&.
+.SH "SEE ALSO"
+.PP
+\fBsssd\fR(8),
+\fBsssd.conf\fR(5),
+\fBsssd-ldap\fR(5),
+\fBsssd-krb5\fR(5),
+\fBsssd-simple\fR(5),
+\fBsssd-ipa\fR(5),
+\fBsssd-ad\fR(5),
+\fBsssd-sudo\fR(5),\fBsss_cache\fR(8),
+\fBsss_debuglevel\fR(8),
+\fBsss_groupadd\fR(8),
+\fBsss_groupdel\fR(8),
+\fBsss_groupshow\fR(8),
+\fBsss_groupmod\fR(8),
+\fBsss_useradd\fR(8),
+\fBsss_userdel\fR(8),
+\fBsss_usermod\fR(8),
+\fBsss_obfuscate\fR(8),
+\fBsss_seed\fR(8),
+\fBsssd_krb5_locator_plugin\fR(8),
+\fBsss_ssh_authorizedkeys\fR(8), \fBsss_ssh_knownhostsproxy\fR(8),\fBsssd-ifp\fR(5),\fBpam_sss\fR(8)\&.
+.SH "AUTHORS"
+.PP
+\fBDa SSSD upstream \- http://fedorahosted\&.org/sssd\fR

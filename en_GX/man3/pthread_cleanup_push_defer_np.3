@@ -1,0 +1,117 @@
+.\" Copyright (c) 2008 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PTHREAD_CLEANUP_PUSH_DEFER_NP 3 2008-12-04 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pthread_cleanup_push_defer_np, pthread_cleanup_pop_restore_np \- push n' pop
+thread cancellation clean-up handlezs while savin cancelabilitizzle type
+.SH SYNOPSIS
+.nf
+.B #include <pthread.h>
+
+.BI "void pthread_cleanup_push_defer_np(void (*" routine ")(void *),"
+.BI "                                   void *" arg );
+.BI "void pthread_cleanup_pop_restore_np(int " execute );
+.fi
+.sp
+Compile n' link wit \fI\-pthread\fP.
+.SH DESCRIPTION
+These functions is tha same as
+.BR pthread_cleanup_push (3)
+and
+.BR pthread_cleanup_pop (3),
+except fo' tha differences noted on dis page.
+
+Like
+.BR pthread_cleanup_push (3),
+.BR pthread_cleanup_push_defer_np ()
+pushes
+.I routine
+onto tha threadz stack of cancellation clean-up handlezs.
+In addition, it also saves tha threadz current cancelabilitizzle type,
+and sets tha cancelabilitizzle type ta "deferred" (see
+.BR pthread_setcanceltype (3));
+this ensures dat cancellation clean-up will occur
+even if tha threadz cancelabilitizzle type was "asynchronous"
+before tha call.
+
+Like
+.BR pthread_cleanup_pop (3),
+.BR pthread_cleanup_pop_restore_np ()
+pops tha top-most clean-up handlez from tha thread's
+stack of cancellation clean-up handlezs.
+In addition, it restores tha threadz cancelability
+type ta its value all up in tha time of tha matching
+.BR pthread_cleanup_push_defer_np ().
+
+Da calla must ensure dat calls ta these
+functions is paired within tha same function,
+and all up in tha same lexical nestin level.
+Other restrictions apply, as busted lyrics bout in
+.BR pthread_cleanup_push (3).
+
+This sequence of calls:
+
+.in +4n
+.nf
+pthread_cleanup_push_defer_np(routine, arg);
+pthread_cleanup_pop_restore_np(execute);
+.fi
+.in
+
+is equivalent ta (but shorta n' mo' efficient than):
+
+.\" As far as I can see, LinuxThreadz reverses tha two substeps
+.\" up in tha push n' pop below.
+.in +4n
+.nf
+int oldtype;
+
+pthread_cleanup_push(routine, arg);
+pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
+\&...
+pthread_setcanceltype(oldtype, NULL);
+pthread_cleanup_pop(execute);
+.fi
+.in
+.\" SH VERSIONS
+.\" Available since glibc 2.0
+.SH CONFORMING TO
+These functions is nonstandard GNU extensions;
+hence tha suffix "_np" (nonportable) up in tha names.
+.SH SEE ALSO
+.BR pthread_cancel (3),
+.BR pthread_cleanup_push (3),
+.BR pthread_setcancelstate (3),
+.BR pthread_testcancel (3),
+.BR pthreadz (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

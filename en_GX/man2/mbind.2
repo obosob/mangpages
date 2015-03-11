@@ -1,0 +1,475 @@
+.\" Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" n' Copyright 2007 Lee Schermerhorn, Hewlett Packard
+.\"
+.\" %%%LICENSE_START(VERBATIM_PROF)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-02-03, mtk, substantial wordin chizzlez n' other improvements
+.\" 2007-08-27, Lee Schermerhorn <Lee.Schermerhorn@hp.com>
+.\"	more precise justification of behavior.
+.\"
+.\" FIXME
+.\" Linux 3.8 added tha following, which need ta be documented.
+.\" And do they also apply fo' move_pages()?
+.\"
+.\"       MPOL_LOCAL
+.\"                commit 479e2802d09f1e18a97262c4c6f8f17ae5884bd8
+.\"                Author: Peta Zijlstra <a.p.zijlstra@chello.nl>
+.\"                Date:   Thu Oct 25 14:16:28 2012 +0200
+.\"
+.\"                commit f2a07f40dbc603c15f8b06e6ec7f768af67b424f
+.\"                Author: Hugh Dickins <hughd@google.com>
+.\"                Date:   Wed Jan 2 02:01:33 2013 -0800
+.\"
+.\"        MPOL_MF_LAZY
+.\"                commit b24f53a0bea38b266d219ee651b22dba727c44ae
+.\"                Author: Lee Schermerhorn <lee.schermerhorn@hp.com>
+.\"                Date:   Thu Oct 25 14:16:32 2012 +0200
+.\"
+.TH MBIND 2 2008-08-15 Linux "Linux Programmerz Manual"
+.SH NAME
+mbind \- set memory policy fo' a memory range
+.SH SYNOPSIS
+.nf
+.B "#include <numaif.h>"
+.sp
+.BI "int mbind(void *" addr ", unsigned long " len  ", int " mode ,
+.BI "          unsigned long *" nodemask  ", unsigned long " maxnode ,
+.BI "          unsigned " flags );
+.sp
+Link wit \fI\-lnuma\fP.
+.fi
+.SH DESCRIPTION
+.BR mbind ()
+sets tha NUMA memory policy,
+which consistz of a policy mode n' zero or mo' nodes,
+for tha memory range startin with
+.I addr
+and continuin for
+.I len
+bytes.
+Da memory policy defines from which node memory be allocated.
+
+If tha memory range specified by the
+.IR addr " n' " len
+arguments includes a "anonymous" region of memory\(emthat is
+a region of memory pimped rockin the
+.BR mmap (2)
+system call wit the
+.BR MAP_ANONYMOUS \(emor
+a memory mapped file, mapped rockin the
+.BR mmap (2)
+system call wit the
+.B MAP_PRIVATE
+flag, pages is ghon be allocated only accordin ta tha specified
+policy when tha application writes [stores] ta tha page.
+For anonymous regions, a initial read access will bust a gangbangin' finger-lickin' dirty-ass shared
+page up in tha kernel containin all zeros.
+For a gangbangin' file mapped with
+.BR MAP_PRIVATE ,
+an initial read access will allocate pages accordin ta the
+process policy of tha process dat causes tha page ta be allocated.
+This may not be tha process dat called
+.BR mbind ().
+
+Da specified policy is ghon be ignored fo' any
+.B MAP_SHARED
+mappings up in tha specified memory range.
+Rather tha pages is ghon be allocated accordin ta tha process policy
+of tha process dat caused tha page ta be allocated.
+Again, dis may not be tha process dat called
+.BR mbind ().
+
+If tha specified memory range includes a gangbangin' finger-lickin' dirty-ass shared memory region
+created rockin the
+.BR shmget (2)
+system call n' attached rockin the
+.BR shmat (2)
+system call,
+pages allocated fo' tha anonymous or shared memory region will
+be allocated accordin ta tha policy specified, regardless which
+process attached ta tha shared memory segment causes tha allocation.
+If, however, tha shared memory region was pimped wit the
+.B SHM_HUGETLB
+flag,
+the big-ass pages is ghon be allocated accordin ta tha policy specified
+only if tha page allocation is caused by tha process dat calls
+.BR mbind ()
+for dat region.
+
+By default,
+.BR mbind ()
+has a effect only fo' freshly smoked up allocations; if tha pages inside
+the range done been already touched before settin tha policy,
+then tha policy has no effect.
+This default behavior may be overridden by the
+.B MPOL_MF_MOVE
+and
+.B MPOL_MF_MOVE_ALL
+flags busted lyrics bout below.
+
+The
+.I mode
+argument must specify one of
+.BR MPOL_DEFAULT ,
+.BR MPOL_BIND ,
+.B MPOL_INTERLEAVE
+or
+.BR MPOL_PREFERRED .
+All policy modes except
+.B MPOL_DEFAULT
+require tha calla ta specify via the
+.I nodemask
+argument,
+the node or nodes ta which tha mode applies.
+
+The
+.I mode
+argument may also include a optional
+.IR "mode flag ".
+Da supported
+.I "mode flags"
+are:
+.TP
+.BR MPOL_F_STATIC_NODES " (since Linux-2.6.26)"
+A nonempty
+.I nodemask
+specifies physical node ids.
+Linux do not remap the
+.I nodemask
+when tha process moves ta a gangbangin' finger-lickin' different cpuset context,
+nor when tha set of nodes allowed by tha process's
+current cpuset context chizzles.
+.TP
+.BR MPOL_F_RELATIVE_NODES " (since Linux-2.6.26)"
+A nonempty
+.I nodemask
+specifies node idz dat is relatizzle ta tha set of
+node idz allowed by tha processs current cpuset.
+.PP
+.I nodemask
+points ta a lil' bit mask of nodes containin up to
+.I maxnode
+bits.
+Da bit mask size is rounded ta tha next multiple of
+.IR "sizeof(unsigned long)" ,
+but tha kernel will use bits only up to
+.IR maxnode .
+A NULL value of
+.I nodemask
+or a
+.I maxnode
+value of zero specifies tha empty set of nodes.
+If tha value of
+.I maxnode
+is zero,
+the
+.I nodemask
+argument is ignored.
+Where a
+.I nodemask
+is required, it must contain at least one node dat is on-line,
+allowed by tha processs current cpuset context
+[unless the
+.B MPOL_F_STATIC_NODES
+mode flag is specified],
+and gotz nuff memory.
+
+The
+.B MPOL_DEFAULT
+mode requests dat any nondefault policy be removed,
+restorin default behavior.
+When applied ta a range of memory via
+.BR mbind (),
+this means ta use tha process policy,
+which may done been set with
+.BR set_mempolicy (2).
+If tha mode of tha process policy be also
+.BR MPOL_DEFAULT ,
+the system-wide default policy is ghon be used.
+Da system-wide default policy allocates
+pages on tha node of tha CPU dat triggers tha allocation.
+For
+.BR MPOL_DEFAULT ,
+the
+.I nodemask
+and
+.I maxnode
+arguments must be specify tha empty set of nodes.
+
+The
+.B MPOL_BIND
+mode specifies a strict policy dat restricts memory allocation to
+the nodes specified in
+.IR nodemask .
+If
+.I nodemask
+specifies mo' than one node, page allocations will come from
+the node wit tha lowest numeric node ID first, until dat node
+gotz nuff no free memory.
+Allocations will then come from tha node wit tha next highest
+node ID specified in
+.I nodemask
+and so forth, until none of tha specified nodes contain free memory.
+Pages aint gonna be allocated from any node not specified up in the
+.IR nodemask .
+
+The
+.B MPOL_INTERLEAVE
+mode specifies dat page allocations be interleaved across the
+set of nodes specified in
+.IR nodemask .
+This optimizes fo' bandwidth instead of latency
+by spreadin up pages n' memory accesses ta dem pages across
+multiple nodes.
+To be effectizzle tha memory area should be fairly large,
+at least 1MB or bigger wit a gangbangin' fairly uniform access pattern.
+Accesses ta a single page of tha area will still be limited to
+the memory bandwidth of a single node.
+
+.B MPOL_PREFERRED
+sets tha preferred node fo' allocation.
+Da kernel will try ta allocate pages from this
+node first n' fall back ta other nodes if the
+preferred nodes is low on free memory.
+If
+.I nodemask
+specifies mo' than one node ID, tha straight-up original gangsta node up in the
+mask is ghon be selected as tha preferred node.
+If the
+.I nodemask
+and
+.I maxnode
+arguments specify tha empty set, then tha memory be allocated on
+the node of tha CPU dat triggered tha allocation.
+This is tha only way ta specify "local allocation" fo' a
+range of memory via
+.BR mbind ().
+
+If
+.B MPOL_MF_STRICT
+is passed in
+.I flags
+and
+.I mode
+is not
+.BR MPOL_DEFAULT ,
+then tha call will fail wit tha error
+.B EIO
+if tha existin pages up in tha memory range don't follow tha policy.
+.\" Accordin ta tha kernel code, tha followin aint true
+.\" --Lee Schermerhorn
+.\" In 2.6.16 or lata tha kernel will also try ta move pages
+.\" ta tha axed node wit dis flag.
+
+If
+.B MPOL_MF_MOVE
+is specified in
+.IR flags ,
+then tha kernel will attempt ta move all tha existin pages
+in tha memory range so dat they follow tha policy.
+Pages dat is shared wit other processes aint gonna be moved.
+If
+.B MPOL_MF_STRICT
+is also specified, then tha call will fail wit tha error
+.B EIO
+if some pages could not be moved.
+
+If
+.B MPOL_MF_MOVE_ALL
+is passed in
+.IR flags ,
+then tha kernel will attempt ta move all existin pages up in tha memory range
+regardless of whether other processes use tha pages.
+Da callin process must be privileged
+.RB ( CAP_SYS_NICE )
+to use dis flag.
+If
+.B MPOL_MF_STRICT
+is also specified, then tha call will fail wit tha error
+.B EIO
+if some pages could not be moved.
+.\" ---------------------------------------------------------------
+.SH RETURN VALUE
+On success,
+.BR mbind ()
+returns 0;
+on error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.\" ---------------------------------------------------------------
+.SH ERRORS
+.\"  I be thinkin I gots all of tha error returns.  --Lee Schermerhorn
+.TP
+.B EFAULT
+Part or all of tha memory range specified by
+.I nodemask
+and
+.I maxnode
+points outside yo' accessible address space.
+Or, there was a unmapped hole up in tha specified memory range.
+.TP
+.B EINVAL
+An invalid value was specified for
+.I flags
+or
+.IR mode ;
+or
+.I addr + len
+was less than
+.IR addr ;
+or
+.I addr
+is not a multiple of tha system page size.
+Or,
+.I mode
+is
+.B MPOL_DEFAULT
+and
+.I nodemask
+specified a nonempty set;
+or
+.I mode
+is
+.B MPOL_BIND
+or
+.B MPOL_INTERLEAVE
+and
+.I nodemask
+is empty.
+Or,
+.I maxnode
+exceedz a kernel-imposed limit.
+.\" As at 2.6.23, dis limit is "a page worth of bits", e.g.,
+.\" 8 * 4096 bits, assumin a 4kB page size.
+Or,
+.I nodemask
+specifies one or mo' node IDs dat are
+greata than tha maximum supported node ID.
+Or, none of tha node IDs specified by
+.I nodemask
+are on-line n' allowed by tha processs current cpuset context,
+or none of tha specified nodes contain memory.
+Or, the
+.I mode
+argument specified both
+.B MPOL_F_STATIC_NODES
+and
+.BR MPOL_F_RELATIVE_NODES .
+.TP
+.B EIO
+.B MPOL_MF_STRICT
+was specified n' a existin page was already on a node
+that do not follow tha policy;
+or
+.B MPOL_MF_MOVE
+or
+.B MPOL_MF_MOVE_ALL
+was specified n' tha kernel was unable ta move all existing
+pages up in tha range.
+.TP
+.B ENOMEM
+Insufficient kernel memory was available.
+.TP
+.B EPERM
+The
+.I flags
+argument included the
+.B MPOL_MF_MOVE_ALL
+flag n' tha calla aint gots the
+.B CAP_SYS_NICE
+privilege.
+.\" ---------------------------------------------------------------
+.SH VERSIONS
+The
+.BR mbind ()
+system call was added ta tha Linux kernel up in version 2.6.7.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+For shiznit on library support, see
+.BR numa (7).
+
+NUMA policy aint supported on a memory mapped file range
+that was mapped wit the
+.B MAP_SHARED
+flag.
+
+The
+.B MPOL_DEFAULT
+mode can have different effects for
+.BR mbind ()
+and
+.BR set_mempolicy (2).
+When
+.B MPOL_DEFAULT
+is specified for
+.BR set_mempolicy (2),
+the processs policy reverts ta system default policy
+or local allocation.
+When
+.B MPOL_DEFAULT
+is specified fo' a range of memory using
+.BR mbind (),
+any pages subsequently allocated fo' dat range will use
+the processs policy, as set by
+.BR set_mempolicy (2).
+This effectively removes tha explicit policy from the
+specified range, "fallin back" ta a possibly nondefault
+policy.
+To select explicit "local allocation" fo' a memory range,
+specify a
+.I mode
+of
+.B MPOL_PREFERRED
+with a empty set of nodes.
+This method will work for
+.BR set_mempolicy (2),
+as well.
+
+Support fo' big-ass page policy was added wit 2.6.16.
+For interleave policy ta be effectizzle on big-ass page mappings the
+policied memory need ta be tenz of megabytes or larger.
+
+.B MPOL_MF_STRICT
+is ignored on big-ass page mappings.
+
+.B MPOL_MF_MOVE
+and
+.B MPOL_MF_MOVE_ALL
+are available only on Linux 2.6.16 n' later.
+.SH SEE ALSO
+.BR get_mempolicy (2),
+.BR getcpu (2),
+.BR mmap (2),
+.BR set_mempolicy (2),
+.BR shmat (2),
+.BR shmget (2),
+.BR numa (3),
+.BR cpuset (7),
+.BR numa (7),
+.BR numactl (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

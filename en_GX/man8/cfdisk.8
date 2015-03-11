@@ -1,0 +1,450 @@
+.\" cfdisk.8 -- playa page fo' cfdisk
+.\" Copyright 1994 Kevin E. Martin (martin@cs.unc.edu)
+.\"
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" " fo' hilit mode
+.TH CFDISK 8 "April 2013" "util-linux" "System Administration"
+.SH NAME
+cfdisk \- display or manipulate disk partizzle table
+.SH SYNOPSIS
+.B cfdisk
+.RB [ \-agvz ]
+.RB [ \-c
+.IR cylindaz ]
+.RB [ \-h
+.IR headz ]
+.RB [ \-s
+.IR sectors-per-track ]
+.RB [ \-P
+.IR format ]
+.RI [ thang ]
+.SH DESCRIPTION
+.B cfdisk
+is a cold-ass lil curses-based program fo' partitionin any hard disk drive.
+Typical jointz of the
+.I device
+argument are:
+.sp
+.nf
+.RS
+/dev/hda [default]
+/dev/hdb
+/dev/sda [the fallback when /dev/hda do not exist]
+/dev/sdb
+/dev/sdc
+/dev/sdd
+.RE
+.fi
+
+Note that
+.B cfdisk
+does not align partitions ta block-device I/O limits, n' you can put dat on yo' toast.  This functionalitizzle is
+provided by
+.BR fdisk (8).
+
+In order ta write tha partizzle table,
+.B cfdisk
+needz suttin' called tha `geometry' of tha disk: tha number
+of `heads' n' tha number of `sectors per track'.  Linux do not
+use any geometry, so if tha disk aint gonna be accessed by other
+operatin systems, you can safely accept tha defaults that
+.B cfdisk
+chooses fo' yo thugged-out ass.  Da geometry used by
+.B cfdisk
+is found as bigs up.  First tha partizzle table is examined,
+to peep what tha fuck geometry was used by tha previous program that
+changed dat shit.  If tha partizzle table is empty, or gotz nuff garbage,
+or do not point at a cold-ass lil consistent geometry, tha kernel is
+axed fo' lyrics.  If not a god damn thang works, 255 headz n' 63 sectors/track
+are assumed. Y'all KNOW dat shit, muthafucka!  Da geometry can be overridden on tha command line
+or by use of tha `g' command. Y'all KNOW dat shit, muthafucka!  When partitionin a empty big-ass modern
+disk, pickin 255 headz n' 63 sectors/track be always a phat idea.
+There is no need ta set tha number of cylinders, since
+.B cfdisk
+knows tha disk size.
+
+Next,
+.B cfdisk
+tries ta read tha current partizzle table from tha disk drive.  If it
+is unable ta figure up tha partizzle table, a error is displayed and
+the program will exit.  This might also be caused by incorrect
+geometry shiznit, n' can be overridden on tha command line.
+Another way round dis problem is wit the
+.B \-z
+option. I aint talkin' bout chicken n' gravy biatch.  This will ignore tha partizzle table on tha disk.
+
+Da main display is composed of four sections, from top ta bottom: the
+header, tha partitions, tha command line n' a warnin line.  The
+header gives tha program name n' version number followed by shiznit about
+the disk drive n' its geometry.  Da partitions section always displays
+the current partizzle table.  Da command line is tha place where
+commandz n' text is entered. Y'all KNOW dat shit, muthafucka!  Da available commandz is usually
+displayed up in brackets, n' you can put dat on yo' toast.  Da warnin line is probably empty except when
+there is blingin shiznit ta be displayed. Y'all KNOW dat shit, muthafucka!  Da current partition
+is highlighted wit reverse vizzle (or wit a arrow if the
+.B \-a
+option is given).  All partition-specific commandz apply ta the
+current partition.
+
+Da format of tha partizzle table up in tha partitions section is, from
+left ta right: Name, Flags, Partizzle Type, Filesystem Type n' Size.
+Da name is tha thang name of tha partition. I aint talkin' bout chicken n' gravy biatch.  Da flags can be
+.IR Boot ,
+which designates a funky-ass bootable partition, or
+.IR NC ,
+which standz fo' "Not Compatible wit DOS or OS/2".  DOS, OS/2 and
+possibly other operatin systems require tha straight-up original gangsta sector of tha first
+partizzle on tha disk n' all logical partitions ta begin on the
+second head. Y'all KNOW dat shit, muthafucka!  This wastes tha second all up in tha last sector of the
+first track of tha straight-up original gangsta head (the first sector is taken by the
+partizzle table itself).
+.B cfdisk
+allows you ta recover these "lost" sectors wit tha maximize command
+.RB ( m ).
+.I Note:
+.BR fdisk (8)
+and some early versionz of DOS create all partitions wit tha number
+of sectors already maximized. Y'all KNOW dat shit, muthafucka!  For mo' shiznit, peep tha maximize
+command below.  Da partizzle type can be one of
+.IR Primary " or " Logical .
+For unallocated space on tha drive, tha partizzle type can also be
+.IR Pri/Log ,
+or empty (if tha space is unusable).  Da filesystem type section
+displays tha name of tha filesystem used on tha partition, if known.
+If it is unknown, then
+.I Unknown
+and tha hex value of tha filesystem type is displayed. Y'all KNOW dat shit, muthafucka!  A special
+case occurs when there be sectionz of tha disk drive dat cannot be
+used (because all of tha primary partitions is used).  When dis is
+detected, tha filesystem type is displayed as
+.IR Unusable .
+Da size field displays tha size of tha partizzle up in megabytes (by
+default).  It can also display tha size up in sectors n' cylindaz (see
+the chizzle units command below).  If a asterisk
+.RB ( * )
+appears afta tha size, dis means dat tha partizzle aint aligned
+on cylinder boundaries.
+
+.SH "DOS 6.x WARNING"
+Da DOS 6.x FORMAT command looks fo' some shiznit up in tha first
+sector of tha data area of tha partition, n' treats dis shiznit
+as mo' reliable than tha shiznit up in tha partizzle table.  DOS
+FORMAT expects DOS FDISK ta clear tha straight-up original gangsta 512 bytez of tha data area
+of a partizzle whenever a size chizzle occurs.  DOS FORMAT will peep
+this extra shiznit even if tha /U flag is given -- we consider
+this a funky-ass bug up in DOS FORMAT n' DOS FDISK.
+
+Da bottom line is dat if you use cfdisk or fdisk ta chizzle tha size of a
+DOS partizzle table entry, then you must also use
+.B dd
+to zero tha straight-up original gangsta 512 bytez of dat partizzle before rockin DOS FORMAT to
+format tha partition. I aint talkin' bout chicken n' gravy biatch.  For example, if you was rockin cfdisk ta cook up a DOS
+partizzle table entry fo' /dev/hda1, then (afta exitin fdisk or cfdisk
+and rebootin Linux so dat tha partizzle table shiznit is valid) you
+would use tha command "dd if=/dev/zero of=/dev/hda1 bs=512 count=1" ta zero
+the first 512 bytez of tha partition. I aint talkin' bout chicken n' gravy biatch.  Note:
+
+.B BE EXTREMELY CAREFUL
+if you use the
+.B dd
+command, since a lil' small-ass typo can make all of tha data on yo' disk useless.
+
+For dopest thangs up in dis biatch, you should always use a OS-specific partition-table
+program.  For example, you should make DOS partitions wit tha DOS FDISK
+program n' Linux partitions wit tha Linux fdisk or Linux cfdisk program.
+
+.SH COMMANDS
+.B cfdisk
+commandz can be entered by pressin tha desired key (pressing
+.I Enter
+afta tha command aint necessary).  Here be a list of tha available
+commands:
+.TP
+.B b
+Toggle bootable flag of tha current partition. I aint talkin' bout chicken n' gravy biatch.  This allows you to
+select which primary partizzle is bootable on tha drive.
+.TP
+.B d
+Delete tha current partition. I aint talkin' bout chicken n' gravy biatch.  This will convert tha current partition
+into free space n' merge it wit any free space immediately
+surroundin tha current partition. I aint talkin' bout chicken n' gravy biatch.  A partizzle already marked as free
+space or marked as unusable cannot be deleted.
+.TP
+.B g
+Change tha disk geometry (cylinders, heads, or sectors-per-track).
+.B WARNING:
+This option should only be used by playas whoz ass know what tha fuck they are
+doing.  A command-line option be also available ta chizzle tha disk
+geometry.  While all up in tha chizzle-disk-geometry command line, you can
+choose ta chizzle cylinders
+.RB ( c ),
+heads
+.RB ( h ),
+and sectors per track
+.RB ( s ).
+Da default value is ghon be printed all up in tha prompt which you can accept
+by simply pressin the
+.I Enter
+key, or you can exit without chizzlez by pressin the
+.I ESC
+key.  If you wanna chizzle tha default value, simply enta the
+desired value n' press
+.IR Enta .
+Da altered disk parameta joints do not take effect until you return
+to tha main menu (by pressing
+.IR Enta " or " ESC
+at tha chizzle-disk-geometry command line).  If you chizzle tha geometry
+such dat tha disk appears larger, tha extra sectors is added at the
+end of tha disk as free space.  If tha disk appears smaller, the
+partitions dat is beyond tha freshly smoked up last sector is deleted n' the
+last partizzle on tha drive (or tha free space all up in tha end of the
+drive) is made ta end all up in tha freshly smoked up last sector.
+.TP
+.B h
+Print tha help screen.
+.TP
+.B m
+Maximize disk usage of tha current partition. I aint talkin' bout chicken n' gravy biatch.  This command will
+recover tha unused space between tha partizzle table n' the
+beginnin of tha partizzle yo, but all up in tha cost of makin tha partition
+incompatible wit DOS, OS/2 n' possibly other operatin systems.
+This option will toggle between maximal disk usage n' DOS, OS/2,
+etc. compatible disk usage.  Da default when bustin a partizzle is
+to create DOS, OS/2, etc. compatible partitions.
+.TP
+.B n
+Smoke a freshly smoked up partizzle from free space.  If tha partizzle type is
+.IR Primary " or " Logical ,
+a partizzle of dat type is ghon be pimped yo, but if tha partizzle type is
+.IR Pri/Log ,
+you is ghon be prompted fo' tha type you wanna create.  Be aware that
+(1) there be only four slots available fo' primary partitions n' (2)
+since there can be only one extended partition, which gotz nuff all of
+the logical partitions, all tha logical partitions must be contiguous
+(with no intervenin primary partition).
+.B cfdisk
+next prompts you fo' tha size of tha partizzle you wanna create.
+Da default size, equal ta tha entire available free space all up in tha current
+position, is displayed up in megabytes.  Yo ass can either press the
+.I Enter
+key ta accept tha default size, or enta a gangbangin' finger-lickin' different size at the
+prompt.
+.B cfdisk
+accepts size entries up in megabytes
+.RB ( M )
+[default], kilobytes
+.RB ( K ),
+cylinders
+.RB ( C )
+and sectors
+.RB ( S )
+by enterin tha number immediately followed by one of
+.BR M ", " K ", " C " or " S .
+If tha partizzle fills tha free space available, tha partizzle is
+created n' yo ass is moonwalked back ta tha main command line.  Otherwise, the
+partizzle can be pimped all up in tha beginnin or tha end of tha free
+space, and
+.B cfdisk
+will ask you ta chizzle where ta place tha partition. I aint talkin' bout chicken n' gravy biatch.  Afta the
+partizzle is pimped,
+.B cfdisk
+automatically adjusts tha other partitions' partizzle types if all of
+the primary partitions is used.
+.TP
+.B p
+Print tha partizzle table ta tha screen or ta a gangbangin' file.  There are
+three different formats fo' tha partizzle dat you can chizzle from:
+.sp
+.RS
+.TP
+.B r
+Raw data format (exactly what tha fuck would be freestyled ta disk)
+.TP
+.B s
+Partizzle table up in sector-order format
+.TP
+.B t
+Partizzle table up in raw format
+.RE
+
+.RS
+The
+.I raw data format
+will print tha sectors dat would be freestyled ta disk if a
+.BR w rite
+command is selected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  First, tha primary partizzle table is printed,
+followed by tha partizzle tablez associated wit each logical
+partition. I aint talkin' bout chicken n' gravy biatch.  Da data is printed up in hex byte by byte wit 16 bytes per
+line.
+
+The
+.I partizzle table up in sector-order format
+will print tha partizzle table ordered by sector number n' shit.  Da fields,
+from left ta right, is tha number of tha partition, tha partition
+type, tha straight-up original gangsta sector, tha last sector, tha offset from tha first
+sector of tha partizzle ta tha start of tha data, tha length of the
+partition, tha filesystem type (with tha hex value up in parenthesis),
+and tha flags (with tha hex value up in parenthesis).  In addizzle ta the
+primary n' logical partitions, free n' unusable space is printed and
+the extended partizzle is printed before tha straight-up original gangsta logical partition.
+
+If a partizzle do not start or end on a cold-ass lil cylinder boundary or if the
+partizzle length aint divisible by tha cylinder size, a asterisk
+.RB ( * )
+is printed afta tha non-aligned sector number/count.  This usually
+indicates dat a partizzle was pimped by a operatin system that
+either do not align partitions ta cylinder boundaries or dat used
+different disk-geometry shiznit. I aint talkin' bout chicken n' gravy biatch.  If you know tha disk geometry of
+the other operatin system, you could enta tha geometry shiznit
+with tha chizzle-geometry command
+.RB ( g ).
+
+For tha straight-up original gangsta partizzle on tha disk n' fo' all logical partitions, if
+the offset from tha beginnin of tha partizzle aint equal ta the
+number of sectors per track (i.e., tha data do not start on the
+first head), a number sign
+.RB ( # )
+is printed afta tha offset.  For tha remainin partitions, if the
+offset aint zero, a number sign is ghon be printed afta tha offset.
+This correspondz ta the
+.I NC
+flag up in tha partitions section of tha main display.
+
+The
+.I partizzle table up in raw format
+will print tha partizzle table ordered by partizzle number n' shit.  It will
+leave up all free n' unusable space.  Da fields, from left to
+right, is tha number of tha partition, tha flags (in hex), the
+startin head, sector n' cylinder, tha filesystem ID (in hex), the
+endin head, sector n' cylinder, tha startin sector up in tha partition
+and tha number of sectors up in tha partition. I aint talkin' bout chicken n' gravy biatch.  Da shiznit up in this
+table can be directly translated ta the
+.IR "raw data format" .
+
+Da partizzle table entries only have 10 bits available ta represent
+the startin n' endin cylinders.  Thus, when tha absolute starting
+(ending) sector number is on a cold-ass lil cylinder pimped outa than 1023, tha maximal
+values fo' startin (ending) head, sector n' cylinder is printed.
+This is tha method used by OS/2, n' thus fixes tha problems
+associated wit OS/2z fdisk rewritin tha partizzle table when it is
+not up in dis format.  Since Linux n' OS/2 use absolute sector counts,
+the joints up in tha startin n' endin head, sector n' cylinder are
+not used.
+.RE
+.TP
+.B q
+Quit program.  This will exit tha program without freestylin any data to
+disk.
+.TP
+.B t
+Change tha filesystem type.  By default, freshly smoked up partitions is pimped as
+.I Linux
+partitions yo, but since
+.B cfdisk
+can create partitions fo' other operatin systems, chizzle partition
+type allows you ta enta tha hex value of tha filesystem you desire.
+A list of tha know filesystem types is displayed. Y'all KNOW dat shit, muthafucka!  Yo ass can type up in the
+filesystem type all up in tha prompt or accept tha default filesystem type
+.RI [ Linux ].
+.TP
+.B u
+Change tha unit of tha partition-size display.  It will rotate through
+megabytes, sectors, n' cylinders.
+.TP
+.B W
+Write tha partizzle table ta disk (you must enta a uppercase W).  Since
+this might destroy data on tha disk, you must either confirm or deny
+the write by enterin `yes' or `no'.  If you enta `yes',
+.B cfdisk
+will write tha partizzle table ta disk n' then tell tha kernel ta re-read the
+partizzle table from tha disk.  Da re-readin of tha partizzle table do not
+work up in some cases, fo' example fo' device-mapper devices.  In
+such a cold-ass lil case you need ta inform tha kernel bout freshly smoked up partitions by
+.BR partprobe (8),
+.BR kpartx (8)
+or reboot tha system.
+.TP
+.IR "Up Arrow" , " Down Arrow"
+Move tha cursor ta tha previous or next partition. I aint talkin' bout chicken n' gravy biatch.  If there be more
+partitions than can be displayed on a screen, you can display tha next
+(previous) set of partitions by movin down (up) all up in tha last (first)
+partizzle displayed on tha screen.
+.TP
+.I CTRL-L
+Redraws tha screen. I aint talkin' bout chicken n' gravy biatch.  In case suttin' goes wack n' you cannot read
+anything, you can refresh tha screen from tha main command line.
+.TP
+.B ?
+Print tha help screen.
+
+.RE
+All of tha commandz can be entered wit either upper or lower case
+lettas (except for
+.BR W rite).
+When up in a sub-menu or at a prompt ta enta a gangbangin' filename, you can hit the
+.I ESC
+key ta return ta tha main command line.
+
+.SH OPTIONS
+.TP
+\fB\-a\fR, \fB\-\-arrow\fR
+Use a arrow cursor instead of reverse vizzle fo' highlightin the
+current partition.
+.TP
+\fB\-g\fR, \fB\-\-guess\fR
+Do not use tha geometry given by tha disk driver yo, but try to
+guess a geometry from tha partizzle table.
+.TP
+\fB\-v\fR, \fB\-V\fR, \fB\-\-version\fR
+Display version shiznit n' exit.
+.TP
+\fB\-z\fR, \fB\-\-zero\fR
+Start wit a zeroed partizzle table.  This option is useful when you
+wanna repartizzle yo' entire disk.
+.I Note:
+this option do not zero tha partizzle table on tha disk; rather, it
+simply starts tha program without readin tha existin partition
+table.
+.TP
+\fB\-c\fR, \fB\-\-cylinders\fR \fIcylinders\fR
+.TP
+\fB\-h\fR, \fB\-\-heads\fR \fIheads\fR
+.TP
+\fB\-s\fR, \fB\-\-sectors\fR \fIsectors-per-track\fR
+Override tha number of cylinders, headz n' sectors per track read
+from tha BIOS.  If yo' BIOS or adapta do not supply this
+information or if it supplies incorrect shiznit, use these options
+to set tha disk geometry joints.
+.TP
+\fB\-P\fR, \fB\-\-print\fR \fBr\fR|\fBs\fR|\fBt\fR
+Print tha partizzle table up in tha specified format(s).
+See the
+.BR p rint
+command (above) fo' mo' shiznit on what tha fuck tha available formats show.
+
+.SH "EXIT STATUS"
+0: no errors; 1: invocation error; 2: I/O error;
+3: cannot git geometry; 4: wack partizzle table on disk.
+.SH "SEE ALSO"
+.BR fdisk (8),
+.BR sfdisk (8),
+.BR mkfs (8),
+.BR parted (8),
+.BR partprobe (8),
+.BR kpartx(8)
+.SH BUGS
+Da current version do not support multiple disks.
+.SH AUTHOR
+Kevin E. Martin (martin@cs.unc.edu)
+
+.SH AVAILABILITY
+Da cfdisk command is part of tha util-linux package n' be available from
+ftp://ftp.kernel.org/pub/linux/utils/util-linux/.

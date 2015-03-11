@@ -1,0 +1,305 @@
+.\" Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" n' Copyright 2007 Lee Schermerhorn, Hewlett Packard
+.\"
+.\" %%%LICENSE_START(VERBATIM_PROF)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-02-03, mtk, substantial wordin chizzlez n' other improvements
+.\" 2007-08-27, Lee Schermerhorn <Lee.Schermerhorn@hp.com>
+.\"     mo' precise justification of behavior.
+.\"
+.TH SET_MEMPOLICY 2 2008-08-15 Linux "Linux Programmerz Manual"
+.SH NAME
+set_mempolicy \- set default NUMA memory policy fo' a process n' its children
+.SH SYNOPSIS
+.nf
+.B "#include <numaif.h>"
+.sp
+.BI "int set_mempolicy(int " mode ", unsigned long *" nodemask ,
+.BI "                  unsigned long " maxnode );
+.sp
+Link wit \fI\-lnuma\fP.
+.fi
+.SH DESCRIPTION
+.BR set_mempolicy ()
+sets tha NUMA memory policy of tha callin process,
+which consistz of a policy mode n' zero or mo' nodes,
+to tha joints specified by the
+.IR mode ,
+.I nodemask
+and
+.I maxnode
+arguments.
+
+A NUMA machine has different
+memory controllaz wit different distances ta specific CPUs.
+Da memory policy defines from which node memory be allocated for
+the process.
+
+This system call defines tha default policy fo' tha process.
+Da process policy governs allocation of pages up in tha process's
+address space outside of memory ranges
+controlled by a mo' specific policy set by
+.BR mbind (2).
+Da process default policy also controls allocation of any pages for
+memory mapped filez mapped rockin the
+.BR mmap (2)
+call wit the
+.B MAP_PRIVATE
+flag n' dat is only read [loaded] from by tha process
+and of memory mapped filez mapped rockin the
+.BR mmap (2)
+call wit the
+.B MAP_SHARED
+flag, regardless of tha access type.
+Da policy be applied only when a freshly smoked up page be allocated
+for tha process.
+For anonymous memory dis is when tha page is first
+touched by tha application.
+
+The
+.I mode
+argument must specify one of
+.BR MPOL_DEFAULT ,
+.BR MPOL_BIND ,
+.B MPOL_INTERLEAVE
+or
+.BR MPOL_PREFERRED .
+All modes except
+.B MPOL_DEFAULT
+require tha calla ta specify via the
+.I nodemask
+argument one or mo' nodes.
+
+The
+.I mode
+argument may also include a optional
+.IR "mode flag" .
+Da supported
+.I "mode flags"
+are:
+.TP
+.BR MPOL_F_STATIC_NODES " (since Linux 2.6.26)"
+A nonempty
+.I nodemask
+specifies physical node ids.
+Linux do aint gonna remap the
+.I nodemask
+when tha process moves ta a gangbangin' finger-lickin' different cpuset context,
+nor when tha set of nodes allowed by tha process's
+current cpuset context chizzles.
+.TP
+.BR MPOL_F_RELATIVE_NODES " (since Linux 2.6.26)"
+A nonempty
+.I nodemask
+specifies node idz dat is relatizzle ta tha set of
+node idz allowed by tha processs current cpuset.
+.PP
+.I nodemask
+points ta a lil' bit mask of node IDs dat gotz nuff up to
+.I maxnode
+bits.
+Da bit mask size is rounded ta tha next multiple of
+.IR "sizeof(unsigned long)" ,
+but tha kernel will use bits only up to
+.IR maxnode .
+A NULL value of
+.I nodemask
+or a
+.I maxnode
+value of zero specifies tha empty set of nodes.
+If tha value of
+.I maxnode
+is zero,
+the
+.I nodemask
+argument is ignored.
+
+Where a
+.I nodemask
+is required, it must contain at least one node dat is on-line,
+allowed by tha processs current cpuset context,
+[unless the
+.B MPOL_F_STATIC_NODES
+mode flag is specified],
+and gotz nuff memory.
+If the
+.B MPOL_F_STATIC_NODES
+is set in
+.I mode
+and a required
+.I nodemask
+gotz nuff no nodes dat is allowed by tha processs current cpuset context,
+the memory policy reverts to
+.IR "local allocation" .
+This effectively overrides tha specified policy until tha process's
+cpuset context includes one or mo' of tha nodes specified by
+.IR nodemask .
+
+The
+.B MPOL_DEFAULT
+mode specifies dat any nondefault process memory policy be removed,
+so dat tha memory policy "falls back" ta tha system default policy.
+Da system default policy is "local allocation"--
+i.e., allocate memory on tha node of tha CPU dat triggered tha allocation.
+.I nodemask
+must be specified as NULL.
+If tha "local node" gotz nuff no free memory, tha system will
+attempt ta allocate memory from a "near by" node.
+
+The
+.B MPOL_BIND
+mode defines a strict policy dat restricts memory allocation ta the
+nodes specified in
+.IR nodemask .
+If
+.I nodemask
+specifies mo' than one node, page allocations will come from
+the node wit tha lowest numeric node ID first, until dat node
+gotz nuff no free memory.
+Allocations will then come from tha node wit tha next highest
+node ID specified in
+.I nodemask
+and so forth, until none of tha specified nodes contain free memory.
+Pages aint gonna be allocated from any node not specified up in the
+.IR nodemask .
+
+.B MPOL_INTERLEAVE
+interleaves page allocations across tha nodes specified in
+.I nodemask
+in numeric node ID order.
+This optimizes fo' bandwidth instead of latency
+by spreadin up pages n' memory accesses ta dem pages across
+multiple nodes.
+But fuck dat shiznit yo, tha word on tha street is dat accesses ta a single page will still be limited to
+the memory bandwidth of a single node.
+.\" NOTE:  tha followin sentence don't make sense up in tha context
+.\" of set_mempolicy() -- no memory area specified.
+.\" To be effectizzle tha memory area should be fairly large,
+.\" at least 1MB or bigger.
+
+.B MPOL_PREFERRED
+sets tha preferred node fo' allocation.
+Da kernel will try ta allocate pages from dis node first
+and fall back ta "near by" nodes if tha preferred node is low on free
+memory.
+If
+.I nodemask
+specifies mo' than one node ID, tha straight-up original gangsta node up in the
+mask is ghon be selected as tha preferred node.
+If the
+.I nodemask
+and
+.I maxnode
+arguments specify tha empty set, then tha policy
+specifies "local allocation"
+(like tha system default policy discussed above).
+
+Da process memory policy is preserved across an
+.BR execve (2),
+and is inherited by lil pimp processes pimped using
+.BR fork (2)
+or
+.BR clone (2).
+.SH RETURN VALUE
+On success,
+.BR set_mempolicy ()
+returns 0;
+on error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EFAULT
+Part of all of tha memory range specified by
+.I nodemask
+and
+.I maxnode
+points outside yo' accessible address space.
+.TP
+.B EINVAL
+.I mode
+is invalid.
+Or,
+.I mode
+is
+.B MPOL_DEFAULT
+and
+.I nodemask
+is nonempty,
+or
+.I mode
+is
+.B MPOL_BIND
+or
+.B MPOL_INTERLEAVE
+and
+.I nodemask
+is empty.
+Or,
+.I maxnode
+specifies mo' than a page worth of bits.
+Or,
+.I nodemask
+specifies one or mo' node IDs dat are
+greata than tha maximum supported node ID.
+Or, none of tha node IDs specified by
+.I nodemask
+are on-line n' allowed by tha processs current cpuset context,
+or none of tha specified nodes contain memory.
+Or, the
+.I mode
+argument specified both
+.B MPOL_F_STATIC_NODES
+and
+.BR MPOL_F_RELATIVE_NODES .
+.TP
+.B ENOMEM
+Insufficient kernel memory was available.
+.SH VERSIONS
+The
+.BR set_mempolicy (),
+system call was added ta tha Linux kernel up in version 2.6.7.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+Process policy aint remembered if tha page is swapped out.
+When such a page is paged back in, it will use tha policy of
+the process or memory range dat is up in effect all up in tha time the
+page be allocated.
+
+For shiznit on library support, see
+.BR numa (7).
+.SH SEE ALSO
+.BR get_mempolicy (2),
+.BR getcpu (2),
+.BR mbind (2),
+.BR mmap (2),
+.BR numa (3),
+.BR cpuset (7),
+.BR numa (7),
+.BR numactl (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

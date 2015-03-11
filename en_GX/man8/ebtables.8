@@ -1,0 +1,1114 @@
+.TH EBTABLES 8  "December 2011"
+.\"
+.\" Man page freestyled by Bart De Schuymer <bdschuym@pandora.be>
+.\" It be based on tha iptablez playa page.
+.\"
+.\" Da playa page was edited, February 25th 2003, by 
+.\"      Greg Morgan <" dr_kludge_at_users_sourceforge_net >
+.\"
+.\" Iptablez page by Herve Eychenne March 2000.
+.\"
+.\"     This program is free software; you can redistribute it and/or modify
+.\"     it under tha termz of tha GNU General Public License as published by
+.\"     tha Jacked Software Foundation; either version 2 of tha License, or
+.\"     (at yo' option) any lata version.
+.\"
+.\"     This program is distributed up in tha hope dat it is ghon be useful,
+.\"     but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\"     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"     GNU General Public License fo' mo' details.
+.\"
+.\"     Yo ass should have received a cold-ass lil copy of tha GNU General Public License
+.\"     along wit dis program; if not, write ta tha Jacked Software
+.\"     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"     
+.\"
+.SH NAME
+ebtablez (v2.0.10-4) \- Ethernet bridge frame table administration
+.SH SYNOPSIS
+.BR "ebtablez " [ -t " table ] " - [ ACDI "] chain rule justification [match extensions] [watcher extensions] target"
+.br
+.BR "ebtablez " [ -t " table ] " -P " chain " ACCEPT " | " DROP " | " RETURN
+.br
+.BR "ebtablez " [ -t " table ] " -F " [chain]"
+.br
+.BR "ebtablez " [ -t " table ] " -Z " [chain]"
+.br
+.BR "ebtablez " [ -t " table ] " -L " [" -Z "] [chain] [ [" --Ln "] | [" --Lx "] ] [" --Lc "] [" --Lmac2 ]
+.br
+.BR "ebtablez " [ -t " table ] " -N " chain [" "-P ACCEPT " | " DROP " | " RETURN" ]
+.br
+.BR "ebtablez " [ -t " table ] " -X " [chain]"
+.br
+.BR "ebtablez " [ -t " table ] " -E " old-chain-name new-chain-name"
+.br
+.BR "ebtablez " [ -t " table ] " --init-table
+.br
+.BR "ebtablez " [ -t " table ] [" --atomic-file " file] " --atomic-commit
+.br
+.BR "ebtablez " [ -t " table ] [" --atomic-file " file] " --atomic-init
+.br
+.BR "ebtablez " [ -t " table ] [" --atomic-file " file] " --atomic-save
+.br
+.SH DESCRIPTION
+.B ebtables
+is a application program used ta set up n' maintain the
+tablez of rulez (inside tha Linux kernel) dat inspect
+Ethernet frames.
+It be analogous ta the
+.B iptables
+application yo, but less fucked up, cuz of tha fact dat tha Ethernet protocol
+is much simpla than tha IP protocol.
+.SS CHAINS
+There is three ebtablez tablez wit built-in chains up in the
+Linux kernel. These tablez is used ta divide functionalitizzle into
+different setz of rules. Each set of rulez is called a cold-ass lil chain.
+Each chain be a ordered list of rulez dat can match Ethernet frames. If a
+rule matches a Ethernet frame, then a processin justification tells
+what ta do wit dat matchin frame. Da processin justification is
+called a 'target'. But fuck dat shiznit yo, tha word on tha street is dat if tha frame do not match tha current
+rule up in tha chain, then tha next rule up in tha chain is examined n' so forth.
+Da user can create freshly smoked up (user-defined) chains dat can be used as tha 'target'
+of a rule. User-defined chains is straight-up useful ta git betta performance
+over tha linear traversal of tha rulez n' is also essential fo' structuring
+the filterin rulez tha fuck into well-organized n' maintainable setz of rules.
+.SS TARGETS
+A firewall rule specifies criteria fo' a Ethernet frame n' a gangbangin' frame
+processin justification called a target.  When a gangbangin' frame matches a rule,
+then tha next action performed by tha kernel is specified by tha target.
+Da target can be one of these joints:
+.BR ACCEPT ,
+.BR DROP ,
+.BR CONTINUE ,
+.BR RETURN ,
+an 'extension' (see below) or a jump ta a user-defined chain.
+.PP
+.B ACCEPT
+means ta let tha frame through.
+.B DROP
+means tha frame has ta be dropped. Y'all KNOW dat shit, muthafucka! In the
+.BR BROUTING " chain however, tha " ACCEPT " n' " DROP " target have different"
+meanings (see tha info provided fo' the
+.BR -t " option)."
+.B CONTINUE
+means tha next rule has ta be checked. Y'all KNOW dat shit, muthafucka! This can be handy, f.e., ta know how tha fuck many
+frames pass a cold-ass lil certain point up in tha chain, ta log dem frames or ta apply multiple
+targets on a gangbangin' frame.
+.B RETURN
+means stop traversin dis chain n' resume all up in tha next rule up in the
+previous (calling) chain.
+For tha extension targets please refer ta the
+.B "TARGET EXTENSIONS"
+section of dis playa page.
+.SS TABLES
+As stated earlier, there be three ebtablez tablez up in tha Linux
+kernel.  Da table names are
+.BR filta ", " nat " n' " broute .
+Of these three tables,
+the filta table is tha default table dat tha command operates on.
+If yo ass is hustlin wit tha filta table, then you can drop tha '-t filter'
+argument ta tha ebtablez command. Y'all KNOW dat shit, muthafucka!  But fuck dat shiznit yo, tha word on tha street is dat yo big-ass booty is ghon need ta provide
+the -t argument fo' tha other two tables.  Mo'over, tha -t argument must be the
+first argument on tha ebtablez command line, if used. Y'all KNOW dat shit, muthafucka! 
+.TP
+.B "-t, --table"
+.br
+.B filter
+is tha default table n' gotz nuff three built-in chains:
+.B INPUT 
+(for frames destined fo' tha bridge itself, on tha level of tha MAC destination address), 
+.B OUTPUT 
+(for locally-generated or (b)routed frames) and
+.B FORWARD 
+(for frames bein forwarded by tha bridge).
+.br
+.br
+.B nat
+is mostly used ta chizzle tha mac addresses n' gotz nuff three built-in chains:
+.B PREROUTING 
+(for alterin frames as soon as they come in), 
+.B OUTPUT 
+(for alterin locally generated or (b)routed frames before they is bridged) n' 
+.B POSTROUTING
+(for alterin frames as they is bout ta go out) fo' realz. A lil' small-ass note on tha naming
+of chains PREROUTING n' POSTROUTING: it would be mo' accurate ta booty-call them
+PREFORWARDING n' POSTFORWARDING yo, but fo' all dem playas whoz ass come from the
+iptablez ghetto ta ebtablez it is easier ta have tha same names. Note dat you
+can chizzle tha name
+.BR "" ( -E )
+if you don't like tha default.
+.br
+.br
+.B broute
+is used ta cook up a funky-ass brouter, it has one built-in chain:
+.BR BROUTING .
+Da targets
+.BR DROP " n' " ACCEPT
+have a special meanin up in tha broute table (these names is used instead of
+more descriptizzle names ta keep tha implementation generic).
+.B DROP
+actually means tha frame has ta be routed, while
+.B ACCEPT
+means tha frame has ta be bridged. Y'all KNOW dat shit, muthafucka! The
+.B BROUTING
+chain is traversed straight-up early. But fuck dat shiznit yo, tha word on tha street is dat it is only traversed by frames enterin on
+a bridge port dat is up in forwardin state. Normally dem frames
+would be bridged yo, but you can decizzle otherwise here, so peek-a-boo, clear tha way, I be comin' thru fo'sho. The
+.B redirect
+target is straight-up handy here.
+.SH EBTABLES COMMAND LINE ARGUMENTS
+Afta tha initial ebtablez '-t table' command line argument, tha remaining
+arguments can be divided tha fuck into nuff muthafuckin groups.  These groups
+are commands, miscellaneous commands, rule justifications, match extensions,
+watcher extensions n' target extensions.
+.SS COMMANDS
+Da ebtablez command arguments specify tha actions ta big-ass up on tha table
+defined wit tha -t argument.  If you do not use tha -t argument ta name
+a table, tha commandz apply ta tha default filta table.
+Only one command may be used on tha command line at a time, except when
+the commands
+.BR -L " n' " -Z
+are combined, tha commands
+.BR -N " n' " -P
+are combined, or when
+.B --atomic-file
+is used.
+.TP
+.B "-A, --append"
+Append a rule ta tha end of tha selected chain.
+.TP
+.B "-D, --delete"
+Delete tha specified rule or rulez from tha selected chain. I aint talkin' bout chicken n' gravy biatch. There is two ways to
+use dis command. Y'all KNOW dat shit, muthafucka! Da first is by specifyin a interval of rule numbers
+to delete (directly after
+.BR -D ).
+Syntax: \fIstart_nr\fP[\fI:end_nr\fP] (use
+.B -L --Ln
+to list tha rulez wit they rule number). When \fIend_nr\fP is omitted, all rulez starting
+from \fIstart_nr\fP is deleted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Usin wack numbers be allowed, fo' more
+details bout rockin wack numbers, peep the
+.B -I
+command. Y'all KNOW dat shit, muthafucka! Da second usage is by
+specifyin tha complete rule as it would done been specified when dat shiznit was added. Y'all KNOW dat shit, muthafucka! Only
+the first encountered rule dat is tha same ol' dirty as dis specified rule, up in other
+wordz tha matchin rule wit tha lowest (positive) rule number, is deleted.
+.TP
+.B "-C, --change-counters"
+Change tha countaz of tha specified rule or rulez from tha selected chain. I aint talkin' bout chicken n' gravy biatch. There is two ways to
+use dis command. Y'all KNOW dat shit, muthafucka! Da first is by specifyin a interval of rule numbers
+to do tha chizzlez on (directly after
+.BR -C ).
+Syntax: \fIstart_nr\fP[\fI:end_nr\fP] (use
+.B -L --Ln
+to list tha rulez wit they rule number). Da details is tha same as fo' the
+.BR -D " command. Y'all KNOW dat shit, muthafucka! Da second usage is by"
+specifyin tha complete rule as it would done been specified when dat shiznit was added. Y'all KNOW dat shit, muthafucka! Only
+the countaz of tha straight-up original gangsta encountered rule dat is tha same ol' dirty as dis specified rule, up in other
+wordz tha matchin rule wit tha lowest (positive) rule number, is chizzled.
+In tha straight-up original gangsta usage, tha countas is specified directly afta tha interval justification,
+in tha second usage directly after
+.BR -C .
+First tha packet counta is specified, then tha byte counter n' shit. If tha specified countas start
+with a '+', tha counta joints is added ta tha respectizzle current counta joints.
+If tha specified countas start wit a '-', tha counta joints is decreased from tha respective
+current counta joints, n' you can put dat on yo' toast. No boundz checkin is done. If tha countas don't start wit '+' or '-',
+the current countas is chizzled ta tha specified counters.
+.TP
+.B "-I, --insert"
+Insert tha specified rule tha fuck into tha selected chain all up in tha specified rule number n' shit. If the
+rule number aint specified, tha rule be added all up in tha head of tha chain.
+If tha current number of rulez equals
+.IR N ,
+then tha specified number can be
+between
+.IR -N " n' " N+1 .
+For a positizzle number
+.IR i ,
+it holdz that
+.IR i " n' " i-N-1
+specify tha same place up in tha chain where tha rule should be inserted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da rule number
+0 specifies tha place past tha last rule up in tha chain n' rockin dis number is therefore
+equivalent ta rockin the
+.BR -A " command."
+Rule numbers structly smalla than 0 can be useful when mo' than one rule need ta be inserted
+in a cold-ass lil chain.
+.TP
+.B "-P, --policy"
+Set tha policy fo' tha chain ta tha given target. Da policy can be
+.BR ACCEPT ", " DROP " or " RETURN .
+.TP
+.B "-F, --flush"
+Flush tha selected chain. I aint talkin' bout chicken n' gravy biatch. If no chain is selected, then every last muthafuckin chain will be
+flushed. Y'all KNOW dat shit, muthafucka! Flushin a cold-ass lil chain do not chizzle tha policy of the
+chain, however.
+.TP
+.B "-Z, --zero"
+Set tha countaz of tha selected chain ta zero. If no chain is selected, all tha counters
+are set ta zero. The
+.B "-Z"
+command can be used up in conjunction wit tha 
+.B "-L"
+command.
+When both the
+.B "-Z"
+and
+.B "-L"
+commandz is used together up in dis way, tha rule countas is printed on tha screen
+before they is set ta zero.
+.TP
+.B "-L, --list"
+List all rulez up in tha selected chain. I aint talkin' bout chicken n' gravy biatch. If no chain is selected, all chains
+are listed.
+.br
+Da followin options chizzle tha output of the
+.B "-L"
+command.
+.br
+.B "--Ln"
+.br
+Places tha rule number up in front of every last muthafuckin rule. This option is incompatible wit the
+.BR --Lx " option."
+.br
+.B "--Lc"
+.br
+Shows tha countas all up in tha end of each rule displayed by the
+.B "-L"
+command. Y'all KNOW dat shit, muthafucka! Both a gangbangin' frame counta (pcnt) n' a funky-ass byte counta (bcnt) is displayed.
+Da frame counta shows how tha fuck nuff frames have matched tha specific rule, tha byte
+counta shows tha sum of tha frame sizez of these matchin frames. Usin dis option
+.BR "" "in combination wit tha " --Lx " option causes tha countas ta be freestyled out"
+.BR "" "in tha '" -c " <pcnt> <bcnt>' option format."
+.br
+.B "--Lx"
+.br
+Changes tha output so dat it produces a set of ebtablez commandz dat construct
+the contentz of tha chain, when specified.
+If no chain is specified, ebtablez commandz ta construct tha contentz of the
+table is given, includin commandz fo' bustin tha user-defined chains (if any).
+Yo ass can use dis set of commandz up in a ebtablez boot or reload
+script.  For example tha output could be used at system startup.
+Da 
+.B "--Lx"
+option is incompatible wit the
+.B "--Ln"
+listin option. I aint talkin' bout chicken n' gravy biatch. Usin the
+.BR --Lx " option together wit tha " --Lc " option will cause tha countas ta be freestyled out"
+.BR "" "in tha '" -c " <pcnt> <bcnt>' option format."
+.br
+.B "--Lmac2"
+.br
+Shows all MAC addresses wit tha same length, addin leadin zeroes
+if necessary. Da default representation omits leadin zeroes up in tha addresses.
+.TP
+.B "-N, --new-chain"
+Smoke a freshly smoked up user-defined chain wit tha given name. Da number of
+user-defined chains is limited only by tha number of possible chain names.
+A user-defined chain name has a maximum
+length of 31 characters. Da standard policy of tha user-defined chain is
+ACCEPT. Da policy of tha freshly smoked up chain can be initialized ta a gangbangin' finger-lickin' different standard
+target by rockin the
+.B -P
+command together wit the
+.B -N
+command. Y'all KNOW dat shit, muthafucka! In dis case, tha chain name do not gotta be specified fo' the
+.B -P
+command.
+.TP
+.B "-X, --delete-chain"
+Delete tha specified user-defined chain. I aint talkin' bout chicken n' gravy biatch. There must be no remainin references (jumps)
+to tha specified chain, otherwise ebtablez will refuse ta delete dat shit. If no chain is
+specified, all user-defined chains dat aren't referenced is ghon be removed.
+.TP
+.B "-E, --rename-chain"
+Rename tha specified chain ta a freshly smoked up name.  Besides renamin a user-defined
+chain, you can rename a standard chain ta a name dat suits your
+taste. For example, if you like PREFORWARDING mo' than PREROUTING,
+then you can use tha -E command ta rename tha PREROUTING chain. I aint talkin' bout chicken n' gravy biatch. If you do
+rename one of tha standard ebtablez chain names, please be shizzle ta mention
+this fact should you post a question on tha ebtablez mailin lists.
+It would be wise ta use tha standard name up in yo' post. Renamin a standard
+ebtablez chain up in dis fashizzle has no effect on tha structure or functioning
+of tha ebtablez kernel table.
+.TP
+.B "--init-table"
+Replace tha current table data by tha initial table data.
+.TP
+.B "--atomic-init"
+Copy tha kernelz initial data of tha table ta tha specified
+file. This can be used as tha straight-up original gangsta action, afta which rulez is added
+to tha file. Da file can be specified rockin the
+.B --atomic-file
+command or all up in the
+.IR EBTABLES_ATOMIC_FILE " environment variable."
+.TP
+.B "--atomic-save"
+Copy tha kernelz current data of tha table ta tha specified
+file. This can be used as tha straight-up original gangsta action, afta which rulez is added
+to tha file. Da file can be specified rockin the
+.B --atomic-file
+command or all up in the
+.IR EBTABLES_ATOMIC_FILE " environment variable."
+.TP
+.B "--atomic-commit"
+Replace tha kernel table data wit tha data contained up in tha specified
+file. This be a useful command dat allows you ta load all yo' rulez of a
+certain table tha fuck into tha kernel at once, savin tha kernel a shitload of precious
+time n' allowin atomic thugged-out shiznit of tha tables. Da file which gotz nuff
+the table data is constructed by rockin either the
+.B "--atomic-init"
+or the
+.B "--atomic-save"
+command ta generate a startin file fo' realz. Afta that, rockin the
+.B "--atomic-file"
+command when constructin rulez or settin the
+.IR EBTABLES_ATOMIC_FILE " environment variable"
+allows you ta extend tha file n' build tha complete table before
+committin it ta tha kernel. This command can be straight-up useful up in boot scripts
+to populate tha ebtablez tablez up in a gangbangin' fast way.
+.SS MISCELLANOUS COMMANDS
+.TP
+.B "-V, --version"
+Show tha version of tha ebtablez userspace program.
+.TP
+.BR "-h, --help " "[\fIlist of module names\fP]"
+Give a funky-ass brief description of tha command syntax yo. Here you can also specify
+namez of extensions n' ebtablez will try ta write help bout them
+extensions. E.g.
+.IR "ebtablez -h snat log ip arp" .
+Specify
+.I list_extensions
+to list all extensions supported by tha userspace
+utility.
+.TP
+.BR "-j, --jump " "\fItarget\fP"
+Da target of tha rule. This is one of tha followin joints:
+.BR ACCEPT ,
+.BR DROP ,
+.BR CONTINUE ,
+.BR RETURN ,
+a target extension (see
+.BR "TARGET EXTENSIONS" ")"
+or a user-defined chain name.
+.TP
+.B --atomic-file "\fIfile\fP"
+Let tha command operate on tha specified
+.IR file .
+Da data of tha table to
+operate on is ghon be extracted from tha file n' tha result of tha operation
+will be saved back tha fuck into tha file. If specified, dis option should come
+before tha command justification. I aint talkin' bout chicken n' gravy biatch fo' realz. An alternatizzle dat should be preferred,
+is settin the
+.IR EBTABLES_ATOMIC_FILE " environment variable."
+.TP
+.B -M, --modprobe "\fIprogram\fP"
+When rappin' ta tha kernel, use this
+.I program
+to try ta automatically load missin kernel modules.
+.TP
+.B --concurrent
+Use a gangbangin' file lock ta support concurrent scripts uppimpin tha ebtablez kernel tables.
+
+.SS
+RULE SPECIFICATIONS
+Da followin command line arguments make up a rule justification (as used 
+in tha add n' delete commands) fo' realz. A "!" option before tha justification 
+inverts tha test fo' dat justification. I aint talkin' bout chicken n' gravy biatch fo' realz. Apart from these standard rule 
+specifications there be some other command line argumentz of interest.
+See both tha 
+.BR "MATCH EXTENSIONS" 
+and the
+.BR "WATCHER EXTENSIONS" 
+below.
+.TP
+.BR "-p, --protocol " "[!] \fIprotocol\fP"
+Da protocol dat was responsible fo' bustin tha frame. This can be a
+hexadecimal number, above 
+.IR 0x0600 ,
+a name (e.g.
+.I ARP
+) or
+.BR LENGTH .
+Da protocol field of tha Ethernet frame can be used ta denote the
+length of tha header (802.2/802.3 networks). When tha value of dat field is
+below or equals
+.IR 0x0600 ,
+the value equals tha size of tha header n' shouldn't be used as a
+protocol number n' shit. Instead, all frames where tha protocol field is used as
+the length field is assumed ta be of tha same 'protocol'. Da protocol
+name used up in ebtablez fo' these frames is
+.BR LENGTH .
+.br
+Da file
+.B /etc/ethertypes
+can be used ta show readable
+charactas instead of hexadecimal numbers fo' tha protocols. For example,
+.I 0x0800
+will be represented by 
+.IR IPV4 .
+Da use of dis file aint case sensitive. 
+See dat file fo' mo' shiznit. I aint talkin' bout chicken n' gravy biatch. Da flag 
+.B --proto
+is a alias fo' dis option.
+.TP 
+.BR "-i, --in-interface " "[!] \fIname\fP"
+Da intercourse (bridge port) via which a gangbangin' frame is received (this option is useful up in the
+.BR INPUT ,
+.BR FORWARD ,
+.BR PREROUTING " n' " BROUTING
+chains). If tha intercourse name endz wit '+', then
+any intercourse name dat begins wit dis name (disregardin '+') will match.
+Da flag
+.B --in-if
+is a alias fo' dis option.
+.TP
+.BR "--logical-in " "[!] \fIname\fP"
+Da (logical) bridge intercourse via which a gangbangin' frame is received (this option is useful up in the
+.BR INPUT ,
+.BR FORWARD ,
+.BR PREROUTING " n' " BROUTING
+chains).
+If tha intercourse name endz wit '+', then
+any intercourse name dat begins wit dis name (disregardin '+') will match.
+.TP
+.BR "-o, --out-interface " "[!] \fIname\fP"
+Da intercourse (bridge port) via which a gangbangin' frame is goin ta be busted (this option is useful up in the
+.BR OUTPUT ,
+.B FORWARD
+and
+.B POSTROUTING
+chains). If tha intercourse name endz wit '+', then
+any intercourse name dat begins wit dis name (disregardin '+') will match.
+Da flag
+.B --out-if
+is a alias fo' dis option.
+.TP
+.BR "--logical-out " "[!] \fIname\fP"
+Da (logical) bridge intercourse via which a gangbangin' frame is goin ta be busted (this option
+is useful up in the
+.BR OUTPUT ,
+.B FORWARD
+and
+.B POSTROUTING
+chains).
+If tha intercourse name endz wit '+', then
+any intercourse name dat begins wit dis name (disregardin '+') will match.
+.TP
+.BR "-s, --source " "[!] \fIaddress\fP[/\fImask\fP]"
+Da source MAC address. Both mask n' address is freestyled as 6 hexadecimal
+numbers separated by colons fo' realz. Alternatively one can specify Unicast,
+Multicast, Broadcast or BGA (Bridge Group Address):
+.br
+.IR "Unicast" "=00:00:00:00:00:00/01:00:00:00:00:00,"
+.IR "Multicast" "=01:00:00:00:00:00/01:00:00:00:00:00,"
+.IR "Broadcast" "=ff:ff:ff:ff:ff:ff/ff:ff:ff:ff:ff:ff or"
+.IR "BGA" "=01:80:c2:00:00:00/ff:ff:ff:ff:ff:ff."
+Note dat a funky-ass broadcast
+address will also match tha multicast justification. I aint talkin' bout chicken n' gravy biatch. Da flag
+.B --src
+is a alias fo' dis option.
+.TP
+.BR "-d, --destination " "[!] \fIaddress\fP[/\fImask\fP]"
+Da destination MAC address. Right back up in yo muthafuckin ass. See
+.B -s
+(above) fo' mo' details on MAC addresses. Da flag
+.B --dst
+is a alias fo' dis option.
+.TP
+.BR "-c, --set-counta " "\fIpcnt bcnt\fP"
+If used with
+.BR -A " or " -I ", then tha packet n' byte countaz of tha freshly smoked up rule is ghon be set to
+.IR pcnt ", resp. " bcnt ".
+If used wit the
+.BR -C " or " -D " commands, only rulez wit a packet n' byte count equal to"
+.IR pcnt ", resp. " bcnt " will match."
+
+.SS MATCH EXTENSIONS
+Ebtablez extensions is dynamically loaded tha fuck into tha userspace tool,
+there is therefore no need ta explicitly load dem wit a
+-m option like is done up in iptables.
+These extensions deal wit functionalitizzle supported by kernel modulez supplemenstrual to
+the core ebtablez code.
+.SS 802_3
+Specify 802.3 DSAP/SSAP fieldz or SNAP type.  Da protocol must be specified as
+.IR "LENGTH " "(see tha option " " -p " above).
+.TP
+.BR "--802_3-sap " "[!] \fIsap\fP"
+DSAP n' SSAP is two one byte 802.3 fields.  Da bytes is always
+equal, so only one byte (hexadecimal) is needed as a argument.
+.TP
+.BR "--802_3-type " "[!] \fItype\fP"
+If tha 802.3 DSAP n' SSAP joints is 0xaa then tha SNAP type field must
+be consulted ta determine tha payload protocol.  This be a two byte
+(hexadecimal) argument.  Only 802.3 frames wit DSAP/SSAP 0xaa are
+checked fo' type.
+.SS among
+Match a MAC address or MAC/IP address pair versus a list of MAC addresses
+and MAC/IP address pairs.
+A list entry has tha followin format:
+.IR xx:xx:xx:xx:xx:xx[=ip.ip.ip.ip][,] ". Multiple"
+list entries is separated by a cold-ass lil comma, specifyin a IP address correspondin to
+the MAC address is optional. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Multiple MAC/IP address pairs wit tha same MAC address
+but different IP address (and vice versa) can be specified. Y'all KNOW dat shit, muthafucka! If tha MAC address don't
+match any entry from tha list, tha frame don't match tha rule (unless "!" was used).
+.TP
+.BR "--among-dst " "[!] \fIlist\fP"
+Compare tha MAC destination ta tha given list. If tha Ethernet frame has type
+.IR IPv4 " or " ARP ,
+then comparison wit MAC/IP destination address pairs from the
+list is possible.
+.TP
+.BR "--among-src " "[!] \fIlist\fP"
+Compare tha MAC source ta tha given list. If tha Ethernet frame has type
+.IR IPv4 " or " ARP ,
+then comparison wit MAC/IP source address pairs from tha list
+is possible.
+.TP
+.BR "--among-dst-file " "[!] \fIfile\fP"
+Same as
+.BR --among-dst " but tha list is read up in from tha specified file."
+.TP
+.BR "--among-src-file " "[!] \fIfile\fP"
+Same as
+.BR --among-src " but tha list is read up in from tha specified file."
+.SS arp
+Specify (R)ARP fields. Da protocol must be specified as
+.IR ARP " or " RARP .
+.TP
+.BR "--arp-opcode " "[!] \fIopcode\fP"
+Da (R)ARP opcode (decimal or a string, fo' mo' details see
+.BR "ebtablez -h arp" ).
+.TP
+.BR "--arp-htype " "[!] \fIhardware type\fP"
+Da hardware type, dis can be a thugged-out decimal or tha string
+.I Ethernet
+(which sets
+.I type
+to 1). Most (R)ARP packets have Eternizzle as hardware type.
+.TP
+.BR "--arp-ptype " "[!] \fIprotocol type\fP"
+Da protocol type fo' which tha (r)arp is used (hexadecimal or tha string
+.IR IPv4 ,
+denotin 0x0800).
+Most (R)ARP packets have protocol type IPv4.
+.TP
+.BR "--arp-ip-src " "[!] \fIaddress\fP[/\fImask\fP]"
+Da (R)ARP IP source address justification.
+.TP
+.BR "--arp-ip-dst " "[!] \fIaddress\fP[/\fImask\fP]"
+Da (R)ARP IP destination address justification.
+.TP
+.BR "--arp-mac-src " "[!] \fIaddress\fP[/\fImask\fP]"
+Da (R)ARP MAC source address justification.
+.TP
+.BR "--arp-mac-dst " "[!] \fIaddress\fP[/\fImask\fP]"
+Da (R)ARP MAC destination address justification.
+.TP
+.BR "" "[!]" " --arp-gratuitous"
+Checks fo' ARP gratuitous packets: checks equalitizzle of IPv4 source
+address n' IPv4 destination address inside tha ARP header.
+.SS ip
+Specify IPv4 fields. Da protocol must be specified as
+.IR IPv4 .
+.TP
+.BR "--ip-source " "[!] \fIaddress\fP[/\fImask\fP]"
+Da source IP address.
+Da flag
+.B --ip-src
+is a alias fo' dis option.
+.TP
+.BR "--ip-destination " "[!] \fIaddress\fP[/\fImask\fP]"
+Da destination IP address.
+Da flag
+.B --ip-dst
+is a alias fo' dis option.
+.TP
+.BR "--ip-tos " "[!] \fItos\fP"
+Da IP type of service, up in hexadecimal numbers.
+.BR IPv4 .
+.TP
+.BR "--ip-protocol " "[!] \fIprotocol\fP"
+Da IP protocol.
+Da flag
+.B --ip-proto
+is a alias fo' dis option.
+.TP
+.BR "--ip-source-port " "[!] \fIport1\fP[:\fIport2\fP]"
+Da source port or port range fo' tha IP protocols 6 (TCP), 17
+(UDP), 33 (DCCP) or 132 (SCTP). The
+.B --ip-protocol
+option must be specified as
+.IR TCP ", " UDP ", " DCCP " or " SCTP .
+If
+.IR port1 " is omitted, " 0:port2 " is used; if " port2 " is omitted but a cold-ass lil colon is specified, " port1:65535 " is used."
+Da flag
+.B --ip-sport
+is a alias fo' dis option.
+.TP
+.BR "--ip-destination-port " "[!] \fIport1\fP[:\fIport2\fP]"
+Da destination port or port range fo' ip protocols 6 (TCP), 17
+(UDP), 33 (DCCP) or 132 (SCTP). The
+.B --ip-protocol
+option must be specified as
+.IR TCP ", " UDP ", " DCCP " or " SCTP .
+If
+.IR port1 " is omitted, " 0:port2 " is used; if " port2 " is omitted but a cold-ass lil colon is specified, " port1:65535 " is used."
+Da flag
+.B --ip-dport
+is a alias fo' dis option.
+.SS ip6
+Specify IPv6 fields. Da protocol must be specified as
+.IR IPv6 .
+.TP
+.BR "--ip6-source " "[!] \fIaddress\fP[/\fImask\fP]"
+Da source IPv6 address.
+Da flag
+.B --ip6-src
+is a alias fo' dis option.
+.TP
+.BR "--ip6-destination " "[!] \fIaddress\fP[/\fImask\fP]"
+Da destination IPv6 address.
+Da flag
+.B --ip6-dst
+is a alias fo' dis option.
+.TP
+.BR "--ip6-tclass " "[!] \fItclass\fP"
+Da IPv6 traffic class, up in hexadecimal numbers.
+.TP
+.BR "--ip6-protocol " "[!] \fIprotocol\fP"
+Da IP protocol.
+Da flag
+.B --ip6-proto
+is a alias fo' dis option.
+.TP
+.BR "--ip6-source-port " "[!] \fIport1\fP[:\fIport2\fP]"
+Da source port or port range fo' tha IPv6 protocols 6 (TCP), 17
+(UDP), 33 (DCCP) or 132 (SCTP). The
+.B --ip6-protocol
+option must be specified as
+.IR TCP ", " UDP ", " DCCP " or " SCTP .
+If
+.IR port1 " is omitted, " 0:port2 " is used; if " port2 " is omitted but a cold-ass lil colon is specified, " port1:65535 " is used."
+Da flag
+.B --ip6-sport
+is a alias fo' dis option.
+.TP
+.BR "--ip6-destination-port " "[!] \fIport1\fP[:\fIport2\fP]"
+Da destination port or port range fo' IPv6 protocols 6 (TCP), 17
+(UDP), 33 (DCCP) or 132 (SCTP). The
+.B --ip6-protocol
+option must be specified as
+.IR TCP ", " UDP ", " DCCP " or " SCTP .
+If
+.IR port1 " is omitted, " 0:port2 " is used; if " port2 " is omitted but a cold-ass lil colon is specified, " port1:65535 " is used."
+Da flag
+.B --ip6-dport
+is a alias fo' dis option.
+.TP
+.BR "--ip6-icmp-type " "[!] {\fItype\fP[:\fItype\fP]/\fIcode\fP[:\fIcode\fP]|\fItypename\fP}"
+Specify ipv6\-icmp type n' code ta match.
+Ranges fo' both type n' code is supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Type n' code are
+separated by a slash. Valid numbers fo' type n' range is 0 ta 255.
+To match a single type includin all valid codes, symbolic names can
+be used instead of numbers. Da list of known type names is shown by tha command
+.nf
+  ebtablez \-\-help ip6
+.fi
+This option is only valid fo' \-\-ip6-prococol ipv6-icmp.
+.SS limit
+This module matches at a limited rate rockin a token bucket filter.
+A rule rockin dis extension will match until dis limit is reached.
+It can be used wit the
+.B --log
+watcher ta give limited logging, fo' example. Its use is tha same
+as tha limit match of iptables.
+.TP
+.BR "--limit " "[\fIvalue\fP]"
+Maximum average matchin rate: specified as a number, wit a optional
+.IR /second ", " /minute ", " /hour ", or " /dizzle " suffix; tha default is " 3/hour .
+.TP
+.BR "--limit-burst " "[\fInumber\fP]"
+Maximum initial number of packets ta match: dis number gets recharged by
+one every last muthafuckin time tha limit specified above aint reached, up ta this
+number; tha default is
+.IR 5 .
+.SS mark_m
+.TP
+.BR "--mark " "[!] [\fIvalue\fP][/\fImask\fP]"
+Matches frames wit tha given unsigned mark value. If a
+.IR value " n' " mask " is specified, tha logical AND of tha mark value of tha frame and"
+the user-specified
+.IR mask " is taken before comparin it wit the"
+user-specified mark
+.IR value ". When only a mark "
+.IR value " is specified, tha packet"
+only matches when tha mark value of tha frame equals tha user-specified
+mark
+.IR value .
+If only a
+.IR mask " is specified, tha logical"
+AND of tha mark value of tha frame n' tha user-specified
+.IR mask " is taken n' tha frame matches when tha result of dis logical AND is"
+non-zero. Only specifyin a
+.IR mask " is useful ta match multiple mark joints."
+.SS pkttype
+.TP
+.BR "--pkttype-type " "[!] \fItype\fP"
+Matches on tha Ethernet "class" of tha frame, which is determined by the
+generic networkin code. Possible joints:
+.IR broadcast " (MAC destination is tha broadcast address),"
+.IR multicast " (MAC destination be a multicast address),"
+.IR host " (MAC destination is tha receivin network device), or "
+.IR otherhost " (none of tha above)."
+.SS stp
+Specify stp BPDU (bridge protocol data unit) fields. Da destination
+address
+.BR "" ( -d ") must be specified as tha bridge crew address"
+.IR "" ( BGA ).
+For all options fo' which a range of joints can be specified, it holdz that
+if tha lower bound is omitted (but tha colon is not), then tha lowest possible lower bound
+for dat option is used, while if tha upper bound is omitted (but tha colon again n' again n' again is not), the
+highest possible upper bound fo' dat option is used.
+.TP
+.BR "--stp-type " "[!] \fItype\fP"
+Da BPDU type (0-255), recognized non-numerical types are
+.IR config ", denotin a cold-ass lil configuration BPDU (=0), and"
+.IR tcn ", denothang a topologizzle chizzle notification BPDU (=128)."
+.TP
+.BR "--stp-flags " "[!] \fIflag\fP"
+Da BPDU flag (0-255), recognized non-numerical flags are
+.IR topology-change ", denotin tha topologizzle chizzle flag (=1), and"
+.IR topology-change-ack ", denotin tha topologizzle chizzle acknowledgement flag (=128)."
+.TP
+.BR "--stp-root-prio " "[!] [\fIprio\fP][:\fIprio\fP]"
+Da root prioritizzle (0-65535) range.
+.TP
+.BR "--stp-root-addr " "[!] [\fIaddress\fP][/\fImask\fP]"
+Da root mac address, peep tha option
+.BR -s " fo' mo' details."
+.TP
+.BR "--stp-root-cost " "[!] [\fIcost\fP][:\fIcost\fP]"
+Da root path cost (0-4294967295) range.
+.TP
+.BR "--stp-sender-prio " "[!] [\fIprio\fP][:\fIprio\fP]"
+Da BPDUz sender prioritizzle (0-65535) range.
+.TP
+.BR "--stp-sender-addr " "[!] [\fIaddress\fP][/\fImask\fP]"
+Da BPDUz sender mac address, peep tha option
+.BR -s " fo' mo' details."
+.TP
+.BR "--stp-port " "[!] [\fIport\fP][:\fIport\fP]"
+Da port identifier (0-65535) range.
+.TP
+.BR "--stp-msg-age " "[!] [\fIage\fP][:\fIage\fP]"
+Da message age timer (0-65535) range.
+.TP
+.BR "--stp-max-age " "[!] [\fIage\fP][:\fIage\fP]"
+Da max age timer (0-65535) range.
+.TP
+.BR "--stp-hello-time " "[!] [\fItime\fP][:\fItime\fP]"
+Da wassup time timer (0-65535) range.
+.TP
+.BR "--stp-forward-delay " "[!] [\fIdelay\fP][:\fIdelay\fP]"
+Da forward delay timer (0-65535) range.
+.SS vlan
+Specify 802.1Q Tag Control Hype fields.
+Da protocol must be specified as
+.IR 802_1Q " (0x8100)."
+.TP
+.BR "--vlan-id " "[!] \fIid\fP"
+Da VLAN identifier field (VID). Decimal number from 0 ta 4095.
+.TP
+.BR "--vlan-prio " "[!] \fIprio\fP"
+Da user prioritizzle field, a thugged-out decimal number from 0 ta 7.
+Da VID should be set ta 0 ("null VID") or unspecified
+(in tha latta case tha VID is deliberately set ta 0).
+.TP
+.BR "--vlan-encap " "[!] \fItype\fP"
+Da encapsulated Ethernet frame type/length.
+Specified as a hexadecimal
+number from 0x0000 ta 0xFFFF or as a symbolic name
+from
+.BR /etc/ethertypes .
+
+.SS WATCHER EXTENSIONS
+Watchers only peep frames passin by, they don't modify dem nor decide
+to accept tha frames or not. These watchers only
+see tha frame if tha frame matches tha rule, n' they peep it before the
+target is executed.
+.SS log
+Da log watcher writes descriptizzle data on some gangbangin' frame ta tha syslog.
+.TP
+.B "--log"
+.br
+Log wit tha default loggin options: log-level=
+.IR info ,
+log-prefix="", no ip logging, no arp logging.
+.TP
+.B --log-level "\fIlevel\fP"
+.br
+Defines tha loggin level. For tha possible joints, see
+.BR "ebtablez -h log" .
+Da default level is 
+.IR info .
+.TP
+.BR --log-prefix " \fItext\fP"
+.br
+Defines tha prefix
+.I text
+to be printed all up in tha beginnin of tha line wit tha loggin shiznit.
+.TP
+.B --log-ip 
+.br
+Will log tha ip shiznit when a gangbangin' frame made by tha ip protocol matches 
+the rule. Da default is no ip shiznit logging.
+.TP
+.B --log-ip6 
+.br
+Will log tha ipv6 shiznit when a gangbangin' frame made by tha ipv6 protocol matches 
+the rule. Da default is no ipv6 shiznit logging.
+.TP
+.B --log-arp
+.br
+Will log tha (r)arp shiznit when a gangbangin' frame made by tha (r)arp protocols
+matches tha rule. Da default is no (r)arp shiznit logging.
+.SS nflog
+Da nflog watcher passes tha packet ta tha loaded loggin backend
+in order ta log tha packet. This is probably used up in combination with
+nfnetlink_log as loggin backend, which will multicast tha packet
+all up in a
+.IR netlink
+socket ta tha specified multicast group. One or mo' userspace processes
+may subscribe ta tha crew ta receive tha packets.
+.TP
+.B "--nflog"
+.br
+Log wit tha default loggin options
+.TP
+.B --nflog-group "\fInlgroup\fP"
+.br
+Da netlink crew (1 - 2^32-1) ta which packets is (only applicable for
+nfnetlink_log). Da default value is 1.
+.TP
+.B --nflog-prefix "\fIprefix\fP"
+.br
+A prefix strang ta include up in tha log message, up ta 30 characters
+long, useful fo' distinguishin lyrics up in tha logs.
+.TP
+.B --nflog-range "\fIsize\fP"
+.br
+Da number of bytes ta be copied ta userspace (only applicable for
+nfnetlink_log). nfnetlink_log instances may specify they own
+range, dis option overrides dat shit.
+.TP
+.B --nflog-threshold "\fIsize\fP"
+.br
+Number of packets ta queue inside tha kernel before bustin  them
+to userspace (only applicable fo' nfnetlink_log) yo. Higher joints
+result up in less overhead per packet yo, but increase delay until the
+packets reach userspace. Da default value is 1.
+.SS ulog
+Da ulog watcher passes tha packet ta a userspace
+loggin daemon rockin netlink multicast sockets, n' you can put dat on yo' toast. This differs
+from tha log watcher up in tha sense dat tha complete packet is
+sent ta userspace instead of a thugged-out descriptizzle text n' that
+netlink multicast sockets is used instead of tha syslog.
+This watcher enablez parsin of packets wit userspace programs, the
+physical bridge up in n' up ports is also included up in tha netlink lyrics.
+Da ulog watcher module accepts 2 parametas when tha module is loaded
+into tha kernel (e.g. wit modprobe):
+.B nlbufsiz
+specifies how tha fuck big-ass tha buffer fo' each netlink multicast
+group is. If you say
+.IR nlbufsiz=8192 ,
+for example, up ta eight kB of packets will
+get accumulated up in tha kernel until they is busted ta userspace. Well shiiiit, it is
+not possible ta allocate mo' than 128kB. Please also keep up in mind that
+this buffer size be allocated fo' each nlgroup yo ass is using, so the
+total kernel memory usage increases by dat factor. Shiiit, dis aint no joke. Da default is 4096.
+.B flushtimeout
+specifies afta how tha fuck nuff hundredthz of a second tha queue should be
+flushed, even if it aint full yet. Da default is 10 (one tenth of
+a second).
+.TP
+.B "--ulog"
+.br
+Use tha default settings: ulog-prefix="", ulog-nlgroup=1,
+ulog-cprange=4096, ulog-qthreshold=1.
+.TP
+.B --ulog-prefix "\fItext\fP"
+.br
+Defines tha prefix included wit tha packets busted ta userspace.
+.TP
+.BR --ulog-nlgroup " \fIgroup\fP"
+.br
+Defines which netlink crew number ta use (a number from 1 ta 32).
+Make shizzle tha netlink crew numbers used fo' tha iptablez ULOG
+target differ from dem used fo' tha ebtablez ulog watcher.
+Da default crew number is 1.
+.TP
+.BR --ulog-cprange " \fIrange\fP"
+.br
+Defines tha maximum copy range ta userspace, fo' packets matchin the
+rule. Da default range is 0, which means tha maximum copy range is
+given by
+.BR nlbufsiz .
+A maximum copy range larger than
+128*1024 is meaningless as tha packets busted ta userspace have a upper
+size limit of 128*1024.
+.TP
+.BR --ulog-qthreshold " \fIthreshold\fP"
+.br
+Queue at most
+.I threshold
+number of packets before bustin  dem to
+userspace wit a netlink socket. Note dat packets can be busted to
+userspace before tha queue is full, dis happens when tha ulog
+kernel timer goes off (the frequency of dis timer dependz on
+.BR flushtimeout ).
+.SS TARGET EXTENSIONS
+.SS arpreply
+The
+.B arpreply
+target can be used up in the
+.BR PREROUTING " chain of tha " nat " table."
+If dis target sees a ARP request it will automatically reply
+with a ARP reply. Da used MAC address fo' tha reply can be specified.
+Da protocol must be specified as
+.IR ARP .
+When tha ARP message aint a ARP request or when tha ARP request aint
+for a IP address on a Ethernet network, it is ignored by dis target
+.BR "" ( CONTINUE ).
+When tha ARP request is malformed, it is dropped
+.BR "" ( DROP ).
+.TP
+.BR "--arpreply-mac " "\fIaddress\fP"
+Specifies tha MAC address ta reply with: tha Ethernet source MAC n' the
+ARP payload source MAC is ghon be filled up in wit dis address.
+.TP
+.BR "--arpreply-target " "\fItarget\fP"
+Specifies tha standard target fo' realz. Afta bustin  tha ARP reply, tha rule still
+has ta give a standard target so ebtablez knows what tha fuck ta do wit tha ARP request.
+Da default target
+.BR "" "is " DROP .
+.SS dnat
+The
+.B dnat
+target can only be used up in the
+.BR BROUTING " chain of tha " broute " table n' tha "
+.BR PREROUTING " n' " OUTPUT " chainz of tha " nat " table."
+It specifies dat tha destination MAC address has ta be chizzled.
+.TP
+.BR "--to-destination " "\fIaddress\fP"
+.br
+Change tha destination MAC address ta tha specified
+.IR address .
+Da flag
+.B --to-dst
+is a alias fo' dis option.
+.TP
+.BR "--dnat-target " "\fItarget\fP"
+.br
+Specifies tha standard target fo' realz. Afta bustin tha dnat, tha rule still has to
+give a standard target so ebtablez knows what tha fuck ta do wit tha dnated frame.
+Da default target is
+.BR ACCEPT .
+Makin it
+.BR CONTINUE " could let you use"
+multiple target extensions on tha same frame. Makin it
+.BR DROP " only makes"
+sense up in the
+.BR BROUTING " chain but rockin tha " redirect " target is mo' logical there, so peek-a-boo, clear tha way, I be comin' thru fo'sho. " RETURN " be also allowed. Y'all KNOW dat shit, muthafucka! Note dat rockin " RETURN
+in a funky-ass base chain aint allowed (for obvious reasons).
+.SS mark
+.BR "" "Da " mark " target can be used up in every last muthafuckin chain of every last muthafuckin table. Well shiiiit, it is possible"
+to use tha markin of a gangbangin' frame/packet up in both ebtablez n' iptables,
+if tha bridge-nf code is compiled tha fuck into tha kernel. Both put tha markin at the
+same place. This allows fo' a gangbangin' form of communication between ebtablez n' iptables.
+.TP
+.BR "--mark-set " "\fIvalue\fP"
+.br
+Mark tha frame wit tha specified non-negative
+.IR value .
+.TP
+.BR "--mark-or " "\fIvalue\fP"
+.br
+Or tha frame wit tha specified non-negative
+.IR value .
+.TP
+.BR "--mark-and " "\fIvalue\fP"
+.br
+And tha frame wit tha specified non-negative
+.IR value .
+.TP
+.BR "--mark-xor " "\fIvalue\fP"
+.br
+Xor tha frame wit tha specified non-negative
+.IR value .
+.TP
+.BR "--mark-target " "\fItarget\fP"
+.br
+Specifies tha standard target fo' realz. Afta markin tha frame, tha rule
+still has ta give a standard target so ebtablez knows what tha fuck ta do.
+Da default target is
+.BR ACCEPT ". Makin it " CONTINUE " can let you do other"
+things wit tha frame up in subsequent rulez of tha chain.
+.SS redirect
+The
+.B redirect
+target will chizzle tha MAC target address ta dat of tha bridge thang the
+frame arrived on. I aint talkin' bout chicken n' gravy biatch. This target can only be used up in the
+.BR BROUTING " chain of tha " broute " table n' tha "
+.BR PREROUTING " chain of tha " nat " table."
+In the
+.BR BROUTING " chain, tha MAC address of tha bridge port is used as destination address,"
+.BR "" "in tha " PREROUTING " chain, tha MAC address of tha bridge is used."
+.TP
+.BR "--redirect-target " "\fItarget\fP"
+.br
+Specifies tha standard target fo' realz. Afta bustin tha MAC redirect, tha rule
+still has ta give a standard target so ebtablez knows what tha fuck ta do.
+Da default target is
+.BR ACCEPT ". Makin it " CONTINUE " could let you use"
+multiple target extensions on tha same frame. Makin it
+.BR DROP " up in tha " BROUTING " chain will let tha frames be routed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. " RETURN " be also allowed. Y'all KNOW dat shit, muthafucka! Note"
+.BR "" "that rockin " RETURN " up in a funky-ass base chain aint allowed."
+.SS snat
+The
+.B snat
+target can only be used up in the
+.BR POSTROUTING " chain of tha " nat " table."
+It specifies dat tha source MAC address has ta be chizzled.
+.TP
+.BR "--to-source " "\fIaddress\fP"
+.br
+Changes tha source MAC address ta tha specified
+.IR address ". Da flag"
+.B --to-src
+is a alias fo' dis option.
+.TP
+.BR "--snat-target " "\fItarget\fP"
+.br
+Specifies tha standard target fo' realz. Afta bustin tha snat, tha rule still has 
+to give a standard target so ebtablez knows what tha fuck ta do.
+.BR "" "Da default target is " ACCEPT ". Makin it " CONTINUE " could let you use"
+.BR "" "multiple target extensions on tha same frame. Makin it " DROP " don't"
+.BR "" "make sense yo, but you could do dat like a muthafucka. " RETURN " be also allowed. Y'all KNOW dat shit, muthafucka! Note"
+.BR "" "that rockin " RETURN " up in a funky-ass base chain aint allowed."
+.br
+.TP
+.BR "--snat-arp "
+.br
+Also chizzle tha hardware source address inside tha arp header if tha packet be an
+arp message n' tha hardware address length up in tha arp header is 6 bytes.
+.br
+.SH FILES
+.I /etc/ethertypes
+.I /var/lib/ebtables/lock
+.SH ENVIRONMENT VARIABLES
+.I EBTABLES_ATOMIC_FILE
+.SH MAILINGLISTS
+.BR "" "See " http://netfilter.org/mailinglists.html
+.SH SEE ALSO
+.BR iptablez "(8), " brctl "(8), " ifconfig "(8), " route (8)
+.PP
+.BR "" "See " http://ebtables.sf.net

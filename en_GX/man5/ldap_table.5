@@ -1,0 +1,746 @@
+.TH LDAP_TABLE 5 
+.ad
+.fi
+.SH NAME
+ldap_table
+\-
+Postfix LDAP client configuration
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap -q "\fIstring\fB" ldap:/etc/postfix/filename\fR
+
+\fBpostmap -q - ldap:/etc/postfix/\fIfilename\fR <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix mail system uses optionizzle tablez fo' address
+rewritin or mail routing. These tablez is probably in
+\fBdbm\fR or \fBdb\fR format.
+
+Alternatively, lookup tablez can be specified as LDAP databases.
+
+In order ta use LDAP lookups, define a LDAP source as a lookup
+table up in main.cf, fo' example:
+
+.nf
+    alias_maps = ldap:/etc/postfix/ldap-aliases.cf
+.fi
+
+Da file /etc/postfix/ldap-aliases.cf has tha same ol' dirty format as
+the Postfix main.cf file, n' can specify tha parameters
+busted lyrics bout below fo' realz. An example is given all up in tha end of dis manual.
+
+This configuration method be available wit Postfix version
+2.1 n' later n' shit.  See tha section "BACKWARDS COMPATIBILITY"
+below fo' olda Postfix versions.
+
+For details bout LDAP SSL n' STARTTLS, peep tha section
+on SSL n' STARTTLS below.
+.SH "BACKWARDS COMPATIBILITY"
+.na
+.nf
+.ad
+.fi
+For backwardz compatibilitizzle wit Postfix version 2.0 n' earlier,
+LDAP parametas can also be defined up in main.cf.  Specify
+as LDAP source a name dat don't begin wit a slash or
+a dot.  Da LDAP parametas will then be accessible as the
+name you've given tha source up in its definition, a underscore,
+and tha name of tha parameter n' shit.  For example, if tha map is
+specified as "ldap:\fIldapsource\fR", tha "server_host"
+parameta below would be defined up in main.cf as
+"\fIldapsource\fR_server_host".
+
+Note: wit dis form, tha passwordz fo' tha LDAP sources are
+written up in main.cf, which is normally ghetto-readable.  Support
+for dis form is ghon be removed up in a gangbangin' future Postfix version.
+
+For backwardz compatibilitizzle wit tha pre
+2.2 LDAP clients, \fBresult_filter\fR can fo' now be used instead
+of \fBresult_format\fR, when tha latta parameta aint also set.
+Da freshly smoked up name betta reflects tha function of tha parameter n' shit. This
+compatibilitizzle intercourse may be removed up in a gangbangin' future release.
+.SH "LIST MEMBERSHIP"
+.na
+.nf
+.ad
+.fi
+When rockin LDAP ta store lists like fuckin $mynetworks,
+$mydestination, $relay_domains, $local_recipient_maps,
+etc., it is blingin ta KNOW dat tha table must
+store each list member as a separate key. Da table lookup
+verifies tha *existence* of tha key. Right back up in yo muthafuckin ass. See "Postfix lists
+versus tables" up in tha DATABASE_README document fo' a
+rap.
+
+Do NOT create tablez dat return tha full list of domains
+in $mydestination or $relay_domains etc., or IP addresses
+in $mynetworks.
+
+DO create tablez wit each matchin item as a key n' with
+an arbitrary value. With LDAP databases it aint uncommon to
+return tha key itself.
+
+For example, NEVER do dis up in a map definin $mydestination:
+
+.nf
+    query_filta = domain=*
+    result_attribute = domain
+.fi
+
+Do dis instead:
+
+.nf
+    query_filta = domain=%s
+    result_attribute = domain
+.fi
+.SH "GENERAL LDAP PARAMETERS"
+.na
+.nf
+.ad
+.fi
+In tha text below, default joints is given up in parentheses.
+Note: don't use quotes up in these variables; at least, not until the
+Postfix configuration routines KNOW how tha fuck ta deal wit quoted
+strings.
+.IP "\fBserver_host (default: localhost)\fR"
+Da name of tha host hustlin tha LDAP server, e.g.
+
+.nf
+    server_host = ldap.example.com
+.fi
+
+Dependin on tha LDAP client library you using, it should
+be possible ta specify multiple servers here, wit tha library
+tryin dem up in order should tha straight-up original gangsta one fail. Well shiiiit, it should also
+be possible ta give each server up in tha list a gangbangin' finger-lickin' different port
+(overridin \fBserver_port\fR below), by namin dem like
+
+.nf
+    server_host = ldap.example.com:1444
+.fi
+
+With OpenLDAP, a (list of) LDAP URLs can be used ta specify both
+the hostname(s) n' tha port(s):
+
+.nf
+    server_host = ldap://ldap.example.com:1444
+                ldap://ldap2.example.com:1444
+.fi
+
+All LDAP URLs accepted by tha OpenLDAP library is supported,
+includin connections over UNIX domain sockets, n' LDAP SSL
+(the last one provided dat OpenLDAP was compiled wit support
+for SSL):
+
+.nf
+    server_host = ldapi://%2Fsome%2Fpath
+                ldaps://ldap.example.com:636
+.fi
+.IP "\fBserver_port (default: 389)\fR"
+Da port tha LDAP server listens on, e.g.
+
+.nf
+    server_port = 778
+.fi
+.IP "\fBtimeout (default: 10 seconds)\fR"
+Da number of secondz a search can take before timin out, e.g.
+
+.fi
+    timeout = 5
+.fi
+.IP "\fBsearch_base (No default; you must configure this)\fR"
+Da RFC2253 base DN at which ta conduct tha search, e.g.
+
+.nf
+    search_base = dc=your, dc=com
+.fi
+.IP
+With Postfix 2.2 n' lata dis parameta supports the
+followin '%' expansions:
+.RS
+.IP "\fB\fB%%\fR\fR"
+This is replaced by a literal '%' character.
+.IP "\fB\fB%s\fR\fR"
+This is replaced by tha input key.
+RFC 2253 quotin is used ta make shizzle dat tha input key
+does not add unexpected metacharacters.
+.IP "\fB\fB%u\fR\fR"
+When tha input key be a address of tha form user@domain, \fB%u\fR
+is replaced by tha (RFC 2253) quoted local part of tha address.
+Otherwise, \fB%u\fR is replaced by tha entire search string.
+If tha localpart is empty, tha search is suppressed n' returns
+no thangs up in dis biatch.
+.IP "\fB\fB%d\fR\fR"
+When tha input key be a address of tha form user@domain, \fB%d\fR
+is replaced by tha (RFC 2253) quoted domain part of tha address.
+Otherwise, tha search is suppressed n' returns no thangs up in dis biatch.
+.IP "\fB\fB%[SUD]\fR\fR"
+For tha \fBsearch_base\fR parameter, tha upper-case equivalents
+of tha above expansions behave identically ta they lower-case
+counter-parts, n' you can put dat on yo' toast. With tha \fBresult_format\fR parameta (previously
+called \fBresult_filter\fR peep tha COMPATIBILITY section n' below),
+they expand ta tha correspondin componentz of input key rather
+than tha result value.
+.IP "\fB\fB%[1-9]\fR\fR"
+Da patterns %1, %2, ... %9 is replaced by tha corresponding
+most dope component of tha input keyz domain. I aint talkin' bout chicken n' gravy biatch. If the
+input key is \fIuser@mail.example.com\fR, then %1 is \fBcom\fR,
+%2 is \fBexample\fR n' %3 is \fBmail\fR. If tha input key is
+unqualified or aint gots enough domain components ta satisfy
+all tha specified patterns, tha search is suppressed n' returns
+no thangs up in dis biatch.
+.RE
+.IP "\fBquery_filta (default: mailacceptinggeneralid=%s)\fR"
+Da RFC2254 filta used ta search tha directory, where \fB%s\fR
+is a substitute fo' tha address Postfix is tryin ta resolve,
+e.g.
+
+.nf
+    query_filta = (&(mail=%s)(paid_up=true))
+.fi
+
+This parameta supports tha followin '%' expansions:
+.RS
+.IP "\fB\fB%%\fR\fR"
+This is replaced by a literal '%' character n' shit. (Postfix 2.2 n' later).
+.IP "\fB\fB%s\fR\fR"
+This is replaced by tha input key.
+RFC 2254 quotin is used ta make shizzle dat tha input key
+does not add unexpected metacharacters.
+.IP "\fB\fB%u\fR\fR"
+When tha input key be a address of tha form user@domain, \fB%u\fR
+is replaced by tha (RFC 2254) quoted local part of tha address.
+Otherwise, \fB%u\fR is replaced by tha entire search string.
+If tha localpart is empty, tha search is suppressed n' returns
+no thangs up in dis biatch.
+.IP "\fB\fB%d\fR\fR"
+When tha input key be a address of tha form user@domain, \fB%d\fR
+is replaced by tha (RFC 2254) quoted domain part of tha address.
+Otherwise, tha search is suppressed n' returns no thangs up in dis biatch.
+.IP "\fB\fB%[SUD]\fR\fR"
+Da upper-case equivalentz of tha above expansions behave up in the
+\fBquery_filter\fR parameta identically ta they lower-case
+counter-parts, n' you can put dat on yo' toast. With tha \fBresult_format\fR parameta (previously
+called \fBresult_filter\fR peep tha COMPATIBILITY section n' below),
+they expand ta tha correspondin componentz of input key rather
+than tha result value.
+.IP
+Da above %S, %U n' %D expansions is available wit Postfix 2.2
+and later.
+.IP "\fB\fB%[1-9]\fR\fR"
+Da patterns %1, %2, ... %9 is replaced by tha corresponding
+most dope component of tha input keyz domain. I aint talkin' bout chicken n' gravy biatch. If the
+input key is \fIuser@mail.example.com\fR, then %1 is \fBcom\fR,
+%2 is \fBexample\fR n' %3 is \fBmail\fR. If tha input key is
+unqualified or aint gots enough domain components ta satisfy
+all tha specified patterns, tha search is suppressed n' returns
+no thangs up in dis biatch.
+.IP
+Da above %1, ..., %9 expansions is available wit Postfix 2.2
+and later.
+.RE
+.IP
+Da "domain" parameta busted lyrics bout below limits tha input
+keys ta addresses up in matchin domains. When tha "domain"
+parameta is non-empty, LDAP queries fo' unqualified
+addresses or addresses up in non-matchin domains is suppressed
+and return no thangs up in dis biatch.
+
+NOTE: DO NOT put quotes round tha \fBquery_filter\fR parameter.
+.IP "\fBresult_format (default: \fB%s\fR)\fR"
+Called \fBresult_filter\fR up in Postfix releases prior ta 2.2.
+Format template applied ta result attributes. Most commonly used
+to append (or prepend) text ta tha result. This parameta supports
+the followin '%' expansions:
+.RS
+.IP "\fB\fB%%\fR\fR"
+This is replaced by a literal '%' character n' shit. (Postfix 2.2 n' later).
+.IP "\fB\fB%s\fR\fR"
+This is replaced by tha value of tha result attribute. When
+result is empty it is skipped.
+.IP "\fB%u\fR
+When tha result attribute value be a address of tha form
+user@domain, \fB%u\fR is replaced by tha local part of the
+address. When tha result has a empty localpart it is skipped.
+.IP "\fB\fB%d\fR\fR"
+When a result attribute value be a address of tha form
+user@domain, \fB%d\fR is replaced by tha domain part of
+the attribute value. When tha result is unqualified it
+is skipped.
+.IP "\fB\fB%[SUD1-9]\fR\fB"
+Da upper-case n' decimal digit expansions interpolate
+the partz of tha input key rather than tha result. Their
+behavior is identical ta dat busted lyrics bout wit \fBquery_filter\fR,
+and up in fact cuz tha input key is known up in advance, lookups
+whose key do not contain all tha shiznit specified in
+the result template is suppressed n' return no thangs up in dis biatch.
+.IP
+Da above %S, %U, %D n' %1, ..., %9 expansions is available with
+Postfix 2.2 n' later.
+.RE
+.IP
+For example, rockin "result_format = smtp:[%s]" allows one
+to bust a mailHost attribute as tha basiz of a transport(5)
+table fo' realz. Afta applyin tha result format, multiple joints
+are concatenated as comma separated strings. Da expansion_limit
+and size_limit parametas explained below allow one to
+restrict tha number of joints up in tha result, which is
+especially useful fo' maps dat should return a single
+value.
+
+Da default value \fB%s\fR specifies dat each
+attribute value should be used as is.
+
+This parameta was called \fBresult_filter\fR up in Postfix
+releases prior ta 2.2. If no "result_format" is specified,
+the value of "result_filter" is ghon be used instead before
+resortin ta tha default value. This serves up compatibility
+with oldschool configuration files.
+
+NOTE: DO NOT put quotes round tha result format!
+.IP "\fBdomain (default: no domain list)\fR"
+This be a list of domain names, paths ta files, or
+dictionaries. Put ya muthafuckin choppers up if ya feel dis! When specified, only straight-up qualified search
+keys wit a *non-empty* localpart n' a matchin domain
+are eligible fo' lookup: 'user' lookups, bare domain lookups
+and "@domain" lookups is not performed. Y'all KNOW dat shit, muthafucka! This can significantly
+reduce tha query load on tha LDAP server.
+
+.nf
+    domain = postfix.org, hash:/etc/postfix/searchdomains
+.fi
+
+It be dopest not ta use LDAP ta store tha domains eligible
+for LDAP lookups.
+
+NOTE: DO NOT define dis parameta fo' local(8) aliases.
+
+This feature be available up in Postfix 1.0 n' later.
+.IP "\fBresult_attribute (default: maildrop)\fR"
+Da attribute(s) Postfix will read from any directory
+entries returned by tha lookup, ta be resolved ta a email
+address.
+
+.nf
+    result_attribute = mailbox, maildrop
+.fi
+
+Don't rely on tha default value ("maildrop"). Right back up in yo muthafuckin ass. Set the
+result_attribute explicitly up in all ldap table configuration
+files. This is particularly relevant when no result_attribute
+is applicable, e.g. cases up in which leaf_result_attribute and/or
+terminal_result_attribute is used instead. Y'all KNOW dat shit, muthafucka! Da default value
+is harmless if "maildrop" be also listed as a leaf or terminal
+result attribute yo, but it is dopest ta not leave dis ta chance.
+.IP "\fBspecial_result_attribute (default: empty)\fR"
+Da attribute(s) of directory entries dat can contain DNs
+or RFC 2255 LDAP URLs. If found, a recursive search
+is performed ta retrieve tha entry referenced by tha DN, or
+the entries matched by tha URL query.
+
+.nf
+    special_result_attribute = memberdn
+.fi
+
+DN recursion retrieves tha same ol' dirty result_attributes as the
+main query, includin tha special attributes fo' further
+recursion.
+
+URL processin retrieves only dem attributes dat is included
+in both tha URL definizzle n' as result attributes (ordinary,
+special, leaf or terminal) up in tha Postfix table definition.
+If tha URL lists any of tha tablez special result attributes,
+these is retrieved n' used recursively fo' realz. A URL dat do not
+specify any attribute selection, is equivalent (RFC 2255) ta a
+URL dat selects all attributes, up in which case tha selected
+attributes is ghon be tha full set of result attributes up in the
+Postfix table.
+
+If a LDAP URL attribute-descriptor or tha correspondin Postfix
+LDAP table result attribute (but not both) uses RFC 2255 sub-type
+options ("attr;option"), tha attribute axed from tha LDAP server
+will include tha sub-type option. I aint talkin' bout chicken n' gravy biatch. In all other cases, tha URL
+attribute n' tha table attribute must match exactly fo' realz. Attributes
+with options up in both tha URL n' tha Postfix table is requested
+only when tha options is identical. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. LDAP attribute-descriptor
+options is straight-up rarely used, most LDAP playas will not
+need ta concern theyselves wit dis level of nuanced detail.
+.IP "\fBterminal_result_attribute (default: empty)\fR"
+When one or mo' terminal result attributes is found up in a LDAP
+entry, all other result attributes is ignored n' only tha terminal
+result attributes is returned. Y'all KNOW dat shit, muthafucka! This is useful fo' delegatin expansion
+of crew thugz ta a particular host, by rockin a optionizzle "maildrop"
+attribute on selected crews ta route tha crew ta a specific host,
+where tha crew is expanded, possibly via mailing-list manager or
+other special processing.
+
+.nf
+    result_attribute =
+    terminal_result_attribute = maildrop
+.fi
+
+When rockin terminal and/or leaf result attributes, the
+result_attribute is dopest set ta a empty value when it is not
+used, or else explicitly set ta tha desired value, even if it is
+the default value "maildrop".
+
+This feature be available wit Postfix 2.4 or later.
+.IP "\fBleaf_result_attribute (default: empty)\fR"
+When one or mo' special result attributes is found up in a non-terminal
+(see above) LDAP entry, leaf result attributes is excluded from the
+expansion of dat entry. This is useful when expandin crews n' the
+desired mail address attribute(s) of tha member objects obtained via
+DN or URI recursion is also present up in tha crew object. To only
+return tha attribute joints from tha leaf objects n' not the
+containin group, add tha attribute ta tha leaf_result_attribute list,
+and not tha result_attribute list, which be always expanded. Y'all KNOW dat shit, muthafucka! Note,
+the default value of "result_attribute" aint empty, you may want to
+set it explicitly empty when rockin "leaf_result_attribute" ta expand
+the crew ta a list of member DN addresses. If crews have both
+member DN references AND attributes dat hold multiple strang valued
+rfc822 addresses, then tha strang attributes go up in "result_attribute".
+Da attributes dat represent tha email addressez of objects
+referenced via a DN (or LDAP URI) go up in "leaf_result_attribute".
+
+.nf
+    result_attribute = memberaddr
+    special_result_attribute = memberdn
+    terminal_result_attribute = maildrop
+    leaf_result_attribute = mail
+.fi
+
+When rockin terminal and/or leaf result attributes, the
+result_attribute is dopest set ta a empty value when it is not
+used, or else explicitly set ta tha desired value, even if it is
+the default value "maildrop".
+
+This feature be available wit Postfix 2.4 or later.
+.IP "\fBscope (default: sub)\fR"
+Da LDAP search scope: \fBsub\fR, \fBbase\fR, or \fBone\fR.
+These translate tha fuck into LDAP_SCOPE_SUBTREE, LDAP_SCOPE_BASE,
+and LDAP_SCOPE_ONELEVEL.
+.IP "\fBbind (default: yes)\fR"
+Whether or how tha fuck ta bind ta tha LDAP server n' shit. Newer LDAP
+implementations don't require clients ta bind, which saves
+time. Example:
+
+.nf
+    # Don't bind
+    bind = no
+    # Use SIMPLE bind
+    bind = yes
+    # Use SASL bind
+    bind = sasl
+.fi
+
+Postfix versions prior ta 2.8 only support "bind = no" which
+means don't bind, n' "bind = yes" which means do a SIMPLE bind.
+Postfix 2.8 n' lata also supports "bind = SASL" when compiled
+with LDAP SASL support as busted lyrics bout up in LDAP_README, it also adds
+the synonyms "bind = none" n' "bind = simple" fo' "bind = no"
+and "bind = yes" respectively. Right back up in yo muthafuckin ass. See tha SASL section below for
+additionizzle parametas available wit "bind = sasl".
+
+If you do need ta bind, you might consider configuring
+Postfix ta connect ta tha local machine on a port that's
+an SSL tunnel ta yo' LDAP server n' shit. If yo' LDAP server
+doesn't natively support SSL, put a tunnel (wrapper, proxy,
+whatever you wanna call it) on dat system like a muthafucka. This
+should prevent tha password from traversin tha network in
+the clear.
+.IP "\fBbind_dn (default: empty)\fR"
+If you do gotta bind, do it wit dis distinguished name. Example:
+
+.nf
+    bind_dn = uid=postfix, dc=your, dc=com
+.fi
+With "bind = sasl" (see above) tha DN may be optionizzle fo' some SASL
+mechanisms, don't specify a DN if not needed.
+.IP "\fBbind_pw (default: empty)\fR"
+Da password fo' tha distinguished name above. If you have
+to use this, you probably wanna make tha map configuration
+file readable only by tha Postfix user n' shit. When rockin the
+obsolete ldap:ldapsource syntax, wit map parametas in
+main.cf, it aint possible ta securely store tha bind
+password. Y'all KNOW dat shit, muthafucka! This is cuz main.cf need ta be ghetto readable
+to allow local accounts ta submit mail via tha sendmail
+command. Y'all KNOW dat shit, muthafucka! Example:
+
+.nf
+    bind_pw = postfixpw
+.fi
+With "bind = sasl" (see above) tha password may be optional
+for some SASL mechanisms, don't specify a password if not needed.
+.IP "\fBcache (IGNORED wit a warning)\fR"
+.IP "\fBcache_expiry (IGNORED wit a warning)\fR"
+.IP "\fBcache_size (IGNORED wit a warning)\fR"
+Da above parametas is NO LONGER SUPPORTED by Postfix.
+Cache support has been dropped from OpenLDAP az of release
+2.1.13.
+.IP "\fBrecursion_limit (default: 1000)\fR"
+A limit on tha nestin depth of DN n' URL special result
+attribute evaluation. I aint talkin' bout chicken n' gravy biatch. Da limit must be a non-zero positive
+number.
+.IP "\fBexpansion_limit (default: 0)\fR"
+A limit on tha total number of result elements returned
+(as a cold-ass lil comma separated list) by a lookup against tha map.
+A settin of zero disablez tha limit. Lookups fail wit a
+temporary error if tha limit is exceeded. Y'all KNOW dat shit, muthafucka!  Settin the
+limit ta 1 ensures dat lookups do not return multiple
+values.
+.IP "\fBsize_limit (default: $expansion_limit)\fR"
+A limit on tha number of LDAP entries returned by any single
+LDAP search performed as part of tha lookup fo' realz. A settin of
+0 disablez tha limit.  Expansion of DN n' URL references
+involves nested LDAP queries, each of which is separately
+subjected ta dis limit.
+
+Note: even a single LDAP entry can generate multiple lookup
+results, via multiple result attributes and/or multi-valued
+result attributes. This limit caps tha per search resource
+utilization on tha LDAP server, not tha final multiplicity
+of tha lookup result. Well shiiiit, it be analogous ta tha "-z" option
+of "ldapsearch".
+.IP "\fBdereference (default: 0)\fR"
+When ta dereference LDAP aliases. (Note dat dis has
+nothang do wit Postfix aliases.) Da permitted joints are
+those legal fo' tha OpenLDAP/UM LDAP implementations:
+.RS
+.IP 0
+never
+.IP 1
+when searching
+.IP 2
+when locatin tha base object fo' tha search
+.IP 3
+always
+.RE
+.IP
+See ldap.h or tha ldap_open(3) or ldapsearch(1) playa pages
+for mo' shiznit. I aint talkin' bout chicken n' gravy biatch fo' realz. And if you rockin a LDAP package
+that has other possible joints, please brang it ta the
+attention of tha postfix-users@postfix.org mailin list.
+.IP "\fBchase_referrals (default: 0)\fR"
+Sets (or clears) LDAP_OPT_REFERRALS (requires LDAP version
+3 support).
+.IP "\fBversion (default: 2)\fR"
+Specifies tha LDAP protocol version ta use.
+.IP "\fBdebuglevel (default: 0)\fR"
+What level ta set fo' debuggin up in tha OpenLDAP libraries.
+.SH "LDAP SASL PARAMETERS"
+.na
+.nf
+.ad
+.fi
+If you rockin tha OpenLDAP libraries compiled wit SASL
+support, Postfix 2.8 n' lata built wit LDAP SASL support
+as busted lyrics bout up in LDAP_README can authenticate ta LDAP servers
+via SASL.
+
+This enablez authentication ta tha LDAP server via mechanisms
+other than a simple password. Y'all KNOW dat shit, muthafucka! Da added flexibilitizzle has a cold-ass lil cost:
+it is no longer practical ta set a explicit timeout on tha duration
+of a LDAP bind operation. I aint talkin' bout chicken n' gravy biatch. Under adverse conditions, whether a SASL
+bind times out, or if it do, tha duration of tha timeout is
+determined by tha LDAP n' SASL libraries.
+
+It be dopest ta use tablez dat use SASL bindz via proxymap(8), this
+way tha requestin process can time-out tha proxymap request. This
+also lets you taila tha process environment by overridin the
+proxymap(8) import_environment settin up in master.cf(5). Right back up in yo muthafuckin ass. Special
+environment settings may be needed ta configure GSSAPI credential
+caches or other SASL mechanizzle specific options. Da GSSAPI
+credentials used fo' LDAP lookups may need ta be different than
+say dem used fo' tha Postfix SMTP client ta authenticate ta remote
+servers.
+
+Usin SASL mechanizzlez requires LDAP protocol version 3, tha default
+protocol version is 2 fo' backwardz compatibility. Yo ass must set
+"version = 3" up in addizzle ta "bind = sasl".
+
+Da followin parametas is relevant ta rockin LDAP wit SASL
+.IP "\fBsasl_mechs (default: empty)\fR"
+Space separated list of SASL mechanism(s) ta try.
+.IP "\fBsasl_realm (default: empty)\fR"
+SASL Realm ta use, if applicable.
+.IP "\fBsasl_authz_id (default: empty)\fR"
+Da SASL authorization identitizzle ta assert, if applicable.
+.IP "\fBsasl_minssf (default: 0)\fR"
+Da minimum required sasl securitizzle factor required ta establish a
+connection.
+.SH "LDAP SSL AND STARTTLS PARAMETERS"
+.na
+.nf
+.ad
+.fi
+If you rockin tha OpenLDAP libraries compiled wit SSL
+support, Postfix can connect ta LDAP SSL servers n' can
+issue tha STARTTLS command.
+
+LDAP SSL steez can be axed by rockin a LDAP SSL URL
+in tha server_host parameter:
+
+.nf
+    server_host = ldaps://ldap.example.com:636
+.fi
+
+STARTTLS can be turned on wit tha start_tls parameter:
+
+.nf
+    start_tls = yes
+.fi
+
+Both forms require LDAP protocol version 3, which has ta be set
+explicitly with:
+
+.nf
+    version = 3
+.fi
+
+If any of tha Postfix programs queryin tha map is configured in
+master.cf ta run chrooted, all tha certificates n' keys involved
+have ta be copied ta tha chroot jail. Of course, tha private keys
+should only be readable by tha user "postfix".
+
+Da followin parametas is relevant ta LDAP SSL n' STARTTLS:
+.IP "\fBstart_tls (default: no)\fR"
+Whether or not ta issue STARTTLS upon connection ta the
+server n' shit.  Don't set dis wit LDAP SSL (the SSL session is setup
+automatically when tha TCP connection is opened).
+.IP "\fBtls_ca_cert_dir (No default; set either dis or tls_ca_cert_file)\fR"
+Directory containin X509 Certificate Authoritizzle certificates
+in PEM format which is ta be recognized by tha client in
+SSL/TLS connections. Da filez each contain one CA certificate.
+Da filez is looked up by tha CA subject name hash value,
+which must hence be available. If mo' than one CA certificate
+with tha same name hash value exist, tha extension must be
+different (e.g. 9d66eef0.0, 9d66eef0.1 etc). Da search is
+performed up in tha orderin of tha extension number, regardless
+of other propertizzlez of tha certificates. Use tha c_rehash
+utilitizzle (from tha OpenSSL distribution) ta create the
+necessary links.
+.IP "\fBtls_ca_cert_file (No default; set either dis or tls_ca_cert_dir)\fR"
+File containin tha X509 Certificate Authoritizzle certificates
+in PEM format which is ta be recognized by tha client in
+SSL/TLS connections. This settin takes precedence over
+tls_ca_cert_dir.
+.IP "\fBtls_cert (No default; you must set this)\fR"
+File containin clientz X509 certificate ta be used by
+the client up in SSL/ TLS connections.
+.IP "\fBtls_key (No default; you must set this)\fR"
+File containin tha private key correspondin ta tha above
+tls_cert.
+.IP "\fBtls_require_cert (default: no)\fR"
+Whether or not ta request serverz X509 certificate and
+check its validitizzle when establishin SSL/TLS connections.
+Da supported joints is \fBno\fR n' \fByes\fR.
+.sp
+With \fBno\fR, tha server certificate trust chain aint checked,
+but wit OpenLDAP prior ta 2.1.13, tha name up in tha server
+certificate must still match tha LDAP server name. With OpenLDAP
+2.0.0 ta 2.0.11 tha server name aint necessarily what tha fuck you
+specified, rather it is determined (by reverse lookup) from the
+IP address of tha LDAP server connection. I aint talkin' bout chicken n' gravy biatch. With OpenLDAP prior to
+2.0.13, subjectAlternativeName extensions up in tha LDAP server
+certificate is ignored: tha server name must match tha subject
+CommonName. Da \fBno\fR settin correspondz ta tha \fBnever\fR
+value of \fBTLS_REQCERT\fR up in LDAP client configuration files.
+.sp
+Don't use TLS wit OpenLDAP 2.0.x (and especially wit x <= 11)
+if you can avoid dat shit.
+.sp
+With \fByes\fR, tha server certificate must be issued by a trusted
+CA, n' not be expired. Y'all KNOW dat shit, muthafucka! Da LDAP server name must match one of the
+name(s) found up in tha certificate (see above fo' OpenLDAP library
+version dependent behavior). Da \fByes\fR settin correspondz ta the
+\fBdemand\fR value of \fBTLS_REQCERT\fR up in LDAP client configuration
+files.
+.sp
+Da "try" n' "never" jointz of \fBTLS_REQCERT\fR have no equivalents
+here, so peek-a-boo, clear tha way, I be comin' thru fo'sho. They is not available wit OpenLDAP 2.0, n' up in any case have
+questionable securitizzle properties. Put ya muthafuckin choppers up if ya feel dis! Either you want TLS verified LDAP
+connections, or you don't.
+.sp
+Da \fByes\fR value only works erectly wit Postfix 2.5 n' later,
+or wit OpenLDAP 2.0. Earlier Postfix releases or lata OpenLDAP
+releases don't work together wit dis setting. Right back up in yo muthafuckin ass. Support fo' LDAP
+over TLS was added ta Postfix based on tha OpenLDAP 2.0 API.
+.IP "\fBtls_random_file (No default)\fR"
+Path of a gangbangin' file ta obtain random bits from when /dev/[u]random
+is not available, ta be used by tha client up in SSL/TLS
+connections.
+.IP "\fBtls_cipher_suite (No default)\fR"
+Cipher suite ta use up in SSL/TLS negotiations.
+.SH "EXAMPLE"
+.na
+.nf
+.ad
+.fi
+Herez a funky-ass basic example fo' rockin LDAP ta look up local(8)
+aliases.
+Assume dat up in main.cf, you have:
+
+.nf
+    alias_maps = hash:/etc/aliases,
+            ldap:/etc/postfix/ldap-aliases.cf
+.fi
+
+and up in ldap:/etc/postfix/ldap-aliases.cf you have:
+
+.nf
+    server_host = ldap.example.com
+    search_base = dc=example, dc=com
+.fi
+
+Upon receivin mail fo' a local address "ldapuser" that
+aint found up in tha /etc/aliases database, Postfix will
+search tha LDAP server listenin at port 389 on ldap.example.com.
+It will bind anonymously, search fo' any directory entries
+whose mailacceptinggeneralid attribute is "ldapuser", read
+the "maildrop" attributez of dem found, n' build a list
+of they maildrops, which is ghon be treated as RFC822 addresses
+to which tha message is ghon be delivered.
+.SH "SEE ALSO"
+.na
+.nf
+postmap(1), Postfix lookup table manager
+postconf(5), configuration parameters
+mysql_table(5), MySQL lookup tables
+pgsql_table(5), PostgreSQL lookup tables
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+LDAP_README, Postfix LDAP client guide
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+.ad
+.fi
+Carsten Hoeger,
+Hery Rakotoarisoa,
+Jizzy Hensley,
+Keith Stevenson,
+LaMont Jones,
+Liviu Daia,
+Manuel Guesdon,
+Mike Mattice,
+Prabhat K Singh,
+Sami Haahtinen,
+Samuel Tardieu,
+Victor Duchovni,
+and nuff others.

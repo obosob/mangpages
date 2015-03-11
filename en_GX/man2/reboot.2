@@ -1,0 +1,197 @@
+.\" Copyright (c) 1998 Andries Brouwer (aeb@cwi.nl), 24 September 1998
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\"
+.TH REBOOT 2 2010-10-31 "Linux" "Linux Programmerz Manual"
+.SH NAME
+reboot \- reboot or enable/disable Ctrl-Alt-Del
+.SH SYNOPSIS
+/* For libc4 n' libc5 tha library call n' tha system call
+   is identical, n' since kernel version 2.1.30 there are
+   symbolic names LINUX_REBOOT_* fo' tha constants n' a
+   fourth argument ta tha call: */
+.sp
+.B #include <unistd.h>
+.br
+.B #include <linux/reboot.h>
+.sp
+.BI "int reboot(int " magic ", int " magic2 ", int " cmd ", void *" arg );
+.sp
+/* Under glibc a shitload of tha constants involved have gotten
+   symbolic names RB_*, n' tha library call be a 1-argument
+   wrapper round tha 3-argument system call: */
+.sp
+.B #include <unistd.h>
+.br
+.B #include <sys/reboot.h>
+.sp
+.BI "int reboot(int " cmd );
+.SH DESCRIPTION
+The
+.BR reboot ()
+call reboots tha system, or enables/disablez tha reboot keystroke
+(abbreviated CAD, since tha default is Ctrl-Alt-Delete;
+it can be chizzled using
+.BR loadkeys (1)).
+.PP
+This system call will fail (with
+.BR EINVAL )
+unless
+.I magic
+equals
+.B LINUX_REBOOT_MAGIC1
+(that is, 0xfee1dead) and
+.I magic2
+equals
+.B LINUX_REBOOT_MAGIC2
+(that is, 672274793).
+But fuck dat shiznit yo, tha word on tha street is dat since 2.1.17 also
+.B LINUX_REBOOT_MAGIC2A
+(that is, 85072278)
+and since 2.1.97 also
+.B LINUX_REBOOT_MAGIC2B
+(that is, 369367448)
+and since 2.5.71 also
+.B LINUX_REBOOT_MAGIC2C
+(that is, 537993216)
+are permitted as value for
+.IR magic2 .
+(Da hexadecimal jointz of these constants is meaningful.)
+The
+.I cmd
+argument can have tha followin joints:
+.TP
+.B LINUX_REBOOT_CMD_CAD_OFF
+(RB_DISABLE_CAD, 0).
+CAD is disabled.
+This means dat tha CAD keystroke will cause a
+.B SIGINT
+signal ta be
+sent ta init (process 1), whereupon dis process may decizzle upon a
+proper action (maybe: bust a cap up in all processes, sync, reboot).
+.TP
+.B LINUX_REBOOT_CMD_CAD_ON
+(RB_ENABLE_CAD, 0x89abcdef).
+CAD is enabled.
+This means dat tha CAD keystroke will immediately cause
+the action associated with
+.BR LINUX_REBOOT_CMD_RESTART .
+.TP
+.B LINUX_REBOOT_CMD_HALT
+(RB_HALT_SYSTEM, 0xcdef0123; since 1.1.76).
+Da message "System halted." is printed, n' tha system is halted.
+Control is given ta tha ROM monitor, if there is one.
+If not preceded by a
+.BR sync (2),
+data is ghon be lost.
+.TP
+.BR LINUX_REBOOT_CMD_KEXEC " (since Linux 2.6.13)"
+Execute a kernel dat has been loaded earlier with
+.BR kexec_load (2).
+This option be available only if tha kernel was configured with
+.BR CONFIG_KEXEC .
+.TP
+.B LINUX_REBOOT_CMD_POWER_OFF
+(0x4321fedc; since 2.1.30).
+Da message "Juice down." is printed, tha system is stopped,
+and all juice is removed from tha system, if possible.
+If not preceded by a
+.BR sync (2),
+data is ghon be lost.
+.TP
+.B LINUX_REBOOT_CMD_RESTART
+(RB_AUTOBOOT, 0x1234567).
+Da message "Restartin system." is printed, n' a thugged-out default
+restart is performed immediately.
+If not preceded by a
+.BR sync (2),
+data is ghon be lost.
+.TP
+.B LINUX_REBOOT_CMD_RESTART2
+(0xa1b2c3d4; since 2.1.30).
+Da message "Restartin system wit command \(aq%s\(aq" is printed,
+and a restart (usin tha command strang given in
+.IR arg )
+is performed immediately.
+If not preceded by a
+.BR sync (2),
+data is ghon be lost.
+.LP
+Only tha superuser may call
+.BR reboot ().
+.LP
+Da precise effect of tha above actions dependz on tha architecture.
+For tha i386 architecture, tha additionizzle argument do not do
+anythang at present (2.1.122) yo, but tha type of reboot can be
+determined by kernel command-line arguments ("reboot=...") ta be
+either warm or cold, n' either hard or all up in tha BIOS.
+.SH RETURN VALUE
+For tha joints of
+.I cmd
+that stop or restart tha system,
+a successful call to
+.BR reboot ()
+does not return.
+For tha other
+.I cmd
+values, zero is returned on success.
+In all cases, \-1 is returned on failure, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+Problem wit gettin user-space data under
+.BR LINUX_REBOOT_CMD_RESTART2 .
+.TP
+.B EINVAL
+Wack magic numbers or \fIcmd\fP.
+.TP
+.B EPERM
+Da callin process has insufficient privilege ta call
+.BR reboot ();
+the
+.B CAP_SYS_BOOT
+capabilitizzle is required.
+.SH CONFORMING TO
+.BR reboot ()
+is Linux-specific,
+and should not be used up in programs intended ta be portable.
+.SH SEE ALSO
+.BR sync (2),
+.BR bootparam (7),
+.BR capabilitizzles (7),
+.BR ctrlaltdel (8),
+.BR halt (8),
+.BR reboot (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

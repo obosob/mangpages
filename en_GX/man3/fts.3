@@ -1,0 +1,798 @@
+.\"	$NetBSD: fts.3,v 1.13.2.1 1997/11/14 02:09:32 mrg Exp $
+.\"
+.\" Copyright (c) 1989, 1991, 1993, 1994
+.\"	Da Regentz of tha Universitizzle of California.  All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_4_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 3 fo' realz. All advertisin shiznit mentionin features or use of dis software
+.\"    must display tha followin acknowledgement:
+.\"	This thang includes software pimped by tha Universitizzle of
+.\"	California, Berkeley n' its contributors.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\"     @(#)fts.3	8.5 (Berkeley) 4/16/94
+.\"
+.\" 2007-12-08, mtk, Converted from mdoc ta playa macros
+.\"
+.TH FTS 3 2012-10-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+fts, fts_open, fts_read, fts_children, fts_set, fts_close \- \
+traverse a gangbangin' file hierarchy
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/stat.h>
+.B #include <fts.h>
+.sp
+.BI "FTS *fts_open(char * const *" path_argv ", int " options ", "
+.BI "              int (*" compar ")(const FTSENT **, const FTSENT **));"
+.sp
+.BI "FTSENT *fts_read(FTS *" ftsp );
+.sp
+.BI "FTSENT *fts_children(FTS *" ftsp ", int " options );
+.sp
+.BI "int fts_set(FTS *" ftsp ", FTSENT *" f ", int " options );
+.sp
+.BI "int fts_close(FTS *" ftsp );
+.fi
+.SH DESCRIPTION
+The
+fts functions is provided fo' traversing
+file hierarchies.
+A simple overview is dat the
+.BR fts_open ()
+function returns a "handle" on a gangbangin' file hierarchy, which is then supplied to
+the other
+fts functions.
+Da function
+.BR fts_read ()
+returns a pointa ta a structure describin one of tha filez up in tha file
+hierarchy.
+Da function
+.BR fts_lil pimps ()
+returns a pointa ta a linked list of structures, each of which raps about
+one of tha filez contained up in a gangbangin' finger-lickin' directory up in tha hierarchy.
+In general, directories is hit up two distinguishable times; up in preorder
+(before any of they descendants is hit up) n' up in postorder (afta all
+of they descendants done been hit up).
+Filez is hit up once.
+It be possible ta strutt tha hierarchy "logically" (visitin tha filez that
+symbolic links point to)
+or physically (visitin tha symbolic links theyselves),
+order tha strutt of tha hierarchy or
+prune and/or revisit portionz of tha hierarchy.
+.PP
+Two structures is defined (and typedef'd) up in tha include file
+.IR <fts.h> .
+Da first is
+.IR FTS ,
+the structure dat represents tha file hierarchy itself.
+Da second is
+.IR FTSENT ,
+the structure dat represents a gangbangin' file up in tha file
+hierarchy.
+Normally, an
+.I FTSENT
+structure is returned fo' every last muthafuckin file up in tha file
+hierarchy.
+In dis manual page, "file" and
+"FTSENT structure"
+are generally interchangeable.
+The
+.I FTSENT
+structure gotz nuff at least tha followin fields, which are
+busted lyrics bout up in pimped outa detail below:
+.in +4n
+.nf
+
+typedef struct _ftsent {
+    unsigned short fts_info;     /* flags fo' FTSENT structure */
+    char          *fts_accpath;  /* access path */
+    char          *fts_path;     /* root path */
+    short          fts_pathlen;  /* strlen(fts_path) */
+    char          *fts_name;     /* filename */
+    short          fts_namelen;  /* strlen(fts_name) */
+    short          fts_level;    /* depth (\-1 ta N) */
+    int            fts_errno;    /* file errno */
+    long           fts_number;   /* local numeric value */
+    void          *fts_pointer;  /* local address value */
+    struct ftsent *fts_parent;   /* parent directory */
+    struct ftsent *fts_link;     /* next file structure */
+    struct ftsent *fts_cycle;    /* cycle structure */
+    struct stat   *fts_statp;    /* stat(2) shiznit */
+} FTSENT;
+.fi
+.in
+.PP
+These fieldz is defined as bigs up:
+.\" .Bl -tag -width "fts_namelen"
+.TP 12
+.IR fts_info
+One of tha followin flags describin tha returned
+.I FTSENT
+structure and
+the file it represents.
+With tha exception of directories without errors
+.RB ( FTS_D ),
+all of these
+entries is terminal, dat is, they aint gonna be revisited, nor will any
+of they descendants be hit up.
+.\" .Bl  -tag -width FTS_DEFAULT
+.RS 12
+.TP 12
+.BR FTS_D
+A directory bein hit up in preorder.
+.TP
+.BR FTS_DC
+A directory dat causes a cold-ass lil cycle up in tha tree.
+(The
+.I fts_cycle
+field of the
+.I FTSENT
+structure is ghon be filled up in as well.)
+.TP
+.BR FTS_DEFAULT
+Any
+.I FTSENT
+structure dat represents a gangbangin' file type not explicitly busted lyrics about
+by one of tha other
+.I fts_info
+values.
+.TP
+.BR FTS_DNR
+A directory which cannot be read.
+This be a error return, n' the
+.I fts_errno
+field is ghon be set ta indicate what tha fuck caused tha error.
+.TP
+.BR FTS_DOT
+A file named
+"."
+or
+".."
+which was not specified as a gangbangin' filename to
+.BR fts_open ()
+(see
+.BR FTS_SEEDOT ).
+.TP
+.BR FTS_DP
+A directory bein hit up in postorder.
+Da contentz of the
+.I FTSENT
+structure is ghon be unchanged from when
+it was returned up in preorder, dat is, wit the
+.I fts_info
+field set to
+.BR FTS_D .
+.TP
+.BR FTS_ERR
+This be a error return, n' the
+.I fts_errno
+field is ghon be set ta indicate what tha fuck caused tha error.
+.TP
+.BR FTS_F
+A regular file.
+.TP
+.BR FTS_NS
+A file fo' which no
+.BR stat (2)
+information was available.
+Da contentz of the
+.I fts_statp
+field is undefined.
+This be a error return, n' the
+.I fts_errno
+field is ghon be set ta indicate what tha fuck caused tha error.
+.TP
+.BR FTS_NSOK
+A file fo' which no
+.BR stat (2)
+information was requested.
+Da contentz of the
+.I fts_statp
+field is undefined.
+.TP
+.BR FTS_SL
+A symbolic link.
+.TP
+.BR FTS_SLNONE
+A symbolic link wit a nonexistent target.
+Da contentz of the
+.I fts_statp
+field reference tha file characteristic shiznit fo' tha symbolic link
+itself.
+.\" .El
+.RE
+.TP
+.IR fts_accpath
+A path fo' accessin tha file from tha current directory.
+.TP
+.IR fts_path
+Da path fo' tha file relatizzle ta tha root of tha traversal.
+This path gotz nuff tha path specified to
+.BR fts_open ()
+as a prefix.
+.TP
+.IR fts_pathlen
+Da length of tha strang referenced by
+.IR fts_path .
+.TP
+.IR fts_name
+Da name of tha file.
+.TP
+.IR fts_namelen
+Da length of tha strang referenced by
+.IR fts_name .
+.TP
+.IR fts_level
+Da depth of tha traversal, numbered from \-1 ta N, where dis file
+was found.
+The
+.I FTSENT
+structure representin tha parent of tha startin point (or root)
+of tha traversal is numbered \-1, n' the
+.I FTSENT
+structure fo' tha root
+itself is numbered 0.
+.TP
+.IR fts_errno
+Upon return of a
+.I FTSENT
+structure from the
+.BR fts_lil pimps ()
+or
+.BR fts_read ()
+functions, wit its
+.I fts_info
+field set to
+.BR FTS_DNR ,
+.BR FTS_ERR
+or
+.BR FTS_NS ,
+the
+.I fts_errno
+field gotz nuff tha value of tha external variable
+.I errno
+specifyin tha cause of tha error.
+Otherwise, tha contentz of the
+.I fts_errno
+field is undefined.
+.TP
+.IR fts_number
+This field is provided fo' tha use of tha application program n' is
+not modified by the
+fts functions.
+It be initialized ta 0.
+.TP
+.IR fts_pointer
+This field is provided fo' tha use of tha application program n' is
+not modified by the
+fts functions.
+It be initialized to
+NULL.
+.TP
+.IR fts_parent
+A pointa ta the
+.I FTSENT
+structure referencin tha file up in tha hierarchy
+immediately above tha current file, dat is, tha directory of which this
+file be a member.
+A parent structure fo' tha initial entry point is provided as well,
+however, only the
+.IR fts_level ,
+.I fts_number
+and
+.I fts_pointer
+fieldz is guaranteed ta be initialized.
+.TP
+.IR fts_link
+Upon return from the
+.BR fts_lil pimps ()
+function, the
+.I fts_link
+field points ta tha next structure up in tha NULL-terminated linked list of
+directory members.
+Otherwise, tha contentz of the
+.I fts_link
+field is undefined.
+.TP
+.IR fts_cycle
+If a gangbangin' finger-lickin' directory causes a cold-ass lil cycle up in tha hierarchy (see
+.BR FTS_DC ),
+either cuz
+of a hard link between two directories, or a symbolic link pointin ta a
+directory, the
+.I fts_cycle
+field of tha structure will point ta the
+.I FTSENT
+structure up in tha hierarchy dat references tha same ol' dirty file as tha current
+.I FTSENT
+structure.
+Otherwise, tha contentz of the
+.I fts_cycle
+field is undefined.
+.TP
+.IR fts_statp
+A pointa to
+.BR stat (2)
+information fo' tha file.
+.\" .El
+.PP
+A single buffer is used fo' all of tha pathz of all of tha filez up in the
+file hierarchy.
+Therefore, the
+.I fts_path
+and
+.I fts_accpath
+fieldz is guaranteed ta be
+null-terminated
+.I only
+for tha file most recently returned by
+.BR fts_read ().
+To use these fieldz ta reference any filez represented by other
+.I FTSENT
+structures will require dat tha path buffer be modified rockin the
+information contained up in that
+.I FTSENT
+structure's
+.I fts_pathlen
+field.
+Any such modifications should be undone before further calls to
+.BR fts_read ()
+are attempted.
+The
+.I fts_name
+field be always
+null-terminated.
+.SS fts_open()
+The
+.BR fts_open ()
+function takes a pointa ta a array of characta pointas namin one
+or mo' paths which make up a logical file hierarchy ta be traversed.
+Da array must be terminated by a
+NULL
+pointer.
+.PP
+There are
+a number of options, at least one of which (either
+.BR FTS_LOGICAL
+or
+.BR FTS_PHYSICAL )
+must be specified.
+Da options is selected by ORing
+the followin joints:
+.\" .Bl -tag -width "FTS_PHYSICAL"
+.TP 13
+.BR FTS_COMFOLLOW
+This option causes any symbolic link specified as a root path ta be
+followed immediately whether or not
+.BR FTS_LOGICAL
+is also specified.
+.TP
+.BR FTS_LOGICAL
+This option causes the
+fts routines ta return
+.I FTSENT
+structures fo' tha targetz of symbolic links
+instead of tha symbolic links theyselves.
+If dis option is set, tha only symbolic links fo' which
+.I FTSENT
+structures
+are moonwalked back ta tha application is dem referencin nonexistent files.
+Either
+.BR FTS_LOGICAL
+or
+.BR FTS_PHYSICAL
+.I must
+be provided ta the
+.BR fts_open ()
+function.
+.TP
+.BR FTS_NOCHDIR
+As a performizzle optimization, the
+fts functions chizzle directories as they strutt tha file hierarchy.
+This has tha side-effect dat a application cannot rely on being
+in any particular directory durin tha traversal.
+The
+.BR FTS_NOCHDIR
+option turns off dis optimization, n' the
+fts functions aint gonna chizzle tha current directory.
+Note dat applications should not theyselves chizzle they current directory
+and try ta access filez unless
+.BR FTS_NOCHDIR
+is specified n' absolute
+pathnames was provided as arguments to
+.BR fts_open ().
+.TP
+.BR FTS_NOSTAT
+By default, returned
+.I FTSENT
+structures reference file characteristic shiznit (the
+.I statp
+field) fo' each file hit up.
+This option chillaxes dat requirement as a performizzle optimization,
+allowin the
+fts functions ta set the
+.I fts_info
+field to
+.BR FTS_NSOK
+and leave tha contentz of the
+.I statp
+field undefined.
+.TP
+.BR FTS_PHYSICAL
+This option causes the
+fts routines ta return
+.I FTSENT
+structures fo' symbolic links theyselves instead
+of tha target filez they point to.
+If dis option is set,
+.I FTSENT
+structures fo' all symbolic links up in the
+hierarchy is moonwalked back ta tha application.
+Either
+.BR FTS_LOGICAL
+or
+.BR FTS_PHYSICAL
+.I must
+be provided ta the
+.BR fts_open ()
+function.
+.TP
+.BR FTS_SEEDOT
+By default, unless they is specified as path arguments to
+.BR fts_open (),
+any filez named
+"."
+or
+".."
+encountered up in tha file hierarchy is ignored.
+This option causes the
+fts routines ta return
+.I FTSENT
+structures fo' em.
+.TP
+.BR FTS_XDEV
+This option prevents
+fts from descendin tha fuck into directories dat gotz a gangbangin' finger-lickin' different thang number
+than tha file from which tha descent fuckin started.
+.\" .El
+.PP
+Da argument
+.BR compar ()
+specifies a user-defined function which may be used ta order tha traversal
+of tha hierarchy.
+It
+takes two pointas ta pointas to
+.I FTSENT
+structures as arguments and
+should return a wack value, zero, or a positizzle value ta indicate
+if tha file referenced by its first argument comes before, up in any order
+with respect to, or after, tha file referenced by its second argument.
+The
+.IR fts_accpath ,
+.I fts_path
+and
+.I fts_pathlen
+fieldz of the
+.I FTSENT
+structures may
+.I never
+be used up in dis comparison.
+If the
+.I fts_info
+field is set to
+.BR FTS_NS
+or
+.BR FTS_NSOK ,
+the
+.I fts_statp
+field may not either.
+If the
+.BR compar ()
+argument is
+NULL,
+the directory traversal order is up in tha order listed in
+.I path_argv
+for tha root paths, n' up in tha order listed up in tha directory for
+everythang else.
+.SS fts_read()
+The
+.BR fts_read ()
+function returns a pointa ta an
+.I FTSENT
+structure describin a gangbangin' file in
+the hierarchy.
+Directories (that is readable n' do not cause cycles) is hit up at
+least twice, once up in preorder n' once up in postorder.
+All other filez is hit up at least once.
+(Hard links between directories dat do not cause cyclez or symbolic
+links ta symbolic links may cause filez ta be hit up mo' than once,
+or directories mo' than twice.)
+.PP
+If all tha thugz of tha hierarchy done been returned,
+.BR fts_read ()
+returns
+NULL
+and sets tha external variable
+.I errno
+to 0.
+If a error unrelated ta a gangbangin' file up in tha hierarchy occurs,
+.BR fts_read ()
+returns
+NULL
+and sets
+.I errno
+appropriately.
+If a error related ta a returned file occurs, a pointa ta an
+.I FTSENT
+structure is returned, and
+.I errno
+may or may not done been set (see
+.IR fts_info ).
+.PP
+The
+.I FTSENT
+structures returned by
+.BR fts_read ()
+may be overwritten afta a cold-ass lil call to
+.BR fts_close ()
+on tha same file hierarchy stream, or, afta a cold-ass lil call to
+.BR fts_read ()
+on tha same file hierarchy stream unless they represent a gangbangin' file of type
+directory, up in which case they aint gonna be overwritten until afta a cold-ass lil call to
+.BR fts_read ()
+afta the
+.I FTSENT
+structure has been returned by tha function
+.BR fts_read ()
+in postorder.
+.SS fts_children()
+The
+.BR fts_lil pimps ()
+function returns a pointa ta an
+.I FTSENT
+structure describin tha straight-up original gangsta entry up in a NULL-terminated linked list of
+the filez up in tha directory represented by the
+.I FTSENT
+structure most recently returned by
+.BR fts_read ().
+Da list is linked all up in the
+.I fts_link
+field of the
+.I FTSENT
+structure, n' is ordered by tha user-specified comparison function, if any.
+Repeated calls to
+.BR fts_lil pimps ()
+will recreate dis linked list.
+.PP
+As a special case, if
+.BR fts_read ()
+has not yet been called fo' a hierarchy,
+.BR fts_lil pimps ()
+will return a pointa ta tha filez up in tha logical directory specified to
+.BR fts_open (),
+that is, tha arguments specified to
+.BR fts_open ().
+Otherwise, if the
+.I FTSENT
+structure most recently returned by
+.BR fts_read ()
+is not a gangbangin' finger-lickin' directory bein hit up in preorder,
+or tha directory do not contain any files,
+.BR fts_lil pimps ()
+returns
+NULL
+and sets
+.I errno
+to zero.
+If a error occurs,
+.BR fts_lil pimps ()
+returns
+NULL
+and sets
+.I errno
+appropriately.
+.PP
+The
+.I FTSENT
+structures returned by
+.BR fts_lil pimps ()
+may be overwritten afta a cold-ass lil call to
+.BR fts_lil pimps (),
+.BR fts_close ()
+or
+.BR fts_read ()
+on tha same file hierarchy stream.
+.PP
+.I Option
+may be set ta tha followin value:
+.\" .Bl -tag -width FTS_NAMEONLY
+.TP 13
+.BR FTS_NAMEONLY
+Only tha namez of tha filez is needed.
+Da contentz of all tha fieldz up in tha returned linked list of structures
+are undefined wit tha exception of the
+.I fts_name
+and
+.I fts_namelen
+fields.
+.\" .El
+.SS fts_set()
+Da function
+.BR fts_set ()
+allows tha user application ta determine further processin fo' the
+file
+.I f
+of tha stream
+.IR ftsp .
+The
+.BR fts_set ()
+function
+returns 0 on success, n' \-1 if a error occurs.
+.I Option
+must be set ta one of tha followin joints:
+.\" .Bl -tag -width FTS_PHYSICAL
+.TP 13
+.BR FTS_AGAIN
+Revisit tha file; any file type may be revisited.
+Da next call to
+.BR fts_read ()
+will return tha referenced file.
+The
+.I fts_stat
+and
+.I fts_info
+fieldz of tha structure is ghon be reinitialized at dat time,
+but no other fieldz gonna git been chizzled.
+This option is meaningful only fo' da most thugged-out recently returned
+file from
+.BR fts_read ().
+Normal use is fo' postorder directory visits, where it causes the
+directory ta be revisited (in both preorder n' postorder) as well as all
+of its descendants.
+.TP
+.BR FTS_FOLLOW
+Da referenced file must be a symbolic link.
+If tha referenced file is tha one most recently returned by
+.BR fts_read (),
+the next call to
+.BR fts_read ()
+returns tha file wit the
+.I fts_info
+and
+.I fts_statp
+fieldz reinitialized ta reflect tha target of tha symbolic link instead
+of tha symbolic link itself.
+If tha file is one of dem most recently returned by
+.BR fts_lil pimps (),
+the
+.I fts_info
+and
+.I fts_statp
+fieldz of tha structure, when returned by
+.BR fts_read (),
+will reflect tha target of tha symbolic link instead of tha symbolic link
+itself.
+In either case, if tha target of tha symbolic link do not exist the
+fieldz of tha returned structure is ghon be unchanged n' the
+.I fts_info
+field is ghon be set to
+.BR FTS_SLNONE .
+.IP
+If tha target of tha link be a gangbangin' finger-lickin' directory, tha preorder return, followed
+by tha return of all of its descendants, followed by a postorder return,
+is done.
+.TP
+.BR FTS_SKIP
+No descendantz of dis file is hit up.
+Da file may be one of dem most recently returned by either
+.BR fts_lil pimps ()
+or
+.BR fts_read ().
+.\" .El
+.SS fts_close()
+The
+.BR fts_close ()
+function closes a gangbangin' file hierarchy stream
+.I ftsp
+and restores tha current directory ta tha directory from which
+.BR fts_open ()
+was called ta open
+.IR ftsp .
+The
+.BR fts_close ()
+function
+returns 0 on success, n' \-1 if a error occurs.
+.SH ERRORS
+Da function
+.BR fts_open ()
+may fail n' set
+.I errno
+for any of tha errors specified for
+.BR open (2)
+and
+.BR malloc (3).
+.PP
+Da function
+.BR fts_close ()
+may fail n' set
+.I errno
+for any of tha errors specified for
+.BR chdir (2)
+and
+.BR close (2).
+.PP
+Da functions
+.BR fts_read ()
+and
+.BR fts_lil pimps ()
+may fail n' set
+.I errno
+for any of tha errors specified for
+.BR chdir (2),
+.BR malloc (3),
+.BR opendir (3),
+.BR readdir (3)
+and
+.BR stat (2).
+.PP
+In addition,
+.BR fts_lil pimps (),
+.BR fts_open ()
+and
+.BR fts_set ()
+may fail n' set
+.I errno
+as bigs up:
+.TP
+.B EINVAL
+Da options was invalid.
+.SH VERSIONS
+These functions is available up in Linux since glibc2.
+.SH CONFORMING TO
+4.4BSD.
+.\" Da followin statement is muthafuckin years old, n' seems no closer to
+.\" bein legit -- mtk
+.\" The
+.\" .I fts
+.\" utilitizzle is sposed ta fuckin be included up in a gangbangin' future
+.\" POSIX.1
+.\" revision.
+.SH SEE ALSO
+.BR find (1),
+.BR chdir (2),
+.BR stat (2),
+.BR ftw (3),
+.BR qsort (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

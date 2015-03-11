@@ -1,0 +1,989 @@
+.\" Copyright (c) 1993 Mike Haardt
+.\" (michael@moria.de)
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-02-25 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Modified 1995-09-02 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" moved ta man3, aeb, 950919
+.\" Modified 2001-09-22 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2001-12-17, aeb
+.\" Modified 2004-10-31, aeb
+.\" 2006-12-28, mtk:
+.\"     Added .SS headaz ta give some structure ta dis page; n' a
+.\"     lil' small-ass amount of reordering.
+.\"     Added a section on canonical n' noncanonical mode.
+.\"     Enhanced tha rap of "raw" mode fo' cfmakeraw().
+.\"     Document CMSPAR.
+.\"
+.TH TERMIOS 3 2013-03-15 "Linux" "Linux Programmerz Manual"
+.SH NAME
+termios, tcgetattr, tcsetattr, tcsendbreak, tcdrain, tcflush, tcflow,
+cfmakeraw, cfgetospeed, cfgetispeed, cfsetispeed, cfsetospeed, cfsetspeed \-
+get n' set terminal attributes, line control, git n' set baud rate
+.SH SYNOPSIS
+.nf
+.B #include <termios.h>
+.br
+.B #include <unistd.h>
+.sp
+.BI "int tcgetattr(int " fd ", struct termios *" termios_p );
+.sp
+.BI "int tcsetattr(int " fd ", int " optional_actions ,
+.BI "              const struct termios *" termios_p );
+.sp
+.BI "int tcsendbreak(int " fd ", int " duration );
+.sp
+.BI "int tcdrain(int " fd );
+.sp
+.BI "int tcflush(int " fd ", int " queue_selector );
+.sp
+.BI "int tcflow(int " fd ", int " action );
+.sp
+.BI "void cfmakeraw(struct termios *" termios_p );
+.sp
+.BI "speed_t cfgetispeed(const struct termios *" termios_p );
+.sp
+.BI "speed_t cfgetospeed(const struct termios *" termios_p );
+.sp
+.BI "int cfsetispeed(struct termios *" termios_p ", speed_t " speed );
+.sp
+.BI "int cfsetospeed(struct termios *" termios_p ", speed_t " speed );
+.sp
+.BI "int cfsetspeed(struct termios *" termios_p ", speed_t " speed );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR cfsetspeed (),
+.BR cfmakeraw ():
+_BSD_SOURCE
+.SH DESCRIPTION
+Da termios functions describe a general terminal intercourse dat is
+provided ta control asynchronous communications ports.
+.SS Da termios structure
+.LP
+Many of tha functions busted lyrics bout here gotz a \fItermios_p\fP argument
+that be a pointa ta a \fItermios\fP structure.
+This structure gotz nuff at least tha followin members:
+.sp
+.in +4n
+.nf
+tcflag_t c_iflag;      /* input modes */
+tcflag_t c_oflag;      /* output modes */
+tcflag_t c_cflag;      /* control modes */
+tcflag_t c_lflag;      /* local modes */
+cc_t     c_cc[NCCS];   /* special charactas */
+.fi
+.in
+.PP
+Da joints dat may be assigned ta these fieldz is busted lyrics bout below.
+In tha case of tha straight-up original gangsta four bit-mask fields,
+the definitionz of a shitload of tha associated flags dat may be set are
+exposed only if a specific feature test macro (see
+.BR feature_test_macros (7))
+is defined, as noted up in brackets ("[]").
+.PP
+In tha descriptions below, "not up in POSIX" means dat the
+value aint specified up in POSIX.1-2001,
+and "XSI" means dat tha value is specified up in POSIX.1-2001
+as part of tha XSI extension.
+.PP
+\fIc_iflag\fP flag constants:
+.TP
+.B IGNBRK
+Ignore BREAK condizzle on input.
+.TP
+.B BRKINT
+If \fBIGNBRK\fP is set, a BREAK is ignored.
+If it aint set
+but \fBBRKINT\fP is set, then a BREAK causes tha input n' output
+queues ta be flushed, n' if tha terminal is tha controlling
+terminal of a gangbangin' foreground process group, it will cause a
+\fBSIGINT\fP ta be busted ta dis foreground process group.
+When neither \fBIGNBRK\fP nor \fBBRKINT\fP is set, a BREAK
+readz as a null byte (\(aq\\0\(aq), except when \fBPARMRK\fP is set,
+in which case it readz as tha sequence \\377 \\0 \\0.
+.TP
+.B IGNPAR
+Ignore framin errors n' paritizzle errors.
+.TP
+.B PARMRK
+If \fBIGNPAR\fP aint set, prefix a cold-ass lil characta wit a paritizzle error or
+framin error wit \\377 \\0.
+If neither \fBIGNPAR\fP nor \fBPARMRK\fP
+is set, read a cold-ass lil characta wit a paritizzle error or framin error
+as \\0.
+.TP
+.B INPCK
+Enable input paritizzle checking.
+.TP
+.B ISTRIP
+Strip off eighth bit.
+.TP
+.B INLCR
+Translate NL ta CR on input.
+.TP
+.B IGNCR
+Ignore carriage return on input.
+.TP
+.B ICRNL
+Translate carriage return ta newline on input (unless \fBIGNCR\fP is set).
+.TP
+.B IUCLC
+(not up in POSIX) Map uppercase charactas ta lowercase on input.
+.TP
+.B IXON
+Enable XON/XOFF flow control on output.
+.TP
+.B IXANY
+(XSI) Typin any characta will restart stopped output.
+(Da default is ta allow just tha START characta ta restart output.)
+.TP
+.B IXOFF
+Enable XON/XOFF flow control on input.
+.TP
+.B IMAXBEL
+(not up in POSIX) Rin bell when input queue is full.
+Linux do not implement dis bit, n' acts as if it be always set.
+.TP
+.BR IUTF8 " (since Linux 2.6.4)"
+(not up in POSIX) Input is UTF8;
+this allows character-erase ta be erectly performed up in cooked mode.
+.PP
+\fIc_oflag\fP flag constants defined up in POSIX.1:
+.TP
+.B OPOST
+Enable implementation-defined output processing.
+.PP
+Da remainin \fIc_oflag\fP flag constants is defined up in POSIX.1-2001,
+unless marked otherwise.
+.TP
+.B OLCUC
+(not up in POSIX) Map lowercase charactas ta uppercase on output.
+.TP
+.B ONLCR
+(XSI) Map NL ta CR-NL on output.
+.TP
+.B OCRNL
+Map CR ta NL on output.
+.TP
+.B ONOCR
+Don't output CR at column 0.
+.TP
+.B ONLRET
+Don't output CR.
+.TP
+.B OFILL
+Send fill charactas fo' a thugged-out delay, rather than rockin a timed delay.
+.TP
+.B OFDEL
+(not up in POSIX) Fill characta is ASCII DEL (0177).
+If unset, fill characta is ASCII NUL (\(aq\\0\(aq).
+(Not implemented on Linux.)
+.TP
+.B NLDLY
+Newline delay mask.
+Values is \fBNL0\fP n' \fBNL1\fP.
+[requires
+.B _BSD_SOURCE
+or
+.B _SVID_SOURCE
+or
+.BR _XOPEN_SOURCE ]
+.TP
+.B CRDLY
+Carriage return delay mask.
+Values is \fBCR0\fP, \fBCR1\fP, \fBCR2\fP, or \fBCR3\fP.
+[requires
+.B _BSD_SOURCE
+or
+.B _SVID_SOURCE
+or
+.BR _XOPEN_SOURCE ]
+.TP
+.B TABDLY
+Horizontal tab delay mask.
+Values is \fBTAB0\fP, \fBTAB1\fP, \fBTAB2\fP, \fBTAB3\fP (or \fBXTABS\fP).
+A value of TAB3, dat is, XTABS, expandz tabs ta spaces
+(with tab stops every last muthafuckin eight columns).
+[requires
+.B _BSD_SOURCE
+or
+.B _SVID_SOURCE
+or
+.BR _XOPEN_SOURCE ]
+.TP
+.B BSDLY
+Backspace delay mask.
+Values is \fBBS0\fP or \fBBS1\fP.
+(Has never been implemented.)
+[requires
+.B _BSD_SOURCE
+or
+.B _SVID_SOURCE
+or
+.BR _XOPEN_SOURCE ]
+.TP
+.B VTDLY
+Vertical tab delay mask.
+Values is \fBVT0\fP or \fBVT1\fP.
+.TP
+.B FFDLY
+Form feed delay mask.
+Values is \fBFF0\fP or \fBFF1\fP.
+[requires
+.B _BSD_SOURCE
+or
+.B _SVID_SOURCE
+or
+.BR _XOPEN_SOURCE ]
+.PP
+\fIc_cflag\fP flag constants:
+.TP
+.B CBAUD
+(not up in POSIX) Baud speed mask (4+1 bits).
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B CBAUDEX
+(not up in POSIX) Extra baud speed mask (1 bit), included in
+.BR CBAUD .
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.sp
+(POSIX say dat tha baud speed is stored up in the
+.I termios
+structure without specifyin where precisely, n' provides
+.BR cfgetispeed ()
+and
+.BR cfsetispeed ()
+for gettin at dat shit.
+Some systems use bits selected by
+.B CBAUD
+in
+.IR c_cflag ,
+other systems use separate fields, fo' example,
+.I sg_ispeed
+and
+.IR sg_ospeed .)
+.TP
+.B CSIZE
+Characta size mask.
+Values is \fBCS5\fP, \fBCS6\fP, \fBCS7\fP, or \fBCS8\fP.
+.TP
+.B CSTOPB
+Set two stop bits, rather than one.
+.TP
+.B CREAD
+Enable receiver.
+.TP
+.B PARENB
+Enable paritizzle generation on output n' paritizzle checkin fo' input.
+.TP
+.B PARODD
+If set, then paritizzle fo' input n' output is odd;
+otherwise even paritizzle is used.
+.TP
+.B HUPCL
+Lower modem control lines afta last process closes tha thang (hang up).
+.TP
+.B CLOCAL
+Ignore modem control lines.
+.TP
+.B LOBLK
+(not up in POSIX) Block output from a noncurrent shell layer.
+For use by \fBshl\fP (shell layers).  (Not implemented on Linux.)
+.TP
+.B CIBAUD
+(not up in POSIX) Mask fo' input speeds.
+Da joints fo' the
+.B CIBAUD
+bits are
+the same as tha joints fo' the
+.B CBAUD
+bits, shifted left
+.B IBSHIFT
+bits.
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+(Not implemented on Linux.)
+.TP
+.B CMSPAR
+(not up in POSIX)
+Use "stick" (mark/space) paritizzle (supported on certain serial
+devices): if
+.B PARODD
+is set, tha paritizzle bit be always 1; if
+.B PARODD
+is not set, then tha paritizzle bit be always 0).
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B CRTSCTS
+(not up in POSIX) Enable RTS/CTS (hardware) flow control.
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.PP
+\fIc_lflag\fP flag constants:
+.TP
+.B ISIG
+When any of tha charactas INTR, QUIT, SUSP, or DSUSP is received,
+generate tha correspondin signal.
+.TP
+.B ICANON
+Enable canonical mode (busted lyrics bout below).
+.TP
+.B XCASE
+(not up in POSIX; not supported under Linux)
+If \fBICANON\fP be also set, terminal is uppercase only.
+Input is converted ta lowercase, except fo' charactas preceded by \\.
+On output, uppercase charactas is preceded by \\ n' lowercase
+charactas is converted ta uppercase.
+[requires _BSD_SOURCE or _SVID_SOURCE or _XOPEN_SOURCE]
+.\" glibc is probably now wack ta allow
+.\" Define
+.\" .B _XOPEN_SOURCE
+.\" ta expose
+.\" .BR XCASE .
+.TP
+.B ECHO
+Echo input characters.
+.TP
+.B ECHOE
+If \fBICANON\fP be also set, tha ERASE characta erases tha preceding
+input character, n' WERASE erases tha precedin word.
+.TP
+.B ECHOK
+If \fBICANON\fP be also set, tha KILL characta erases tha current line.
+.TP
+.B ECHONL
+If \fBICANON\fP be also set, echo tha NL characta even if ECHO aint set.
+.TP
+.B ECHOCTL
+(not up in POSIX) If \fBECHO\fP be also set,
+terminal special charactas other than
+TAB, NL, START, n' STOP is echoed as \fB^X\fP,
+where X is tha characta with
+ASCII code 0x40 pimped outa than tha special character.
+For example, character
+0x08 (BS) is echoed as \fB^H\fP.
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B ECHOPRT
+(not up in POSIX) If \fBICANON\fP n' \fBECHO\fP is also set, characters
+are printed as they is bein erased.
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B ECHOKE
+(not up in POSIX) If \fBICANON\fP be also set, KILL is echoed by erasing
+each characta on tha line, as specified by \fBECHOE\fP n' \fBECHOPRT\fP.
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B DEFECHO
+(not up in POSIX) Echo only when a process is reading.
+(Not implemented on Linux.)
+.TP
+.B FLUSHO
+(not up in POSIX; not supported under Linux)
+Output is bein flushed.
+This flag is toggled by typing
+the DISCARD character.
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B NOFLSH
+Disable flushin tha input n' output queues when generatin signals fo' the
+INT, QUIT, n' SUSP characters.
+.\" Stevens lets SUSP only flush tha input queue
+.TP
+.B TOSTOP
+Send the
+.B SIGTTOU
+signal ta tha process crew of a funky-ass background process
+which tries ta write ta its controllin terminal.
+.TP
+.B PENDIN
+(not up in POSIX; not supported under Linux)
+All charactas up in tha input queue is reprinted when
+the next characta is read.
+.RB ( bash (1)
+handlez typeahead dis way.)
+[requires
+.B _BSD_SOURCE
+or
+.BR _SVID_SOURCE ]
+.TP
+.B IEXTEN
+Enable implementation-defined input processing.
+This flag, as well as \fBICANON\fP must be enabled fo' the
+special charactas EOL2, LNEXT, REPRINT, WERASE ta be interpreted,
+and fo' tha \fBIUCLC\fP flag ta be effective.
+.PP
+Da \fIc_cc\fP array defines tha terminal special characters.
+Da symbolic indices (initial joints) n' meanin are:
+.TP
+.B VDISCARD
+(not up in POSIX; not supported under Linux; 017, SI, Ctrl-O)
+Toggle: start/stop discardin pendin output.
+Recognized when
+.B IEXTEN
+is set, n' then not passed as input.
+.TP
+.B VDSUSP
+(not up in POSIX; not supported under Linux; 031, EM, Ctrl-Y)
+Delayed suspend characta (DSUSP):
+send
+.B SIGTSTP
+signal when tha characta is read by tha user program.
+Recognized when
+.B IEXTEN
+and
+.B ISIG
+are set, n' tha system supports
+job control, n' then not passed as input.
+.TP
+.B VEOF
+(004, EOT, Ctrl-D)
+End-of-file characta (EOF).
+Mo' precisely: dis characta causes tha pendin tty buffer ta be sent
+to tha waitin user program without waitin fo' end-of-line.
+If it is tha straight-up original gangsta characta of tha line, the
+.BR read (2)
+in tha user program returns 0, which signifies end-of-file.
+Recognized when
+.B ICANON
+is set, n' then not passed as input.
+.TP
+.B VEOL
+(0, NUL)
+Additionizzle end-of-line characta (EOL).
+Recognized when
+.B ICANON
+is set.
+.TP
+.B VEOL2
+(not up in POSIX; 0, NUL)
+Yet another end-of-line characta (EOL2).
+Recognized when
+.B ICANON
+is set.
+.TP
+.B VERASE
+(0177, DEL, rubout, or 010, BS, Ctrl-H, or also #)
+Erase characta (ERASE).
+This erases tha previous not-yet-erased character,
+but do not erase past EOF or beginning-of-line.
+Recognized when
+.B ICANON
+is set, n' then not passed as input.
+.TP
+.B VINTR
+(003, ETX, Ctrl-C, or also 0177, DEL, rubout)
+Interrupt characta (INTR).
+Send a
+.B SIGINT
+signal.
+Recognized when
+.B ISIG
+is set, n' then not passed as input.
+.TP
+.B VKILL
+(025, NAK, Ctrl-U, or Ctrl-X, or also @)
+Bust a cap up in characta (KILL).
+This erases tha input since tha last EOF or beginning-of-line.
+Recognized when
+.B ICANON
+is set, n' then not passed as input.
+.TP
+.B VLNEXT
+(not up in POSIX; 026, SYN, Ctrl-V)
+Literal next (LNEXT).
+Quotes tha next input character, deprivin it of
+a possible special meaning.
+Recognized when
+.B IEXTEN
+is set, n' then not passed as input.
+.TP
+.B VMIN
+Minimum number of charactas fo' noncanonical read (MIN).
+.TP
+.B VQUIT
+(034, FS, Ctrl-\e)
+Quit characta (QUIT).
+Send
+.B SIGQUIT
+signal.
+Recognized when
+.B ISIG
+is set, n' then not passed as input.
+.TP
+.B VREPRINT
+(not up in POSIX; 022, DC2, Ctrl-R)
+Reprint unread charactas (REPRINT).
+Recognized when
+.B ICANON
+and
+.B IEXTEN
+are set, n' then not passed as input.
+.TP
+.B VSTART
+(021, DC1, Ctrl-Q)
+Start characta (START).
+Restarts output stopped by tha Quit character.
+Recognized when
+.B IXON
+is set, n' then not passed as input.
+.TP
+.B VSTATUS
+(not up in POSIX; not supported under Linux;
+status request: 024, DC4, Ctrl-T).
+Status characta (STATUS).
+Display status shiznit at terminal,
+includin state of foreground process n' amount of CPU time it has consumed.
+Also sendz a
+.BR SIGINFO
+signal (not supported on Linux) ta tha foreground process group.
+.TP
+.B VSTOP
+(023, DC3, Ctrl-S)
+Quit characta (STOP).
+Quit output until Start characta typed.
+Recognized when
+.B IXON
+is set, n' then not passed as input.
+.TP
+.B VSUSP
+(032, SUB, Ctrl-Z)
+Suspend characta (SUSP).
+Send
+.B SIGTSTP
+signal.
+Recognized when
+.B ISIG
+is set, n' then not passed as input.
+.TP
+.B VSWTCH
+(not up in POSIX; not supported under Linux; 0, NUL)
+Switch characta (SWTCH).
+Used up in System V ta switch shells in
+.IR "shell layers" ,
+a predecessor ta shell thang control.
+.TP
+.B VTIME
+Timeout up in decisecondz fo' noncanonical read (TIME).
+.TP
+.B VWERASE
+(not up in POSIX; 027, ETB, Ctrl-W)
+Word erase (WERASE).
+Recognized when
+.B ICANON
+and
+.B IEXTEN
+are set, n' then not passed as input.
+.LP
+An individual terminal special characta can be disabled by setting
+the value of tha corresponding
+.I c_cc
+element to
+.BR _POSIX_VDISABLE .
+.LP
+Da above symbolic subscript joints is all different, except that
+.BR VTIME ,
+.B VMIN
+may have tha same value as
+.BR VEOL ,
+.BR VEOF ,
+respectively.
+In noncanonical mode tha special characta meanin is replaced
+by tha timeout meaning.
+For a explanation of
+.B VMIN
+and
+.BR VTIME ,
+see tha description of
+noncanonical mode below.
+.SS Retrievin n' changin terminal settings
+.PP
+.BR tcgetattr ()
+gets tha parametas associated wit tha object referred by \fIfd\fP and
+stores dem up in tha \fItermios\fP structure referenced by
+\fItermios_p\fP.
+This function may be invoked from a funky-ass background process;
+however, tha terminal attributes may be subsequently chizzled by a
+foreground process.
+.LP
+.BR tcsetattr ()
+sets tha parametas associated wit tha terminal (unless support is
+required from tha underlyin hardware dat aint available) from the
+\fItermios\fP structure referred ta by \fItermios_p\fP.
+\fIoptional_actions\fP specifies when tha chizzlez take effect:
+.IP \fBTCSANOW\fP
+the chizzle occurs immediately.
+.IP \fBTCSADRAIN\fP
+the chizzle occurs afta all output freestyled to
+.I fd
+has been transmitted.
+This function should be used when changing
+parametas dat affect output.
+.IP \fBTCSAFLUSH\fP
+the chizzle occurs afta all output freestyled ta tha object referred by
+.I fd
+has been transmitted, n' all input dat has been received but not read
+will be discarded before tha chizzle is made.
+.SS Canonical n' noncanonical mode
+Da settin of the
+.B ICANON
+canon flag in
+.I c_lflag
+determines whether tha terminal is operatin up in canonical mode
+.RB ( ICANON
+set) or
+noncanonical mode
+.RB ( ICANON
+unset).
+By default,
+.B ICANON
+set.
+
+In canonical mode:
+.IP * 2
+Input is made available line by line.
+An input line be available when one of tha line delimiters
+is typed (NL, EOL, EOL2; or EOF all up in tha start of line).
+Except up in tha case of EOF, tha line delimita is included
+in tha buffer returned by
+.BR read (2).
+.IP * 2
+Line editin is enabled (ERASE, KILL;
+and if the
+.B IEXTEN
+flag is set: WERASE, REPRINT, LNEXT).
+A
+.BR read (2)
+returns at most one line of input; if the
+.BR read (2)
+axed fewer bytes than is available up in tha current line of input,
+then only as nuff bytes as axed is read,
+and tha remainin charactas is ghon be available fo' a gangbangin' future
+.BR read (2).
+.PP
+In noncanonical mode input be available immediately (without
+the user havin ta type a line-delimita character),
+no input processin is performed,
+and line editin is disabled.
+Da settingz of MIN
+.RI ( c_cc[VMIN] )
+and TIME
+.RI ( c_cc[VTIME] )
+determine tha circumstances up in which a
+.BR read (2)
+completes; there be four distinct cases:
+.IP * 2
+MIN == 0; TIME == 0:
+If data be available,
+.BR read (2)
+returns immediately, wit tha lesser of tha number of bytes
+available, or tha number of bytes requested.
+If no data be available,
+.BR read (2)
+returns 0.
+.IP * 2
+MIN > 0; TIME == 0:
+.BR read (2)
+blocks until tha lesser of MIN bytes or tha number of bytes requested
+are available, n' returns tha lesser of these two joints.
+.IP * 2
+MIN == 0; TIME > 0:
+TIME specifies tha limit fo' a timer up in tenthz of a second.
+Da timer is started when
+.BR read (2)
+is called.
+.BR read (2)
+returns either when at least one byte of data be available,
+or when tha timer expires.
+If tha timer expires without any input becomin available,
+.BR read (2)
+returns 0.
+.IP * 2
+MIN > 0; TIME > 0:
+TIME specifies tha limit fo' a timer up in tenthz of a second.
+Once a initial byte of input becomes available,
+the timer is restarted afta each further byte is received.
+.BR read (2)
+returns either when tha lesser of tha number of bytes axed or
+MIN byte done been read,
+or when tha inter-byte timeout expires.
+Because tha timer is started only afta tha initial byte
+becomes available, at least one byte is ghon be read.
+.SS Raw mode
+.LP
+.BR cfmakeraw ()
+sets tha terminal ta suttin' like the
+"raw" mode of tha oldschool Version 7 terminal driver:
+input be available characta by character,
+echoin is disabled, n' all special processin of
+terminal input n' output charactas is disabled.
+Da terminal attributes is set as bigs up:
+.nf
+
+    termios_p\->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+                    | INLCR | IGNCR | ICRNL | IXON);
+    termios_p\->c_oflag &= ~OPOST;
+    termios_p\->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    termios_p\->c_cflag &= ~(CSIZE | PARENB);
+    termios_p\->c_cflag |= CS8;
+.fi
+.SS Line control
+.LP
+.BR tcsendbreak ()
+transmits a cold-ass lil continuous stream of zero-valued bits fo' a specific
+duration, if tha terminal is rockin asynchronous serial data
+transmission.
+If \fIduration\fP is zero, it transmits zero-valued bits
+for at least 0.25 seconds, n' not mo' dat 0.5 seconds.
+If \fIduration\fP aint zero, it sendz zero-valued bits fo' some
+implementation-defined length of time.
+.LP
+If tha terminal aint rockin asynchronous serial data transmission,
+.BR tcsendbreak ()
+returns without takin any action.
+.LP
+.BR tcdrain ()
+waits until all output freestyled ta tha object referred ta by
+.I fd
+has been transmitted.
+.LP
+.BR tcflush ()
+discardz data freestyled ta tha object referred ta by
+.I fd
+but not transmitted, or data received but not read, dependin on the
+value of
+.IR queue_selector :
+.IP \fBTCIFLUSH\fP
+flushes data received but not read.
+.IP \fBTCOFLUSH\fP
+flushes data freestyled but not transmitted.
+.IP \fBTCIOFLUSH\fP
+flushes both data received but not read, n' data freestyled but not
+transmitted.
+.LP
+.BR tcflow ()
+suspendz transmission or reception of data on tha object referred ta by
+.IR fd ,
+dependin on tha value of
+.IR action :
+.IP \fBTCOOFF\fP
+suspendz output.
+.IP \fBTCOON\fP
+restarts suspended output.
+.IP \fBTCIOFF\fP
+transmits a STOP character, which stops tha terminal thang from
+transmittin data ta tha system.
+.IP \fBTCION\fP
+transmits a START character, which starts tha terminal device
+transmittin data ta tha system.
+.LP
+Da default on open of a terminal file is dat neither its input nor its
+output is suspended.
+.SS Line speed
+Da baud rate functions is provided fo' gettin n' settin tha joints
+of tha input n' output baud rates up in tha \fItermios\fP structure.
+Da freshly smoked up joints do not take effect
+until
+.BR tcsetattr ()
+is successfully called.
+
+Settin tha speed ta \fBB0\fP instructs tha modem ta "hang up".
+Da actual bit rate correspondin ta \fBB38400\fP may be altered with
+.BR setserial (8).
+.LP
+Da input n' output baud rates is stored up in tha \fItermios\fP
+structure.
+.LP
+.BR cfgetospeed ()
+returns tha output baud rate stored up in tha \fItermios\fP structure
+pointed ta by
+.IR termios_p .
+.LP
+.BR cfsetospeed ()
+sets tha output baud rate stored up in tha \fItermios\fP structure pointed
+to by \fItermios_p\fP ta \fIspeed\fP, which must be one of these constants:
+.nf
+
+.ft B
+	B0
+	B50
+	B75
+	B110
+	B134
+	B150
+	B200
+	B300
+	B600
+	B1200
+	B1800
+	B2400
+	B4800
+	B9600
+	B19200
+	B38400
+	B57600
+	B115200
+	B230400
+.ft P
+
+.fi
+Da zero baud rate, \fBB0\fP,
+is used ta terminizzle tha connection.
+If B0 is specified, tha modem control lines shall no longer be asserted.
+Normally, dis will disconnect tha line.
+\fBCBAUDEX\fP be a mask
+for tha speedz beyond dem defined up in POSIX.1 (57600 n' above).
+Thus, \fBB57600\fP & \fBCBAUDEX\fP is nonzero.
+.LP
+.BR cfgetispeed ()
+returns tha input baud rate stored up in tha \fItermios\fP structure.
+.LP
+.BR cfsetispeed ()
+sets tha input baud rate stored up in tha \fItermios\fP structure to
+.IR speed ,
+which must be specified as one of tha \fBBnnn\fP constants listed above for
+.BR cfsetospeed ().
+If tha input baud rate is set ta zero, tha input baud rate will be
+equal ta tha output baud rate.
+.LP
+.BR cfsetspeed ()
+is a 4.4BSD extension.
+It takes tha same ol' dirty arguments as
+.BR cfsetispeed (),
+and sets both input n' output speed.
+.SH RETURN VALUE
+.LP
+.BR cfgetispeed ()
+returns tha input baud rate stored up in the
+\fItermios\fP
+structure.
+.LP
+.BR cfgetospeed ()
+returns tha output baud rate stored up in tha \fItermios\fP structure.
+.LP
+All other functions return:
+.IP 0
+on success.
+.IP \-1
+on failure n' set
+.I errno
+to indicate tha error.
+.LP
+Note that
+.BR tcsetattr ()
+returns success if \fIany\fP of tha axed chizzlez could be
+successfully carried out.
+Therefore, when makin multiple chizzles
+it may be necessary ta follow dis call wit a gangbangin' further call to
+.BR tcgetattr ()
+to check dat all chizzlez done been performed successfully.
+.SH CONFORMING TO
+.BR tcgetattr (),
+.BR tcsetattr (),
+.BR tcsendbreak (),
+.BR tcdrain (),
+.BR tcflush (),
+.BR tcflow (),
+.BR cfgetispeed (),
+.BR cfgetospeed (),
+.BR cfsetispeed (),
+and
+.BR cfsetospeed ()
+are specified up in POSIX.1-2001.
+
+.BR cfmakeraw ()
+and
+.BR cfsetspeed ()
+are nonstandard yo, but available on tha BSDs.
+.SH NOTES
+UNIX V7 n' nuff muthafuckin lata systems gotz a list of baud rates
+where afta tha fourteen joints B0, ..., B9600 one findz the
+two constants EXTA, EXTB ("External A" n' "External B").
+Many systems extend tha list wit much higher baud rates.
+.LP
+Da effect of a nonzero \fIduration\fP with
+.BR tcsendbreak ()
+varies.
+SunOS specifies a funky-ass break of
+.I "duration\ *\ N"
+seconds, where \fIN\fP be at least 0.25, n' not mo' than 0.5.
+Linux, AIX, DU, Tru64 bust a funky-ass break of
+.I duration
+milliseconds.
+FreeBSD n' NetBSD n' HP-UX n' MacOS ignore tha value of
+.IR duration .
+Under Solaris n' UnixWare,
+.BR tcsendbreak ()
+with nonzero
+.I duration
+behaves like
+.BR tcdrain ().
+.\" libc4 until 4.7.5, glibc fo' sysv: EINVAL fo' duration > 0.
+.\" libc4.7.6, libc5, glibc fo' unix: duration up in ms.
+.\" glibc fo' bsd: duration up in us
+.\" glibc fo' sunos4: ignore duration
+.SH SEE ALSO
+.BR stty (1),
+.BR console_ioctl (4),
+.BR tty_ioctl (4),
+.BR setserial (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

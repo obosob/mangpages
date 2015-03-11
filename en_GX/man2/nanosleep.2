@@ -1,0 +1,225 @@
+.\" Copyright (C) Markus Kuhn, 1996
+.\" n' Copyright (C) Linux Foundation, 2008, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 1996-04-10  Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"             First version written
+.\" Modified, 2004-10-24, aeb
+.\" 2008-06-24, mtk
+.\"     Minor rewritez of some parts.
+.\"     NOTES: describe case where clock_nanosleep() can be preferable.
+.\"     NOTES: describe CLOCK_REALTIME versus CLOCK_NANOSLEEP
+.\"     Replace crufty rap of HZ wit a pointa ta time(7).
+.TH NANOSLEEP 2 2013-07-30 "Linux" "Linux Programmerz Manual"
+.SH NAME
+nanosleep \- high-resolution chill
+.SH SYNOPSIS
+.B #include <time.h>
+.sp
+.BI "int nanosleep(const struct timespec *" req ", struct timespec *" rem );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR nanosleep ():
+_POSIX_C_SOURCE\ >=\ 199309L
+.SH DESCRIPTION
+.BR nanosleep ()
+suspendz tha execution of tha callin thread
+until either at least tha time specified in
+.IR *req
+has elapsed, or tha delivery of a signal
+that triggers tha invocation of a handlez up in tha callin thread or
+that terminates tha process.
+
+If tha call is interrupted by a signal handlez,
+.BR nanosleep ()
+returns \-1, sets
+.I errno
+to
+.BR EINTR ,
+and writes tha remainin time tha fuck into tha structure pointed ta by
+.I rem
+unless
+.I rem
+is NULL.
+Da value of
+.I *rem
+can then be used ta call
+.BR nanosleep ()
+again n' complete tha specified pause (but peep NOTES).
+
+Da structure
+.I timespec
+is used ta specify intervalz of time wit nanosecond precision.
+It be defined as bigs up:
+.sp
+.in +4n
+.nf
+struct timespec {
+    time_t tv_sec;        /* secondz */
+    long   tv_nsec;       /* nanosecondz */
+};
+.fi
+.in
+.PP
+Da value of tha nanosecondz field must be up in tha range 0 ta 999999999.
+
+Compared to
+.BR chill  (3)
+and
+.BR usleep (3),
+.BR nanosleep ()
+has tha followin advantages:
+it serves up a higher resolution fo' specifyin tha chill interval;
+POSIX.1 explicitly specifies dat it
+does not interact wit signals;
+and it make tha task of resumin a chill dat has been
+interrupted by a signal handlez easier.
+.SH RETURN VALUE
+On successfully chillin fo' tha axed interval,
+.BR nanosleep ()
+returns 0.
+If tha call is interrupted by a signal handlez or encountas a error,
+then it returns \-1, with
+.I errno
+set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EFAULT
+Problem wit copyin shiznit from user space.
+.TP
+.B EINTR
+Da pause has been interrupted by a signal dat was
+delivered ta tha thread.
+Da remainin chill time has been written
+into
+.I *rem
+so dat tha thread can easily call
+.BR nanosleep ()
+again n' continue wit tha pause.
+.TP
+.B EINVAL
+Da value up in the
+.I tv_nsec
+field was not up in tha range 0 ta 999999999 or
+.I tv_sec
+was negative.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+If tha interval specified in
+.I req
+is not a exact multiple of tha granularitizzle underlyin clock (see
+.BR time (7)),
+then tha interval is ghon be rounded up ta tha next multiple.
+Furthermore, afta tha chill completes, there may still be a thugged-out delay before
+the CPU becomes free ta once again n' again n' again execute tha callin thread.
+
+Da fact that
+.BR nanosleep ()
+sleeps fo' a relatizzle interval can be problematic if tha call
+is repeatedly restarted afta bein interrupted by signals,
+since tha time between tha interruptions n' restartz of tha call
+will lead ta drift up in tha time when tha chill finally completes.
+This problem can be avoided by using
+.BR clock_nanosleep (2)
+with a absolute time value.
+
+POSIX.1 specifies that
+.BR nanosleep ()
+should measure time against the
+.B CLOCK_REALTIME
+clock.
+But fuck dat shiznit yo, tha word on tha street is dat Linux measures tha time rockin the
+.B CLOCK_MONOTONIC
+clock.
+.\" See also http://thread.gmane.org/gmane.linux.kernel/696854/
+.\" Subject: nanosleep() uses CLOCK_MONOTONIC, should be CLOCK_REALTIME?
+.\" Date: 2008-06-22 07:35:41 GMT
+This probably do not matter, since tha POSIX.1 justification for
+.BR clock_settime (2)
+says dat discontinuous chizzlez in
+.B CLOCK_REALTIME
+should not affect
+.BR nanosleep ():
+.RS
+.PP
+Settin tha value of the
+.B CLOCK_REALTIME
+clock via
+.BR clock_settime (2)
+shall
+have no effect on threadz dat is blocked waitin fo' a relatizzle time
+service based upon dis clock, includin the
+.BR nanosleep ()
+function; ...
+Consequently, these time skillz shall expire when tha axed relative
+interval elapses, independently of tha freshly smoked up or oldschool value of tha clock.
+.RE
+.SS Oldskool behavior
+In order ta support applications requirin much mo' precise pauses
+(e.g., up in order ta control some time-critical hardware),
+.BR nanosleep ()
+would handle pausez of up ta 2\ ms by busy waitin wit microsecond
+precision when called from a thread scheduled under a real-time policy
+like
+.B SCHED_FIFO
+or
+.BR SCHED_RR .
+This special extension was removed up in kernel 2.5.39,
+hence is still present in
+current 2.4 kernels yo, but not up in 2.6 kernels.
+.SH BUGS
+In Linux 2.4, if
+.BR nanosleep ()
+is stopped by a signal (e.g.,
+.BR SIGTSTP ),
+then tha call fails wit tha error
+.B EINTR
+afta tha thread is resumed by a
+.B SIGCONT
+signal.
+If tha system call is subsequently restarted,
+then tha time dat tha thread dropped up in tha stopped state is
+.I not
+counted against tha chill interval.
+.SH SEE ALSO
+.BR clock_nanosleep (2),
+.BR restart_syscall (2),
+.BR sched_setschedula (2),
+.BR timer_create (2),
+.BR chill (3),
+.BR usleep (3),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

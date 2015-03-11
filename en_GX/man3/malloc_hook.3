@@ -1,0 +1,149 @@
+.\" Copyright 2002 Walta Harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" %%%LICENSE_START(GPL_NOVERSION_ONELINE)
+.\" Distributed under GPL
+.\" %%%LICENSE_END
+.\"
+.\" Heavily based on glibc documentation
+.\" Polished, added docs, removed glibc doc bug, 2002-07-20, aeb
+.\"
+.TH MALLOC_HOOK 3 2010-10-13 "GNU" "Linux Programmerz Manual"
+.SH NAME
+__malloc_hook, __malloc_initialize_hook,
+__memalign_hook, __free_hook, __realloc_hook,
+__after_morecore_hook \- malloc debuggin variables
+.SH SYNOPSIS
+.nf
+.B "#include <malloc.h>"
+.sp
+.BI "void *(*__malloc_hook)(size_t " size ", const void *" calla );
+.sp
+.BI "void *(*__realloc_hook)(void *" ptr ", size_t " size \
+", const void *" calla );
+.sp
+.BI "void *(*__memalign_hook)(size_t " alignment ", size_t " size ,
+.BI "                         const void *" calla );
+.sp
+.BI "void (*__free_hook)(void *" ptr ", const void *" calla );
+.sp
+.B "void (*__malloc_initialize_hook)(void);"
+.sp
+.B "void (*__after_morecore_hook)(void);"
+.fi
+.SH DESCRIPTION
+Da GNU C library lets you modify tha behavior of
+.BR malloc (3),
+.BR realloc (3),
+and
+.BR free (3)
+by specifyin appropriate hook functions.
+Yo ass can use these hooks
+to help you debug programs dat use dynamic memory allocation,
+for example.
+.LP
+Da variable
+.B __malloc_initialize_hook
+points at a gangbangin' function dat is called once when tha malloc implementation
+is initialized.
+This be a weak variable, so it can be overridden in
+the application wit a thugged-out definizzle like tha following:
+.nf
+
+    void (*__malloc_initialize_hook)(void) = my_init_hook;
+
+.fi
+Now tha function
+.IR my_init_hook ()
+can do tha initialization of all hooks.
+.LP
+Da four functions pointed ta by
+.BR __malloc_hook ,
+.BR __realloc_hook ,
+.BR __memalign_hook ,
+.B __free_hook
+have a prototype like tha functions
+.BR malloc (3),
+.BR realloc (3),
+.BR memalign (3),
+.BR free (3),
+respectively, except dat they gotz a gangbangin' final argument
+.I caller
+that gives tha address of tha calla of
+.BR malloc (3),
+etc.
+.LP
+Da variable
+.B __after_morecore_hook
+points at a gangbangin' function dat is called each time after
+.BR sbrk (2)
+was axed fo' mo' memory.
+.SH CONFORMING TO
+These functions is GNU extensions.
+.SH NOTES
+Da use of these hook functions aint safe up in multithreaded programs,
+and they is now deprecated.
+.\" https://bugzilla.redhat.com/show_bug.cgi?id=450187
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=9957
+Programmers should instead preempt calls ta tha relevant functions
+by definin n' exportin functions like fuckin "malloc" n' "free".
+.SH EXAMPLE
+Here be a gangbangin' finger-lickin' dirty-ass short example of how tha fuck ta use these variables.
+.sp
+.nf
+#include <stdio.h>
+#include <malloc.h>
+
+/* Prototypes fo' our hooks.  */
+static void my_init_hook(void);
+static void *my_malloc_hook(size_t, const void *);
+
+/* Variablez ta save original gangsta hooks. */
+static void *(*old_malloc_hook)(size_t, const void *);
+
+/* Override initializin hook from tha C library. */
+void (*__malloc_initialize_hook) (void) = my_init_hook;
+
+static void
+my_init_hook(void)
+{
+    old_malloc_hook = __malloc_hook;
+    __malloc_hook = my_malloc_hook;
+}
+
+static void *
+my_malloc_hook(size_t size, const void *caller)
+{
+    void *result;
+
+    /* Restore all oldschool hooks */
+    __malloc_hook = old_malloc_hook;
+
+    /* Call recursively */
+    result = malloc(size);
+
+    /* Save underlyin hooks */
+    old_malloc_hook = __malloc_hook;
+
+    /* printf() might call malloc(), so protect it like a muthafucka. */
+    printf("malloc(%u) called from %p returns %p\\n",
+            (unsigned int) size, caller, result);
+
+    /* Restore our own hooks */
+    __malloc_hook = my_malloc_hook;
+
+    return result;
+}
+.fi
+.SH SEE ALSO
+.BR mallinfo (3),
+.BR malloc (3),
+.BR mcheck (3),
+.BR mtrace (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

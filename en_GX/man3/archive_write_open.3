@@ -1,0 +1,235 @@
+.\" Copyright (c) 2003-2011 Slim Tim Kientzle
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd February 2, 2012
+.Dt ARCHIVE_WRITE_OPEN 3
+.Os
+.Sh NAME
+.Nm archive_write_open ,
+.Nm archive_write_open_fd ,
+.Nm archive_write_open_FILE ,
+.Nm archive_write_open_filename ,
+.Nm archive_write_open_memory
+.Nd functions fo' bustin archives
+.Sh LIBRARY
+Streamin Archive Library (libarchive, -larchive)
+.Sh SYNOPSIS
+.In archive.h
+.Ft int
+.Fo archive_write_open
+.Fa "struct archive *"
+.Fa "void *client_data"
+.Fa "archive_open_callback *"
+.Fa "archive_write_callback *"
+.Fa "archive_close_callback *"
+.Fc
+.Ft int
+.Fn archive_write_open_fd "struct archive *" "int fd"
+.Ft int
+.Fn archive_write_open_FILE "struct archive *" "FILE *file"
+.Ft int
+.Fn archive_write_open_filename "struct archive *" "const char *filename"
+.Ft int
+.Fo archive_write_open_memory
+.Fa "struct archive *"
+.Fa "void *buffer"
+.Fa "size_t bufferSize"
+.Fa "size_t *outUsed"
+.Fc
+.Sh DESCRIPTION
+.Bl -tag -width indent
+.It Fn archive_write_open
+Freeze tha settings, open tha archive, n' prepare fo' freestylin entries.
+This is da most thugged-out generic form of dis function, which accepts
+pointas ta three callback functions which is ghon be invoked by
+the compression layer ta write tha constructed archive.
+.It Fn archive_write_open_fd
+A convenience form of
+.Fn archive_write_open
+that accepts a gangbangin' file descriptor.
+The
+.Fn archive_write_open_fd
+function is safe fo' use wit tape drives or other
+block-oriented devices.
+.It Fn archive_write_open_FILE
+A convenience form of
+.Fn archive_write_open
+that accepts a
+.Ft "FILE *"
+pointer.
+Note that
+.Fn archive_write_open_FILE
+is not safe fo' freestylin ta tape drives or other devices
+that require erect blocking.
+.It Fn archive_write_open_file
+A deprecated synonym for
+.Fn archive_write_open_filename .
+.It Fn archive_write_open_filename
+A convenience form of
+.Fn archive_write_open
+that accepts a gangbangin' filename.
+A NULL argument indicates dat tha output should be freestyled ta standard output;
+an argument of
+.Dq -
+will open a gangbangin' file wit dat name.
+If you aint invoked
+.Fn archive_write_set_bytes_in_last_block ,
+then
+.Fn archive_write_open_filename
+will adjust tha last-block paddin dependin on tha file:
+it will enable paddin when freestylin ta standard output or
+to a cold-ass lil characta or block thang node, it will disable paddin otherwise.
+Yo ass can override dis by manually invoking
+.Fn archive_write_set_bytes_in_last_block
+before calling
+.Fn archive_write_open .
+The
+.Fn archive_write_open_filename
+function is safe fo' use wit tape drives or other
+block-oriented devices.
+.It Fn archive_write_open_memory
+A convenience form of
+.Fn archive_write_open
+that accepts a pointa ta a funky-ass block of memory dat will receive
+the archive.
+Da final
+.Ft "size_t *"
+argument points ta a variable dat is ghon be updated
+afta each write ta reflect how tha fuck much of tha buffer
+is currently up in use.
+Yo ass should be careful ta ensure dat dis variable
+remains allocated until afta tha archive is
+closed.
+.El
+Mo' shiznit bout the
+.Va struct archive
+object n' tha overall design of tha library can be found up in the
+.Xr libarchive 3
+overview.
+.\"
+.Sh CLIENT CALLBACKS
+To use dis library, yo big-ass booty is ghon need ta define n' register
+callback functions dat is ghon be invoked ta write data ta the
+resultin archive.
+These functions is registered by calling
+.Fn archive_write_open :
+.Bl -item -offset indent
+.It
+.Ft typedef int
+.Fn archive_open_callback "struct archive *" "void *client_data"
+.El
+.Pp
+Da open callback is invoked by
+.Fn archive_write_open .
+It should return
+.Cm ARCHIVE_OK
+if tha underlyin file or data source is successfully
+opened.
+If tha open fails, it should call
+.Fn archive_set_error
+to regista a error code n' message n' return
+.Cm ARCHIVE_FATAL .
+.Bl -item -offset indent
+.It
+.Ft typedef ssize_t
+.Fo archive_write_callback
+.Fa "struct archive *"
+.Fa "void *client_data"
+.Fa "const void *buffer"
+.Fa "size_t length"
+.Fc
+.El
+.Pp
+Da write callback is invoked whenever tha library
+needz ta write raw bytes ta tha archive.
+For erect blocking, each call ta tha write callback function
+should translate tha fuck into a single
+.Xr write 2
+system call.
+This is especially critical when freestylin archives ta tape drives.
+On success, tha write callback should return the
+number of bytes straight-up written.
+On error, tha callback should invoke
+.Fn archive_set_error
+to regista a error code n' message n' return -1.
+.Bl -item -offset indent
+.It
+.Ft typedef int
+.Fn archive_close_callback "struct archive *" "void *client_data"
+.El
+.Pp
+Da close callback is invoked by archive_close when
+the archive processin is complete.
+Da callback should return
+.Cm ARCHIVE_OK
+on success.
+On failure, tha callback should invoke
+.Fn archive_set_error
+to regista a error code n' message and
+return
+.Cm ARCHIVE_FATAL.
+.Pp
+Note dat if tha client-provided write callback function
+returns a non-zero value, dat error is ghon be propagated back ta tha caller
+all up in whatever API function resulted up in dat call, which
+may include
+.Fn archive_write_header ,
+.Fn archive_write_data ,
+.Fn archive_write_close ,
+.Fn archive_write_finish ,
+or
+.Fn archive_write_free .
+Da client callback can call
+.Fn archive_set_error
+to provide joints dat can then be retrieved by
+.Fn archive_errno
+and
+.Fn archive_error_strin .
+.\" .Sh EXAMPLE
+.Sh RETURN VALUES
+These functions return
+.Cm ARCHIVE_OK
+on success, or
+.Cm ARCHIVE_FATAL .
+.\"
+.Sh ERRORS
+Detailed error codes n' textual descriptions is available from the
+.Fn archive_errno
+and
+.Fn archive_error_string
+functions.
+.\"
+.Sh SEE ALSO
+.Xr tar 1 ,
+.Xr libarchive 3 ,
+.Xr archive_write 3 ,
+.Xr archive_write_filta 3 ,
+.Xr archive_write_format 3 ,
+.Xr archive_write_new 3 ,
+.Xr archive_write_set_options 3 ,
+.Xr cpio 5 ,
+.Xr mtree 5 ,
+.Xr tar 5

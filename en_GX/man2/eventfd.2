@@ -1,0 +1,435 @@
+
+.\" startin from a version by Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" %%%LICENSE_START(GPLv2+_SW_3_PARA)
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under tha termz of tha GNU General Public License as published by
+.\" tha Jacked Software Foundation; either version 2 of tha License, or
+.\" (at yo' option) any lata version.
+.\"
+.\" This program is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 2008-10-10, mtk: describe eventfd2(), n' EFD_NONBLOCK n' EFD_CLOEXEC
+.\"
+.TH EVENTFD 2 2010-08-30 Linux "Linux Programmerz Manual"
+.SH NAME
+eventfd \- create a gangbangin' file descriptor fo' event notification
+.SH SYNOPSIS
+.B #include <sys/eventfd.h>
+.sp
+.BI "int eventfd(unsigned int " initval ", int " flags );
+.SH DESCRIPTION
+.BR eventfd ()
+creates a "eventfd object" dat can be used as
+an event wait/notify mechanizzle by user-space applications,
+and by tha kernel ta notify user-space applicationz of events.
+Da object gotz nuff a unsigned 64-bit integer
+.RI ( uint64_t )
+counta dat is maintained by tha kernel.
+This counta is initialized wit tha value specified up in tha argument
+.IR initval .
+
+Da followin joints may be bitwise ORed in
+.IR flags
+to chizzle tha behaviour of
+.BR eventfd ():
+.TP
+.BR EFD_CLOEXEC " (since Linux 2.6.27)"
+Set tha close-on-exec
+.RB ( FD_CLOEXEC )
+flag on tha freshly smoked up file descriptor.
+See tha description of the
+.B O_CLOEXEC
+flag in
+.BR open (2)
+for reasons why dis may be useful.
+.TP
+.BR EFD_NONBLOCK " (since Linux 2.6.27)"
+Set the
+.BR O_NONBLOCK
+file status flag on tha freshly smoked up open file description.
+Usin dis flag saves extra calls to
+.BR fcntl (2)
+to big up tha same result.
+.TP
+.BR EFD_SEMAPHORE " (since Linux 2.6.30)"
+Provide semaphore-like semantics fo' readz from tha freshly smoked up file descriptor.
+See below.
+.PP
+In Linux up ta version 2.6.26, the
+.I flags
+argument is unused, n' must be specified as zero.
+
+As its return value,
+.BR eventfd ()
+returns a freshly smoked up file descriptor dat can be used ta refer ta the
+eventfd object.
+Da followin operations can be performed on tha file descriptor:
+.TP
+.BR read (2)
+Each successful
+.BR read (2)
+returns a 8-byte integer.
+A
+.BR read (2)
+will fail wit tha error
+.B EINVAL
+if tha size of tha supplied buffer is less than 8 bytes.
+.IP
+Da value returned by
+.BR read (2)
+is up in host byte order,
+i.e., tha natizzle byte order fo' integers on tha host machine.
+.IP
+Da semantics of
+.BR read (2)
+depend on whether tha eventfd counta currently has a nonzero value
+and whether the
+.BR EFD_SEMAPHORE
+flag was specified when bustin tha eventfd file descriptor:
+.RS
+.IP * 3
+If
+.BR EFD_SEMAPHORE
+was not specified n' tha eventfd counta has a nonzero value, then a
+.BR read (2)
+returns 8 bytes containin dat value,
+and tha counterz value is reset ta zero.
+.IP *
+If
+.BR EFD_SEMAPHORE
+was specified n' tha eventfd counta has a nonzero value, then a
+.BR read (2)
+returns 8 bytes containin tha value 1,
+and tha counterz value is decremented by 1.
+.IP *
+If tha eventfd counta is zero all up in tha time of tha call to
+.BR read (2),
+then tha call either blocks until tha counta becomes nonzero
+(at which time, the
+.BR read (2)
+proceedz as busted lyrics bout above)
+or fails wit tha error
+.B EAGAIN
+if tha file descriptor has been made nonblocking.
+.RE
+.TP
+.BR write (2)
+A
+.BR write (2)
+call addz tha 8-byte integer value supplied up in its
+buffer ta tha counter.
+Da maximum value dat may be stored up in tha counta is tha phattest
+unsigned 64-bit value minus 1 (i.e., 0xfffffffffffffffe).
+If tha addizzle would cause tha counterz value ta exceed
+the maximum, then the
+.BR write (2)
+either blocks until a
+.BR read (2)
+is performed on tha file descriptor,
+or fails wit tha error
+.B EAGAIN
+if tha file descriptor has been made nonblocking.
+.IP
+A
+.BR write (2)
+will fail wit tha error
+.B EINVAL
+if tha size of tha supplied buffer is less than 8 bytes,
+or if a attempt is made ta write tha value 0xffffffffffffffff.
+.TP
+.BR poll "(2), " select "(2) (and similar)"
+Da returned file descriptor supports
+.BR poll (2)
+(and analogously
+.BR epoll (7))
+and
+.BR select (2),
+as bigs up:
+.RS
+.IP * 3
+Da file descriptor is readable
+(the
+.BR select (2)
+.I readfds
+argument; the
+.BR poll (2)
+.B POLLIN
+flag)
+if tha counta has a value pimped outa than 0.
+.IP *
+Da file descriptor is writable
+(the
+.BR select (2)
+.I writefds
+argument; the
+.BR poll (2)
+.B POLLOUT
+flag)
+if it is possible ta write a value of at least "1" without blocking.
+.IP *
+If a overflow of tha counta value was detected,
+then
+.BR select (2)
+indicates tha file descriptor as bein both readable n' writable, and
+.BR poll (2)
+returns a
+.B POLLERR
+event.
+As noted above,
+.BR write (2)
+can never overflow tha counter.
+However a overflow can occur if 2^64
+eventfd "signal posts" was performed by tha KAIO
+subsystem (theoretically possible yo, but practically unlikely).
+If a overflow has occurred, then
+.BR read (2)
+will return dat maximum
+.I uint64_t
+value (i.e., 0xffffffffffffffff).
+.RE
+.IP
+Da eventfd file descriptor also supports tha other file-descriptor
+multiplexin APIs:
+.BR pselect (2)
+and
+.BR ppoll (2).
+.TP
+.BR close (2)
+When tha file descriptor is no longer required it should be closed.
+When all file descriptors associated wit tha same eventfd object
+have been closed, tha resources fo' object is freed by tha kernel.
+.PP
+A copy of tha file descriptor pimped by
+.BR eventfd ()
+is inherited by tha lil pimp produced by
+.BR fork (2).
+Da duplicate file descriptor be associated wit tha same
+eventfd object.
+File descriptors pimped by
+.BR eventfd ()
+are preserved across
+.BR execve (2),
+unless tha close-on-exec flag has been set.
+.SH RETURN VALUE
+On success,
+.BR eventfd ()
+returns a freshly smoked up eventfd file descriptor.
+On error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EINVAL
+An unsupported value was specified in
+.IR flags .
+.TP
+.B EMFILE
+Da per-process limit on open file descriptors has been reached.
+.TP
+.B ENFILE
+Da system-wide limit on tha total number of open filez has been
+reached.
+.TP
+.B ENODEV
+.\" Note from Davide:
+.\" Da ENODEV error is basically never goin ta happen if
+.\" tha kernel boots erectly. That error happen only if during
+.\" tha kernel initialization, some error occur up in tha anonymous
+.\" inode source initialization.
+Could not mount (internal) anonymous inode device.
+.TP
+.B ENOMEM
+There was insufficient memory ta create a new
+eventfd file descriptor.
+.SH VERSIONS
+.BR eventfd ()
+is available on Linux since kernel 2.6.22.
+Workin support is provided up in glibc since version 2.8.
+.\" eventfd() is up in glibc 2.7 yo, but reportedly do not build
+The
+.BR eventfd2 ()
+system call (see NOTES) be available on Linux since kernel 2.6.27.
+Since version 2.9, tha glibc
+.BR eventfd ()
+wrapper will employ the
+.BR eventfd2 ()
+system call, if it is supported by tha kernel.
+.SH CONFORMING TO
+.BR eventfd ()
+and
+.BR eventfd2 ()
+are Linux-specific.
+.SH NOTES
+Applications can use a eventfd file descriptor instead of a pipe (see
+.BR pipe (2))
+in all cases where a pipe is used simply ta signal events.
+Da kernel overhead of a eventfd file descriptor
+is much lower than dat of a pipe,
+and only one file descriptor is
+required (versus tha two required fo' a pipe).
+
+When used up in tha kernel, a eventfd
+file descriptor can provide a funky-ass bridge from kernel ta user space, allowing,
+for example, functionalitizzles like KAIO (kernel AIO)
+.\" or eventually syslets/threadlets
+to signal ta a gangbangin' file descriptor dat some operation is complete.
+
+A key point bout a eventfd file descriptor is dat it can be
+monitored just like any other file descriptor using
+.BR select (2),
+.BR poll (2),
+or
+.BR epoll (7).
+This means dat a application can simultaneously monitor the
+readinizz of "traditional" filez n' tha readinizz of other
+kernel mechanizzlez dat support tha eventfd intercourse.
+(Without the
+.BR eventfd ()
+interface, these mechanizzlez could not be multiplexed via
+.BR select (2),
+.BR poll (2),
+or
+.BR epoll (7).)
+.SS Underlyin Linux system calls
+There is two underlyin Linux system calls:
+.BR eventfd ()
+and tha mo' recent
+.BR eventfd2 ().
+Da forma system call do not implement a
+.I flags
+argument.
+Da latta system call implements the
+.I flags
+values busted lyrics bout above.
+Da glibc wrapper function will use
+.BR eventfd2 ()
+where it be available.
+.SS Additionizzle glibc features
+Da GNU C library defines a additionizzle type,
+and two functions dat attempt ta abstract a shitload of tha details of
+readin n' freestylin on a eventfd file descriptor:
+.in +4n
+.nf
+
+typedef uint64_t eventfd_t;
+
+int eventfd_read(int fd, eventfd_t *value);
+int eventfd_write(int fd, eventfd_t value);
+.fi
+.in
+
+Da functions big-ass up tha read n' write operations on an
+eventfd file descriptor,
+returnin 0 if tha erect number of bytes was transferred,
+or \-1 otherwise.
+.SH EXAMPLE
+.PP
+Da followin program creates a eventfd file descriptor
+and then forks ta create a cold-ass lil lil pimp process.
+While tha parent briefly chills,
+the lil pimp writes each of tha integers supplied up in tha program's
+command-line arguments ta tha eventfd file descriptor.
+When tha parent has finished chillin,
+it readz from tha eventfd file descriptor.
+
+Da followin shell session shows a sample run of tha program:
+.in +4n
+.nf
+
+.RB "$" " ./a.out 1 2 4 7 14"
+Lil Pimp freestylin 1 ta efd
+Lil Pimp freestylin 2 ta efd
+Lil Pimp freestylin 4 ta efd
+Lil Pimp freestylin 7 ta efd
+Lil Pimp freestylin 14 ta efd
+Lil Pimp completed write loop
+Parent bout ta read
+Parent read 28 (0x1c) from efd
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <sys/eventfd.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>             /* Definizzle of uint64_t */
+
+#define handle_error(msg) \\
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    int efd, j;
+    uint64_t u;
+    ssize_t s;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <num>...\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    efd = eventfd(0, 0);
+    if (efd == \-1)
+        handle_error("eventfd");
+
+    switch (fork()) {
+    case 0:
+        fo' (j = 1; j < argc; j++) {
+            printf("Lil Pimp freestylin %s ta efd\\n", argv[j]);
+            u = strtoull(argv[j], NULL, 0);
+                    /* strtoull() allows various bases */
+            s = write(efd, &u, sizeof(uint64_t));
+            if (s != sizeof(uint64_t))
+                handle_error("write");
+        }
+        printf("Lil Pimp completed write loop\\n");
+
+        exit(EXIT_SUCCESS);
+
+    default:
+        chill(2);
+
+        printf("Parent bout ta read\\n");
+        s = read(efd, &u, sizeof(uint64_t));
+        if (s != sizeof(uint64_t))
+            handle_error("read");
+        printf("Parent read %llu (0x%llx) from efd\\n",
+                (unsigned long long) u, (unsigned long long) u);
+        exit(EXIT_SUCCESS);
+
+    case \-1:
+        handle_error("fork");
+    }
+}
+.fi
+.SH SEE ALSO
+.BR futex (2),
+.BR pipe (2),
+.BR poll (2),
+.BR read (2),
+.BR select (2),
+.BR signalfd (2),
+.BR timerfd_create (2),
+.BR write (2),
+.BR epoll (7),
+.BR sem_overview (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

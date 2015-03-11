@@ -1,0 +1,471 @@
+'\" t
+.\"     Title: gitremote-helpers
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 10/25/2014
+.\"    Manual: Git Manual
+.\"    Source: Git 1.9.3
+.\"  Language: Gangsta
+.\"
+.TH "GITREMOTE\-HELPERS" "1" "10/25/2014" "Git 1\&.9\&.3" "Git Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+gitremote-helpers \- Helper programs ta interact wit remote repositories
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIgit remote\-<transport>\fR <repository> [<URL>]
+.fi
+.sp
+.SH "DESCRIPTION"
+.sp
+Remote helper programs is normally not used directly by end playas yo, but they is invoked by Git when it need ta interact wit remote repositories Git do not support natively\& fo' realz. A given helper will implement a subset of tha capabilitizzles documented here\&. When Git need ta interact wit a repository rockin a remote helper, it spawns tha helper as a independent process, sendz commandz ta tha helper\(cqs standard input, n' expects thangs up in dis biatch from tha helper\(cqs standard output\&. Because a remote helper runs as a independent process from Git, there is no need ta re\-link Git ta add a freshly smoked up helper, nor any need ta link tha helper wit tha implementation of Git\&.
+.sp
+Every helper must support tha "capabilities" command, which Git uses ta determine what tha fuck other commandz tha helper will accept\&. Those other commandz can be used ta discover n' update remote refs, transhiznit objects between tha object database n' tha remote repository, n' update tha local object store\&.
+.sp
+Git comes wit a "curl" crew of remote helpers, dat handle various transhiznit protocols, like fuckin \fIgit\-remote\-http\fR, \fIgit\-remote\-https\fR, \fIgit\-remote\-ftp\fR n' \fIgit\-remote\-ftps\fR\&. They implement tha capabilitizzles \fIfetch\fR, \fIoption\fR, n' \fIpush\fR\&.
+.SH "INVOCATION"
+.sp
+Remote helper programs is invoked wit one or (optionally) two arguments\&. Da first argument specifies a remote repository as up in Git; it is either tha name of a cold-ass lil configured remote or a URL\&. Da second argument specifies a URL; it is probably of tha form \fI<transport>://<address>\fR yo, but any arbitrary strang is possible\&. Da \fIGIT_DIR\fR environment variable is set up fo' tha remote helper n' can be used ta determine where ta store additionizzle data or from which directory ta invoke auxiliary Git commands\&.
+.sp
+When Git encountas a URL of tha form \fI<transport>://<address>\fR, where \fI<transport>\fR be a protocol dat it cannot handle natively, it automatically invokes \fIgit remote\-<transport>\fR wit tha full URL as tha second argument\&. If such a URL is encountered directly on tha command line, tha straight-up original gangsta argument is tha same ol' dirty as tha second, n' if it is encountered up in a cold-ass lil configured remote, tha straight-up original gangsta argument is tha name of dat remote\&.
+.sp
+A URL of tha form \fI<transport>::<address>\fR explicitly instructs Git ta invoke \fIgit remote\-<transport>\fR wit \fI<address>\fR as tha second argument\&. If such a URL is encountered directly on tha command line, tha straight-up original gangsta argument is \fI<address>\fR, n' if it is encountered up in a cold-ass lil configured remote, tha straight-up original gangsta argument is tha name of dat remote\&.
+.sp
+Additionally, when a cold-ass lil configured remote has \fIremote\&.<name>\&.vcs\fR set ta \fI<transport>\fR, Git explicitly invokes \fIgit remote\-<transport>\fR wit \fI<name>\fR as tha straight-up original gangsta argument\&. If set, tha second argument is \fIremote\&.<name>\&.url\fR; otherwise, tha second argument is omitted\&.
+.SH "INPUT FORMAT"
+.sp
+Git sendz tha remote helper a list of commandz on standard input, one per line\&. Da first command be always tha \fIcapabilities\fR command, up in response ta which tha remote helper must print a list of tha capabilitizzles it supports (see below) followed by a funky-ass blank line\&. Da response ta tha capabilitizzles command determines what tha fuck commandz Git uses up in tha remainder of tha command stream\&.
+.sp
+Da command stream is terminated by a funky-ass blank line\&. In some cases (indicated up in tha documentation of tha relevant commands), dis blank line is followed by a payload up in some other protocol (e\&.g\&., tha pack protocol), while up in others it indicates tha end of input\&.
+.SS "Capabilities"
+.sp
+Each remote helper is sposed ta fuckin support only a subset of commands\&. Da operations a helper supports is declared ta Git up in tha response ta tha capabilitizzles command (see COMMANDS, below)\&.
+.sp
+In tha following, our slick asses list all defined capabilitizzles n' fo' each our slick asses list which commandz a helper wit dat capabilitizzle must provide\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBCapabilitizzles fo' Pushing\fR
+.RS 4
+.PP
+\fIconnect\fR
+.RS 4
+Can attempt ta connect to
+\fIgit receive\-pack\fR
+(for pushing),
+\fIgit upload\-pack\fR, etc fo' communication rockin git\(cqs natizzle packfile protocol\&. This requires a funky-ass bidirectional, full\-duplex connection\&.
+.sp
+Supported commands:
+\fIconnect\fR\&.
+.RE
+.PP
+\fIpush\fR
+.RS 4
+Can discover remote refs n' push local commits n' tha history leadin up ta dem ta freshly smoked up or existin remote refs\&.
+.sp
+Supported commands:
+\fIlist for\-push\fR,
+\fIpush\fR\&.
+.RE
+.PP
+\fIexport\fR
+.RS 4
+Can discover remote refs n' push specified objects from a gangbangin' fast\-import stream ta remote refs\&.
+.sp
+Supported commands:
+\fIlist for\-push\fR,
+\fIexport\fR\&.
+.RE
+.sp
+If a helper advertises \fIconnect\fR, Git will use it if possible n' fall back ta another capabilitizzle if tha helper requests so when connectin (see tha \fIconnect\fR command under COMMANDS)\&. When choosin between \fIpush\fR n' \fIexport\fR, Git prefers \fIpush\fR\&. Other frontendz may have some other order of preference\&.
+.PP
+\fIno\-private\-update\fR
+.RS 4
+When rockin the
+\fIrefspec\fR
+capability, git normally thugged-out shiznit tha private ref on successful push\&. This update is disabled when tha remote\-helper declares tha capability
+\fIno\-private\-update\fR\&.
+.RE
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBCapabilitizzles fo' Fetching\fR
+.RS 4
+.PP
+\fIconnect\fR
+.RS 4
+Can try ta connect to
+\fIgit upload\-pack\fR
+(for fetching),
+\fIgit receive\-pack\fR, etc fo' communication rockin tha Git\(cqs natizzle packfile protocol\&. This requires a funky-ass bidirectional, full\-duplex connection\&.
+.sp
+Supported commands:
+\fIconnect\fR\&.
+.RE
+.PP
+\fIfetch\fR
+.RS 4
+Can discover remote refs n' transfer objects reachable from dem ta tha local object store\&.
+.sp
+Supported commands:
+\fIlist\fR,
+\fIfetch\fR\&.
+.RE
+.PP
+\fIimport\fR
+.RS 4
+Can discover remote refs n' output objects reachable from dem as a stream up in fast\-import format\&.
+.sp
+Supported commands:
+\fIlist\fR,
+\fIimport\fR\&.
+.RE
+.PP
+\fIcheck\-connectivity\fR
+.RS 4
+Can guarantee dat when a cold-ass lil clone is requested, tha received pack is self contained n' is connected\&.
+.RE
+.sp
+If a helper advertises \fIconnect\fR, Git will use it if possible n' fall back ta another capabilitizzle if tha helper requests so when connectin (see tha \fIconnect\fR command under COMMANDS)\&. When choosin between \fIfetch\fR n' \fIimport\fR, Git prefers \fIfetch\fR\&. Other frontendz may have some other order of preference\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBMiscellaneous capabilities\fR
+.RS 4
+.PP
+\fIoption\fR
+.RS 4
+For specifyin settings like
+verbosity
+(how much output ta write ta stderr) and
+depth
+(how much history is wanted up in tha case of a gangbangin' finger-lickin' dirty-ass shallow clone) dat affect how tha fuck other commandz is carried out\&.
+.RE
+.PP
+\fIrefspec\fR <refspec>
+.RS 4
+For remote helpers dat implement
+\fIimport\fR
+or
+\fIexport\fR, dis capabilitizzle allows tha refs ta be constrained ta a private namespace, instead of freestylin ta refs/headz or refs/remotes directly\&. Well shiiiit, it is recommended dat all importas providin the
+\fIimport\fR
+capabilitizzle use this\&. It\(cqs mandatory for
+\fIexport\fR\&.
+.sp
+A helper advertisin tha capability
+refspec refs/heads/*:refs/svn/origin/branches/*
+is sayin that, when it be axed to
+import refs/heads/topic, tha stream it outputs will update the
+refs/svn/origin/branches/topic
+ref\&.
+.sp
+This capabilitizzle can be advertised multiple times\&. Da first applicable refspec takes precedence\&. Da left\-hand of refspecs advertised wit dis capabilitizzle must cover all refs reported by tha list command\&. If no
+\fIrefspec\fR
+capabilitizzle be advertised, there be a implied
+refspec *:*\&.
+.sp
+When freestylin remote\-helpers fo' decentralized version control systems, it be advised ta keep a local copy of tha repository ta interact with, n' ta let tha private namespace refs point ta dis local repository, while tha refs/remotes namespace is used ta track tha remote repository\&.
+.RE
+.PP
+\fIbidi\-import\fR
+.RS 4
+This modifies the
+\fIimport\fR
+capability\&. Da fast\-import commands
+\fIcat\-blob\fR
+and
+\fIls\fR
+can be used by remote\-helpers ta retrieve shiznit bout blobs n' trees dat already exist up in fast\-import\(cqs memory\&. This requires a cold-ass lil channel from fast\-import ta tha remote\-helper\&. If it be advertised up in addizzle ta "import", Git establishes a pipe from fast\-import ta tha remote\-helper\(cqs stdin\&. Well shiiiit, it bigs up dat Git n' fast\-import is both connected ta tha remote\-helper\(cqs stdin\&. Because Git can bust multiple commandz ta tha remote\-helper it is required dat helpers dat use
+\fIbidi\-import\fR
+buffer all
+\fIimport\fR
+commandz of a funky-ass batch before bustin  data ta fast\-import\&. This is ta prevent mixin commandz n' fast\-import responses on tha helper\(cqs stdin\&.
+.RE
+.PP
+\fIexport\-marks\fR <file>
+.RS 4
+This modifies the
+\fIexport\fR
+capability, instructin Git ta dump tha internal marks table ta <file> when complete\&. For details, read up on
+\fI\-\-export\-marks=<file>\fR
+in
+\fBgit-fast-export\fR(1)\&.
+.RE
+.PP
+\fIimport\-marks\fR <file>
+.RS 4
+This modifies the
+\fIexport\fR
+capability, instructin Git ta load tha marks specified up in <file> before processin any input\&. For details, read up on
+\fI\-\-import\-marks=<file>\fR
+in
+\fBgit-fast-export\fR(1)\&.
+.RE
+.PP
+\fIsigned\-tags\fR
+.RS 4
+This modifies the
+\fIexport\fR
+capability, instructin Git ta pass
+\fI\-\-signed\-tags=verbatim\fR
+to
+\fBgit-fast-export\fR(1)\&. In tha absence of dis capability, Git will use
+\fI\-\-signed\-tags=warn\-strip\fR\&.
+.RE
+.RE
+.SH "COMMANDS"
+.sp
+Commandz is given by tha calla on tha helper\(cqs standard input, one per line\&.
+.PP
+\fIcapabilities\fR
+.RS 4
+Lists tha capabilitizzlez of tha helper, one per line, endin wit a funky-ass blank line\&. Each capabilitizzle may be preceded with
+\fI*\fR, which marks dem mandatory fo' Git versions rockin tha remote helper ta understand\& fo' realz. Any unknown mandatory capabilitizzle be a gangbangin' fatal error\&.
+.sp
+Support fo' dis command is mandatory\&.
+.RE
+.PP
+\fIlist\fR
+.RS 4
+Lists tha refs, one per line, up in tha format "<value> <name> [<attr> \&...]"\&. Da value may be a hex sha1 hash, "@<dest>" fo' a symref, or "?" ta indicate dat tha helper could not git tha value of tha ref\& fo' realz. A space\-separated list of attributes bigs up tha name; unrecognized attributes is ignored\&. Da list endz wit a funky-ass blank line\&.
+.sp
+See REF LIST ATTRIBUTES fo' a list of currently defined attributes\&.
+.sp
+Supported if tha helper has tha "fetch" or "import" capability\&.
+.RE
+.PP
+\fIlist for\-push\fR
+.RS 4
+Similar to
+\fIlist\fR, except dat it is used if n' only if tha calla wants ta tha resultin ref list ta prepare push commands\& fo' realz. A helper supportin both push n' fetch can use dis ta distinguish fo' which operation tha output of
+\fIlist\fR
+is goin ta be used, possibly reducin tha amount of work dat need ta be performed\&.
+.sp
+Supported if tha helper has tha "push" or "export" capability\&.
+.RE
+.PP
+\fIoption\fR <name> <value>
+.RS 4
+Sets tha transhiznit helper option <name> ta <value>\&. Outputs a single line containin one of
+\fIok\fR
+(option successfully set),
+\fIunsupported\fR
+(option not recognized) or
+\fIerror <msg>\fR
+(option <name> is supported but <value> aint valid fo' it)\&. Options should be set before other commands, n' may influence tha behavior of dem commands\&.
+.sp
+See OPTIONS fo' a list of currently defined options\&.
+.sp
+Supported if tha helper has tha "option" capability\&.
+.RE
+.PP
+\fIfetch\fR <sha1> <name>
+.RS 4
+Fetches tha given object, freestylin tha necessary objects ta tha database\&. Fetch commandz is busted up in a funky-ass batch, one per line, terminated wit a funky-ass blank line\&. Outputs a single blank line when all fetch commandz up in tha same batch is complete\&. Only objects which was reported up in tha output of
+\fIlist\fR
+with a gangbangin' finger-lickin' dirty-ass sha1 may be fetched dis way\&.
+.sp
+Optionally may output a
+\fIlock <file>\fR
+line indicatin a gangbangin' file under GIT_DIR/objects/pack which is keepin a pack until refs can be suitably updated\&.
+.sp
+If option
+\fIcheck\-connectivity\fR
+is requested, tha helper must output
+\fIconnectivity\-ok\fR
+if tha clone is self\-contained n' connected\&.
+.sp
+Supported if tha helper has tha "fetch" capability\&.
+.RE
+.PP
+\fIpush\fR +<src>:<dst>
+.RS 4
+Pushes tha given local <src> commit or branch ta tha remote branch busted lyrics bout by <dst>\& fo' realz. A batch sequence of one or more
+\fIpush\fR
+commandz is terminated wit a funky-ass blank line (if there is only one reference ta push, a single
+\fIpush\fR
+command is followed by a funky-ass blank line)\&. For example, tha followin would be two batches of
+\fIpush\fR, tha straight-up original gangsta askin tha remote\-helper ta push tha local ref
+\fImaster\fR
+to tha remote ref
+\fImaster\fR
+and tha local
+\fIHEAD\fR
+to tha remote
+\fIbranch\fR, n' tha second askin ta push ref
+\fIfoo\fR
+to ref
+\fIbar\fR
+(forced update axed by the
+\fI+\fR)\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+push refs/heads/master:refs/heads/master
+push HEAD:refs/heads/branch
+\en
+push +refs/heads/foo:refs/heads/bar
+\en
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Zero or mo' protocol options may be entered afta tha last
+\fIpush\fR
+command, before tha batch\(cqs terminatin blank line\&.
+.sp
+When tha push is complete, outputs one or more
+\fIok <dst>\fR
+or
+\fIerror <dst> <why>?\fR
+lines ta indicate success or failure of each pushed ref\&. Da status report output is terminated by a funky-ass blank line\&. Da option field <why> may be quoted up in a C steez strang if it gotz nuff a LF\&.
+.sp
+Supported if tha helper has tha "push" capability\&.
+.RE
+.PP
+\fIimport\fR <name>
+.RS 4
+Produces a gangbangin' fast\-import stream which imports tha current value of tha named ref\&. Well shiiiit, it may additionally import other refs as needed ta construct tha history efficiently\&. Da script writes ta a helper\-specific private namespace\&. Da value of tha named ref should be freestyled ta a location up in dis namespace derived by applyin tha refspecs from tha "refspec" capabilitizzle ta tha name of tha ref\&.
+.sp
+Especially useful fo' interoperabilitizzle wit a gangbangin' foreign versionin system\&.
+.sp
+Just like
+\fIpush\fR, a funky-ass batch sequence of one or more
+\fIimport\fR
+is terminated wit a funky-ass blank line\&. For each batch of
+\fIimport\fR, tha remote helper should produce a gangbangin' fast\-import stream terminated by a
+\fIdone\fR
+command\&.
+.sp
+Note dat if the
+\fIbidi\-import\fR
+capabilitizzle is used tha complete batch sequence has ta be buffered before startin ta bust data ta fast\-import ta prevent mixin of commandz n' fast\-import responses on tha helper\(cqs stdin\&.
+.sp
+Supported if tha helper has tha "import" capability\&.
+.RE
+.PP
+\fIexport\fR
+.RS 4
+Instructs tha remote helper dat any subsequent input is part of a gangbangin' fast\-import stream (generated by
+\fIgit fast\-export\fR) containin objects which should be pushed ta tha remote\&.
+.sp
+Especially useful fo' interoperabilitizzle wit a gangbangin' foreign versionin system\&.
+.sp
+The
+\fIexport\-marks\fR
+and
+\fIimport\-marks\fR
+capabilities, if specified, affect dis command up in so far as they is passed on to
+\fIgit fast\-export\fR, which then will load/store a table of marks fo' local objects\&. This can be used ta implement fo' incremenstrual operations\&.
+.sp
+Supported if tha helper has tha "export" capability\&.
+.RE
+.PP
+\fIconnect\fR <service>
+.RS 4
+Connects ta given service\&. Right back up in yo muthafuckin ass. Standard input n' standard output of helper is connected ta specified steez (git prefix is included up in steez name so e\&.g\&. fetchin uses
+\fIgit\-upload\-pack\fR
+as service) on remote side\&. Valid replies ta dis command is empty line (connection established),
+\fIfallback\fR
+(no smart-ass transhiznit support, fall back ta dumb transports) n' just exitin wit error message printed (can\(cqt connect, don\(cqt bother tryin ta fall back)\& fo' realz. Afta line feed terminatin tha positizzle (empty) response, tha output of steez starts\& fo' realz. Afta tha connection ends, tha remote helper exits\&.
+.sp
+Supported if tha helper has tha "connect" capability\&.
+.RE
+.sp
+If a gangbangin' fatal error occurs, tha program writes tha error message ta stderr n' exits\&. Da calla should expect dat a suitable error message has been printed if tha lil pimp closes tha connection without completin a valid response fo' tha current command\&.
+.sp
+Additionizzle commandz may be supported, as may be determined from capabilitizzles reported by tha helper\&.
+.SH "REF LIST ATTRIBUTES"
+.sp
+Da \fIlist\fR command produces a list of refs up in which each ref may be followed by a list of attributes\&. Da followin ref list attributes is defined\&.
+.PP
+\fIunchanged\fR
+.RS 4
+This ref is unchanged since tha last import or fetch, although tha helper cannot necessarily determine what tha fuck value dat produced\&.
+.RE
+.SH "OPTIONS"
+.sp
+Da followin options is defined n' (under suitable circumstances) set by Git if tha remote helper has tha \fIoption\fR capability\&.
+.PP
+\fIoption verbosity\fR <n>
+.RS 4
+Changes tha verbositizzle of lyrics displayed by tha helper\& fo' realz. A value of 0 fo' <n> means dat processes operate on tha fuckin' down-lowly, n' tha helper produces only error output\&. 1 is tha default level of verbosity, n' higher jointz of <n> correspond ta tha number of \-v flags passed on tha command line\&.
+.RE
+.PP
+\fIoption progress\fR {\fItrue\fR|\fIfalse\fR}
+.RS 4
+Enablez (or disables) progress lyrics displayed by tha transhiznit helper durin a cold-ass lil command\&.
+.RE
+.PP
+\fIoption depth\fR <depth>
+.RS 4
+Deepens tha history of a gangbangin' finger-lickin' dirty-ass shallow repository\&.
+.RE
+.PP
+\fIoption followtags\fR {\fItrue\fR|\fIfalse\fR}
+.RS 4
+If enabled tha helper should automatically fetch annotated tag objects if tha object tha tag points at was transferred durin tha fetch command\&. If tha tag aint fetched by tha helper a second fetch command will probably be busted ta ask fo' tha tag specifically\&. Right back up in yo muthafuckin ass. Some helpers may be able ta use dis option ta avoid a second network connection\&.
+.RE
+.sp
+\fIoption dry\-run\fR {\fItrue\fR|\fIfalse\fR}: If true, pretend tha operation completed successfully yo, but don\(cqt straight-up chizzle any repository data\&. For most helpers dis only applies ta tha \fIpush\fR, if supported\&.
+.PP
+\fIoption servpath <c\-style\-quoted\-path>\fR
+.RS 4
+Sets steez path (\-\-upload\-pack, \-\-receive\-pack etc\&.) fo' next connect\&. Remote helper may support dis option yo, but must not rely on dis option bein set before connect request occurs\&.
+.RE
+.PP
+\fIoption check\-connectivity\fR {\fItrue\fR|\fIfalse\fR}
+.RS 4
+Request tha helper ta check connectivitizzle of a cold-ass lil clone\&.
+.RE
+.PP
+\fIoption clonin {\(aqtrue\fR|\fIfalse\fR}
+.RS 4
+Notify tha helper dis be a cold-ass lil clone request (i\&.e\&. tha current repository is guaranteed empty)\&.
+.RE
+.PP
+\fIoption update\-shallow {\(aqtrue\fR|\fIfalse\fR}
+.RS 4
+Allow ta extend \&.git/shallow if tha freshly smoked up refs require it\&.
+.RE
+.SH "SEE ALSO"
+.sp
+\fBgit-remote\fR(1)
+.sp
+\fBgit-remote-testgit\fR(1)
+.SH "GIT"
+.sp
+Part of tha \fBgit\fR(1) suite

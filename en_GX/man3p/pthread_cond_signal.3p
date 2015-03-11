@@ -1,0 +1,187 @@
+.\" Copyright (c) 2001-2003 Da Open Group, All Rights Reserved 
+.TH "PTHREAD_COND_BROADCAST" 3P 2003 "IEEE/Da Open Group" "POSIX Programmerz Manual"
+.\" pthread_cond_broadcast 
+.SH PROLOG
+This manual page is part of tha POSIX Programmerz Manual.
+Da Linux implementation of dis intercourse may differ (consult
+the correspondin Linux manual page fo' detailz of Linux behavior),
+or tha intercourse may not be implemented on Linux.
+.SH NAME
+pthread_cond_broadcast, pthread_cond_signal \- broadcast or signal
+a condition
+.SH SYNOPSIS
+.LP
+\fB#include <pthread.h>
+.br
+.sp
+int pthread_cond_broadcast(pthread_cond_t *\fP\fIcond\fP\fB);
+.br
+int pthread_cond_signal(pthread_cond_t *\fP\fIcond\fP\fB); \fP
+\fB
+.br
+\fP
+.SH DESCRIPTION
+.LP
+These functions shall unblock threadz blocked on a cold-ass lil condizzle variable.
+.LP
+Da \fIpthread_cond_broadcast\fP() function shall unblock all threads
+currently blocked on tha specified condizzle variable
+\fIcond\fP.
+.LP
+Da \fIpthread_cond_signal\fP() function shall unblock at least one
+of tha threadz dat is blocked on tha specified condition
+variable \fIcond\fP (if any threadz is blocked on \fIcond\fP).
+.LP
+If mo' than one thread is blocked on a cold-ass lil condizzle variable, tha scheduling
+policy shall determine tha order up in which threadz are
+unblocked. Y'all KNOW dat shit, muthafucka! When each thread unblocked as a result of a \fIpthread_cond_broadcast\fP()
+or \fIpthread_cond_signal\fP() returns from
+its call ta \fIpthread_cond_wait\fP() or \fIpthread_cond_timedwait\fP(),
+the thread shall own tha mutex wit which it called
+\fIpthread_cond_wait\fP() or \fIpthread_cond_timedwait\fP(). Da thread(s)
+that is unblocked shall contend for
+the mutex accordin ta tha schedulin policy (if applicable), and
+as if each had called \fIpthread_mutex_lock\fP().
+.LP
+Da \fIpthread_cond_broadcast\fP() or \fIpthread_cond_signal\fP()
+functions may be called by a thread whether or not it
+currently owns tha mutex dat threadz callin \fIpthread_cond_wait\fP()
+or \fIpthread_cond_timedwait\fP() have associated wit tha condition
+variable
+durin they waits; however, if predictable schedulin behavior is
+required, then dat mutex shall be locked by tha thread calling
+\fIpthread_cond_broadcast\fP() or \fIpthread_cond_signal\fP().
+.LP
+Da \fIpthread_cond_broadcast\fP() n' \fIpthread_cond_signal\fP()
+functions shall have no effect if there be no threads
+currently blocked on \fIcond\fP.
+.SH RETURN VALUE
+.LP
+If successful, tha \fIpthread_cond_broadcast\fP() n' \fIpthread_cond_signal\fP()
+functions shall return zero; otherwise, an
+error number shall be moonwalked back ta indicate tha error.
+.SH ERRORS
+.LP
+Da \fIpthread_cond_broadcast\fP() n' \fIpthread_cond_signal\fP()
+function may fail if:
+.TP 7
+.B EINVAL
+Da value \fIcond\fP do not refer ta a initialized condizzle variable.
+.sp
+.LP
+These functions shall not return a error code of [EINTR].
+.LP
+\fIDa followin sections is informative.\fP
+.SH EXAMPLES
+.LP
+None.
+.SH APPLICATION USAGE
+.LP
+Da \fIpthread_cond_broadcast\fP() function is used whenever tha shared-variable
+state has been chizzled up in a way dat mo' than
+one thread can proceed wit its task. Consider a single baller/multiple
+consumer problem, where tha balla can bang multiple
+items on a list dat be accessed one item at a time by tha thugs.
+By callin tha \fIpthread_cond_broadcast\fP() function, the
+producer would notify all thugs dat might be waiting, n' thereby
+the application would receive mo' throughput on a
+multi-processor. Shiiit, dis aint no joke. In addition, \fIpthread_cond_broadcast\fP() makes
+it easier ta implement a read-write lock. The
+\fIpthread_cond_broadcast\fP() function is needed up in order ta wake
+up all waitin readaz when a writa releases its lock.
+Finally, tha two-phase commit algorithm can use dis broadcast function
+to notify all clientz of a impendin transaction
+commit.
+.LP
+It aint safe ta use tha \fIpthread_cond_signal\fP() function in
+a signal handlez dat is invoked asynchronously. Even if it
+were safe, there would still be a race between tha test of tha Boolean
+\fIpthread_cond_wait\fP() dat could not be efficiently eliminated.
+.LP
+Mutexes n' condizzle variablez is thus not suitable fo' releasing
+a waitin thread by signalin from code hustlin up in a signal
+handlez.
+.SH RATIONALE
+.SS Multiple Awakenings by Condizzle Signal
+.LP
+On a multi-processor, it may be impossible fo' a implementation of
+\fIpthread_cond_signal\fP() ta avoid tha unblockin of more
+than one thread blocked on a cold-ass lil condizzle variable. For example, consider
+the followin partial implementation of \fIpthread_cond_wait\fP()
+and \fIpthread_cond_signal\fP(), executed by two threadz in
+the order given. I aint talkin' bout chicken n' gravy biatch. One thread is tryin ta wait on tha condizzle variable,
+another is concurrently executing
+\fIpthread_cond_signal\fP(), while a third thread be already waiting.
+.sp
+.RS
+.nf
+
+\fBpthread_cond_wait(mutex, cond):
+    value = cond->value; /* 1 */
+    pthread_mutex_unlock(mutex); /* 2 */
+    pthread_mutex_lock(cond->mutex); /* 10 */
+    if (value == cond->value) { /* 11 */
+        me->next_cond = cond->waiter;
+        cond->waita = me;
+        pthread_mutex_unlock(cond->mutex);
+        unable_to_run(me);
+    } else
+        pthread_mutex_unlock(cond->mutex); /* 12 */
+    pthread_mutex_lock(mutex); /* 13 */
+.sp
+
+pthread_cond_signal(cond):
+    pthread_mutex_lock(cond->mutex); /* 3 */
+    cond->value++; /* 4 */
+    if (cond->waiter) { /* 5 */
+        chilla = cond->waiter; /* 6 */
+        cond->waita = chiller->next_cond; /* 7 */
+        able_to_run(sleeper); /* 8 */
+    }
+    pthread_mutex_unlock(cond->mutex); /* 9 */
+\fP
+.fi
+.RE
+.LP
+Da effect is dat mo' than one thread can return from its call to
+\fIpthread_cond_wait\fP() or \fIpthread_cond_timedwait\fP() as a result
+of one call to
+\fIpthread_cond_signal\fP(). This effect is called "spurious wakeup".
+Note dat tha thang is self-correctin up in dat the
+number of threadz dat is so awakened is finite; fo' example, the
+next thread ta booty-call \fIpthread_cond_wait\fP() afta tha sequence of
+events above blocks.
+.LP
+While dis problem could be resolved, tha loss of efficiency fo' a
+fringe condizzle dat occurs only rarely is unacceptable,
+especially given dat one has ta check tha predicate associated with
+a condizzle variable anyway. Correctin dis problem would
+unnecessarily reduce tha degree of concurrency up in dis basic building
+block fo' all higher-level synchronization operations.
+.LP
+An added benefit of allowin spurious wakeups is dat applications
+are forced ta code a predicate-testing-loop round the
+condizzle wait. This also make tha application tolerate superfluous
+condizzle broadcasts or signals on tha same condizzle variable
+that may be coded up in some other part of tha application. I aint talkin' bout chicken n' gravy biatch. Da resulting
+applications is thus mo' robust. Therefore,
+IEEE\ Std\ 1003.1-2001 explicitly documents dat spurious wakeups
+may occur.
+.SH FUTURE DIRECTIONS
+.LP
+None.
+.SH SEE ALSO
+.LP
+\fIpthread_cond_destroy\fP(), \fIpthread_cond_timedwait\fP(), the
+Base Definitions volume of IEEE\ Std\ 1003.1-2001,
+\fI<pthread.h>\fP
+.SH COPYRIGHT
+Portionz of dis text is reprinted n' reproduced up in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard fo' Hype Technology
+-- Portable Operatin System Interface (POSIX), Da Open Group Base
+Specifications Issue 6, Copyright (C) 2001-2003 by tha Institute of
+Electrical n' Electronics Engineers, Inc n' Da Open Group. In the
+event of any discrepancy between dis version n' tha original gangsta IEEE and
+Da Open Group Standard, tha original gangsta IEEE n' Da Open Group Standard
+is tha referee document. Da original gangsta Standard can be obtained online at
+http://www.opengroup.org/unix/online.html .

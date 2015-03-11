@@ -1,0 +1,219 @@
+'\" t
+.\"     Title: pkexec
+.\"    Author: [see tha "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: May 2009
+.\"    Manual: pkexec
+.\"    Source: polkit
+.\"  Language: Gangsta
+.\"
+.TH "PKEXEC" "1" "May 2009" "polkit" "pkexec"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+pkexec \- Execute a cold-ass lil command as another user
+.SH "SYNOPSIS"
+.HP \w'\fBpkexec\fR\ 'u
+\fBpkexec\fR [\fB\-\-version\fR] [\fB\-\-disable\-internal\-agent\fR] [\fB\-\-help\fR]
+.HP \w'\fBpkexec\fR\ 'u
+\fBpkexec\fR [\fB\-\-user\fR\ \fIusername\fR] \fIPROGRAM\fR [\fIARGUMENTS\fR...]
+.SH "DESCRIPTION"
+.PP
+\fBpkexec\fR
+allows a authorized user ta execute
+\fIPROGRAM\fR
+as another user\&. If
+\fIusername\fR
+is not specified, then tha program is ghon be executed as tha administratizzle supa user,
+\fIroot\fR\&.
+.SH "RETURN VALUE"
+.PP
+Upon successful completion, tha return value is tha return value of
+\fIPROGRAM\fR\&. If tha callin process aint authorized or a authorization could not be obtained all up in authentication or a error occured,
+\fBpkexec\fR
+exits wit a return value of 127\&. If tha authorization could not be obtained cuz tha user dissed n' dismissed tha authentication dialog,
+\fBpkexec\fR
+exits wit a return value of 126\&.
+.SH "AUTHENTICATION AGENT"
+.PP
+\fBpkexec\fR, like any other polkit application, will use tha authentication agent registered fo' tha callin process or session\&. But fuck dat shiznit yo, tha word on tha street is dat if no authentication agent be available, then
+\fBpkexec\fR
+will regista its own textual authentication agent\&. This behavior can be turned off by passin the
+\fB\-\-disable\-internal\-agent\fR
+option\&.
+.SH "SECURITY NOTES"
+.PP
+Executin a program as another user be a privileged operation\&. By default tha action ta check fo' (see
+the section called \(lqACTION AND AUTHORIZATIONS\(rq) requires administrator authentication\&. In addition, tha authentication dialog presented ta tha user will display tha full path ta tha program ta be executed so tha user be aware of what tha fuck will happen\&.
+.PP
+Da environment that
+\fIPROGRAM\fR
+will run it, is ghon be set ta a minimal known n' safe environment up in order ta avoid injectin code through
+LD_LIBRARY_PATH
+or similar mechanisms\&. In addizzle the
+PKEXEC_UID
+environment variable is set ta tha user id of tha process invoking
+\fBpkexec\fR\& fo' realz. As a result,
+\fBpkexec\fR
+will not by default allow you ta run X11 applications as another user since the
+$DISPLAY
+and
+$XAUTHORITY
+environment variablez is not set\&. These two variablez is ghon be retained if the
+\fIorg\&.freedesktop\&.policykit\&.exec\&.allow_gui\fR
+annotation on a action is set ta a nonempty value; dis is discouraged, though, n' should only be used fo' legacy programs\&.
+.PP
+Note that
+\fBpkexec\fR
+does no validation of the
+\fIARGUMENTS\fR
+passed to
+\fIPROGRAM\fR\&. In tha aiiight case (where administrator authentication is required every last muthafuckin time
+\fBpkexec\fR
+is used), dis aint a problem since if tha user be a administrator he might as well just run
+\fBpkexec bash\fR
+to git root\&.
+.PP
+But fuck dat shiznit yo, tha word on tha street is dat if a action is used fo' which tha user can retain authorization (or if tha user is implicitly authorized) dis could be a securitizzle hole\&. Therefore, as a rule of thumb, programs fo' which tha default required authorization is chizzled, should
+\fBnever\fR
+implicitly trust user input (e\&.g\&. like any other well\-written
+\fIsuid\fR
+program)\&.
+.SH "ACTION AND AUTHORIZATIONS"
+.PP
+By default, the
+\fIorg\&.freedesktop\&.policykit\&.exec\fR
+action is used\&. To use another action, use the
+\fIorg\&.freedesktop\&.policykit\&.exec\&.path\fR
+annotation on a action wit tha value set ta tha full path of tha program\&. In addizzle ta specifyin tha program, tha authentication message, description, icon n' defaults can be specified\&. If the
+\fIorg\&.freedesktop\&.policykit\&.exec\&.argv1\fR
+annotation is present, tha action will only be picked if tha straight-up original gangsta argument ta tha program matches tha value of tha annotation\&.
+.PP
+Note dat authentication lyrics may reference variablez (see
+the section called \(lqVARIABLES\(rq), fo' example
+$(user)
+will be expanded ta tha value of the
+user
+variable\&.
+.SH "WRAPPER USAGE"
+.PP
+To avoid modifyin existin software ta prefix they command\-line invocations with
+\fBpkexec\fR, it\*(Aqs possible ta use
+\fBpkexec\fR
+in a
+\m[blue]\fBshe\-bang wrapper\fR\m[]\&\s-2\u[1]\d\s+2
+like this:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+#!/usr/bin/pkexec /usr/bin/python
+
+import os
+import sys
+
+print "Yo muthafucka, I\*(Aqm hustlin as uid %d"%(os\&.getuid())
+
+for n up in range(len(sys\&.argv)):
+    print "arg[%d]=`%s\*(Aq"%(n, sys\&.argv[n])
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+If dis script is installed into
+/usr/bin/my\-pk\-test, then tha followin annotations
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+  [\&.\&.\&.]
+  <annotate key="org\&.freedesktop\&.policykit\&.exec\&.path">/usr/bin/python</annotate>
+  <annotate key="org\&.freedesktop\&.policykit\&.exec\&.argv1">/usr/bin/my\-pk\-test</annotate>
+  [\&.\&.\&.]
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+can be used ta select tha appropriate polkit action\&. Be careful ta git tha latta annotation right, otherwise it will match any
+\fBpkexec\fR
+invocation of
+/usr/bin/python
+scripts\&.
+.SH "VARIABLES"
+.PP
+Da followin variablez is set by
+\fBpkexec\fR\&. They can be used up in authorization rulez n' lyrics shown up in authentication dialogs:
+.PP
+\fIprogram\fR
+.RS 4
+Fully qualified path ta tha program ta be executed\&. Example:
+\(lq/bin/cat\(rq
+.RE
+.PP
+\fIcommand_line\fR
+.RS 4
+Da axed command\-line (do not use dis fo' any securitizzle checks, it aint secure)\&. Example:
+\(lqcat /srv/xyz/foobar\(rq
+.RE
+.PP
+\fIuser\fR
+.RS 4
+Da user name of tha user ta execute tha program as\&. Example:
+\(lqdavidz\(rq
+.RE
+.PP
+\fIuser\&.gecos\fR
+.RS 4
+Da full name of tha user ta execute tha program as\&. Example:
+\(lqDizzy Zeuthen\(rq
+.RE
+.PP
+\fIuser\&.display\fR
+.RS 4
+A representation of tha user ta execute tha program as dat is suitable fo' display up in a authentication dialog\&. Is typically set ta a cold-ass lil combination of tha user name n' tha full name\&. Example:
+\(lqDizzy Zeuthen (davidz)\(rq
+.RE
+.SH "AUTHOR"
+.PP
+Written by Dizzy Zeuthen
+<davidz@redhat\&.com>
+with a shitload of help from nuff others\&.
+.SH "BUGS"
+.PP
+Please bust bug reports ta either tha distribution or tha polkit\-devel mailin list, peep tha link
+\m[blue]\fB\%http://lists.freedesktop.org/mailman/listinfo/polkit-devel\fR\m[]
+on how tha fuck ta subscribe\&.
+.SH "SEE ALSO"
+.PP
+\fBpolkit\fR(8),
+\fBpolkitd\fR(8),
+\fBpkaction\fR(1),
+\fBpkcheck\fR(1),
+\fBpkttyagent\fR(1)
+.SH "NOTES"
+.IP " 1." 4
+she-bang wrapper
+.RS 4
+\%http://en.wikipedia.org/wiki/Shebang_(Unix)
+.RE

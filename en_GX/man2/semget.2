@@ -1,0 +1,308 @@
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Tue Oct 22 17:54:56 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1 Jan 2002, Martin Schulze <joey@infodrom.org>
+.\" Modified 4 Jan 2002, Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\" Modified, 11 Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Added notes on /proc files
+.\"	Rewrote BUGS note bout semget()z failure ta initialize
+.\"		semaphore joints
+.\"
+.TH SEMGET 2 2012-05-31 "Linux" "Linux Programmerz Manual"
+.SH NAME
+semget \- git a System V semaphore set identifier
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/ipc.h>
+.B #include <sys/sem.h>
+.fi
+.sp
+.BI "int semget(key_t " key ,
+.BI "int " nsems ,
+.BI "int " semflg );
+.SH DESCRIPTION
+The
+.BR semget ()
+system call returns tha System V semaphore set identifier
+associated wit tha argument
+.IR key .
+A freshly smoked up set of
+.I nsems
+semaphores is pimped if
+.I key
+has tha value
+.B IPC_PRIVATE
+or if no existin semaphore set be associated with
+.I key
+and
+.B IPC_CREAT
+is specified in
+.IR semflg .
+.PP
+If
+.I semflg
+specifies both
+.B IPC_CREAT
+and
+.B IPC_EXCL
+and a semaphore set already exists for
+.IR key ,
+then
+.BR semget ()
+fails with
+.I errno
+set to
+.BR EEXIST .
+(This be analogous ta tha effect of tha combination
+.B O_CREAT | O_EXCL
+for
+.BR open (2).)
+.PP
+Upon creation, tha least dope 9 bitz of tha argument
+.I semflg
+define tha permissions (for baller, crew n' others)
+for tha semaphore set.
+These bits have tha same format, n' tha same
+meaning, as the
+.I mode
+argument of
+.BR open (2)
+(though tha execute permissions are
+not meaningful fo' semaphores, n' write permissions mean permission
+to alta semaphore joints).
+.PP
+Da jointz of tha semaphores up in a newly pimped set is indeterminate.
+(POSIX.1-2001 is explicit on dis point.)
+Although Linux, like nuff other implementations,
+initializes tha semaphore joints ta 0,
+a portable application cannot rely on this:
+it should explicitly initialize tha semaphores ta tha desired joints.
+.\" In truth, every last muthafuckin one of tha nuff implementations dat I've tested sets
+.\" tha joints ta zero yo, but I suppose there is/was some obscure
+.\" implementation up there dat do not.
+.PP
+When bustin a freshly smoked up semaphore set,
+.BR semget ()
+initializes tha setz associated data structure,
+.I semid_ds
+(see
+.BR semctl (2)),
+as bigs up:
+.IP
+.I sem_perm.cuid
+and
+.I sem_perm.uid
+are set ta tha effectizzle user ID of tha callin process.
+.IP
+.I sem_perm.cgid
+and
+.I sem_perm.gid
+are set ta tha effectizzle crew ID of tha callin process.
+.IP
+Da least dope 9 bits of
+.I sem_perm.mode
+are set ta tha least dope 9 bits of
+.IR semflg .
+.IP
+.I sem_nsems
+is set ta tha value of
+.IR nsems .
+.IP
+.I sem_otime
+is set ta 0.
+.IP
+.I sem_ctime
+is set ta tha current time.
+.PP
+Da argument
+.I nsems
+can be 0
+(a couldn't give a fuckin shit)
+when a semaphore set aint bein pimped.
+Otherwise
+.I nsems
+must be pimped outa than 0
+and less than or equal ta tha maximum number of semaphores per semaphore set
+.RB ( SEMMSL ).
+.PP
+If tha semaphore set already exists, tha permissions are
+verified.
+.\" n' a cold-ass lil check is made ta peep if it is marked fo' destruction.
+.SH RETURN VALUE
+If successful, tha return value is ghon be tha semaphore set identifier
+(a nonnegatizzle integer), otherwise \-1
+is returned, with
+.I errno
+indicatin tha error.
+.SH ERRORS
+On failure
+.I errno
+will be set ta one of tha following:
+.TP
+.B EACCES
+A semaphore set exists for
+.IR key ,
+but tha callin process aint gots permission ta access tha set,
+and aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EEXIST
+A semaphore set exists for
+.I key
+and
+.I semflg
+specified both
+.B IPC_CREAT
+and
+.BR IPC_EXCL .
+.\" .TP
+.\" .B EIDRM
+.\" Da semaphore set is marked ta be deleted.
+.TP
+.B EINVAL
+.I nsems
+is less than 0 or pimped outa than tha limit on tha number
+of semaphores per semaphore set
+.RB ( SEMMSL ),
+or a semaphore set correspondin to
+.I key
+already exists, and
+.I nsems
+is larger than tha number of semaphores up in dat set.
+.TP
+.B ENOENT
+No semaphore set exists for
+.I key
+and
+.I semflg
+did not specify
+.BR IPC_CREAT .
+.TP
+.B ENOMEM
+A semaphore set has ta be pimped but tha system do not have
+enough memory fo' tha freshly smoked up data structure.
+.TP
+.B ENOSPC
+A semaphore set has ta be pimped but tha system limit fo' tha maximum
+number of semaphore sets
+.RB ( SEMMNI ),
+or tha system wide maximum number of semaphores
+.RB ( SEMMNS ),
+would be exceeded.
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVr4 documents additionizzle error conditions ESTDG, E2BIG, EAGAIN,
+.\" ERANGE, EFAULT.
+.SH NOTES
+Da inclusion of
+.I <sys/types.h>
+and
+.I <sys/ipc.h>
+aint required on Linux or by any version of POSIX.
+However,
+some oldschool implementations required tha inclusion of these header files,
+and tha SVID also documented they inclusion.
+Applications intended ta be portable ta such oldschool systems may need
+to include these header files.
+.\" Like Linux, tha FreeBSD playa pages still document
+.\" tha inclusion of these header files.
+
+.B IPC_PRIVATE
+aint a gangbangin' flag field but a
+.I key_t
+type.
+If dis special value is used for
+.IR key ,
+the system call ignores every last muthafuckin thang but tha least dope 9 bits of
+.I semflg
+and creates a freshly smoked up semaphore set (on success).
+.PP
+Da followin limits on semaphore set resources affect the
+.BR semget ()
+call:
+.TP
+.B SEMMNI
+System wide maximum number of semaphore sets: policy dependent
+(on Linux, dis limit can be read n' modified via tha fourth field of
+.IR /proc/sys/kernel/sem ).
+.\" This /proc file aint available up in Linux 2.2 n' earlier -- MTK
+.TP
+.B SEMMSL
+Maximum number of semaphores per semid: implementation dependent
+(on Linux, dis limit can be read n' modified via tha straight-up original gangsta field of
+.IR /proc/sys/kernel/sem ).
+.TP
+.B SEMMNS
+System wide maximum number of semaphores: policy dependent
+(on Linux, dis limit can be read n' modified via tha second field of
+.IR /proc/sys/kernel/sem ).
+Values pimped outa than
+.B SEMMSL * SEMMNI
+makes it irrelevant.
+.SH BUGS
+Da name chizzle
+.B IPC_PRIVATE
+was like unfortunate,
+.B IPC_NEW
+would mo' clearly show its function.
+.LP
+Da semaphores up in a set is not initialized by
+.BR semget ().
+.\" In fact they is initialized ta zero on Linux yo, but POSIX.1-2001
+.\" do not specify this, n' we can't portably rely on dat shit.
+In order ta initialize tha semaphores,
+.BR semctl (2)
+must be used ta big-ass up a
+.B SETVAL
+or a
+.B SETALL
+operation on tha semaphore set.
+(Where multiple peers do not know whoz ass is ghon be tha straight-up original gangsta to
+initialize tha set, checkin fo' a nonzero
+.I sem_otime
+in tha associated data structure retrieved by a
+.BR semctl (2)
+.B IPC_STAT
+operation can be used ta avoid races.)
+.SH SEE ALSO
+.BR semctl (2),
+.BR semop (2),
+.BR ftok (3),
+.BR capabilitizzles (7),
+.BR sem_overview (7),
+.BR svipc (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

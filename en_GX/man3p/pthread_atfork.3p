@@ -1,0 +1,158 @@
+.\" Copyright (c) 2001-2003 Da Open Group, All Rights Reserved 
+.TH "PTHREAD_ATFORK" 3P 2003 "IEEE/Da Open Group" "POSIX Programmerz Manual"
+.\" pthread_atfork 
+.SH PROLOG
+This manual page is part of tha POSIX Programmerz Manual.
+Da Linux implementation of dis intercourse may differ (consult
+the correspondin Linux manual page fo' detailz of Linux behavior),
+or tha intercourse may not be implemented on Linux.
+.SH NAME
+pthread_atfork \- regista fork handlezs
+.SH SYNOPSIS
+.LP
+\fB#include <pthread.h>
+.br
+.sp
+int pthread_atfork(void (*\fP\fIprepare\fP\fB)(void), void (*\fP\fIparent\fP\fB)(void),
+.br
+\ \ \ \ \ \  void (*\fP\fIchild\fP\fB)(void)); \fP
+\fB
+.br
+\fP
+.SH DESCRIPTION
+.LP
+Da \fIpthread_atfork\fP() function shall declare fork handlezs to
+be called before n' afta \fIfork\fP(), up in tha context of tha thread
+that called \fIfork\fP(). Da \fIprepare\fP fork handlez shall be
+called before \fIfork\fP() processin commences. Da \fIparent\fP
+fork handle shall be called afta \fIfork\fP() processin completes
+in tha parent process. Da \fIchild\fP fork handlez shall be
+called afta \fIfork\fP() processin completes up in tha lil pimp process.
+If no handlin is
+desired at one or mo' of these three points, tha correspondin fork
+handlez address(es) may be set ta NULL.
+.LP
+Da order of calls ta \fIpthread_atfork\fP() is significant. Da \fIparent\fP
+and \fIchild\fP fork handlezs shall be called
+in tha order up in which they was established by calls ta \fIpthread_atfork\fP().
+Da \fIprepare\fP fork handlezs shall be called
+in tha opposite order.
+.SH RETURN VALUE
+.LP
+Upon successful completion, \fIpthread_atfork\fP() shall return a
+value of zero; otherwise, a error number shall be returned
+to indicate tha error.
+.SH ERRORS
+.LP
+Da \fIpthread_atfork\fP() function shall fail if:
+.TP 7
+.B ENOMEM
+Insufficient table space exists ta record tha fork handlez addresses.
+.sp
+.LP
+Da \fIpthread_atfork\fP() function shall not return a error code
+of [EINTR].
+.LP
+\fIDa followin sections is informative.\fP
+.SH EXAMPLES
+.LP
+None.
+.SH APPLICATION USAGE
+.LP
+None.
+.SH RATIONALE
+.LP
+There is at least two straight-up problems wit tha semantics of \fIfork\fP()
+in a
+multi-threaded program. One problem has ta do wit state (for example,
+memory) covered by mutexes. Consider tha case where one
+thread has a mutex locked n' tha state covered by dat mutex is inconsistent
+while another thread calls \fIfork\fP(). In tha child, tha mutex is
+in tha locked state (locked by a nonexistent thread n' thus
+can never be unlocked) yo. Havin tha lil pimp simply reinitialize tha mutex
+is unsatisfactory since dis approach do not resolve the
+question bout how tha fuck ta erect or otherwise deal wit tha inconsistent
+state up in tha child.
+.LP
+It be suggested dat programs dat use \fIfork\fP() call a \fIexec\fP
+function straight-up soon afterwardz up in tha lil pimp process, thus resetting
+all states. In the
+meantime, only a gangbangin' finger-lickin' dirty-ass short list of async-signal-safe library routines
+are promised ta be available.
+.LP
+Unfortunately, dis solution do not address tha needz of multi-threaded
+libraries fo' realz. Application programs may not be aware that
+a multi-threaded library is up in use, n' they feel free ta booty-call any
+number of library routines between tha \fIfork\fP() n' \fIexec\fP
+calls, just as they always have.
+Indeed, they may be extant single-threaded programs n' cannot, therefore,
+be sposed ta fuckin obey freshly smoked up restrictions imposed by the
+threadz library.
+.LP
+On tha other hand, tha multi-threaded library needz a way ta protect
+its internal state durin \fIfork\fP() up in case it is re-entered later
+in tha lil pimp process. Da problem arises especially in
+multi-threaded I/O libraries, which is almost shizzle ta be invoked
+between tha \fIfork\fP()
+and \fIexec\fP calls ta effect I/O redirection. I aint talkin' bout chicken n' gravy biatch. Da solution may require
+lockin mutex
+variablez durin \fIfork\fP(), or it may entail simply resettin the
+state up in tha lil pimp after
+the \fIfork\fP() processin completes.
+.LP
+Da \fIpthread_atfork\fP() function serves up multi-threaded libraries
+with a means ta protect theyselves from innocent
+application programs dat call \fIfork\fP(), n' it serves up multi-threaded
+application
+programs wit a standard mechanizzle fo' protectin theyselves from
+\fIfork\fP() calls up in a
+library routine or tha application itself.
+.LP
+Da expected usage is dat tha \fIprepare\fP handlez acquires all
+mutex locks n' tha other two fork handlezs release em.
+.LP
+For example, a application can supply a \fIprepare\fP routine that
+acquires tha necessary mutexes tha library maintains and
+supply \fIchild\fP n' \fIparent\fP routines dat release dem mutexes,
+thus ensurin dat tha lil pimp gets a cold-ass lil consistent snapshot
+of tha state of tha library (and dat no mutexes is left stranded).
+Alternatively, some libraries might be able ta supply just a
+\fIchild\fP routine dat reinitializes tha mutexes up in tha library
+and all associated states ta some known value (for example, what
+it was when tha image was originally executed).
+.LP
+When \fIfork\fP() is called, only tha callin thread is duplicated
+in tha lil pimp process.
+Synchronization variablez remain up in tha same state up in tha lil pimp as
+they was up in tha parent all up in tha time \fIfork\fP() was called. Y'all KNOW dat shit, muthafucka! Thus,
+for example, mutex locks may be held by threadz dat no longer exist
+in tha lil pimp process, n' any associated states may be inconsistent.
+Da parent process may avoid dis by explicit code that
+acquires n' releases locks critical ta tha lil pimp via \fIpthread_atfork\fP().
+In addition, any critical threadz need ta be
+recreated n' reinitialized ta tha proper state up in tha lil pimp (also
+via \fIpthread_atfork\fP()).
+.LP
+A higher-level package may acquire locks on its own data structures
+before invokin lower-level packages. Under dis scenario,
+the order specified fo' fork handlez calls allows a simple rule of
+initialization fo' avoidin package deadlock: a package
+initializes all packages on which it dependz before it calls tha \fIpthread_atfork\fP()
+function fo' itself.
+.SH FUTURE DIRECTIONS
+.LP
+None.
+.SH SEE ALSO
+.LP
+\fIatexit\fP(), \fIfork\fP(), tha Base Definitions volume of
+IEEE\ Std\ 1003.1-2001, \fI<sys/types.h>\fP
+.SH COPYRIGHT
+Portionz of dis text is reprinted n' reproduced up in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard fo' Hype Technology
+-- Portable Operatin System Interface (POSIX), Da Open Group Base
+Specifications Issue 6, Copyright (C) 2001-2003 by tha Institute of
+Electrical n' Electronics Engineers, Inc n' Da Open Group. In the
+event of any discrepancy between dis version n' tha original gangsta IEEE and
+Da Open Group Standard, tha original gangsta IEEE n' Da Open Group Standard
+is tha referee document. Da original gangsta Standard can be obtained online at
+http://www.opengroup.org/unix/online.html .

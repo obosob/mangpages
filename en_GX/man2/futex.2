@@ -1,0 +1,333 @@
+.\" Page by b.hubert
+.\"
+.\" %%%LICENSE_START(FREELY_REDISTRIBUTABLE)
+.\" may be freely modified n' distributed
+.\" %%%LICENSE_END
+.\"
+.\" Niki A. Rahimi (LTC Securitizzle Development, narahimi@us.ibm.com)
+.\" added ERRORS section.
+.\"
+.\" Modified 2004-06-17 mtk
+.\" Modified 2004-10-07 aeb, added FUTEX_REQUEUE, FUTEX_CMP_REQUEUE
+.\"
+.\" FIXME
+.\" See also https://bugzilla.kernel.org/show_bug.cgi?id=14303
+.\" 2.6.14 addz FUTEX_WAKE_OP
+.\"	commit 4732efbeb997189d9f9b04708dc26bf8613ed721
+.\"	Author: Jakub Jelinek <jakub@redhat.com>
+.\"	Date:   Tue Sep 6 15:16:25 2005 -0700
+.\"
+.\" FIXME
+.\" 2.6.18 addz (Ingo Molnar) prioritizzle inheritizzle support:
+.\" FUTEX_LOCK_PI, FUTEX_UNLOCK_PI, n' FUTEX_TRYLOCK_PI.  These need
+.\" ta be documented up in tha manual page.  Probably there is sufficient
+.\" material up in tha kernel source file Documentation/pi-futex.txt.
+.\"	commit c87e2837be82df479a6bae9f155c43516d2feebc
+.\"	Author: Ingo Molnar <mingo@elte.hu>
+.\"	Date:   Tue Jun 27 02:54:58 2006 -0700
+.\"
+.\"	commit e2970f2fb6950183a34e8545faa093eb49d186e1
+.\"	Author: Ingo Molnar <mingo@elte.hu>
+.\"	Date:   Tue Jun 27 02:54:47 2006 -0700
+.\"
+.\"	See Documentation/futex-requeue-pi.txt
+.\"
+.\" FIXME
+.\" 2.6.25 addz FUTEX_WAKE_BITSET, FUTEX_WAIT_BITSET
+.\"	commit cd689985cf49f6ff5c8eddc48d98b9d581d9475d
+.\"	Author: Thomas Gleixner <tglx@linutronix.de>
+.\"	Date:   Fri Feb 1 17:45:14 2008 +0100
+.\"
+.\" FIXME
+.\" 2.6.31 addz FUTEX_WAIT_REQUEUE_PI, FUTEX_CMP_REQUEUE_PI
+.\"	commit 52400ba946759af28442dee6265c5c0180ac7122
+.\"	Author: Darren Hart <dvhltc@us.ibm.com>
+.\"	Date:   Fri Apr 3 13:40:49 2009 -0700
+.\"
+.\"	commit ba9c22f2c01cf5c88beed5a6b9e07d42e10bd358
+.\"	Author: Darren Hart <dvhltc@us.ibm.com>
+.\"	Date:   Mon Apr 20 22:22:22 2009 -0700
+.\"
+.\"	See Documentation/futex-requeue-pi.txt
+.\"
+.TH FUTEX 2 2013-07-30 "Linux" "Linux Programmerz Manual"
+.SH NAME
+futex \- fast user-space locking
+.SH SYNOPSIS
+.nf
+.sp
+.B "#include <linux/futex.h>"
+.B "#include <sys/time.h>"
+.sp
+.BI "int futex(int *" uaddr ", int " op ", int " val \
+", const struct timespec *" timeout ,
+.br
+.BI "          int *" uaddr2 ", int " val3 );
+.\" int *, biatch? void *, biatch? u32 *?
+.fi
+.SH DESCRIPTION
+.PP
+The
+.BR futex ()
+system call serves up a method for
+a program ta wait fo' a value at a given address ta chizzle, n' a
+method ta raise up mah playas waitin on a particular address (while the
+addresses fo' tha same memory up in separate processes may not be
+equal, tha kernel maps dem internally so tha same memory mapped in
+different locations will correspond for
+.BR futex ()
+calls).
+This system call is typically used to
+implement tha contended case of a lock up in shared memory, as
+busted lyrics bout in
+.BR futex (7).
+.PP
+When a
+.BR futex (7)
+operation did not finish uncontended up in user space, a cold-ass lil call need ta be made
+to tha kernel ta arbitrate.
+Arbitration can either mean puttin tha calling
+process ta chill or, conversely, wakin a waitin process.
+.PP
+Callaz of dis function is sposed ta fuckin adhere ta tha semantics as set up in
+.BR futex (7).
+As these
+semantics involve freestylin nonportable assembly instructions, dis up in turn
+probably means dat most playas will up in fact be library authors n' not
+general application pimpers.
+.PP
+The
+.I uaddr
+argument need ta point ta a aligned integer which stores tha counter.
+Da operation ta execute is passed via the
+.I op
+argument, along wit a value
+.IR val .
+.PP
+Five operations is currently defined:
+.TP
+.B FUTEX_WAIT
+This operation atomically verifies dat tha futex address
+.I uaddr
+still gotz nuff tha value
+.IR val ,
+and chills awaiting
+.B FUTEX_WAKE
+on dis futex address.
+If the
+.I timeout
+argument is non-NULL, its contents describe tha minimum
+duration of tha wait, which is infinite otherwise.
+Da arguments
+.I uaddr2
+and
+.I val3
+are ignored.
+
+For
+.BR futex (7),
+this call is executed if decrementin tha count gave a wack value
+(indicatin contention), n' will chill until another process releases
+the futex n' executes the
+.B FUTEX_WAKE
+operation.
+.TP
+.B FUTEX_WAKE
+This operation wakes at most \fIval\fP
+processes waitin on dis futex address (i.e., inside
+.BR FUTEX_WAIT ).
+Da arguments
+.IR timeout ,
+.I uaddr2
+and
+.I val3
+are ignored.
+
+For
+.BR futex (7),
+this is executed if incrementing
+the count flossed dat there was waiters, once tha futex value has been set
+to 1 (indicatin dat it be available).
+.TP
+.BR FUTEX_FD " (present up ta n' includin Linux 2.6.25)"
+To support asynchronous wakeups, dis operation associates a gangbangin' file descriptor
+with a gangbangin' futex.
+.\" , suitable fo' .BR poll (2).
+If another process executes a
+.BR FUTEX_WAKE ,
+the process will receive tha signal number dat was passed in
+.IR val .
+Da callin process must close tha returned file descriptor afta use.
+Da arguments
+.IR timeout ,
+.I uaddr2
+and
+.I val3
+are ignored.
+
+To prevent race conditions, tha calla should test if tha futex has
+been upped after
+.B FUTEX_FD
+returns.
+
+Because dat shiznit was inherently racy,
+.B FUTEX_FD
+has been removed from Linux 2.6.26 onward.
+.TP
+.BR FUTEX_REQUEUE " (since Linux 2.5.70)"
+This operation was introduced up in order ta avoid a "thunderin herd" effect
+when
+.B FUTEX_WAKE
+is used n' all processes woken up need ta acquire another futex.
+This call wakes up
+.I val
+processes, n' requeues all other waitas on tha futex at address
+.IR uaddr2 .
+Da arguments
+.I timeout
+and
+.I val3
+are ignored.
+.TP
+.BR FUTEX_CMP_REQUEUE " (since Linux 2.6.7)"
+There was a race up in tha intended use of
+.BR FUTEX_REQUEUE ,
+so
+.B FUTEX_CMP_REQUEUE
+was introduced.
+This is similar to
+.BR FUTEX_REQUEUE ,
+but first checks whether tha location
+.I uaddr
+still gotz nuff tha value
+.IR val3 .
+If not, tha operation fails wit tha error
+.BR EAGAIN .
+Da argument
+.I timeout
+is ignored.
+.SH RETURN VALUE
+.PP
+In tha event of a error, all operations return \-1, n' set
+.I errno
+to indicate tha error.
+Da return value on success dependz on tha operation,
+as busted lyrics bout up in tha followin list:
+.TP
+.B FUTEX_WAIT
+Returns 0 if tha process was woken by a
+.B FUTEX_WAKE
+call.
+See ERRORS fo' tha various possible error returns.
+.TP
+.B FUTEX_WAKE
+Returns tha number of processes woken up.
+.TP
+.B FUTEX_FD
+Returns tha freshly smoked up file descriptor associated wit tha futex.
+.TP
+.B FUTEX_REQUEUE
+Returns tha number of processes woken up.
+.TP
+.B FUTEX_CMP_REQUEUE
+Returns tha number of processes woken up.
+.SH ERRORS
+.TP
+.B EACCES
+No read access ta futex memory.
+.TP
+.B EAGAIN
+.B FUTEX_CMP_REQUEUE
+detected dat tha value pointed ta by
+.I uaddr
+is not equal ta tha expected value
+.IR val3 .
+(This probably indicates a race;
+use tha safe
+.B FUTEX_WAKE
+now.)
+.TP
+.B EFAULT
+Error retrieving
+.I timeout
+information from user space.
+.TP
+.B EINTR
+A
+.B FUTEX_WAIT
+operation was interrupted by a signal (see
+.BR signal (7))
+or a spurious wakeup.
+.TP
+.B EINVAL
+Invalid argument.
+.TP
+.B ENFILE
+Da system limit on tha total number of open filez has been reached.
+.TP
+.B ENOSYS
+Invalid operation specified in
+.IR op .
+.TP
+.B ETIMEDOUT
+Timeout durin the
+.B FUTEX_WAIT
+operation.
+.TP
+.B EWOULDBLOCK
+.I op
+was
+.BR FUTEX_WAIT
+and tha value pointed ta by
+.I uaddr
+was not equal ta tha expected value
+.I val
+at tha time of tha call.
+.SH VERSIONS
+.PP
+Initial futex support was merged up in Linux 2.5.7 but wit different semantics
+from what tha fuck was busted lyrics bout above.
+A 4-argument system call wit tha semantics
+busted lyrics bout up in dis page was introduced up in Linux 2.5.40.
+In Linux 2.5.70 one argument
+was added.
+In Linux 2.6.7 a sixth argument was added\(emmessy, especially
+on tha s390 architecture.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+.PP
+To reiterate, bare futexes is not intended as a easy as fuck -to-use abstraction
+for end-users.
+(There is no wrapper function fo' dis system call up in glibc.)
+Implementors is sposed ta fuckin be assembly literate n' ta have
+read tha sourcez of tha futex user-space library referenced below.
+.\" .SH "AUTHORS"
+.\" .PP
+.\" Futexes was designed n' hit dat shiznit on by
+.\" Hubertus Franke (IBM Thomas J. Watson Research Center),
+.\" Matthew Kirkwood, Ingo Molnar (Red Hat)
+.\" n' Rusty Russell (IBM Linux Technologizzle Center).
+.\" This page freestyled by bert hubert.
+.SH SEE ALSO
+.BR restart_syscall (2),
+.BR futex (7)
+.PP
+\fIFuss, Futexes n' Furwocks: Fast Userlevel Lockin up in Linux\fP
+(proceedingz of tha Ottawa Linux Symposium 2002), online at
+.br
+.UR http://kernel.org\:/doc\:/ols\:/2002\:/ols2002-pages-479-495.pdf
+.UE
+.PP
+Futex example library, futex-*.tar.bz2 at
+.br
+.UR ftp://ftp.nl.kernel.org\:/pub\:/linux\:/kernel\:/people\:/rusty/
+.UE
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

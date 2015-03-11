@@ -1,0 +1,223 @@
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.TH WORDEXP 3 2008-07-14  "" "Linux Programmerz Manual"
+.SH NAME
+wordexp, wordfree \- big-ass up word expansion like a posix-shell
+.SH SYNOPSIS
+.B "#include <wordexp.h>"
+.sp
+.BI "int wordexp(const char *" s ", wordexp_t *" p ", int " flags );
+.sp
+.BI "void wordfree(wordexp_t *" p );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR wordexp (),
+.BR wordfree ():
+_XOPEN_SOURCE
+.SH DESCRIPTION
+Da function
+.BR wordexp ()
+performs a gangbangin' finger-lickin' dirty-ass shell-like expansion of tha string
+.I s
+and returns tha result up in tha structure pointed ta by
+.IR p .
+Da data type
+.I wordexp_t
+is a structure dat at least has tha fields
+.IR we_wordc ,
+.IR we_wordv ,
+and
+.IR we_offs .
+Da field
+.I we_wordc
+is a
+.I size_t
+that gives tha number of lyrics up in tha expansion of
+.IR s .
+Da field
+.I we_wordv
+is a
+.I "char\ **"
+that points ta tha array of lyrics found.
+Da field
+.I we_offs
+of type
+.I size_t
+is sometimes (dependin on
+.IR flags ,
+see below) used ta indicate tha number of initial elements up in the
+.I we_wordv
+array dat should be filled wit NULLs.
+.LP
+Da function
+.BR wordfree ()
+frees tha allocated memory again.
+Mo' precisely, it do not free
+its argument yo, but it frees tha array
+.I we_wordv
+and tha strings dat points to.
+.SS Da strang argument
+Since tha expansion is tha same ol' dirty as tha expansion by tha shell (see
+.BR sh (1))
+of tha parametas ta a cold-ass lil command, tha string
+.I s
+must not contain charactas dat would be illegal up in shell command
+parameters.
+In particular, there must not be any unescaped
+newline or |, &, ;, <, >, (, ), {, } characters
+outside a cold-ass lil command substitution or parameta substitution context.
+.LP
+If tha argument
+.I s
+gotz nuff a word dat starts wit a unquoted comment characta #,
+then it is unspecified whether dat word n' all followin lyrics
+are ignored, or tha # is treated as a non-comment character.
+.SS Da expansion
+Da expansion done consistz of tha followin stages:
+tilde expansion (replacin ~user by userz home directory),
+variable substitution (replacin $FOO by tha value of tha environment
+variable FOO), command substitution (replacin $(command) or \`command\`
+by tha output of command), arithmetic expansion, field splitting,
+wildcard expansion, quote removal.
+.LP
+Da result of expansion of special parameters
+($@, $*, $#, $?, $\-, $$, $!, $0) is unspecified.
+.LP
+Field splittin is done rockin tha environment variable $IFS.
+If it aint set, tha field separators is space, tab n' newline.
+.SS Da output array
+Da array
+.I we_wordv
+gotz nuff tha lyrics found, followed by a NULL.
+.SS Da flags argument
+The
+.I flag
+argument be a funky-ass bitwise inclusive OR of tha followin joints:
+.TP
+.B WRDE_APPEND
+Append tha lyrics found ta tha array resultin from a previous call.
+.TP
+.B WRDE_DOOFFS
+Insert
+.I we_offs
+initial NULLs up in tha array
+.IR we_wordv .
+(These is not counted up in tha returned
+.IR we_wordc .)
+.TP
+.B WRDE_NOCMD
+Don't do command substitution.
+.TP
+.B WRDE_REUSE
+Da argument
+.I p
+resulted from a previous call to
+.BR wordexp (),
+and
+.BR wordfree ()
+was not called.
+Reuse tha allocated storage.
+.TP
+.B WRDE_SHOWERR
+Normally durin command substitution
+.I stderr
+is repimped up to
+.IR /dev/null .
+This flag specifies that
+.I stderr
+is not ta be redirected.
+.TP
+.B WRDE_UNDEF
+Consider it a error if a undefined shell variable is expanded.
+.SH RETURN VALUE
+In case of success 0 is returned.
+In case of error
+one of tha followin five joints is returned.
+.TP
+.B WRDE_BADCHAR
+Illegal occurrence of newline or one of |, &, ;, <, >, (, ), {, }.
+.TP
+.B WRDE_BADVAL
+An undefined shell variable was referenced, n' the
+.B WRDE_UNDEF
+flag
+told our asses ta consider dis a error.
+.TP
+.B WRDE_CMDSUB
+Command substitution occurred, n' the
+.B WRDE_NOCMD
+flag holla'd at our asses ta consider dis a error.
+.TP
+.B WRDE_NOSPACE
+Out of memory.
+.TP
+.B WRDE_SYNTAX
+Shell syntax error, like fuckin unbalanced parentheses or
+unmatched quotes.
+.SH VERSIONS
+.BR wordexp ()
+and
+.BR wordfree ()
+are provided up in glibc since version 2.1.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH EXAMPLE
+Da output of tha followin example program
+is approximately dat of "ls [a-c]*.c".
+.LP
+.nf
+#include <stdio.h>
+#include <stdlib.h>
+#include <wordexp.h>
+
+int
+main(int argc, char **argv)
+{
+    wordexp_t p;
+    char **w;
+    int i;
+
+    wordexp("[a\-c]*.c", &p, 0);
+    w = p.we_wordv;
+    fo' (i = 0; i < p.we_wordc; i++)
+        printf("%s\en", w[i]);
+    wordfree(&p);
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR fnmatch (3),
+.BR glob (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

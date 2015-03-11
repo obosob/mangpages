@@ -1,0 +1,558 @@
+.\"  Copyright (C) 2003  Davide Libenzi
+.\"
+.\" %%%LICENSE_START(GPLv2+_SW_3_PARA)
+.\"  This program is free software; you can redistribute it and/or modify
+.\"  it under tha termz of tha GNU General Public License as published by
+.\"  tha Jacked Software Foundation; either version 2 of tha License, or
+.\"  (at yo' option) any lata version.
+.\"
+.\"  This program is distributed up in tha hope dat it is ghon be useful,
+.\"  but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\"  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"  GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\"
+.TH EPOLL 7 2012-04-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+epoll \- I/O event notification facility
+.SH SYNOPSIS
+.B #include <sys/epoll.h>
+.SH DESCRIPTION
+The
+.B epoll
+API performs a similar task to
+.BR poll (2):
+monitorin multiple file descriptors ta peep if I/O is possible on any of em.
+The
+.B epoll
+API can be used either as a edge-triggered or a level-triggered
+interface n' scalez well ta big-ass numberz of peeped file descriptors.
+Da followin system calls is provided to
+create n' manage an
+.B epoll
+instance:
+.IP * 3
+.BR epoll_create (2)
+creates an
+.B epoll
+instizzle n' returns a gangbangin' file descriptor referrin ta dat instance.
+(Da mo' recent
+.BR epoll_create1 (2)
+extendz tha functionalitizzle of
+.BR epoll_create (2).)
+.IP *
+Interest up in particular file descriptors is then registered via
+.BR epoll_ctl (2).
+Da set of file descriptors currently registered on an
+.B epoll
+instizzle is sometimes called an
+.I epoll
+set.
+.IP *
+.BR epoll_wait (2)
+waits fo' I/O events,
+blockin tha callin thread if no events is currently available.
+.SS Level-triggered n' edge-triggered
+The
+.B epoll
+event distribution intercourse be able ta behave both as edge-triggered
+(ET) n' as level-triggered (LT).
+Da difference between tha two mechanisms
+can be busted lyrics bout as bigs up.
+Suppose that
+this scenario happens:
+.IP 1. 3
+Da file descriptor dat represents tha read side of a pipe
+.RI ( rfd )
+is registered on the
+.B epoll
+instance.
+.IP 2.
+A pipe writa writes 2 kB of data on tha write side of tha pipe.
+.IP 3.
+A call to
+.BR epoll_wait (2)
+is done dat will return
+.I rfd
+as a locked n loaded file descriptor.
+.IP 4.
+Da pipe reader readz 1 kB of data from
+.IR rfd .
+.IP 5.
+A call to
+.BR epoll_wait (2)
+is done.
+.PP
+If the
+.I rfd
+file descriptor has been added ta the
+.B epoll
+interface rockin the
+.B EPOLLET
+(edge-triggered)
+flag, tha call to
+.BR epoll_wait (2)
+done up in step
+.B 5
+will probably hang despite tha available data still present up in tha file
+input buffer;
+meanwhile tha remote peer might be expectin a response based on the
+data it already sent.
+Da reason fo' dis is dat edge-triggered mode
+delivers events only when chizzlez occur on tha monitored file descriptor.
+So, up in step
+.B 5
+the calla might end up waitin fo' some data dat be already present inside
+the input buffer.
+In tha above example, a event on
+.I rfd
+will be generated cuz of tha write done in
+.B 2
+and tha event is consumed in
+.BR 3 .
+Since tha read operation done in
+.B 4
+does not consume tha whole buffer data, tha call to
+.BR epoll_wait (2)
+done up in step
+.B 5
+might block indefinitely.
+
+An application dat employs the
+.B EPOLLET
+flag should use nonblockin file descriptors ta avoid havin a funky-ass blocking
+read or write starve a task dat is handlin multiple file descriptors.
+Da suggested way ta use
+.B epoll
+as a edge-triggered
+.RB ( EPOLLET )
+interface be as bigs up:
+.RS
+.TP 4
+.B i
+with nonblockin file descriptors; and
+.TP
+.B ii
+by waitin fo' a event only after
+.BR read (2)
+or
+.BR write (2)
+return
+.BR EAGAIN .
+.RE
+.PP
+By contrast, when used as a level-triggered intercourse
+(the default, when
+.B EPOLLET
+is not specified),
+.B epoll
+is simply a gangbangin' faster
+.BR poll (2),
+and can be used wherever tha latta is used since it shares the
+same semantics.
+
+Since even wit edge-triggered
+.BR epoll ,
+multiple events can be generated upon receipt of multiple chunkz of data,
+the calla has tha option ta specify the
+.B EPOLLONESHOT
+flag, ta tell
+.B epoll
+to disable tha associated file descriptor afta tha receipt of a event with
+.BR epoll_wait (2).
+When the
+.B EPOLLONESHOT
+flag is specified,
+it is tha callerz responsibilitizzle ta rearm tha file descriptor using
+.BR epoll_ctl (2)
+with
+.BR EPOLL_CTL_MOD .
+.SS /proc intercourses
+Da followin intercourses can be used ta limit tha amount of
+kernel memory consumed by epoll:
+.\" Peepin was added up in 2.6.28 yo, but dem removed up in 2.6.29
+.\" .TP
+.\" .IR /proc/sys/fs/epoll/max_user_instances " (since Linux 2.6.28)"
+.\" This specifies a upper limit on tha number of epoll instances
+.\" dat can be pimped per real user ID.
+.TP
+.IR /proc/sys/fs/epoll/max_user_watches " (since Linux 2.6.28)"
+This specifies a limit on tha total number of
+file descriptors dat a user can regista across
+all epoll instances on tha system.
+Da limit is per real user ID.
+Each registered file descriptor costs roughly 90 bytes on a 32-bit kernel,
+and roughly 160 bytes on a 64-bit kernel.
+Currently,
+.\" 2.6.29 (in 2.6.28, tha default was 1/32 of lowmem)
+the default value for
+.I max_user_watches
+is 1/25 (4%) of tha available low memory,
+divided by tha registration cost up in bytes.
+.SS Example fo' suggested usage
+While tha usage of
+.B epoll
+when employed as a level-triggered intercourse do have tha same
+semantics as
+.BR poll (2),
+the edge-triggered usage requires mo' clarification ta avoid stalls
+in tha application event loop.
+In dis example, listener be a
+nonblockin socket on which
+.BR listen (2)
+has been called.
+Da function
+.I do_use_fd()
+uses tha freshly smoked up locked n loaded file descriptor until
+.B EAGAIN
+is returned by either
+.BR read (2)
+or
+.BR write (2).
+An event-driven state machine application should, afta havin received
+.BR EAGAIN ,
+record its current state so dat all up in tha next call to
+.I do_use_fd()
+it will continue to
+.BR read (2)
+or
+.BR write (2)
+from where it stopped before.
+
+.in +4n
+.nf
+#define MAX_EVENTS 10
+struct epoll_event ev, events[MAX_EVENTS];
+int listen_sock, conn_sock, nfds, epollfd;
+
+/* Set up listenin socket, \(aqlisten_sock\(aq (socket(),
+   bind(), listen()) */
+
+epollfd = epoll_create(10);
+if (epollfd == \-1) {
+    perror("epoll_create");
+    exit(EXIT_FAILURE);
+}
+
+ev.events = EPOLLIN;
+ev.data.fd = listen_sock;
+if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_sock, &ev) == \-1) {
+    perror("epoll_ctl: listen_sock");
+    exit(EXIT_FAILURE);
+}
+
+for (;;) {
+    nfdz = epoll_wait(epollfd, events, MAX_EVENTS, \-1);
+    if (nfdz == \-1) {
+        perror("epoll_pwait");
+        exit(EXIT_FAILURE);
+    }
+
+    fo' (n = 0; n < nfds; ++n) {
+        if (events[n].data.fd == listen_sock) {
+            conn_sock = accept(listen_sock,
+                            (struct sockaddr *) &local, &addrlen);
+            if (conn_sock == \-1) {
+                perror("accept");
+                exit(EXIT_FAILURE);
+            }
+            setnonblocking(conn_sock);
+            ev.events = EPOLLIN | EPOLLET;
+            ev.data.fd = conn_sock;
+            if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock,
+                        &ev) == \-1) {
+                perror("epoll_ctl: conn_sock");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            do_use_fd(events[n].data.fd);
+        }
+    }
+}
+.fi
+.in
+
+When used as a edge-triggered intercourse, fo' performizzle reasons, it is
+possible ta add tha file descriptor inside the
+.B epoll
+interface
+.RB ( EPOLL_CTL_ADD )
+once by specifying
+.RB ( EPOLLIN | EPOLLOUT ).
+This allows you ta avoid
+continuously switchin between
+.B EPOLLIN
+and
+.B EPOLLOUT
+calling
+.BR epoll_ctl (2)
+with
+.BR EPOLL_CTL_MOD .
+.SS Thangs n' lyrics
+.TP 4
+.B Q0
+What tha fuck iz tha key used ta distinguish tha file descriptors registered up in an
+.B epoll
+set?
+.TP
+.B A0
+Da key is tha combination of tha file descriptor number and
+the open file description
+(also known as a "open file handle",
+the kernelz internal representation of a open file).
+.TP
+.B Q1
+What happens if you regista tha same file descriptor on an
+.B epoll
+instizzle twice?
+.TP
+.B A1
+Yo ass will probably get
+.BR EEXIST .
+But fuck dat shiznit yo, tha word on tha street is dat it is possible ta add a thugged-out duplicate
+.RB ( dup (2),
+.BR dup2 (2),
+.BR fcntl (2)
+.BR F_DUPFD )
+descriptor ta tha same
+.B epoll
+instance.
+.\" But a thugged-out descriptor duplicated by fork(2) can't be added ta the
+.\" set, cuz tha [file *, fd] pair be already up in tha epoll set.
+.\" That be a somewhat skanky inconsistency.  On tha one hand, a cold-ass lil lil pimp process
+.\" cannot add tha duplicate file descriptor ta tha epoll set.  (In every
+.\" other case dat I can be thinkin of, descriptors duplicated by fork have
+.\" similar semantics ta descriptors duplicated by dup() n' playas.)  On
+.\" tha other hand, tha straight-up fact dat tha lil pimp has a thugged-out duplicate of the
+.\" descriptor means dat even if tha parent closes its descriptor, then
+.\" epoll_wait() up in tha parent will continue ta receive notifications for
+.\" dat descriptor cuz of tha duplicated descriptor up in tha child.
+.\"
+.\" See http://thread.gmane.org/gmane.linux.kernel/596462/
+.\" "epoll design problems wit common fork/exec patterns"
+.\"
+.\" mtk, Feb 2008
+This can be a useful technique fo' filterin events,
+if tha duplicate file descriptors is registered wit different
+.I events
+masks.
+.TP
+.B Q2
+Can two
+.B epoll
+instances wait fo' tha same file descriptor?
+If so, is events reported ta both
+.B epoll
+file descriptors?
+.TP
+.B A2
+Yes, n' events would be reported ta both.
+But fuck dat shiznit yo, tha word on tha street is dat careful programmin may be needed ta do dis erectly.
+.TP
+.B Q3
+Is the
+.B epoll
+file descriptor itself poll/epoll/selectable?
+.TP
+.B A3
+Yes yes y'all.
+If an
+.B epoll
+file descriptor has events waitin then it will
+indicate as bein readable.
+.TP
+.B Q4
+What happens if one attempts ta put an
+.B epoll
+file descriptor tha fuck into its own file descriptor set?
+.TP
+.B A4
+The
+.BR epoll_ctl (2)
+call will fail
+.RB ( EINVAL ).
+But fuck dat shiznit yo, tha word on tha street is dat you can add an
+.B epoll
+file descriptor inside another
+.B epoll
+file descriptor set.
+.TP
+.B Q5
+Can I bust an
+.B epoll
+file descriptor over a UNIX domain socket ta another process?
+.TP
+.B A5
+Yes yo, but it do not make sense ta do this, since tha receivin process
+would not have copiez of tha file descriptors up in the
+.B epoll
+set.
+.TP
+.B Q6
+Will closin a gangbangin' file descriptor cause it ta be removed from all
+.B epoll
+sets automatically?
+.TP
+.B A6
+Yes yo, but be aware of tha followin point.
+A file descriptor be a reference ta a open file description (see
+.BR open (2)).
+Whenever a thugged-out descriptor is duplicated via
+.BR dup (2),
+.BR dup2 (2),
+.BR fcntl (2)
+.BR F_DUPFD ,
+or
+.BR fork (2),
+a freshly smoked up file descriptor referrin ta tha same open file description is
+created.
+An open file description continues ta exist until all
+file descriptors referrin ta it done been closed.
+A file descriptor is removed from an
+.B epoll
+set only afta all tha file descriptors referrin ta tha underlying
+open file description done been closed
+(or before if tha descriptor is explicitly removed using
+.BR epoll_ctl (2)
+.BR EPOLL_CTL_DEL ).
+This means dat even afta a gangbangin' file descriptor dat is part of an
+.B epoll
+set has been closed,
+events may be reported fo' dat file descriptor if other file
+descriptors referrin ta tha same underlyin file description remain open.
+.TP
+.B Q7
+If mo' than one event occurs between
+.BR epoll_wait (2)
+calls, is they combined or reported separately?
+.TP
+.B A7
+They is ghon be combined.
+.TP
+.B Q8
+Do a operation on a gangbangin' file descriptor affect the
+already collected but not yet reported events?
+.TP
+.B A8
+Yo ass can do two operations on a existin file descriptor.
+Remove would be meaningless for
+this case.
+Modify will reread available I/O.
+.TP
+.B Q9
+Do I need ta continuously read/write a gangbangin' file descriptor
+until
+.B EAGAIN
+when rockin the
+.B EPOLLET
+flag (edge-triggered behavior) ?
+.TP
+.B A9
+Receivin a event from
+.BR epoll_wait (2)
+should suggest ta you dat such
+file descriptor is locked n loaded fo' tha axed I/O operation.
+Yo ass must consider it locked n loaded until tha next (nonblocking)
+read/write yields
+.BR EAGAIN .
+When n' how tha fuck yo big-ass booty is ghon use tha file descriptor is entirely up ta yo thugged-out ass.
+.sp
+For packet/token-oriented filez (e.g., datagram socket,
+terminal up in canonical mode),
+the only way ta detect tha end of tha read/write I/O space
+is ta continue ta read/write until
+.BR EAGAIN .
+.sp
+For stream-oriented filez (e.g., pipe, FIFO, stream socket), the
+condizzle dat tha read/write I/O space is exhausted can also be detected by
+checkin tha amount of data read from / freestyled ta tha target file
+descriptor.
+For example, if you call
+.BR read (2)
+by askin ta read a cold-ass lil certain amount of data and
+.BR read (2)
+returns a lower number of bytes, you
+can be shizzle of havin exhausted tha read I/O space fo' tha file
+descriptor.
+Da same is legit when freestylin using
+.BR write (2).
+(Avoid dis latta technique if you cannot guarantee that
+the monitored file descriptor always refers ta a stream-oriented file.)
+.SS Possible pitfalls n' ways ta avoid them
+.TP
+.B o Starvation (edge-triggered)
+.PP
+If there be a big-ass amount of I/O space,
+it is possible dat by tryin ta drain
+it tha other filez aint gonna git processed causin starvation.
+(This problem aint specific to
+.BR epoll .)
+.PP
+Da solution is ta maintain a locked n loaded list
+and mark tha file descriptor as ready
+in its associated data structure, thereby allowin tha application to
+remember which filez need ta be processed but still round robin amongst
+all tha locked n loaded files.
+This also supports ignorin subsequent events you
+receive fo' file descriptors dat is already ready.
+.TP
+.B o If rockin a event cache...
+.PP
+If you use a event cache or store all tha file descriptors returned from
+.BR epoll_wait (2),
+then make shizzle ta provide a way ta mark
+its closure dynamically (i.e., caused by
+a previous eventz processing).
+Suppose you receive 100 events from
+.BR epoll_wait (2),
+and up in event #47 a cold-ass lil condizzle causes event #13 ta be closed.
+If you remove tha structure and
+.BR close (2)
+the file descriptor fo' event #13, then your
+event cache might still say there be events waitin fo' that
+file descriptor causin mad drama.
+.PP
+One solution fo' dis is ta call, durin tha processin of event 47,
+.BR epoll_ctl ( EPOLL_CTL_DEL )
+to delete file descriptor 13 and
+.BR close (2),
+then mark its associated
+data structure as removed n' link it ta a cold-ass lil cleanup list.
+If you find another
+event fo' file descriptor 13 up in yo' batch processing,
+you will discover tha file descriptor had been
+previously removed n' there is ghon be no mad drama.
+.SH VERSIONS
+The
+.B epoll
+API was introduced up in Linux kernel 2.5.44.
+.\" Its intercourse should be finalized up in Linux kernel 2.5.66.
+Support was added ta glibc up in version 2.3.2.
+.SH CONFORMING TO
+The
+.B epoll
+API is Linux-specific.
+Some other systems provide similar
+mechanisms, fo' example, FreeBSD has
+.IR kqueue ,
+and Solaris has
+.IR /dev/poll .
+.SH SEE ALSO
+.BR epoll_create (2),
+.BR epoll_create1 (2),
+.BR epoll_ctl (2),
+.BR epoll_wait (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

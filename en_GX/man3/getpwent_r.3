@@ -1,0 +1,195 @@
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.TH GETPWENT_R 3 2010-10-21 "GNU" "Linux Programmerz Manual"
+.SH NAME
+getpwent_r, fgetpwent_r \- git passwd file entry reentrantly
+.SH SYNOPSIS
+.nf
+.B #include <pwd.h>
+.sp
+.BI "int getpwent_r(struct passwd *" pwbuf ", char *" buf ,
+.br
+.BI "               size_t " buflen ", struct passwd **" pwbufp );
+.sp
+.BI "int fgetpwent_r(FILE *" fp ", struct passwd *" pwbuf ", char *" buf ,
+.br
+.BI "                size_t " buflen ", struct passwd **" pwbufp );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR getpwent_r (),
+_BSD_SOURCE || _SVID_SOURCE
+.br
+.BR fgetpwent_r ():
+_SVID_SOURCE
+.SH DESCRIPTION
+Da functions
+.BR getpwent_r ()
+and
+.BR fgetpwent_r ()
+are tha reentrant versions of
+.BR getpwent (3)
+and
+.BR fgetpwent (3).
+Da forma readz tha next passwd entry from tha stream initialized by
+.BR setpwent (3).
+Da latta readz tha next passwd entry from tha stream
+.IR fp .
+.PP
+Da \fIpasswd\fP structure is defined in
+.I <pwd.h>
+as bigs up:
+.sp
+.in +4n
+.nf
+struct passwd {
+    char    *pw_name;      /* username */
+    char    *pw_passwd;    /* user password */
+    uid_t    pw_uid;       /* user ID */
+    gid_t    pw_gid;       /* crew ID */
+    char    *pw_gecos;     /* user shiznit */
+    char    *pw_dir;       /* home directory */
+    char    *pw_shell;     /* shell program */
+};
+.fi
+.in
+.PP
+For mo' shiznit bout tha fieldz of dis structure, see
+.BR passwd (5).
+
+Da nonreentrant functions return a pointa ta static storage,
+where dis static storage gotz nuff further pointas ta user
+name, password, gecos field, home directory n' shell.
+Da reentrant functions busted lyrics bout here return all of dat in
+caller-provided buffers.
+First of all there is tha buffer
+.I pwbuf
+that can hold a \fIstruct passwd\fP.
+And next tha buffer
+.I buf
+of size
+.I buflen
+that can hold additionizzle strings.
+Da result of these functions, tha \fIstruct passwd\fP read from tha stream,
+is stored up in tha provided buffer
+.IR *pwbuf ,
+and a pointa ta dis \fIstruct passwd\fP is returned in
+.IR *pwbufp .
+.SH RETURN VALUE
+On success, these functions return 0 and
+.I *pwbufp
+is a pointa ta tha \fIstruct passwd\fP.
+On error, these functions return a error value and
+.I *pwbufp
+is NULL.
+.SH ERRORS
+.TP
+.B ENOENT
+No mo' entries.
+.TP
+.B ERANGE
+Insufficient buffer space supplied.
+Try again n' again n' again wit larger buffer.
+.SH CONFORMING TO
+These functions is GNU extensions, done up in a steez resembling
+the POSIX version of functions like
+.BR getpwnam_r (3).
+Other systems use prototype
+.sp
+.nf
+.in +4n
+struct passwd *
+getpwent_r(struct passwd *pwd, char *buf, int buflen);
+.in
+.fi
+.sp
+or, better,
+.sp
+.nf
+.in +4n
+int
+getpwent_r(struct passwd *pwd, char *buf, int buflen,
+           FILE **pw_fp);
+.in
+.fi
+.SH NOTES
+Da function
+.BR getpwent_r ()
+is not straight-up reentrant since it shares tha readin position
+in tha stream wit all other threads.
+.SH EXAMPLE
+.nf
+#define _GNU_SOURCE
+#include <pwd.h>
+#include <stdio.h>
+#define BUFLEN 4096
+
+int
+main(void)
+{
+    struct passwd pw, *pwp;
+    char buf[BUFLEN];
+    int i;
+
+    setpwent();
+    while (1) {
+        i = getpwent_r(&pw, buf, BUFLEN, &pwp);
+        if (i)
+            break;
+        printf("%s (%d)\etHOME %s\etSHELL %s\en", pwp\->pw_name,
+               pwp\->pw_uid, pwp\->pw_dir, pwp\->pw_shell);
+    }
+    endpwent();
+    exit(EXIT_SUCCESS);
+}
+.fi
+.\" like add error checkin - should use strerror_r
+.\" #include <errno.h>
+.\" #include <stdlib.h>
+.\"         if (i) {
+.\"               if (i == ENOENT)
+.\"                     break;
+.\"               printf("getpwent_r: %s", strerror(i));
+.\"               exit(EXIT_SUCCESS);
+.\"         }
+.SH SEE ALSO
+.BR fgetpwent (3),
+.BR getpw (3),
+.BR getpwent (3),
+.BR getpwnam (3),
+.BR getpwuid (3),
+.BR putpwent (3),
+.BR passwd (5)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

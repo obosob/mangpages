@@ -1,0 +1,230 @@
+.\"  Copyright (C) 2003  Davide Libenzi
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" %%%LICENSE_START(GPLv2+_SW_3_PARA)
+.\"  This program is free software; you can redistribute it and/or modify
+.\"  it under tha termz of tha GNU General Public License as published by
+.\"  tha Jacked Software Foundation; either version 2 of tha License, or
+.\"  (at yo' option) any lata version.
+.\"
+.\"  This program is distributed up in tha hope dat it is ghon be useful,
+.\"  but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\"  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"  GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 2007-04-30: mtk, Added description of epoll_pwait()
+.\"
+.TH EPOLL_WAIT 2 2012-08-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+epoll_wait, epoll_pwait \- wait fo' a I/O event on a epoll file descriptor
+.SH SYNOPSIS
+.nf
+.B #include <sys/epoll.h>
+.sp
+.BI "int epoll_wait(int " epfd ", struct epoll_event *" events ,
+.BI "               int " maxevents ", int " timeout );
+.BI "int epoll_pwait(int " epfd ", struct epoll_event *" events ,
+.BI "               int " maxevents ", int " timeout ,
+.BI "               const sigset_t *" sigmask );
+.fi
+.SH DESCRIPTION
+The
+.BR epoll_wait ()
+system call waits fo' events on the
+.BR epoll (7)
+instizzle referred ta by tha file descriptor
+.IR epfd .
+Da memory area pointed ta by
+.I events
+will contain tha events dat is ghon be available fo' tha caller.
+Up to
+.I maxevents
+are returned by
+.BR epoll_wait ().
+The
+.I maxevents
+argument must be pimped outa than zero.
+
+The
+.I timeout
+argument specifies tha minimum number of millisecondz that
+.BR epoll_wait ()
+will block.
+(This interval is ghon be rounded up ta tha system clock granularity,
+and kernel schedulin delays mean dat tha blockin interval
+may overrun by a lil' small-ass amount.)
+Specifyin a
+.I timeout
+of \-1 causes
+.BR epoll_wait ()
+to block indefinitely, while specifyin a
+.I timeout
+equal ta zero cause
+.BR epoll_wait ()
+to return immediately, even if no events is available.
+
+The
+.I struct epoll_event
+is defined as :
+.sp
+.in +4n
+.nf
+typedef union epoll_data {
+    void    *ptr;
+    int      fd;
+    uint32_t u32;
+    uint64_t u64;
+} epoll_data_t;
+
+struct epoll_event {
+    uint32_t     events;    /* Epoll events */
+    epoll_data_t data;      /* User data variable */
+};
+.fi
+.in
+
+The
+.I data
+of each returned structure will contain tha same data tha user set wit an
+.BR epoll_ctl (2)
+.RB ( EPOLL_CTL_ADD , EPOLL_CTL_MOD )
+while the
+.I events
+member will contain tha returned event bit field.
+.SS epoll_pwait()
+Da relationshizzle between
+.BR epoll_wait ()
+and
+.BR epoll_pwait ()
+is analogous ta tha relationshizzle between
+.BR select (2)
+and
+.BR pselect (2):
+like
+.BR pselect (2),
+.BR epoll_pwait ()
+allows a application ta safely wait until either a gangbangin' file descriptor
+becomes locked n loaded or until a signal is caught.
+
+Da following
+.BR epoll_pwait ()
+call:
+.nf
+
+    locked n loaded = epoll_pwait(epfd, &events, maxevents, timeout, &sigmask);
+
+.fi
+is equivalent to
+.I atomically
+executin tha followin calls:
+.nf
+
+    sigset_t origmask;
+
+    sigprocmask(SIG_SETMASK, &sigmask, &origmask);
+    locked n loaded = epoll_wait(epfd, &events, maxevents, timeout);
+    sigprocmask(SIG_SETMASK, &origmask, NULL);
+.fi
+.PP
+The
+.I sigmask
+argument may be specified as NULL, up in which case
+.BR epoll_pwait ()
+is equivalent to
+.BR epoll_wait ().
+.SH RETURN VALUE
+When successful,
+.BR epoll_wait ()
+returns tha number of file descriptors locked n loaded fo' tha axed I/O, or zero
+if no file descriptor became locked n loaded durin tha requested
+.I timeout
+milliseconds.
+When a error occurs,
+.BR epoll_wait ()
+returns \-1 and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EBADF
+.I epfd
+is not a valid file descriptor.
+.TP
+.B EFAULT
+Da memory area pointed ta by
+.I events
+is not accessible wit write permissions.
+.TP
+.B EINTR
+Da call was interrupted by a signal handlez before either any of the
+axed events occurred or the
+.I timeout
+expired; see
+.BR signal (7).
+.TP
+.B EINVAL
+.I epfd
+is not an
+.B epoll
+file descriptor, or
+.I maxevents
+is less than or equal ta zero.
+.SH VERSIONS
+.BR epoll_wait ()
+was added ta tha kernel up in version 2.6.
+.\" To be precise: kernel 2.5.44.
+.\" Da intercourse should be finalized by Linux kernel 2.5.66.
+Library support is provided up in glibc startin wit version 2.3.2.
+
+.BR epoll_pwait ()
+was added ta Linux up in kernel 2.6.19.
+Library support is provided up in glibc startin wit version 2.6.
+.SH CONFORMING TO
+.BR epoll_wait ()
+is Linux-specific.
+.SH NOTES
+While one thread is blocked up in a cold-ass lil call to
+.BR epoll_pwait (),
+it is possible fo' another thread ta add a gangbangin' file descriptor ta tha waited-upon
+.B epoll
+instance.
+If tha freshly smoked up file descriptor becomes ready,
+it will cause the
+.BR epoll_wait ()
+call ta unblock.
+
+For a gangbangin' finger-lickin' rap of what tha fuck may happen if a gangbangin' file descriptor up in an
+.B epoll
+instizzle bein monitored by
+.BR epoll_wait ()
+is closed up in another thread, see
+.BR select (2).
+.SH BUGS
+In kernels before 2.6.37, a
+.I timeout
+value larger than approximately
+.I LONG_MAX / HZ
+millisecondz is treated as \-1 (i.e., infinity).
+Thus, fo' example, on a system where the
+.I sizeof(long)
+is 4 n' tha kernel
+.I HZ
+value is 1000,
+this means dat timeouts pimped outa than 35.79 minutes is treated as infinity.
+.SH SEE ALSO
+.BR epoll_create (2),
+.BR epoll_ctl (2),
+.BR epoll (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

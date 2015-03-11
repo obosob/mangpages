@@ -1,0 +1,249 @@
+.\" Copyright (C) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH PATH_RESOLUTION 7 2009-12-05 "Linux" "Linux Programmerz Manual"
+.SH NAME
+path_resolution \- how tha fuck a pathname is resolved ta a gangbangin' file
+.SH DESCRIPTION
+Some UNIX/Linux system calls have as parameta one or mo' filenames.
+A filename (or pathname) is resolved as bigs up.
+.SS Step 1: start of tha resolution process
+If tha pathname starts wit tha \(aq/\(aq character,
+the startin lookup directory
+is tha root directory of tha callin process.
+(A process inherits its
+root directory from its parent.
+Usually dis is ghon be tha root directory
+of tha file hierarchy.
+A process may git a gangbangin' finger-lickin' different root directory
+by use of the
+.BR chroot (2)
+system call.
+A process may git a entirely private mount namespace up in case
+it\(emor one of its ancestors\(emwas started by a invocation of the
+.BR clone (2)
+system call dat had the
+.B CLONE_NEWNS
+flag set.)
+This handlez tha \(aq/\(aq part of tha pathname.
+
+If tha pathname do not start wit tha \(aq/\(aq character, the
+startin lookup directory of tha resolution process is tha current working
+directory of tha process.
+(This be also inherited from tha parent.
+It can be chizzled by use of the
+.BR chdir (2)
+system call.)
+
+Pathnames startin wit a \(aq/\(aq characta is called absolute pathnames.
+Pathnames not startin wit a \(aq/\(aq is called relatizzle pathnames.
+.SS Step 2: strutt along tha path
+Set tha current lookup directory ta tha startin lookup directory.
+Now, fo' each nonfinal component of tha pathname, where a cold-ass lil component
+is a substrin delimited by \(aq/\(aq characters, dis component is looked up
+in tha current lookup directory.
+
+If tha process aint gots search permission on
+the current lookup directory,
+an
+.B EACCES
+error is returned ("Permission denied").
+
+If tha component aint found, an
+.B ENOENT
+error is returned
+("No such file or directory").
+
+If tha component is found yo, but is neither a gangbangin' finger-lickin' directory nor a symbolic link,
+an
+.B ENOTDIR
+error is returned ("Not a gangbangin' finger-lickin' directory").
+
+If tha component is found n' be a gangbangin' finger-lickin' directory, we set the
+current lookup directory ta dat directory, n' git all up in the
+next component.
+
+If tha component is found n' be a symbolic link (symlink), we first
+resolve dis symbolic link (with tha current lookup directory
+as startin lookup directory).
+Upon error, dat error is returned.
+If tha result aint a gangbangin' finger-lickin' directory, an
+.B ENOTDIR
+error is returned.
+If tha resolution of tha symlink is successful n' returns a gangbangin' finger-lickin' directory,
+we set tha current lookup directory ta dat directory, n' go to
+the next component.
+Note dat tha resolution process here involves recursion.
+In order ta protect tha kernel against stack overflow, n' also
+to protect against denial of service, there be limits on the
+maximum recursion depth, n' on tha maximum number of symbolic links
+followed.
+An
+.B ELOOP
+error is returned when tha maximum is
+exceeded ("Too nuff levelz of symbolic links").
+.\"
+.\" presently: max recursion depth durin symlink resolution: 5
+.\" max total number of symbolic links followed: 40
+.\" _POSIX_SYMLOOP_MAX is 8
+.SS Step 3: find tha final entry
+Da lookup of tha final component of tha pathname goes just like
+that of all other components, as busted lyrics bout up in tha previous step,
+with two differences: (i) tha final component need not be a
+directory (at least as far as tha path resolution process is
+concerned\(emit may gotta be a gangbangin' finger-lickin' directory, or a nondirectory, cuz of
+the requirementz of tha specific system call), n' (ii) it
+is not necessarily a error if tha component aint found\(emmaybe
+we is just bustin dat shit.
+Da details on tha treatment
+of tha final entry is busted lyrics bout up in tha manual pagez of tha specific
+system calls.
+.SS . n' ..
+By convention, every last muthafuckin directory has tha entries "." n' "..",
+which refer ta tha directory itself n' ta its parent directory,
+respectively.
+
+Da path resolution process will assume dat these entries have
+their conventionizzle meanings, regardless of whether they are
+actually present up in tha physical file system.
+
+One cannot strutt down past tha root: "/.." is tha same ol' dirty as "/".
+.SS Mount points
+Afta a "mount dev path" command, tha pathname "path" refers to
+the root of tha file system hierarchy on tha thang "dev", n' no
+longer ta whatever it referred ta earlier.
+
+One can strutt outta a mounted file system: "path/.." refers to
+the parent directory of "path",
+outside of tha file system hierarchy on "dev".
+.SS Trailin slashes
+If a pathname endz up in a \(aq/\(aq, dat forces resolution of tha preceding
+component as up in Step 2: it has ta exist n' resolve ta a gangbangin' finger-lickin' directory.
+Otherwise a trailin \(aq/\(aq is ignored.
+(Or, equivalently, a pathname wit a trailin \(aq/\(aq is equivalent to
+the pathname obtained by appendin \(aq.\(aq ta dat shit.)
+.SS Final symlink
+If tha last component of a pathname be a symbolic link, then it
+dependz on tha system call whether tha file referred ta will be
+the symbolic link or tha result of path resolution on its contents.
+For example, tha system call
+.BR lstat (2)
+will operate on tha symlink, while
+.BR stat (2)
+operates on tha file pointed ta by tha symlink.
+.SS Length limit
+There be a maximum length fo' pathnames.
+If tha pathname (or some
+intermediate pathname obtained while resolvin symbolic links)
+is too long, an
+.B ENAMETOOLONG
+error is returned ("Filename too long").
+.SS Empty pathname
+In tha original gangsta UNIX, tha empty pathname referred ta tha current directory.
+Nowadays POSIX decrees dat a empty pathname must not be resolved
+successfully.
+Linux returns
+.B ENOENT
+in dis case.
+.SS Permissions
+Da permission bitz of a gangbangin' file consist of three crewz of three bits, cf.\&
+.BR chmod (1)
+and
+.BR stat (2).
+Da first crew of three is used when tha effectizzle user ID of
+the callin process equals tha balla ID of tha file.
+Da second group
+of three is used when tha crew ID of tha file either equals the
+effectizzle crew ID of tha callin process, or is one of the
+supplementary crew IDz of tha callin process (as set by
+.BR setgroups (2)).
+When neither holds, tha third crew is used.
+
+Of tha three bits used, tha straight-up original gangsta bit determines read permission,
+the second write permission, n' tha last execute permission
+in case of ordinary files, or search permission up in case of directories.
+
+Linux uses tha fsuid instead of tha effectizzle user ID up in permission checks.
+Ordinarily tha fsuid will equal tha effectizzle user ID yo, but tha fsuid can be
+changed by tha system call
+.BR setfsuid (2).
+
+(Here "fsuid" standz fo' suttin' like "file system user ID".
+Da concept was required fo' tha implementation of a user space
+NFS server at a time when processes could bust a signal ta a process
+with tha same effectizzle user ID.
+It be obsolete now, nahmeean?
+No Muthafucka should use
+.BR setfsuid (2).)
+
+Similarly, Linux uses tha fsgid ("file system crew ID")
+instead of tha effectizzle crew ID.
+See
+.BR setfsgid (2).
+.\" FIXME say suttin' bout file system mounted read-only ?
+.SS Bypassin permission checks: superuser n' capabilities
+On a traditionizzle UNIX system, tha superuser
+.RI ( root ,
+user ID 0) be all-powerful, n' bypasses all permissions restrictions
+when accessin files.
+.\" (but fo' exec at least one x bit must be set) -- AEB
+.\" but there is variation across systems on dis point: for
+.\" example, HP-UX n' Tru64 is as busted lyrics bout by AEB.  However,
+.\" on some implementations (e.g., Solaris, FreeBSD),
+.\" access(X_OK) by superuser will report success, regardless
+.\" of tha filez execute permission bits, n' you can put dat on yo' toast. -- MTK (Oct 05)
+
+On Linux, superuser privileges is divided tha fuck into capabilitizzles (see
+.BR capabilitizzles (7)).
+Two capabilitizzles is relevant fo' file permissions checks:
+.B CAP_DAC_OVERRIDE
+and
+.BR CAP_DAC_READ_SEARCH .
+(A process has these capabilitizzles if its fsuid is 0.)
+
+The
+.B CAP_DAC_OVERRIDE
+capabilitizzle overrides all permission checking,
+but grants execute permission only when at least one
+of tha filez three execute permission bits is set.
+
+The
+.B CAP_DAC_READ_SEARCH
+capabilitizzle grants read n' search permission
+on directories, n' read permission on ordinary files.
+.\" FIXME say suttin' bout immutable files
+.\" FIXME say suttin' bout ACLs
+.SH SEE ALSO
+.BR readlink (2),
+.BR capabilitizzles (7),
+.BR credentials (7),
+.BR symlink (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

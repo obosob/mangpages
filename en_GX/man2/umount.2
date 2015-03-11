@@ -1,0 +1,182 @@
+
+.\" n' Copyright (C) 1994 Andries E. Brouwer <aeb@cwi.nl>
+.\" n' Copyright (C) 2002, 2005 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2008-10-06, mtk: Created dis as a freshly smoked up page by splitting
+.\"     umount/umount2 material outta mount.2
+.\"
+.TH UMOUNT 2 2010-06-19 "Linux" "Linux Programmerz Manual"
+.SH NAME
+umount, umount2 \- unmount file system
+.SH SYNOPSIS
+.nf
+.B "#include <sys/mount.h>"
+.sp
+.BI "int umount(const char *" target );
+.sp
+.BI "int umount2(const char *" target ", int " flags );
+.fi
+.SH DESCRIPTION
+.BR umount ()
+and
+.BR umount2 ()
+remove tha attachment of tha (topmost) file system mounted on
+.IR target .
+.\" Note: tha kernel namin differs from tha glibc naming
+.\" umount2 is tha glibc name fo' what tha fuck tha kernel now calls umount
+.\" n' umount is tha glibc name fo' oldumount
+
+Appropriate privilege (Linux: the
+.B CAP_SYS_ADMIN
+capability) is required ta unmount file systems.
+
+Linux 2.1.116 added the
+.BR umount2 ()
+system call, which, like
+.BR umount (),
+unmounts a target yo, but allows additional
+.I flags
+controllin tha behavior of tha operation:
+.TP
+.BR MNT_FORCE " (since Linux 2.1.116)"
+Force unmount even if busy.
+This can cause data loss.
+(Only fo' NFS mounts.)
+.TP
+.BR MNT_DETACH " (since Linux 2.4.11)"
+Perform a lazy unmount: make tha mount point unavailable for
+new accesses, n' straight-up big-ass up tha unmount when tha mount point
+ceases ta be busy.
+.TP
+.BR MNT_EXPIRE " (since Linux 2.6.8)"
+Mark tha mount point as expired.
+If a mount point aint currently up in use, then a initial call to
+.BR umount2 ()
+with dis flag fails wit tha error
+.BR EAGAIN ,
+but marks tha mount point as expired.
+Da mount point remains expired as long as it aint accessed
+by any process.
+A second
+.BR umount2 ()
+call specifying
+.B MNT_EXPIRE
+unmounts a expired mount point.
+This flag cannot be specified wit either
+.B MNT_FORCE
+or
+.BR MNT_DETACH .
+.TP
+.BR UMOUNT_NOFOLLOW " (since Linux 2.6.34)"
+.\" Lata added ta 2.6.33-stable
+Don't dereference
+.I target
+if it aint nuthin but a symbolic link.
+This flag allows securitizzle problems ta be avoided up in set-user-ID-\fIroot\fP
+programs dat allow unprivileged playas ta unmount file systems.
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+Da error joints given below result from file-system type independent
+errors.
+Each file system type may have its own special errors n' its
+own special behavior.
+See tha Linux kernel source code fo' details.
+.TP
+.B EAGAIN
+A call to
+.BR umount2 ()
+specifying
+.B MNT_EXPIRE
+successfully marked a unbusy file system as expired.
+.TP
+.B EBUSY
+.I target
+could not be unmounted cuz it be jumpin' off tha hook.
+.TP
+.B EFAULT
+.I target
+points outside tha user address space.
+.TP
+.B EINVAL
+.I target
+is not a mount point.
+Or,
+.BR umount2 ()
+was called with
+.B MNT_EXPIRE
+and either
+.B MNT_DETACH
+or
+.BR MNT_FORCE .
+.TP
+.B ENAMETOOLONG
+A pathname was longer than
+.BR MAXPATHLEN .
+.TP
+.B ENOENT
+A pathname was empty or had a nonexistent component.
+.TP
+.B ENOMEM
+Da kernel could not allocate a gangbangin' free page ta copy filenames or data into.
+.TP
+.B EPERM
+Da calla aint gots tha required privileges.
+.SH VERSIONS
+.BR MNT_DETACH
+and
+.BR MNT_EXPIRE
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=10092
+are available up in glibc since version 2.11.
+.SH CONFORMING TO
+These functions is Linux-specific n' should not be used in
+programs intended ta be portable.
+.SH NOTES
+Da original
+.BR umount ()
+function was called as \fIumount(device)\fP n' would return
+.B ENOTBLK
+when called wit suttin' other than a funky-ass block device.
+In Linux 0.98p4 a cold-ass lil call \fIumount(dir)\fP was added, up in order to
+support anonymous devices.
+In Linux 2.3.99-pre7 tha call \fIumount(device)\fP was removed,
+leavin only \fIumount(dir)\fP (since now devices can be mounted
+in mo' than one place, so specifyin tha thang do not suffice).
+.SH SEE ALSO
+.BR mount (2),
+.BR path_resolution (7),
+.BR mount (8),
+.BR umount (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

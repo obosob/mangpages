@@ -1,0 +1,229 @@
+.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: cmsg.3,v 1.8 2000/12/20 18:10:31 ak Exp $
+.TH CMSG 3 2008-11-20 "Linux" "Linux Programmerz Manual"
+.SH NAME
+CMSG_ALIGN, CMSG_SPACE, CMSG_NXTHDR, CMSG_FIRSTHDR \- access ancillary data
+.SH SYNOPSIS
+.B #include <sys/socket.h>
+.sp
+.BI "struct cmsghdr *CMSG_FIRSTHDR(struct msghdr *" msgh );
+.br
+.BI "struct cmsghdr *CMSG_NXTHDR(struct msghdr *" msgh ", struct cmsghdr *" cmsg );
+.br
+.BI "size_t CMSG_ALIGN(size_t " length );
+.br
+.BI "size_t CMSG_SPACE(size_t " length );
+.br
+.BI "size_t CMSG_LEN(size_t " length );
+.br
+.BI "unsigned char *CMSG_DATA(struct cmsghdr *" cmsg );
+.sp
+.nf
+struct cmsghdr {
+    socklen_t cmsg_len;    /* data byte count, includin header */
+    int       cmsg_level;  /* originatin protocol */
+    int       cmsg_type;   /* protocol-specific type */
+    /* followed by unsigned char cmsg_data[]; */
+};
+.fi
+.SH DESCRIPTION
+These macros is used ta create n' access control lyrics (also called
+ancillary data) dat is not a part of tha socket payload.
+This control shiznit may
+include tha intercourse tha packet was received on, various rarely used header
+fields, a extended error description, a set of file descriptors or UNIX
+credentials.
+For instance, control lyrics can be used ta send
+additionizzle header fieldz like fuckin IP options.
+Ancillary data is busted by calling
+.BR sendmsg (2)
+and received by calling
+.BR recvmsg (2).
+See they manual pages fo' mo' shiznit.
+.PP
+Ancillary data be a sequence of
+.I struct cmsghdr
+structures wit appended data.
+This sequence should be accessed
+usin only tha macros busted lyrics bout up in dis manual page n' never directly.
+See tha specific protocol playa pages fo' tha available control message types.
+Da maximum ancillary buffer size allowed per socket can be set using
+.IR /proc/sys/net/core/optmem_max ;
+see
+.BR socket (7).
+.PP
+.BR CMSG_FIRSTHDR ()
+returns a pointa ta tha first
+.I cmsghdr
+in tha ancillary
+data buffer associated wit tha passed
+.IR msghdr .
+.PP
+.BR CMSG_NXTHDR ()
+returns tha next valid
+.I cmsghdr
+afta tha passed
+.IR cmsghdr .
+It returns NULL when there aint enough space left up in tha buffer.
+.PP
+.BR CMSG_ALIGN (),
+given a length, returns it includin tha required alignment.
+This be a
+constant expression.
+.PP
+.BR CMSG_SPACE ()
+returns tha number of bytes a ancillary element wit payload of the
+passed data length occupies.
+This be a cold-ass lil constant expression.
+.PP
+.BR CMSG_DATA ()
+returns a pointa ta tha data portion of a
+.IR cmsghdr .
+.PP
+.BR CMSG_LEN ()
+returns tha value ta store up in the
+.I cmsg_len
+gangmember of the
+.I cmsghdr
+structure, takin tha fuck into account any necessary
+alignment.
+It takes tha data length as a argument.
+This be a cold-ass lil constant
+expression.
+.PP
+To create ancillary data, first initialize the
+.I msg_controllen
+gangmember of the
+.I msghdr
+with tha length of tha control message buffer.
+Use
+.BR CMSG_FIRSTHDR ()
+on the
+.I msghdr
+to git tha straight-up original gangsta control message and
+.BR CMSG_NXTHDR ()
+to git all subsequent ones.
+In each control message, initialize
+.I cmsg_len
+(with
+.BR CMSG_LEN ()),
+the other
+.I cmsghdr
+header fields, n' tha data portion using
+.BR CMSG_DATA ().
+Finally, the
+.I msg_controllen
+field of the
+.I msghdr
+should be set ta tha sum of the
+.BR CMSG_SPACE ()
+of tha length of
+all control lyrics up in tha buffer.
+For mo' shiznit on the
+.IR msghdr ,
+see
+.BR recvmsg (2).
+.PP
+When tha control message buffer is too short ta store all lyrics, the
+.B MSG_CTRUNC
+flag is set up in the
+.I msg_flags
+gangmember of the
+.IR msghdr .
+.SH CONFORMING TO
+This ancillary data model conforms ta tha POSIX.1g draft, 4.4BSD-Lite,
+the IPv6 advanced API busted lyrics bout up in RFC\ 2292 n' tha SUSv2.
+.BR CMSG_ALIGN ()
+is a Linux extension.
+.SH NOTES
+For portability, ancillary data should be accessed rockin only tha macros
+busted lyrics bout here.
+.BR CMSG_ALIGN ()
+is a Linux extension n' should be not used up in portable programs.
+.PP
+In Linux,
+.BR CMSG_LEN (),
+.BR CMSG_DATA (),
+and
+.BR CMSG_ALIGN ()
+are constant expressions (assumin they argument is constant);
+this could be used ta declare tha size of global
+variables.
+This may be not portable, however.
+.SH EXAMPLE
+This code looks fo' the
+.B IP_TTL
+option up in a received ancillary buffer:
+.PP
+.in +4n
+.nf
+struct msghdr msgh;
+struct cmsghdr *cmsg;
+int *ttlptr;
+int received_ttl;
+
+/* Receive auxiliary data up in msgh */
+for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
+        cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
+    if (cmsg\->cmsg_level == IPPROTO_IP
+            && cmsg\->cmsg_type == IP_TTL) {
+        ttlptr = (int *) CMSG_DATA(cmsg);
+        received_ttl = *ttlptr;
+        break;
+    }
+}
+if (cmsg == NULL) {
+    /*
+     * Error: IP_TTL not enabled or lil' small-ass buffer
+     * or I/O error.
+     */
+}
+.fi
+.in
+.PP
+Da code below passes a array of file descriptors over a
+UNIX domain socket using
+.BR SCM_RIGHTS :
+.PP
+.in +4n
+.nf
+struct msghdr msg = {0};
+struct cmsghdr *cmsg;
+int myfds[NUM_FD]; /* Gotz Nuff tha file descriptors ta pass. */
+char buf[CMSG_SPACE(sizeof myfds)];  /* ancillary data buffer */
+int *fdptr;
+
+msg.msg_control = buf;
+msg.msg_controllen = sizeof buf;
+cmsg = CMSG_FIRSTHDR(&msg);
+cmsg\->cmsg_level = SOL_SOCKET;
+cmsg\->cmsg_type = SCM_RIGHTS;
+cmsg\->cmsg_len = CMSG_LEN(sizeof(int) * NUM_FD);
+/* Initialize tha payload: */
+fdptr = (int *) CMSG_DATA(cmsg);
+memcpy(fdptr, myfds, NUM_FD * sizeof(int));
+/* Sum of tha length of all control lyrics up in tha buffer: */
+msg.msg_controllen = cmsg\->cmsg_len;
+.fi
+.in
+.SH SEE ALSO
+.BR recvmsg (2),
+.BR sendmsg (2)
+.PP
+RFC\ 2292
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,4142 @@
+.\"
+.\" Copyright (c) 1994-1996, 1998-2005, 2007-2013
+.\"	Todd C. Milla <Todd.Miller@courtesan.com>
+.\"
+.\" Permission ta use, copy, modify, n' distribute dis software fo' any
+.\" purpose wit or without fee is hereby granted, provided dat tha above
+.\" copyright notice n' dis permission notice step tha fuck up in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" Sponsored up in part by tha Defense Advanced Research Projects
+.\" Agency (DARPA) n' Air Force Research Laboratory, Air Force
+.\" Materiel Command, USAF, under agreement number F39502-99-1-0512.
+.\"
+.Dd August 31, 2013
+.Dt SUDOERS 5
+.Os Sudo 1.8.8
+.Sh NAME
+.Nm sudoers
+.Nd default sudo securitizzle policy plugin
+.Sh DESCRIPTION
+The
+.Em sudoers
+policy plugin determines a user's
+.Nm sudo
+privileges.
+It be tha default
+.Nm sudo
+policy plugin.
+Da policy is driven by
+the
+.Pa /etc/sudoers
+file or, optionally up in LDAP.
+Da policy format is busted lyrics bout up in detail up in the
+.Sx SUDOERS FILE FORMAT
+section.
+For shiznit on storing
+.Em sudoers
+policy shiznit
+in LDAP, please see
+.Xr sudoers.ldap 5 .
+.Ss Configurin sudo.conf fo' sudoers
+.Nm sudo
+consults the
+.Xr sudo.conf 5
+file ta determine which policy n' and I/O loggin plugins ta load.
+If no
+.Xr sudo.conf 5
+file is present, or if it gotz nuff no
+.Li Plugin
+lines,
+.Nm sudoers
+will be used fo' policy decisions n' I/O logging.
+To explicitly configure
+.Xr sudo.conf 5
+to use the
+.Nm sudoers
+plugin, tha followin configuration can be used.
+.Bd -literal -offset indent
+Plugin sudoers_policy sudoers.so
+Plugin sudoers_io sudoers.so
+.Ed
+.Pp
+Startin with
+.Nm sudo
+1.8.5, it is possible ta specify optionizzle arguments ta the
+.Nm sudoers
+plugin up in the
+.Xr sudo.conf 5
+file.
+These arguments, if present, should be listed afta tha path ta tha plugin
+(i.e.\& after
+.Pa sudoers.so ) .
+Multiple arguments may be specified, separated by white space.
+For example:
+.Bd -literal -offset indent
+Plugin sudoers_policy sudoers.so sudoers_mode=0400
+.Ed
+.Pp
+Da followin plugin arguments is supported:
+.Bl -tag -width 8n
+.It ldap_conf=pathname
+The
+.Em ldap_conf
+argument can be used ta override tha default path ta the
+.Pa ldap.conf
+file.
+.It ldap_secret=pathname
+The
+.Em ldap_secret
+argument can be used ta override tha default path ta the
+.Pa ldap.secret
+file.
+.It sudoers_file=pathname
+The
+.Em sudoers_file
+argument can be used ta override tha default path ta the
+.Em sudoers
+file.
+.It sudoers_uid=uid
+The
+.Em sudoers_uid
+argument can be used ta override tha default balla of tha sudoers file.
+It should be specified as a numeric user ID.
+.It sudoers_gid=gid
+The
+.Em sudoers_gid
+argument can be used ta override tha default crew of tha sudoers file.
+It must be specified as a numeric crew ID (not a crew name).
+.It sudoers_mode=mode
+The
+.Em sudoers_mode
+argument can be used ta override tha default file mode fo' tha sudoers file.
+It should be specified as a octal value.
+.El
+.Pp
+For mo' shiznit on configuring
+.Xr sudo.conf 5 ,
+please refer ta its manual.
+.Ss Authentication n' logging
+The
+.Em sudoers
+securitizzle policy requires dat most playas authenticate
+themselves before they can use
+.Nm sudo .
+A password aint required
+if tha invokin user is root, if tha target user is tha same ol' dirty as the
+invokin user, or if tha policy has disabled authentication fo' the
+user or command.
+Unlike
+.Xr su 1 ,
+when
+.Em sudoers
+requires
+authentication, it validates tha invokin userz credentials, not
+the target userz (or root's) credentials.
+This can be chizzled via
+the
+.Em rootpw ,
+.Em targetpw
+and
+.Em runaspw
+flags, busted lyrics bout later.
+.Pp
+If a user whoz ass aint listed up in tha policy tries ta run a cold-ass lil command
+via
+.Nm sudo ,
+mail is busted ta tha proper authorities.
+Da address
+used fo' such mail is configurable via the
+.Em mailto
+Defaults entry
+(busted lyrics bout later) n' defaults to
+.Li root .
+.Pp
+Note dat mail aint gonna be busted if a unauthorized user tries to
+run
+.Nm sudo
+with the
+.Fl l
+or
+.Fl v
+option.
+This allows playas to
+determine fo' theyselves whether or not they is allowed ta use
+.Nm sudo .
+.Pp
+If
+.Nm sudo
+is run by root n' the
+.Ev SUDO_USER
+environment variable
+is set, the
+.Em sudoers
+policy will use dis value ta determine who
+the actual user is.
+This can be used by a user ta log commands
+all up in sudo even when a root shell has been invoked.
+It also
+allows the
+.Fl e
+option ta remain useful even when invoked via a
+sudo-run script or program.
+Note, however, dat the
+.Em sudoers
+lookup is still done fo' root, not tha user specified by
+.Ev SUDO_USER .
+.Pp
+.Em sudoers
+uses time stamp filez fo' credential caching.
+Once a
+user has been authenticated, tha time stamp is updated n' tha user
+may then use sudo without a password fo' a gangbangin' finger-lickin' dirty-ass short period of time
+.Po
+.Li 5
+minutes unless overridden by the
+.Em timeout
+option
+.Pc .
+By default,
+.Em sudoers
+uses a tty-based time stamp which means that
+there be a separate time stamp fo' each of a userz login sessions.
+The
+.Em tty_tickets
+option can be disabled ta force tha use of a
+single time stamp fo' all of a userz sessions.
+.Pp
+.Em sudoers
+can log both successful n' unsuccessful attempts (as well
+as errors) to
+.Xr syslog 3 ,
+a log file, or both.
+By default,
+.Em sudoers
+will log via
+.Xr syslog 3
+but dis is chizzleable via the
+.Em syslog
+and
+.Em logfile
+Defaults settings.
+.Pp
+.Em sudoers
+also supports loggin a cold-ass lil commandz input n' output
+streams.
+I/O loggin aint on by default but can be enabled using
+the
+.Em log_input
+and
+.Em log_output
+Defaults flags as well as the
+.Li LOG_INPUT
+and
+.Li LOG_OUTPUT
+command tags.
+.Ss Command environment
+Since environment variablez can influence program behavior,
+.Em sudoers
+provides a means ta restrict which variablez from tha user's
+environment is inherited by tha command ta be run.
+There is two
+distinct ways
+.Em sudoers
+can deal wit environment variables.
+.Pp
+By default, the
+.Em env_reset
+option is enabled.
+This causes commands
+to be executed wit a new, minimal environment.
+On AIX (and Linux
+systems without PAM), tha environment is initialized wit the
+contentz of the
+.Pa /etc/environment
+file.
+Da freshly smoked up environment gotz nuff the
+.Ev TERM ,
+.Ev PATH ,
+.Ev HOME ,
+.Ev MAIL ,
+.Ev SHELL ,
+.Ev LOGNAME ,
+.Ev USER ,
+.Ev USERNAME
+and
+.Ev SUDO_*
+variables
+in addizzle ta variablez from tha invokin process permitted by the
+.Em env_check
+and
+.Em env_keep
+options.
+This is effectively a whitelist
+for environment variables.
+.Pp
+If, however, the
+.Em env_reset
+option is disabled, any variablez not
+explicitly denied by the
+.Em env_check
+and
+.Em env_delete
+options are
+inherited from tha invokin process.
+In dis case,
+.Em env_check
+and
+.Em env_delete
+behave like a funky-ass blacklist.
+Since it aint possible
+to blacklist all potentially fucked up environment variables, use
+of tha default
+.Em env_reset
+behavior is encouraged.
+.Pp
+In all cases, environment variablez wit a value beginnin with
+.Li ()
+are removed as they could be interpreted as
+.Sy bash
+functions.
+Da list of environment variablez that
+.Nm sudo
+allows or denies is
+contained up in tha output of
+.Dq Li sudo -V
+when run as root.
+.Pp
+Note dat tha dynamic linker on most operatin systems will remove
+variablez dat can control dynamic linkin from tha environment of
+setuid executables, including
+.Nm sudo .
+Dependin on tha operating
+system dis may include
+.Ev _RLD* ,
+.Ev DYLD_* ,
+.Ev LD_* ,
+.Ev LDR_* ,
+.Ev LIBPATH ,
+.Ev SHLIB_PATH ,
+and others.
+These type of variablez are
+removed from tha environment before
+.Nm sudo
+even begins execution
+and, as such, it aint possible for
+.Nm sudo
+to preserve em.
+.Pp
+As a special case, if
+.Nm sudo Ns No 's
+.Fl i
+option (initial login) is
+specified,
+.Em sudoers
+will initialize tha environment regardless
+of tha value of
+.Em env_reset .
+The
+.Ev DISPLAY ,
+.Ev PATH
+and
+.Ev TERM
+variablez remain unchanged;
+.Ev HOME ,
+.Ev MAIL ,
+.Ev SHELL ,
+.Ev USER ,
+and
+.Ev LOGNAME
+are set based on tha target user.
+On AIX (and Linux
+systems without PAM), tha contents of
+.Pa /etc/environment
+are also
+included.
+All other environment variablez is removed.
+.Pp
+Finally, if the
+.Em env_file
+option is defined, any variablez present
+in dat file is ghon be set ta they specified joints as long as they
+would not conflict wit a existin environment variable.
+.Sh SUDOERS FILE FORMAT
+The
+.Em sudoers
+file is composed of two typez of entries: aliases
+(basically variables) n' user justifications (which specify who
+may run what).
+.Pp
+When multiple entries match fo' a user, they is applied up in order.
+Where there be multiple matches, tha last match is used (which is
+not necessarily da most thugged-out specific match).
+.Pp
+The
+.Em sudoers
+grammar is ghon be busted lyrics bout below up in Extended Backus-Naur
+Form (EBNF).
+Don't despair if yo ass is unfamiliar wit EBNF; it is fairly simple,
+and tha definitions below is annotated.
+.Ss Quick guide ta EBNF
+EBNF be a cold-ass lil concise n' exact way of describin tha grammar of a language.
+Each EBNF definizzle is made up of
+.Em thang rulez .
+E.g.,
+.Pp
+.Li  symbol ::= definizzle | alternate1 | alternate2 ...
+.Pp
+Each
+.Em thang rule
+references others n' thus make up a
+grammar fo' tha language.
+EBNF also gotz nuff tha following
+operators, which nuff readaz will recognize from regular
+expressions.
+Do not, however, confuse dem with
+.Dq wildcard
+characters, which have different meanings.
+.Bl -tag -width 4n
+.It Li \&?
+Means dat tha precedin symbol (or crew of symbols) is optional.
+That is, it may step tha fuck up once or not at all.
+.It Li *
+Means dat tha precedin symbol (or crew of symbols) may appear
+zero or mo' times.
+.It Li +
+Means dat tha precedin symbol (or crew of symbols) may appear
+one or mo' times.
+.El
+.Pp
+Parentheses may be used ta crew symbols together.
+For clarity,
+we will use single quotes
+.Pq ''
+to designate what tha fuck be a verbatim characta strang (as opposed ta a symbol name).
+.Ss Aliases
+There is four kindz of aliases:
+.Li User_Alias ,
+.Li Runas_Alias ,
+.Li Host_Alias
+and
+.Li Cmnd_Alias .
+.Bd -literal
+Alias ::= 'User_Alias'  User_Alias (':' User_Alias)* |
+          'Runas_Alias' Runas_Alias (':' Runas_Alias)* |
+          'Host_Alias'  Host_Alias (':' Host_Alias)* |
+          'Cmnd_Alias'  Cmnd_Alias (':' Cmnd_Alias)*
+
+User_Alias ::= NAME '=' User_List
+
+Runas_Alias ::= NAME '=' Runas_List
+
+Host_Alias ::= NAME '=' Host_List
+
+Cmnd_Alias ::= NAME '=' Cmnd_List
+
+NAME ::= [A-Z]([A-Z][0-9]_)*
+.Ed
+.Pp
+Each
+.Em alias
+definizzle iz of tha form
+.Bd -literal
+Alias_Type NAME = item1, item2, ...
+.Ed
+.Pp
+where
+.Em Alias_Type
+is one of
+.Li User_Alias ,
+.Li Runas_Alias ,
+.Li Host_Alias ,
+or
+.Li Cmnd_Alias .
+A
+.Li NAME
+is a strang of uppercase letters, numbers,
+and underscore characters
+.Pq Ql _ .
+A
+.Li NAME
+.Sy must
+start wit an
+uppercase letter.
+It be possible ta put nuff muthafuckin alias definitions
+of tha same type on a single line, joined by a cold-ass lil colon
+.Pq Ql :\& .
+E.g.,
+.Bd -literal
+Alias_Type NAME = item1, item2, item3 : NAME = item4, item5
+.Ed
+.Pp
+Da definitionz of what tha fuck constitutes a valid
+.Em alias
+member follow.
+.Bd -literal
+User_List ::= User |
+              User ',' User_List
+
+User ::= '!'* user name |
+         '!'* #uid |
+         '!'* %group |
+         '!'* %#gid |
+         '!'* +netgroup |
+         '!'* %:nonunix_group |
+         '!'* %:#nonunix_gid |
+         '!'* User_Alias
+.Ed
+.Pp
+A
+.Li User_List
+is made up of one or mo' user names, user IDs
+(prefixed with
+.Ql # ) ,
+system crew names n' IDs (prefixed with
+.Ql %
+and
+.Ql %#
+respectively), netgroups (prefixed with
+.Ql + ) ,
+non-Unix crew names n' IDs (prefixed with
+.Ql %:
+and
+.Ql %:#
+respectively) and
+.Li User_Alias Ns No es.
+Each list item may be prefixed wit zero or more
+.Ql \&!
+operators.
+An odd number of
+.Ql \&!
+operators negate tha value of
+the item; a even number just quit each other out.
+.Pp
+A
+.Li user name ,
+.Li uid ,
+.Li crew ,
+.Li gid ,
+.Li netgroup ,
+.Li nonunix_group
+or
+.Li nonunix_gid
+may be enclosed up in double quotes ta avoid the
+need fo' escapin special characters.
+Alternately, special characters
+may be specified up in escaped hex mode, e.g.\& \ex20 fo' space.
+When
+usin double quotes, any prefix charactas must be included inside
+the quotes.
+.Pp
+Da actual
+.Li nonunix_group
+and
+.Li nonunix_gid
+syntax dependz on
+the underlyin crew provider plugin.
+For instance, tha QAS AD plugin supports tha followin formats:
+.Bl -cap -width 4n
+.It
+Group up in tha same domain: "%:Group Name"
+.It
+Group up in any domain: "%:Group Name@FULLY.QUALIFIED.DOMAIN"
+.It
+Group SID: "%:S-1-2-34-5678901234-5678901234-5678901234-567"
+.El
+.Pp
+See
+.Sx "GROUP PROVIDER PLUGINS"
+for mo' shiznit.
+.Pp
+Note dat quotes round crew names is optional.
+Unquoted strings must bust a funky-ass backslash
+.Pq Ql \e
+to escape spaces n' special characters.
+See
+.Sx Other special charactas n' reserved lyrics
+for a list of
+charactas dat need ta be escaped.
+.Bd -literal
+Runas_List ::= Runas_Member |
+               Runas_Member ',' Runas_List
+
+Runas_Member ::= '!'* user name |
+                 '!'* #uid |
+                 '!'* %group |
+                 '!'* %#gid |
+                 '!'* %:nonunix_group |
+                 '!'* %:#nonunix_gid |
+                 '!'* +netgroup |
+                 '!'* Runas_Alias
+.Ed
+.Pp
+A
+.Li Runas_List
+is similar ta a
+.Li User_List
+except dat instead
+of
+.Li User_Alias Ns No es
+it can contain
+.Li Runas_Alias Ns No es .
+Note that
+user names n' crews is matched as strings.
+In other lyrics, two
+users (groups) wit tha same uid (gid) is considered ta be distinct.
+If you wish ta match all user names wit tha same uid (e.g.\&
+root n' toor), you can bust a uid instead (#0 up in tha example given).
+.Bd -literal
+Host_List ::= Host |
+              Host ',' Host_List
+
+Host ::= '!'* host name |
+         '!'* ip_addr |
+         '!'* network(/netmask), biatch? |
+         '!'* +netgroup |
+         '!'* Host_Alias
+.Ed
+.Pp
+A
+.Li Host_List
+is made up of one or mo' host names, IP addresses,
+network numbers, netgroups (prefixed with
+.Ql + )
+and other aliases.
+Again, tha value of a item may be negated wit the
+.Ql \&!
+operator.
+If you do not specify a netmask along wit tha network number,
+.Nm sudo
+will query each of tha local hostz network intercourses and,
+if tha network number correspondz ta one of tha hostss network
+interfaces, tha correspondin netmask is ghon be used.
+Da netmask
+may be specified either up in standard IP address notation
+(e.g.\& 255.255.255.0 or ffff:ffff:ffff:ffff::),
+or CIDR notation (number of bits, e.g.\& 24 or 64).
+A host name may include shell-style wildcardz (see the
+.Sx Wildcards
+section below),
+but unless the
+.Li host name
+command on yo' machine returns tha fully
+qualified host name, you gonna need ta use the
+.Em fqdn
+option fo' wildcardz ta be useful.
+Note that
+.Nm sudo
+only inspects actual network intercourses; dis means dat IP address
+127.0.0.1 (localhost) aint NEVER gonna match.
+Also, tha host name
+.Dq localhost
+will only match if dat is tha actual host name, which is usually
+only tha case fo' non-networked systems.
+.Bd -literal
+digest ::= [A-Fa-f0-9]+ |
+	   [[A-Za-z0-9\+/=]+
+
+Digest_Spec ::= "sha224" ':' digest |
+		"sha256" ':' digest |
+		"sha384" ':' digest |
+		"sha512" ':' digest
+
+Cmnd_List ::= Cmnd |
+              Cmnd ',' Cmnd_List
+
+command name ::= file name |
+                 file name args |
+                 file name '""'
+
+Cmnd ::= Digest_Spec, biatch? '!'* command name |
+         '!'* directory |
+         '!'* "sudoedit" |
+         '!'* Cmnd_Alias
+.Ed
+.Pp
+A
+.Li Cmnd_List
+is a list of one or mo' command names, directories, n' other aliases.
+A command name be a gangbangin' straight-up qualified file name which may include
+shell-style wildcardz (see the
+.Sx Wildcards
+section below).
+A simple file name allows tha user ta run tha command wit any
+arguments he/she wishes.
+But fuck dat shiznit yo, tha word on tha street is dat you may also specify command line arguments (including
+wildcards).
+Alternately, you can specify
+.Li \&""
+to indicate dat tha command
+may only be run
+.Sy without
+command line arguments.
+A directory be a
+fully qualified path name endin up in a
+.Ql / .
+When you specify a gangbangin' finger-lickin' directory up in a
+.Li Cmnd_List ,
+the user is ghon be able ta run any file within dat directory
+(but not up in any sub-directories therein).
+.Pp
+If a
+.Li Cmnd
+has associated command line arguments, then tha arguments
+in the
+.Li Cmnd
+must match exactly dem given by tha user on tha command line
+(or match tha wildcardz if there be any).
+Note dat tha followin charactas must be escaped wit a
+.Ql \e
+if they is used up in command arguments:
+.Ql ,\& ,
+.Ql :\& ,
+.Ql =\& ,
+.Ql \e .
+Da built-in command
+.Dq Li sudoedit
+is used ta permit a user ta run
+.Nm sudo
+with the
+.Fl e
+option (or as
+.Nm sudoedit ) .
+It may take command line arguments just as a aiiight command do.
+Note that
+.Dq Li sudoedit
+is a cold-ass lil command built into
+.Nm sudo
+itself n' must be specified in
+.Em sudoers
+without a leadin path.
+.Pp
+If a
+.Li command name
+is prefixed wit a
+.Li Digest_Spec ,
+the command will only match successfully if it can be verified
+usin tha specified SHA-2 digest.
+This may be useful up in thangs where tha user invoking
+.Nm sudo
+has write access ta tha command or its parent directory.
+Da followin digest formats is supported: sha224, sha256, sha384 n' sha512.
+Da strang may be specified up in either hex or base64 format
+(base64 is mo' compact).
+There is nuff muthafuckin utilitizzles capable of generatin SHA-2 digests up in hex
+format like fuckin openssl, shasum, sha224sum, sha256sum, sha384sum, sha512sum.
+.Pp
+For example, rockin openssl:
+.Bd -literal
+$ openssl dgst -sha224 /bin/ls
+SHA224(/bin/ls)= 118187da8364d490b4a7debbf483004e8f3e053ec954309de2c41a25
+.Ed
+.Pp
+It be also possible ta use openssl ta generate base64 output:
+.Bd -literal
+$ openssl dgst -binary -sha224 /bin/ls | openssl base64
+EYGH2oNk1JC0p9679IMATo8+BT7JVDCd4sQaJQ==
+.Ed
+.Pp
+Command digests is only supported by version 1.8.7 or higher.
+.Ss Defaults
+Certain configuration options may be chizzled from they default
+values at run-time via one or more
+.Li Default_Entry
+lines.
+These may affect all playas on any host, all playas on a specific host, a
+specific user, a specific command, or commandz bein run as a specific user.
+Note dat per-command entries may not include command line arguments.
+If you need ta specify arguments, define a
+.Li Cmnd_Alias
+and reference
+that instead.
+.Bd -literal
+Default_Type ::= 'Defaults' |
+                 'Defaults' '@' Host_List |
+                 'Defaults' ':' User_List |
+                 'Defaults' '!' Cmnd_List |
+                 'Defaults' '>' Runas_List
+
+Default_Entry ::= Default_Type Parameter_List
+
+Parameter_List ::= Parameta |
+                   Parameta ',' Parameter_List
+
+Parameta ::= Parameta '=' Value |
+              Parameta '+=' Value |
+              Parameta '-=' Value |
+              '!'* Parameter
+.Ed
+.Pp
+Parametas may be
+.Sy flags ,
+.Sy integer
+values,
+.Sy strings ,
+or
+.Sy lists .
+Flags is implicitly boolean n' can be turned off via the
+.Ql \&!
+operator.
+Some integer, strang n' list parametas may also be
+used up in a funky-ass boolean context ta disable em.
+Values may be enclosed
+in double quotes
+.Pq \&""
+when they contain multiple lyrics.
+Special charactas may be escaped wit a funky-ass backslash
+.Pq Ql \e .
+.Pp
+Lists have two additionizzle assignment operators,
+.Li +=
+and
+.Li -= .
+These operators is used ta add ta n' delete from a list respectively.
+It aint a error ta use the
+.Li -=
+operator ta remove a element
+that do not exist up in a list.
+.Pp
+Defaults entries is parsed up in tha followin order: generic, host
+and user Defaults first, then runas Defaults n' finally command
+defaults.
+.Pp
+See
+.Sx SUDOERS OPTIONS
+for a list of supported Defaults parameters.
+.Ss User justification
+.Bd -literal
+User_Spec ::= User_List Host_List '=' Cmnd_Spec_List \e
+              (':' Host_List '=' Cmnd_Spec_List)*
+
+Cmnd_Spec_List ::= Cmnd_Spec |
+                   Cmnd_Spec ',' Cmnd_Spec_List
+
+Cmnd_Spec ::= Runas_Spec, biatch? SELinux_Spec, biatch? Tag_Spec* Cmnd
+
+Runas_Spec ::= '(' Runas_List, biatch? (':' Runas_List), biatch? ')'
+
+SELinux_Spec ::= ('ROLE=role' | 'TYPE=type')
+
+Tag_Spec ::= ('NOPASSWD:' | 'PASSWD:' | 'NOEXEC:' | 'EXEC:' |
+              'SETENV:' | 'NOSETENV:' | 'LOG_INPUT:' | 'NOLOG_INPUT:' |
+              'LOG_OUTPUT:' | 'NOLOG_OUTPUT:')
+.Ed
+.Pp
+A
+.Sy user justification
+determines which commandz a user may run
+(and as what tha fuck user) on specified hosts.
+By default, commandz are
+run as
+.Sy root ,
+but dis can be chizzled on a per-command basis.
+.Pp
+Da basic structure of a user justification is
+.Dq whoz ass where = (as_whom) what tha fuck .
+Letz break dat down tha fuck into its constituent parts:
+.Ss Runas_Spec
+A
+.Li Runas_Spec
+determines tha user and/or tha crew dat a cold-ass lil command
+may be run as.
+A fully-specified
+.Li Runas_Spec
+consistz of two
+.Li Runas_List Ns No s
+(as defined above) separated by a cold-ass lil colon
+.Pq Ql :\&
+and enclosed up in a set of parentheses.
+Da first
+.Li Runas_List
+indicates
+which playas tha command may be run as via
+.Nm sudo Ns No 's
+.Fl u
+option.
+Da second defines a list of crews dat can be specified via
+.Nm sudo Ns No 's
+.Fl g
+option.
+If both
+.Li Runas_List Ns No s
+are specified, tha command may be run wit any combination of users
+and crews listed up in they respective
+.Li Runas_List Ns No s.
+If only tha straight-up original gangsta is specified, tha command may be run as any user
+in tha list but no
+.Fl g
+option
+may be specified.
+If tha first
+.Li Runas_List
+is empty but the
+second is specified, tha command may be run as tha invokin user
+with tha crew set ta any listed up in the
+.Li Runas_List .
+If both
+.Li Runas_List Ns No s
+are empty, tha command may only be run as tha invokin user.
+If no
+.Li Runas_Spec
+is specified tha command may be run as
+.Sy root
+and
+no crew may be specified.
+.Pp
+A
+.Li Runas_Spec
+sets tha default fo' tha commandz dat follow dat shit.
+What dis means is dat fo' tha entry:
+.Bd -literal
+dgb	boulder = (operator) /bin/ls, /bin/kill, /usr/bin/lprm
+.Ed
+.Pp
+Da user
+.Sy dgb
+may run
+.Pa /bin/ls ,
+.Pa /bin/kill ,
+and
+.Pa /usr/bin/lprm Ns No \(em Ns but
+only as
+.Sy operator .
+E.g.,
+.Bd -literal
+$ sudo -u operator /bin/ls
+.Ed
+.Pp
+It be also possible ta override a
+.Li Runas_Spec
+lata on up in a entry.
+If we modify tha entry like so:
+.Bd -literal
+dgb	boulder = (operator) /bin/ls, (root) /bin/kill, /usr/bin/lprm
+.Ed
+.Pp
+Then user
+.Sy dgb
+is now allowed ta run
+.Pa /bin/ls
+as
+.Sy operator ,
+but
+.Pa /bin/kill
+and
+.Pa /usr/bin/lprm
+as
+.Sy root .
+.Pp
+We can extend dis ta allow
+.Sy dgb
+to run
+.Li /bin/ls
+with either
+the user or crew set to
+.Sy operator :
+.Bd -literal
+dgb	boulder = (operator : operator) /bin/ls, (root) /bin/kill,\e
+	/usr/bin/lprm
+.Ed
+.Pp
+Note dat while tha crew portion of the
+.Li Runas_Spec
+permits the
+user ta run as command wit dat group, it do not force tha user
+to do so.
+If no crew is specified on tha command line, tha command
+will run wit tha crew listed up in tha target userz password database
+entry.
+Da followin would all be permitted by tha sudoers entry above:
+.Bd -literal
+$ sudo -u operator /bin/ls
+$ sudo -u operator -g operator /bin/ls
+$ sudo -g operator /bin/ls
+.Ed
+.Pp
+In tha followin example, user
+.Sy tcm
+may run commandz dat access
+a modem thang file wit tha diala group.
+.Bd -literal
+tcm	boulder = (:dialer) /usr/bin/tip, /usr/bin/cu,\e
+	/usr/local/bin/minicom
+.Ed
+.Pp
+Note dat up in dis example only tha crew is ghon be set, tha command
+still runs as user
+.Sy tcm .
+E.g.\&
+.Bd -literal
+$ sudo -g diala /usr/bin/cu
+.Ed
+.Pp
+Multiple playas n' crews may be present up in a
+.Li Runas_Spec ,
+in which case tha user may select any combination of playas n' crews via the
+.Fl u
+and
+.Fl g
+options.
+In dis example:
+.Bd -literal
+alan	ALL = (root, bin : operator, system) ALL
+.Ed
+.Pp
+user
+.Sy alan
+may run any command as either user root or bin,
+optionally settin tha crew ta operator or system.
+.Ss SELinux_Spec
+On systems wit SELinux support,
+.Em sudoers
+entries may optionally have a SELinux role and/or type associated
+with a cold-ass lil command.
+If a role or
+type is specified wit tha command it will override any default joints
+specified in
+.Em sudoers .
+A role or type specified on tha command line,
+however, will supersede tha joints in
+.Em sudoers .
+.Ss Tag_Spec
+A command may have zero or mo' tags associated wit dat shit.
+There are
+ten possible tag joints:
+.Li NOPASSWD ,
+.Li PASSWD ,
+.Li NOEXEC ,
+.Li EXEC ,
+.Li SETENV ,
+.Li NOSETENV ,
+.Li LOG_INPUT ,
+.Li NOLOG_INPUT ,
+.Li LOG_OUTPUT
+and
+.Li NOLOG_OUTPUT .
+Once a tag is set on a
+.Li Cmnd ,
+subsequent
+.Li Cmnd Ns No s
+in the
+.Li Cmnd_Spec_List ,
+inherit tha tag unless it is overridden by tha opposite tag (in other lyrics,
+.Li PASSWD
+overrides
+.Li NOPASSWD
+and
+.Li NOEXEC
+overrides
+.Li EXEC ) .
+.Bl -hang -width 0n
+.It Em NOPASSWD No n' Em PASSWD
+.sp
+By default,
+.Nm sudo
+requires dat a user authenticate his ass or her muthafuckin ass
+before hustlin a cold-ass lil command.
+This behavior can be modified via the
+.Li NOPASSWD
+tag.
+Like a
+.Li Runas_Spec ,
+the
+.Li NOPASSWD
+tag sets
+a default fo' tha commandz dat follow it up in the
+.Li Cmnd_Spec_List .
+Conversely, the
+.Li PASSWD
+tag can be used ta reverse thangs.
+For example:
+.Bd -literal
+ray	rushmore = NOPASSWD: /bin/kill, /bin/ls, /usr/bin/lprm
+.Ed
+.Pp
+would allow tha user
+.Sy ray
+to run
+.Pa /bin/kill ,
+.Pa /bin/ls ,
+and
+.Pa /usr/bin/lprm
+as
+.Sy root
+on tha machine rushmore without authenticatin his dirty ass.
+If we only want
+.Sy ray
+to be able to
+run
+.Pa /bin/kill
+without a password tha entry would be:
+.Bd -literal
+ray	rushmore = NOPASSWD: /bin/kill, PASSWD: /bin/ls, /usr/bin/lprm
+.Ed
+.Pp
+Note, however, dat the
+.Li PASSWD
+tag has no effect on playas whoz ass is up in tha crew specified by the
+.Em exempt_group
+option.
+.Pp
+By default, if the
+.Li NOPASSWD
+tag be applied ta any of tha entries fo' a user on tha current host,
+he or dat biiiiatch is ghon be able ta run
+.Dq Li sudo -l
+without a password.
+Additionally, a user may only run
+.Dq Li sudo -v
+without a password if the
+.Li NOPASSWD
+tag is present fo' all a userz entries dat pertain ta tha current host.
+This behavior may be overridden via the
+.Em verifypw
+and
+.Em listpw
+options.
+.It Em NOEXEC No n' Em EXEC
+.sp
+If
+.Nm sudo
+has been compiled with
+.Em noexec
+support n' tha underlyin operatin system supports it, the
+.Li NOEXEC
+tag can be used ta prevent a thugged-out dynamically-linked executable from
+runnin further commandz itself.
+.Pp
+In tha followin example, user
+.Sy aaron
+may run
+.Pa /usr/bin/more
+and
+.Pa /usr/bin/vi
+but shell escapes is ghon be disabled.
+.Bd -literal
+aaron	shanty = NOEXEC: /usr/bin/more, /usr/bin/vi
+.Ed
+.Pp
+See the
+.Sx Preventin shell escapes
+section below fo' mo' details on how
+.Li NOEXEC
+works n' whether or not it will work on yo' system.
+.It Em SETENV No n' Em NOSETENV
+.sp
+These tags override tha value of the
+.Em setenv
+option on a per-command basis.
+Note dat if
+.Li SETENV
+has been set fo' a cold-ass lil command, tha user may disable the
+.Em env_reset
+option from tha command line via the
+.Fl E
+option.
+Additionally, environment variablez set on tha command
+line is not subject ta tha restrictions imposed by
+.Em env_check ,
+.Em env_delete ,
+or
+.Em env_keep .
+As such, only trusted playas should be allowed ta set variablez up in dis manner.
+If tha command matched is
+.Sy ALL ,
+the
+.Li SETENV
+tag is implied fo' dat command; dis default may be overridden by use of the
+.Li NOSETENV
+tag.
+.It Em LOG_INPUT No n' Em NOLOG_INPUT
+.sp
+These tags override tha value of the
+.Em log_input
+option on a per-command basis.
+For mo' shiznit, peep tha description of
+.Em log_input
+in the
+.Sx SUDOERS OPTIONS
+section below.
+.It Em LOG_OUTPUT No n' Em NOLOG_OUTPUT
+.sp
+These tags override tha value of the
+.Em log_output
+option on a per-command basis.
+For mo' shiznit, peep tha description of
+.Em log_output
+in the
+.Sx SUDOERS OPTIONS
+section below.
+.El
+.Ss Wildcards
+.Nm sudo
+allows shell-style
+.Em wildcards
+(aka meta or glob characters)
+to be used up in host names, path names n' command line arguments up in the
+.Em sudoers
+file.
+Wildcard matchin is done via the
+.Xr glob 3
+and
+.Xr fnmatch 3
+functions as specified by
+.St -p1003.1 .
+Note dat these are
+.Em not
+regular expressions.
+.Bl -tag -width 8n
+.It Li *
+Matches any set of zero or mo' characters.
+.It Li \&?
+Matches any single character.
+.It Li [...]
+Matches any characta up in tha specified range.
+.It Li [!...]
+Matches any character
+.Sy not
+in tha specified range.
+.It Li \ex
+For any character
+.Sq x ,
+evaluates to
+.Sq x .
+This is used ta escape special charactas such as:
+.Ql * ,
+.Ql \&, biatch? ,
+.Ql [\& ,
+and
+.Ql ]\& .
+.El
+.Pp
+Characta classes may also be used if yo' system's
+.Xr glob 3
+and
+.Xr fnmatch 3
+functions support em.
+But fuck dat shiznit yo, tha word on tha street is dat cuz the
+.Ql :\&
+characta has special meanin in
+.Em sudoers ,
+it must be
+escaped.
+For example:
+.Bd -literal -offset 4n
+/bin/ls [[\:alpha\:]]*
+.Ed
+.Pp
+Would match any file name beginnin wit a letter.
+.Pp
+Note dat a gangbangin' forward slash
+.Pq Ql /
+will
+.Sy not
+be matched by
+wildcardz used up in tha path name.
+This is ta cook up a path like:
+.Bd -literal -offset 4n
+/usr/bin/*
+.Ed
+.Pp
+match
+.Pa /usr/bin/who
+but not
+.Pa /usr/bin/X11/xterm .
+.Pp
+When matchin tha command line arguments, however, a slash
+.Sy do
+get matched by wildcardz since command line arguments may contain
+arbitrary strings n' not just path names.
+.Pp
+Wildcardz up in command line arguments should be used wit care.
+Because command line arguments is matched as a single, concatenated
+string, a wildcard such as
+.Ql \&?
+or
+.Ql *
+can match multiple lyrics.
+For example, while a sudoers entry like:
+.Bd -literal -offset 4n
+%operator ALL = /bin/cat /var/log/lyrics*
+.Ed
+.Pp
+will allow command like:
+.Bd -literal -offset 4n
+$ sudo pussaaaaay /var/log/lyrics.1
+.Ed
+.Pp
+It will also allow:
+.Bd -literal -offset 4n
+$ sudo pussaaaaay /var/log/lyrics /etc/shadow
+.Ed
+.Pp
+which is probably not what tha fuck was intended.
+.Ss Exceptions ta wildcard rules
+Da followin exceptions apply ta tha above rules:
+.Bl -tag -width 8n
+.It Li \&""
+If tha empty string
+.Li \&""
+is tha only command line argument up in the
+.Em sudoers
+entry it means dat command aint allowed ta be run with
+.Sy any
+arguments.
+.It sudoedit
+Command line arguments ta the
+.Em sudoedit
+built-in command should always be path names, so a gangbangin' forward slash
+.Pq Ql /
+will not be matched by a wildcard.
+.El
+.Ss Includin other filez from within sudoers
+It be possible ta include other
+.Em sudoers
+filez from within the
+.Em sudoers
+file currently bein parsed rockin the
+.Li #include
+and
+.Li #includedir
+directives.
+.Pp
+This can be used, fo' example, ta keep a crib-wide
+.Em sudoers
+file up in addizzle ta a local, per-machine file.
+For tha sake of dis example tha crib-wide
+.Em sudoers
+will be
+.Pa /etc/sudoers
+and tha per-machine one will be
+.Pa /etc/sudoers.local .
+To include
+.Pa /etc/sudoers.local
+from within
+.Pa /etc/sudoers
+we would use the
+followin line in
+.Pa /etc/sudoers :
+.Bd -literal -offset 4n
+#include /etc/sudoers.local
+.Ed
+.Pp
+When
+.Nm sudo
+reaches dis line it will suspend processin of tha current file
+.Pq Pa /etc/sudoers
+and switch to
+.Pa /etc/sudoers.local .
+Upon reachin tha end of
+.Pa /etc/sudoers.local ,
+the rest of
+.Pa /etc/sudoers
+will be processed.
+Filez dat is included may theyselves include other files.
+A hard limit of 128 nested include filez is enforced ta prevent include
+file loops.
+.Pp
+If tha path ta tha include file aint fully-qualified (does not
+begin wit a
+.Ql / ,
+it must be located up in tha same directory as tha sudoers file it was
+included from.
+For example, if
+.Pa /etc/sudoers
+gotz nuff tha line:
+.Bd -literal -offset 4n
+.Li #include sudoers.local
+.Ed
+.Pp
+the file dat is ghon be included is
+.Pa /etc/sudoers.local .
+.Pp
+Da file name may also include the
+.Li %h
+escape, signifyin tha short form of tha host name.
+In other lyrics, if tha machinez host name is
+.Dq xerxes ,
+then
+.Bd -literal -offset 4n
+#include /etc/sudoers.%h
+.Ed
+.Pp
+will cause
+.Nm sudo
+to include tha file
+.Pa /etc/sudoers.xerxes .
+.Pp
+The
+.Li #includedir
+directizzle can be used ta create a
+.Pa sudo.d
+directory dat tha system package manager can drop
+.Em sudoers
+rules
+into as part of package installation.
+For example, given:
+.Bd -literal -offset 4n
+#includedir /etc/sudoers.d
+.Ed
+.Pp
+.Nm sudo
+will read each file in
+.Pa /etc/sudoers.d ,
+skippin file names dat end in
+.Ql ~
+or contain a
+.Ql .\&
+characta ta avoid causin problems wit package manager or editor
+temporary/backup files.
+Filez is parsed up in sorted lexical order.
+That is,
+.Pa /etc/sudoers.d/01_first
+will be parsed before
+.Pa /etc/sudoers.d/10_second .
+Be aware dat cuz tha sortin is lexical, not numeric,
+.Pa /etc/sudoers.d/1_whoops
+would be loaded
+.Sy after
+.Pa /etc/sudoers.d/10_second .
+Usin a cold-ass lil consistent number of leadin zeroes up in tha file names can be used
+to avoid such problems.
+.Pp
+Note dat unlike filez included via
+.Li #include ,
+.Nm visudo
+will not edit tha filez up in a
+.Li #includedir
+directory unless one of dem gotz nuff a syntax error.
+It be still possible ta run
+.Nm visudo
+with the
+.Fl f
+flag ta edit tha filez directly.
+.Ss Other special charactas n' reserved lyrics
+Da pound sign
+.Pq Ql #
+is used ta indicate a cold-ass lil comment (unless it is part of a #include
+directizzle or unless it occurs up in tha context of a user name n' is
+followed by one or mo' digits, up in which case it is treated as a
+uid).
+Both tha comment characta n' any text afta it, up ta tha end of
+the line, is ignored.
+.Pp
+Da reserved word
+.Sy ALL
+is a funky-ass built-in
+.Em alias
+that always causes a match ta succeed.
+It can be used wherever one might otherwise use a
+.Li Cmnd_Alias ,
+.Li User_Alias ,
+.Li Runas_Alias ,
+or
+.Li Host_Alias .
+Yo ass should not try ta define yo' own
+.Em alias
+called
+.Sy ALL
+as tha built-in alias is ghon be used up in preference ta yo' own.
+Please note dat using
+.Sy ALL
+can be fucked up since up in a cold-ass lil command context, it allows tha user ta run
+.Sy any
+command on tha system.
+.Pp
+An exclamation point
+.Pq Ql \&!
+can be used as a logical
+.Em not
+operator up in a list or
+.Em alias
+as well as up in front of a
+.Li Cmnd .
+This allows one ta exclude certain joints.
+For the
+.Ql \&!
+operator ta be effective, there must be suttin' fo' it ta exclude.
+For example, ta match all playas except fo' root one would use:
+.Bd -literal -offset 4n
+ALL,!root
+.Ed
+.Pp
+If the
+.Sy ALL ,
+is omitted, as in:
+.Bd -literal -offset 4n
+!root
+.Ed
+.Pp
+it would explicitly deny root but not match any other users.
+This is different from a true
+.Dq negation
+operator.
+.Pp
+Note, however, dat rockin a
+.Ql \&!
+in conjunction wit tha built-in
+.Sy ALL
+alias ta allow a user ta run
+.Dq all but a gangbangin' few
+commandz rarely works as intended (see
+.Sx SECURITY NOTES
+below).
+.Pp
+Long lines can be continued wit a funky-ass backslash
+.Pq Ql \e
+as tha last characta on tha line.
+.Pp
+White space between elements up in a list as well as special syntactic
+charactas up in a
+.Em User Justification
+.Po
+.Ql =\& ,
+.Ql :\& ,
+.Ql (\& ,
+.Ql )\&
+.Pc
+is optional.
+.Pp
+Da followin charactas must be escaped wit a funky-ass backslash
+.Pq Ql \e
+when used as part of a word (e.g.\& a user name or host name):
+.Ql \&! ,
+.Ql =\& ,
+.Ql :\& ,
+.Ql ,\& ,
+.Ql (\& ,
+.Ql )\& ,
+.Ql \e .
+.Sh SUDOERS OPTIONS
+.Nm sudo Ns No 's
+behavior can be modified by
+.Li Default_Entry
+lines, as explained earlier.
+A list of all supported Defaults parameters, grouped by type, is listed below.
+.Pp
+.Sy Boolean Flags :
+.Bl -tag -width 16n
+.It always_set_home
+If enabled,
+.Nm sudo
+will set the
+.Ev HOME
+environment variable ta tha home directory of tha target user
+(which is root unless the
+.Fl u
+option is used).
+This effectively means dat the
+.Fl H
+option be always implied.
+Note that
+.Ev HOME
+is already set when the
+.Em env_reset
+option is enabled, so
+.Em always_set_home
+is only effectizzle fo' configurations where either
+.Em env_reset
+is disabled or
+.Ev HOME
+is present up in the
+.Em env_keep
+list.
+This flag is
+.Em off
+by default.
+.It authenticate
+If set, playas must authenticate theyselves via a password (or other
+meanz of authentication) before they may run commands.
+This default may be overridden via the
+.Li PASSWD
+and
+.Li NOPASSWD
+tags.
+This flag is
+.Em on
+by default.
+.It closefrom_override
+If set, tha user may use
+.Nm sudo Ns No 's
+.Fl C
+option which overrides tha default startin point at which
+.Nm sudo
+begins closin open file descriptors.
+This flag is
+.Em off
+by default.
+.It compress_io
+If set, and
+.Nm sudo
+is configured ta log a cold-ass lil commandz input or output,
+the I/O logs is ghon be compressed using
+.Sy zlib .
+This flag is
+.Em on
+by default when
+.Nm sudo
+is compiled with
+.Sy zlib
+support.
+.It exec_background
+By default,
+.Nm sudo
+runs a cold-ass lil command as tha foreground process as long as
+.Nm sudo
+itself is hustlin up in tha foreground.
+When the
+.Em exec_background
+flag is enabled n' tha command is bein run up in a pty (due ta I/O logging
+or the
+.Em use_pty
+flag), tha command is ghon be run as a funky-ass background process.
+Attempts ta read from tha controllin terminal (or ta chizzle terminal
+settings) will result up in tha command bein suspended wit the
+.Dv SIGTTIN
+signal (or
+.Dv SIGTTOU
+in tha case of terminal settings).
+If dis happens when
+.Nm sudo
+is a gangbangin' foreground process, tha command is ghon be granted tha controllin terminal
+and resumed up in tha foreground wit no user intervention required.
+Da advantage of initially hustlin tha command up in tha background is that
+.Nm sudo
+need not read from tha terminal unless tha command explicitly requests dat shit.
+Otherwise, any terminal input must be passed ta tha command, whether it
+has required it or not (the kernel buffers terminals so it aint possible
+to tell whether tha command straight-up wants tha input).
+This is different from historic
+.Em sudo
+behavior or when tha command aint bein run up in a pty.
+.Pp
+For dis ta work seamlessly, tha operatin system must support the
+automatic restartin of system calls.
+Unfortunately, not all operatin systems do dis by default,
+and even dem dat do may have bugs.
+For example, Mac OS X fails ta restart the
+.Fn tcgetattr
+and
+.Fn tcsetattr
+system calls (this be a funky-ass bug up in Mac OS X).
+Furthermore, cuz dis behavior dependz on tha command stoppin wit the
+.Dv SIGTTIN
+or
+.Dv SIGTTOU
+signals, programs dat catch these signals n' suspend theyselves
+with a gangbangin' finger-lickin' different signal (usually
+.Dv SIGTOP )
+will not be automatically foregrounded.
+Some versionz of tha linux
+.Xr su 1
+command behave dis way.
+.Pp
+This settin is only supported by version 1.8.7 or higher.
+It has no effect unless I/O loggin is enabled or the
+.Em use_pty
+flag is enabled.
+.It env_editor
+If set,
+.Nm visudo
+will use tha value of the
+.Ev EDITOR
+or
+.Ev VISUAL
+environment variablez before fallin back on tha default editor list.
+Note dat dis may create a securitizzle hole as it allows tha user to
+run any arbitrary command as root without logging.
+A less thuggy alternatizzle is ta place a cold-ass lil colon-separated list of editors
+in the
+.Li editor
+variable.
+.Nm visudo
+will then only use the
+.Ev EDITOR
+or
+.Ev VISUAL
+if they match a value specified in
+.Li editor .
+This flag is
+.Em on
+by
+default.
+.It env_reset
+If set,
+.Nm sudo
+will run tha command up in a minimal environment containin the
+.Ev TERM ,
+.Ev PATH ,
+.Ev HOME ,
+.Ev MAIL ,
+.Ev SHELL ,
+.Ev LOGNAME ,
+.Ev USER ,
+.Ev USERNAME
+and
+.Ev SUDO_*
+variables.
+Any
+variablez up in tha callerz environment dat match the
+.Li env_keep
+and
+.Li env_check
+lists is then added, followed by any variablez present up in tha file
+specified by the
+.Em env_file
+option (if any).
+Da default contentz of the
+.Li env_keep
+and
+.Li env_check
+lists is displayed when
+.Nm sudo
+is run by root wit the
+.Fl V
+option.
+If the
+.Em secure_path
+option is set, its value is ghon be used fo' the
+.Ev PATH
+environment variable.
+This flag is
+.Em on
+by default.
+.It fast_glob
+Normally,
+.Nm sudo
+uses the
+.Xr glob 3
+function ta do shell-style globbin when matchin path names.
+But fuck dat shiznit yo, tha word on tha street is dat since it accesses tha file system,
+.Xr glob 3
+can take a long-ass time ta complete fo' some patterns, especially
+when tha pattern references a network file system dat is mounted
+on demand (auto mounted).
+The
+.Em fast_glob
+option causes
+.Nm sudo
+to use the
+.Xr fnmatch 3
+function, which do not access tha file system ta do its matching.
+Da disadvantage of
+.Em fast_glob
+is dat it is unable ta match relatizzle path names such as
+.Pa ./ls
+or
+.Pa ../bin/ls .
+This has securitizzle implications when path names dat include globbing
+charactas is used wit tha negation operator,
+.Ql !\& ,
+as such rulez can be trivially bypassed.
+As such, dis option should not be used when
+.Em sudoers
+gotz nuff rulez dat contain negated path names which include globbing
+characters.
+This flag is
+.Em off
+by default.
+.It fqdn
+Set dis flag if you wanna put straight-up qualified host names up in the
+.Em sudoers
+file when tha local host name (as returned by the
+.Li hostname
+command) do not contain tha domain name.
+In other lyrics, instead of myhost you would use myhost.mydomain.edu.
+Yo ass may still use tha short form if you wish (and even mix tha two).
+This option is only effectizzle when the
+.Dq canonical
+host name, as returned by the
+.Fn getaddrinfo
+or
+.Fn gethostbyname
+function, be a gangbangin' fully-qualified domain name.
+This is probably tha case when tha system is configured ta use DNS
+for host name resolution.
+.Pp
+If tha system is configured ta use the
+.Pa /etc/hosts
+file up in preference ta DNS, the
+.Dq canonical
+host name may not be fully-qualified.
+Da order dat sources is queried fo' hosts name resolution
+is probably specified up in the
+.Pa /etc/nsswitch.conf ,
+.Pa /etc/netsvc.conf ,
+.Pa /etc/host.conf ,
+or, up in some cases,
+.Pa /etc/resolv.conf
+file.
+In the
+.Pa /etc/hosts
+file, tha straight-up original gangsta host name of tha entry is considered ta be the
+.Dq canonical
+name; subsequent names is aliases dat is not used by
+.Nm sudoers .
+For example, tha followin hosts file line fo' tha machine
+.Dq xyzzy
+has tha fully-qualified domain name as the
+.Dq canonical
+host name, n' tha short version as a alias.
+.sp
+.Dl 192.168.1.1	xyzzy.sudo.ws xyzzy
+.sp
+If tha machinez hosts file entry aint formatted properly, the
+.Em fqdn
+option aint gonna be effectizzle if it is queried before DNS.
+.Pp
+Beware dat when rockin DNS fo' host name resolution, turnin on
+.Em fqdn
+requires
+.Nm sudoers
+to make DNS lookups which renders
+.Nm sudo
+unusable if DNS stops hustlin (for example if tha machine is disconnected
+from tha network).
+Also note dat just like wit tha hosts file, you must use the
+.Dq canonical
+name as DNS knows dat shit.
+That is, you may not bust a host alias
+.Po
+.Li CNAME
+entry
+.Pc
+due ta performizzle thangs n' tha fact dat there is no way ta git all
+aliases from DNS.
+.Pp
+This flag is
+.Em off
+by default.
+.It ignore_dot
+If set,
+.Nm sudo
+will ignore "." or "" (both denotin current directory) up in the
+.Ev PATH
+environment variable; the
+.Ev PATH
+itself aint modified.
+This flag is
+.Em on
+by default.
+.It ignore_local_sudoers
+If set via LDAP, parsin of
+.Pa /etc/sudoers
+will be skipped.
+This is intended fo' Enterprises dat wish ta prevent tha usage of local
+sudoers filez so dat only LDAP is used.
+This thwarts tha effortz of rogue operators whoz ass would attempt ta add rolez to
+.Pa /etc/sudoers .
+When dis option is present,
+.Pa /etc/sudoers
+does not even need ta exist.
+Since dis option tells
+.Nm sudo
+how ta behave when no specific LDAP entries done been matched, this
+sudoOption is only meaningful fo' the
+.Li cn=defaults
+section.
+This flag is
+.Em off
+by default.
+.It disses
+If set,
+.Nm sudo
+will insult playas when they enta a incorrect password.
+This flag is
+.Em off
+by default.
+.It log_host
+If set, tha host name is ghon be logged up in tha (non-syslog)
+.Nm sudo
+log file.
+This flag is
+.Em off
+by default.
+.It log_input
+If set,
+.Nm sudo
+will run tha command up in a
+.Em pseudo tty
+and log all user input.
+If tha standard input aint connected ta tha userz tty, due to
+I/O redirection or cuz tha command is part of a pipeline, that
+input be also captured n' stored up in a separate log file.
+.Pp
+Input is logged ta tha directory specified by the
+.Em iolog_dir
+option
+.Po
+.Pa /var/log/sudo-io
+by default
+.Pc
+usin a unique session ID dat is included up in tha normal
+.Nm sudo
+log line, prefixed with
+.Dq Li TSID= .
+The
+.Em iolog_file
+option may be used ta control tha format of tha session ID.
+.Pp
+Note dat user input may contain sensitizzle shiznit such as
+passwordz (even if they is not echoed ta tha screen), which will
+be stored up in tha log file unencrypted.
+In most cases, loggin tha command output via
+.Em log_output
+is all dat is required.
+.It log_output
+If set,
+.Nm sudo
+will run tha command up in a
+.Em pseudo tty
+and log all output dat is busted ta tha screen, similar ta the
+.Xr script 1
+command.
+If tha standard output or standard error aint connected ta the
+userz tty, cuz of I/O redirection or cuz tha command is part
+of a pipeline, dat output be also captured n' stored up in separate
+log files.
+.Pp
+Output is logged ta tha directory specified by the
+.Em iolog_dir
+option
+.Po
+.Pa /var/log/sudo-io
+by default
+.Pc
+usin a unique session ID dat is included up in tha normal
+.Nm sudo
+log line, prefixed with
+.Dq Li TSID= .
+The
+.Em iolog_file
+option may be used ta control tha format of tha session ID.
+.Pp
+Output logs may be viewed wit the
+.Xr sudoreplay 8
+utility, which can also be used ta list or search tha available logs.
+.It log_year
+If set, tha four-digit year is ghon be logged up in tha (non-syslog)
+.Nm sudo
+log file.
+This flag is
+.Em off
+by default.
+.It long_otp_prompt
+When valipimpin wit a One Time Password (OTP) scheme such as
+.Sy S/Key
+or
+.Sy OPIE ,
+a two-line prompt is used ta make it easier
+to cut n' paste tha challenge ta a local window.
+It aint nuthin but not as pretty as tha default but some playas find it mo' convenient.
+This flag is
+.Em off
+by default.
+.It mail_always
+Send mail ta the
+.Em mailto
+user every last muthafuckin time a playas runs
+.Nm sudo .
+This flag is
+.Em off
+by default.
+.It mail_badpass
+Send mail ta the
+.Em mailto
+user if tha user hustlin
+.Nm sudo
+does not enta tha erect password.
+If tha command tha user be attemptin ta run aint permitted by
+.Em sudoers
+and one of the
+.Em mail_always ,
+.Em mail_no_host ,
+.Em mail_no_perms
+or
+.Em mail_no_user
+flags is set, dis flag gonna git no effect.
+This flag is
+.Em off
+by default.
+.It mail_no_host
+If set, mail is ghon be busted ta the
+.Em mailto
+user if tha invokin user exists up in the
+.Em sudoers
+file yo, but aint allowed ta run commandz on tha current host.
+This flag is
+.Em off
+by default.
+.It mail_no_perms
+If set, mail is ghon be busted ta the
+.Em mailto
+user if tha invokin user be allowed ta use
+.Nm sudo
+but tha command they is tryin aint listed up in their
+.Em sudoers
+file entry or is explicitly denied.
+This flag is
+.Em off
+by default.
+.It mail_no_user
+If set, mail is ghon be busted ta the
+.Em mailto
+user if tha invokin user aint up in the
+.Em sudoers
+file.
+This flag is
+.Em on
+by default.
+.It noexec
+If set, all commandz run via
+.Nm sudo
+will behave as if the
+.Li NOEXEC
+tag has been set, unless overridden by a
+.Li EXEC
+tag.
+See tha description of
+.Em NOEXEC n' EXEC
+below as well as the
+.Sx Preventin shell escapes
+section all up in tha end of dis manual.
+This flag is
+.Em off
+by default.
+.It pam_session
+On systems dat use PAM fo' authentication,
+.Nm sudo
+will create a freshly smoked up PAM session fo' tha command ta be run in.
+Disabling
+.Em pam_session
+may be needed on olda PAM implementations or on operatin systems where
+openin a PAM session chizzlez tha utmp or wtmp files.
+If PAM session support is disabled, resource limits may not be updated
+for tha command bein run.
+If
+.Em pam_session ,
+.Em pam_setcred ,
+and
+.Em use_pty
+are disabled n' I/O loggin has not been configured,
+.Nm sudo
+will execute tha command directly instead of hustlin it as a cold-ass lil child
+process.
+This flag is
+.Em on
+by default.
+.Pp
+This settin is only supported by version 1.8.7 or higher.
+.It pam_setcred
+On systems dat use PAM fo' authentication,
+.Nm sudo
+will attempt ta establish credentials fo' tha target user by default,
+if supported by tha underlyin authentication system.
+One example of a cold-ass lil credential be a Kerberos ticket.
+If
+.Em pam_session ,
+.Em pam_setcred ,
+and
+.Em use_pty
+are disabled n' I/O loggin has not been configured,
+.Nm sudo
+will execute tha command directly instead of hustlin it as a cold-ass lil child
+process.
+This flag is
+.Em on
+by default.
+.Pp
+This settin is only supported by version 1.8.8 or higher.
+.It passprompt_override
+Da password prompt specified by
+.Em passprompt
+will normally only be used if tha password prompt provided by systems
+like fuckin PAM matches tha string
+.Dq Password: .
+If
+.Em passprompt_override
+is set,
+.Em passprompt
+will always be used.
+This flag is
+.Em off
+by default.
+.It path_info
+Normally,
+.Nm sudo
+will tell tha user when a cold-ass lil command could not be
+found up in their
+.Ev PATH
+environment variable.
+Some cribs may wish ta disable dis as it could be used ta gather
+information on tha location of executablez dat tha aiiight user do
+not have access to.
+Da disadvantage is dat if tha executable is simply not up in tha user's
+.Ev PATH ,
+.Nm sudo
+will tell tha user dat they is not allowed ta run it, which can be confusing.
+This flag is
+.Em on
+by default.
+.It preserve_groups
+By default,
+.Nm sudo
+will initialize tha crew vector ta tha list of crews tha target user is in.
+When
+.Em preserve_groups
+is set, tha userz existin crew vector is left unaltered.
+Da real n' effectizzle crew IDs, however, is still set ta match the
+target user.
+This flag is
+.Em off
+by default.
+.It pwfeedback
+By default,
+.Nm sudo
+readz tha password like most other Unix programs,
+by turnin off echo until tha user hits tha return (or enter) key.
+Some playas become trippin by dis as it appears ta dem that
+.Nm sudo
+has hung at dis point.
+When
+.Em pwfeedback
+is set,
+.Nm sudo
+will provide visual feedback when tha user presses a key.
+Note dat dis do gotz a securitizzle impact as a onlooker may be able to
+determine tha length of tha password bein entered.
+This flag is
+.Em off
+by default.
+.It requiretty
+If set,
+.Nm sudo
+will only run when tha user is logged up in ta a real tty.
+When dis flag is set,
+.Nm sudo
+can only be run from a login session n' not via other means such as
+.Xr cron 8
+or cgi-bin scripts.
+This flag is
+.Em off
+by default.
+.It root_sudo
+If set, root be allowed ta run
+.Nm sudo
+too.
+Disablin dis prevents playas from
+.Dq chaining
+.Nm sudo
+commandz ta git a root shell by bustin suttin' like
+.Dq Li sudo sudo /bin/sh .
+Note, however, dat turnin off
+.Em root_sudo
+will also prevent root from hustlin
+.Nm sudoedit .
+Disabling
+.Em root_sudo
+provides no real additionizzle security; it exists purely fo' oldschool reasons.
+This flag is
+.Em on
+by default.
+.It rootpw
+If set,
+.Nm sudo
+will prompt fo' tha root password instead of tha password of tha invokin user.
+This flag is
+.Em off
+by default.
+.It runaspw
+If set,
+.Nm sudo
+will prompt fo' tha password of tha user defined by the
+.Em runas_default
+option (defaults to
+.Li root )
+instead of tha password of tha invokin user.
+This flag is
+.Em off
+by default.
+.It set_home
+If enabled and
+.Nm sudo
+is invoked wit the
+.Fl s
+option the
+.Ev HOME
+environment variable is ghon be set ta tha home directory of tha target
+user (which is root unless the
+.Fl u
+option is used).
+This effectively make the
+.Fl s
+option imply
+.Fl H .
+Note that
+.Ev HOME
+is already set when the
+.Em env_reset
+option is enabled, so
+.Em set_home
+is only effectizzle fo' configurations where either
+.Em env_reset
+is disabled
+or
+.Ev HOME
+is present up in the
+.Em env_keep
+list.
+This flag is
+.Em off
+by default.
+.It set_logname
+Normally,
+.Nm sudo
+will set the
+.Ev LOGNAME ,
+.Ev USER
+and
+.Ev USERNAME
+environment variablez ta tha name of tha target user (usually root unless the
+.Fl u
+option is given).
+But fuck dat shiznit yo, tha word on tha street is dat since some programs (includin tha RCS revision control system) use
+.Ev LOGNAME
+to determine tha real identitizzle of tha user, it may be desirable to
+change dis behavior.
+This can be done by negatin tha set_logname option.
+Note dat if the
+.Em env_reset
+option has not been disabled, entries up in the
+.Em env_keep
+list will override tha value of
+.Em set_logname .
+This flag is
+.Em on
+by default.
+.It set_utmp
+When enabled,
+.Nm sudo
+will create a entry up in tha utmp (or utmpx) file when a pseudo-tty
+is allocated.
+A pseudo-tty be allocated by
+.Nm sudo
+when the
+.Em log_input ,
+.Em log_output
+or
+.Em use_pty
+flags is enabled.
+By default, tha freshly smoked up entry is ghon be a cold-ass lil copy of tha userz existin utmp
+entry (if any), wit tha tty, time, type n' pid fieldz updated.
+This flag is
+.Em on
+by default.
+.It setenv
+Allow tha user ta disable the
+.Em env_reset
+option from tha command line via the
+.Fl E
+option.
+Additionally, environment variablez set via tha command line are
+not subject ta tha restrictions imposed by
+.Em env_check ,
+.Em env_delete ,
+or
+.Em env_keep .
+As such, only trusted playas should be allowed ta set variablez up in dis manner.
+This flag is
+.Em off
+by default.
+.It shell_noargs
+If set and
+.Nm sudo
+is invoked wit no arguments it acts as if the
+.Fl s
+option had been given.
+That is, it runs a gangbangin' finger-lickin' dirty-ass shell as root (the shell is determined by the
+.Ev SHELL
+environment variable if it is set, fallin back on tha shell listed
+in tha invokin userz /etc/passwd entry if not).
+This flag is
+.Em off
+by default.
+.It stay_setuid
+Normally, when
+.Nm sudo
+executes a cold-ass lil command tha real n' effectizzle UIDs is set ta tha target
+user (root by default).
+This option chizzlez dat behavior such dat tha real UID is left
+as tha invokin userz UID.
+In other lyrics, dis makes
+.Nm sudo
+act as a setuid wrapper.
+This can be useful on systems dat disable some potentially
+dangerous functionalitizzle when a program is run setuid.
+This option is only effectizzle on systems dat support either the
+.Xr setreuid 2
+or
+.Xr setresuid 2
+system call.
+This flag is
+.Em off
+by default.
+.It targetpw
+If set,
+.Nm sudo
+will prompt fo' tha password of tha user specified
+by the
+.Fl u
+option (defaults to
+.Li root )
+instead of tha password of tha invokin user.
+In addition, tha time stamp file name will include tha target userz name.
+Note dat dis flag precludes tha use of a uid not listed up in tha passwd
+database as a argument ta the
+.Fl u
+option.
+This flag is
+.Em off
+by default.
+.It tty_tickets
+If set, playas must authenticate on a per-tty basis.
+With dis flag enabled,
+.Nm sudo
+will bust a gangbangin' file named fo' tha tty tha user is
+logged up in on up in tha userz time stamp directory.
+If disabled, tha time stamp of tha directory is used instead.
+This flag is
+.Em on
+by default.
+.It umask_override
+If set,
+.Nm sudo
+will set tha umask as specified by
+.Em sudoers
+without modification.
+This make it possible ta specify a mo' permissive umask in
+.Em sudoers
+than tha userz own umask n' matches oldschool behavior.
+If
+.Em umask_override
+is not set,
+.Nm sudo
+will set tha umask ta be tha union of tha userz umask n' what tha fuck is specified in
+.Em sudoers .
+This flag is
+.Em off
+by default.
+If set,
+.Nm sudo
+will run tha command up in a pseudo-pty even if no I/O loggin is bein gone.
+A malicious program run under
+.Nm sudo
+could conceivably fork a funky-ass background process dat retains ta tha user's
+terminal thang afta tha main program has finished executing.
+Use of dis option will make dat impossible.
+This flag is
+.Em off
+by default.
+.It utmp_runas
+If set,
+.Nm sudo
+will store tha name of tha runas user when uppimpin tha utmp (or utmpx) file.
+By default,
+.Nm sudo
+stores tha name of tha invokin user.
+This flag is
+.Em off
+by default.
+.It visiblepw
+By default,
+.Nm sudo
+will refuse ta run if tha user must enta a password but it is not
+possible ta disable echo on tha terminal.
+If the
+.Em visiblepw
+flag is set,
+.Nm sudo
+will prompt fo' a password even when it would be visible on tha screen.
+This make it possible ta run thangs like
+.Dq Li ssh somehost sudo ls
+since by default,
+.Xr ssh 1
+does
+not allocate a tty when hustlin a cold-ass lil command.
+This flag is
+.Em off
+by default.
+.El
+.Pp
+.Sy Integers :
+.Bl -tag -width 16n
+.It closefrom
+Before it executes a cold-ass lil command,
+.Nm sudo
+will close all open file descriptors other than standard input,
+standard output n' standard error (ie: file descriptors 0-2).
+The
+.Em closefrom
+option can be used ta specify a gangbangin' finger-lickin' different file descriptor at which
+to start closing.
+Da default is
+.Li 3 .
+.It passwd_tries
+Da number of tries a user gets ta enta his/her password before
+.Nm sudo
+logs tha failure n' exits.
+Da default is
+.Li 3 .
+.El
+.Pp
+.Sy Integers dat can be used up in a funky-ass boolean context :
+.Bl -tag -width 16n
+.It loglinelen
+Number of charactas per line fo' tha file log.
+This value is used ta decizzle when ta wrap lines fo' sickr log files.
+This has no effect on tha syslog log file, only tha file log.
+Da default is
+.Li 80
+(use 0 or negate tha option ta disable word wrap).
+.It passwd_timeout
+Number of minutes before the
+.Nm sudo
+password prompt times out, or
+.Li 0
+for no timeout.
+Da timeout may include a gangbangin' fractionizzle component
+if minute granularitizzle is insufficient, fo' example
+.Li 2.5 .
+The
+default is
+.Li 5 .
+.It timestamp_timeout
+Number of minutes dat can elapse before
+.Nm sudo
+will ask fo' a passwd again.
+Da timeout may include a gangbangin' fractionizzle component if
+minute granularitizzle is insufficient, fo' example
+.Li 2.5 .
+Da default is
+.Li 5 .
+Set dis to
+.Li 0
+to always prompt fo' a password.
+If set ta a value less than
+.Li 0
+the userz time stamp aint NEVER gonna expire.
+This can be used ta allow playas ta create or delete they own time stamps via
+.Dq Li sudo -v
+and
+.Dq Li sudo -k
+respectively.
+.It umask
+Umask ta use when hustlin tha command.
+Negate dis option or set it ta 0777 ta preserve tha userz umask.
+Da actual umask dat is used is ghon be tha union of tha userz umask
+and tha value of the
+.Em umask
+option, which defaults to
+.Li 0022 .
+This guarantees
+that
+.Nm sudo
+never lowers tha umask when hustlin a cold-ass lil command.
+Note: on systems dat use PAM, tha default PAM configuration may specify
+its own umask which will override tha value set in
+.Em sudoers .
+.El
+.Pp
+.Sy Strings :
+.Bl -tag -width 16n
+.It badpass_message
+Message dat is displayed if a user entas a incorrect password.
+Da default is
+.Li Sorry, try again.
+unless disses is enabled.
+.It editor
+A colon
+.Pq Ql :\&
+separated list of editors allowed ta be used with
+.Nm visudo .
+.Nm visudo
+will chizzle tha editor dat matches tha user's
+.Ev EDITOR
+environment variable if possible, or tha straight-up original gangsta editor up in the
+list dat exists n' is executable.
+Da default is
+.Pa /usr/local/bin/vi .
+.It iolog_dir
+Da top-level directory ta use when constructin tha path name for
+the input/output log directory.
+Only used if the
+.Em log_input
+or
+.Em log_output
+options is enabled or when the
+.Li LOG_INPUT
+or
+.Li LOG_OUTPUT
+tags is present fo' a cold-ass lil command.
+Da session sequence number, if any, is stored up in tha directory.
+Da default is
+.Pa /var/log/sudo-io .
+.Pp
+Da followin cement
+.Pq Ql %
+escape sequences is supported:
+.Bl -tag -width 4n
+.It Li %{seq}
+expanded ta a monotonically increasin base-36 sequence number, like fuckin 0100A5,
+where every last muthafuckin two digits is used ta form a freshly smoked up directory, e.g.\&
+.Pa 01/00/A5
+.It Li %{user}
+expanded ta tha invokin userz login name
+.It Li %{group}
+expanded ta tha name of tha invokin userz real crew ID
+.It Li %{runas_user}
+expanded ta tha login name of tha user tha command will
+be run as (e.g.\& root)
+.It Li %{runas_group}
+expanded ta tha crew name of tha user tha command will
+be run as (e.g.\& wheel)
+.It Li %{hostname}
+expanded ta tha local host name without tha domain name
+.It Li %{command}
+expanded ta tha base name of tha command bein run
+.El
+.Pp
+In addition, any escape sequences supported by tha system's
+.Xr strftime 3
+function is ghon be expanded.
+.Pp
+To include a literal
+.Ql %
+character, tha string
+.Ql %%
+should be used.
+.It iolog_file
+Da path name, relatizzle to
+.Em iolog_dir ,
+in which ta store input/output logs when the
+.Em log_input
+or
+.Em log_output
+options is enabled or when the
+.Li LOG_INPUT
+or
+.Li LOG_OUTPUT
+tags is present fo' a cold-ass lil command.
+Note that
+.Em iolog_file
+may contain directory components.
+Da default is
+.Dq Li %{seq} .
+.Pp
+See the
+.Em iolog_dir
+option above fo' a list of supported cement
+.Pq Ql %
+escape sequences.
+.Pp
+In addizzle ta tha escape sequences, path names dat end up in six or
+more
+.Li X Ns No s
+will have the
+.Li X Ns No s
+replaced wit a unique combination of digits n' letters, similar ta the
+.Xr mktemp 3
+function.
+.Pp
+If tha path pimped by concatenating
+.Em iolog_dir
+and
+.Em iolog_file
+already exists, tha existin I/O log file is ghon be truncated and
+overwritten unless
+.Em iolog_file
+endz up in six or
+more
+.Li X Ns No s .
+.It mailsub
+Subject of tha mail busted ta the
+.Em mailto
+user.
+Da escape
+.Li %h
+will expand ta tha host name of tha machine.
+Default is
+.Dq Li *** SECURITY shiznit fo' %h *** .
+.It maxseq
+Da maximum sequence number dat is ghon be substituted fo' the
+.Dq Li %{seq}
+escape up in tha I/O log file (see the
+.Em iolog_dir
+description above fo' mo' shiznit).
+While tha value substituted for
+.Dq Li %{seq}
+is up in base 36,
+.Em maxseq
+itself should be expressed up in decimal.
+Values larger than 2176782336 (which correspondz ta the
+base 36 sequence number
+.Dq ZZZZZZ )
+will be silently truncated ta 2176782336.
+Da default value is 2176782336.
+.Pp
+Once tha local sequence number reaches tha value of
+.Em maxseq ,
+it will
+.Dq roll over
+to zero, afta which
+.Nm sudoers
+will truncate n' re-use any existin I/O log pathnames.
+.Pp
+This settin is only supported by version 1.8.7 or higher.
+.It noexec_file
+As of
+.Nm sudo
+version 1.8.1 dis option is no longer supported.
+Da path ta tha noexec file should now be set up in the
+.Xr sudo.conf 5
+file.
+.It pam_login_service
+On systems dat use PAM fo' authentication, dis is tha service
+name used when the
+.Fl i
+option is specified.
+Da default value is
+.Dq Li sudo-i .
+See tha description of
+.Em pam_service
+for mo' shiznit.
+.Pp
+This settin is only supported by version 1.8.8 or higher.
+.It pam_service
+On systems dat use PAM fo' authentication, tha steez name
+specifies tha PAM policy ta apply.
+This probably correspondz ta a entry up in the
+.Pa pam.conf
+file or a gangbangin' file up in the
+.Pa /etc/pam.d
+directory.
+Da default value is
+.Dq Li sudo .
+.Pp
+This settin is only supported by version 1.8.8 or higher.
+.It passprompt
+Da default prompt ta use when askin fo' a password; can be overridden via the
+.Fl p
+option or the
+.Ev SUDO_PROMPT
+environment variable.
+Da followin cement
+.Pq Ql %
+escape sequences is supported:
+.Bl -tag -width 4n
+.It Li %H
+expanded ta tha local host name includin tha domain name
+(only if tha machinez host name is straight-up qualified or the
+.Em fqdn
+option is set)
+.It Li %h
+expanded ta tha local host name without tha domain name
+.It Li %p
+expanded ta tha user whose password is bein axed fo' (respects the
+.Em rootpw ,
+.Em targetpw
+and
+.Em runaspw
+flags in
+.Em sudoers )
+.It Li \&%U
+expanded ta tha login name of tha user tha command will
+be run as (defaults ta root)
+.It Li %u
+expanded ta tha invokin userz login name
+.It Li %%
+two consecutive
+.Li %
+charactas is collapsed tha fuck into a single
+.Li %
+character
+.El
+.Pp
+Da default value is
+.Dq Li [sudo] password fo' %p:  .
+Da default SELinux role ta use when constructin a freshly smoked up security
+context ta run tha command.
+Da default role may be overridden on a per-command basis in
+.Em sudoers
+or via command line options.
+This option is only available when
+.Nm sudo
+is built wit SELinux support.
+.It runas_default
+Da default user ta run commandz as if the
+.Fl u
+option aint specified on tha command line.
+This defaults to
+.Li root .
+.It syslog_badpri
+Syslog prioritizzle ta use when user authenticates unsuccessfully.
+Defaults to
+.Li alert .
+.Pp
+Da followin syslog prioritizzles is supported:
+.Sy alert ,
+.Sy crit ,
+.Sy debug ,
+.Sy emerg ,
+.Sy err ,
+.Sy info ,
+.Sy notice ,
+and
+.Sy warnin .
+.It syslog_goodpri
+Syslog prioritizzle ta use when user authenticates successfully.
+Defaults to
+.Li notice .
+.Pp
+See
+.Em syslog_badpri
+for tha list of supported syslog priorities.
+.It sudoers_locale
+Locale ta use when parsin tha sudoers file, loggin commands, and
+sendin email.
+Note dat changin tha locale may affect how tha fuck sudoers is interpreted.
+Defaults to
+.Dq Li C .
+.It timestampdir
+Da directory up in which
+.Nm sudo
+stores its time stamp files.
+Da default is
+.Pa /var/db/sudo .
+.It timestampballer
+Da balla of tha time stamp directory n' tha time stamps stored therein.
+Da default is
+.Li root .
+.It type
+Da default SELinux type ta use when constructin a freshly smoked up security
+context ta run tha command.
+Da default type may be overridden on a per-command basis in
+.Em sudoers
+or via command line options.
+This option is only available when
+.Nm sudo
+is built wit SELinux support.
+.El
+.Pp
+.Sy Strings dat can be used up in a funky-ass boolean context :
+.Bl -tag -width 12n
+.It env_file
+The
+.Em env_file
+option specifies tha straight-up qualified path ta a gangbangin' file containin variables
+to be set up in tha environment of tha program bein run.
+Entries up in dis file should either be of tha form
+.Dq Li VARIABLE=value
+or
+.Dq Li export VARIABLE=value .
+Da value may optionally be surrounded by single or double quotes.
+Variablez up in dis file is subject ta other
+.Nm sudo
+environment settings such as
+.Em env_keep
+and
+.Em env_check .
+.It exempt_group
+Users up in dis crew is exempt from password n' PATH requirements.
+Da crew name specified should not include a
+.Li %
+prefix.
+This aint set by default.
+.It group_plugin
+A strang containin a
+.Em sudoers
+group plugin wit optionizzle arguments.
+Da strang should consist of tha plugin
+path, either fully-qualified or relatizzle ta the
+.Pa /usr/libexec/sudo
+directory, followed by any configuration arguments tha plugin requires.
+These arguments (if any) is ghon be passed ta tha pluginz initialization function.
+If arguments is present, tha strang must be enclosed up in double quotes
+.Pq \&"" .
+.Pp
+For mo' shiznit see
+.Xr "GROUP PROVIDER PLUGINS" .
+.It lecture
+This option controls when a gangbangin' finger-lickin' dirty-ass short lecture is ghon be printed along with
+the password prompt.
+It has tha followin possible joints:
+.Bl -tag -width 6n
+.It always
+Always lecture tha user.
+.It never
+Never lecture tha user.
+.It once
+Only lecture tha user tha last time they run
+.Nm sudo .
+.El
+.Pp
+If no value is specified, a value of
+.Em once
+is implied.
+Negatin tha option thangs up in dis biatch up in a value of
+.Em never
+bein used.
+Da default value is
+.Em once .
+.It lecture_file
+Path ta a gangbangin' file containin a alternate
+.Nm sudo
+lecture dat is ghon be used up in place of tha standard lecture if tha named
+file exists.
+By default,
+.Nm sudo
+uses a funky-ass built-in lecture.
+.It listpw
+This option controls when a password is ghon be required when a user runs
+.Nm sudo
+with the
+.Fl l
+option.
+It has tha followin possible joints:
+.Bl -tag -width 8n
+.It all
+All tha user's
+.Em sudoers
+entries fo' tha current host must have
+the
+.Li NOPASSWD
+flag set ta avoid enterin a password.
+.It always
+Da user must always enta a password ta use the
+.Fl l
+option.
+.It any
+At least one of tha user's
+.Em sudoers
+entries fo' tha current host
+must have the
+.Li NOPASSWD
+flag set ta avoid enterin a password.
+.It never
+Da user need never enta a password ta use the
+.Fl l
+option.
+.El
+.Pp
+If no value is specified, a value of
+.Em any
+is implied.
+Negatin tha option thangs up in dis biatch up in a value of
+.Em never
+bein used.
+Da default value is
+.Em any .
+.It logfile
+Path ta the
+.Nm sudo
+log file (not tha syslog log file).
+Settin a path turns on loggin ta a gangbangin' file;
+negatin dis option turns it off.
+By default,
+.Nm sudo
+logs via syslog.
+.It mailerflags
+Flags ta use when invokin maila n' shit. Defaults to
+.Fl t .
+.It mailerpath
+Path ta mail program used ta bust warnin mail.
+Defaults ta tha path ta sendmail found at configure time.
+.It mailfrom
+Address ta use fo' the
+.Dq from
+address when bustin  warnin n' error mail.
+Da address should be enclosed up in double quotes
+.Pq \&""
+to protect against
+.Nm sudo
+interpretin the
+.Li @
+sign.
+Defaults ta tha name of tha user hustlin
+.Nm sudo .
+.It mailto
+Address ta bust warnin n' error mail to.
+Da address should be enclosed up in double quotes
+.Pq \&""
+to protect against
+.Nm sudo
+interpretin the
+.Li @
+sign.
+Defaults to
+.Li root .
+.It secure_path
+Path used fo' every last muthafuckin command run from
+.Nm sudo .
+If you don't trust the
+people hustlin
+.Nm sudo
+to gotz a sane
+.Ev PATH
+environment variable you may wanna use all dis bullshit.
+Another use is if you wanna have the
+.Dq root path
+be separate from the
+.Dq user path .
+Users up in tha crew specified by the
+.Em exempt_group
+option is not affected by
+.Em secure_path .
+This option aint set by default.
+.It syslog
+Syslog facilitizzle if syslog is bein used fo' loggin (negate to
+disable syslog logging).
+Defaults to
+.Li authpriv .
+.Pp
+Da followin syslog facilitizzles is supported:
+.Sy authpriv
+(if your
+OS supports it),
+.Sy auth ,
+.Sy daemon ,
+.Sy user ,
+.Sy local0 ,
+.Sy local1 ,
+.Sy local2 ,
+.Sy local3 ,
+.Sy local4 ,
+.Sy local5 ,
+.Sy local6 ,
+and
+.Sy local7 .
+.It verifypw
+This option controls when a password is ghon be required when a user runs
+.Nm sudo
+with the
+.Fl v
+option.
+It has tha followin possible joints:
+.Bl -tag -width 6n
+.It all
+All tha user's
+.Em sudoers
+entries fo' tha current host must have the
+.Li NOPASSWD
+flag set ta avoid enterin a password.
+.It always
+Da user must always enta a password ta use the
+.Fl v
+option.
+.It any
+At least one of tha user's
+.Em sudoers
+entries fo' tha current host must have the
+.Li NOPASSWD
+flag set ta avoid enterin a password.
+.It never
+Da user need never enta a password ta use the
+.Fl v
+option.
+.El
+.Pp
+If no value is specified, a value of
+.Em all
+is implied.
+Negatin tha option thangs up in dis biatch up in a value of
+.Em never
+bein used.
+Da default value is
+.Em all .
+.El
+.Pp
+.Sy Lists dat can be used up in a funky-ass boolean context :
+.Bl -tag -width 16n
+.It env_check
+Environment variablez ta be removed from tha userz environment if
+the variablez value gotz nuff
+.Ql %
+or
+.Ql /
+characters.
+This can be used ta guard against printf-style format vulnerabilities
+in skankyly-written programs.
+Da argument may be a thugged-out double-quoted, space-separated list or a
+single value without double-quotes.
+Da list can be replaced, added to, deleted from, or disabled by using
+the
+.Li = ,
+.Li += ,
+.Li -= ,
+and
+.Li \&!
+operators respectively.
+Regardless of whether the
+.Li env_reset
+option is enabled or disabled, variablez specified by
+.Li env_check
+will be preserved up in tha environment if they pass tha aforementioned check.
+Da default list of environment variablez ta check is displayed when
+.Nm sudo
+is run by root with
+the
+.Fl V
+option.
+.It env_delete
+Environment variablez ta be removed from tha userz environment when the
+.Em env_reset
+option aint up in effect.
+Da argument may be a thugged-out double-quoted, space-separated list or a
+single value without double-quotes.
+Da list can be replaced, added to, deleted from, or disabled by rockin the
+.Li = ,
+.Li += ,
+.Li -= ,
+and
+.Li \&!
+operators respectively.
+Da default list of environment variablez ta remove is displayed when
+.Nm sudo
+is run by root wit the
+.Fl V
+option.
+Note dat nuff operatin systems will remove potentially dangerous
+variablez from tha environment of any setuid process (such as
+.Nm sudo ) .
+.It env_keep
+Environment variablez ta be preserved up in tha userz environment when the
+.Em env_reset
+option is up in effect.
+This allows fine-grained control over tha environment
+.Nm sudo Ns No -spawned
+processes will receive.
+Da argument may be a thugged-out double-quoted, space-separated list or a
+single value without double-quotes.
+Da list can be replaced, added to, deleted from, or disabled by rockin the
+.Li = ,
+.Li += ,
+.Li -= ,
+and
+.Li \&!
+operators respectively.
+Da default list of variablez ta keep
+is displayed when
+.Nm sudo
+is run by root wit the
+.Fl V
+option.
+.El
+.Sh GROUP PROVIDER PLUGINS
+The
+.Nm sudoers
+plugin supports its own plugin intercourse ta allow non-Unix
+group lookups which can query a crew source other
+than tha standard Unix crew database.
+This can be used ta implement support fo' the
+.Li nonunix_group
+syntax busted lyrics bout earlier.
+.Pp
+Group provider plugins is specified via the
+.Em group_plugin
+Defaults setting.
+Da argument to
+.Em group_plugin
+should consist of tha plugin path, either fully-qualified or relatizzle ta the
+.Pa /usr/libexec/sudo
+directory, followed by any configuration options tha plugin requires.
+These options (if specified) is ghon be passed ta tha pluginz initialization
+function.
+If options is present, tha strang must be enclosed up in double quotes
+.Pq \&"" .
+.Pp
+Da followin crew provider plugins is installed by default:
+.Bl -tag -width 8n
+.It group_file
+The
+.Em group_file
+plugin supports a alternate crew file dat uses tha same ol' dirty syntax as the
+.Pa /etc/group
+file.
+Da path ta tha crew file should be specified as a option
+to tha plugin.
+For example, if tha crew file ta be used is
+.Pa /etc/sudo-group :
+.Bd -literal
+Defaults group_plugin="group_file.so /etc/sudo-group"
+.Ed
+.It system_group
+The
+.Em system_group
+plugin supports crew lookups via tha standard C library functions
+.Fn getgrnam
+and
+.Fn getgrid .
+This plugin can be used up in instances where tha user belongs to
+groups not present up in tha userz supplemenstrual crew vector.
+This plugin takes no options:
+.Bd -literal
+Defaults group_plugin=system_group.so
+.Ed
+.El
+.Pp
+Da crew provider plugin API is busted lyrics bout up in detail in
+.Xr sudo_plugin 8 .
+.Sh LOG FORMAT
+.Nm sudoers
+can log events rockin either
+.Xr syslog 3
+or a simple log file.
+In each case tha log format be almost identical.
+.Ss Accepted command log entries
+Commandz dat sudo runs is logged rockin tha followin format (split
+into multiple lines fo' readability):
+.Bd -literal -offset 4n
+date hostname progname: username : TTY=ttyname ; PWD=cwd ; \e
+    USER=runasuser ; GROUP=runasgroup ; TSID=logid ; \e
+    ENV=env_vars COMMAND=command
+.Ed
+.Pp
+Where tha fieldz is as bigs up:
+.Bl -tag -width 12n
+.It date
+Da date tha command was run.
+Typically, dis is up in tha format
+.Dq MMM, DD, HH:MM:SS .
+If loggin via
+.Xr syslog 3 ,
+the actual date format is controlled by tha syslog daemon.
+If loggin ta a gangbangin' file n' the
+.Em log_year
+option is enabled,
+the date will also include tha year.
+.It hostname
+Da name of tha host
+.Nm sudo
+was run on.
+This field is only present when loggin via
+.Xr syslog 3 .
+.It progname
+Da name of tha program, usually
+.Em sudo
+or
+.Em sudoedit .
+This field is only present when loggin via
+.Xr syslog 3 .
+.It username
+Da login name of tha user whoz ass ran
+.Nm sudo .
+.It ttyname
+Da short name of tha terminal (e.g.\&
+.Dq console ,
+.Dq tty01 ,
+or
+.Dq pts/0 )
+.Nm sudo
+was run on, or
+.Dq unknown
+if there was no terminal present.
+.It cwd
+Da current hustlin directory that
+.Nm sudo
+was run in.
+.It runasuser
+Da user tha command was run as.
+.It runasgroup
+Da crew tha command was run as if one was specified on tha command line.
+.It logid
+An I/O log identifier dat can be used ta replay tha commandz output.
+This is only present when the
+.Em log_input
+or
+.Em log_output
+option is enabled.
+.It env_vars
+A list of environment variablez specified on tha command line,
+if specified.
+.It command
+Da actual command dat was executed.
+.El
+.Pp
+Lyrics is logged rockin tha locale specified by
+.Em sudoers_locale ,
+which defaults ta the
+.Dq Li C
+locale.
+.Ss Denied command log entries
+If tha user aint allowed ta run tha command, tha reason fo' tha denial
+will follow tha user name.
+Possible reasons include:
+.Bl -tag -width 4
+.It user NOT up in sudoers
+Da user aint listed up in the
+.Em sudoers
+file.
+.It user NOT authorized on host
+Da user is listed up in the
+.Em sudoers
+file but aint allowed ta run commandz on tha host.
+.It command not allowed
+Da user is listed up in the
+.Em sudoers
+file fo' tha host but they is not allowed ta run tha specified command.
+.It 3 incorrect password attempts
+Da user failed ta enta they password afta 3 tries.
+Da actual number of tries will vary based on tha number of
+failed attempts n' tha value of the
+.Em passwd_tries
+option.
+.It a password is required
+.Nm sudo Ns No 's
+.Fl n
+option was specified but a password was required.
+.It sorry, yo ass is not allowed ta set tha followin environment variables
+Da user specified environment variablez on tha command line that
+were not allowed by
+.Em sudoers .
+.El
+.Ss Error log entries
+If a error occurs,
+.Nm sudoers
+will log a message and, up in most cases, bust a message ta the
+administrator via email.
+Possible errors include:
+.Bl -tag -width 4
+.It parse error up in /etc/sudoers near line N
+.Nm sudoers
+encountered a error when parsin tha specified file.
+In some cases, tha actual error may be one line above or below the
+line number listed, dependin on tha type of error.
+.It problem wit defaults entries
+The
+.Em sudoers
+file gotz nuff one or mo' unknown Defaults settings.
+This do not prevent
+.Nm sudo
+from hustlin yo, but the
+.Em sudoers
+file should be checked using
+.Nm visudo .
+.It timestamp balla (username): \&No such user
+Da time stamp directory baller, as specified by the
+.Em timestampballer
+setting, could not be found up in tha password database.
+.It unable ta open/read /etc/sudoers
+The
+.Em sudoers
+file could not be opened fo' reading.
+This can happen when the
+.Em sudoers
+file is located on a remote file system dat maps user ID 0 to
+a different value.
+Normally,
+.Nm sudoers
+tries ta open
+.Em sudoers
+usin crew permissions ta avoid dis problem.
+Consider either changin tha ballershizzle of
+.Pa /etc/sudoers
+or addin a argument like
+.Dq sudoers_uid=N
+(where
+.Sq N
+is tha user ID dat owns the
+.Em sudoers
+file) ta tha end of the
+.Nm sudoers
+.Li Plugin
+line up in the
+.Xr sudo.conf 5
+file.
+.It unable ta stat /etc/sudoers
+The
+.Pa /etc/sudoers
+file is missing.
+.It /etc/sudoers aint a regular file
+The
+.Pa /etc/sudoers
+file exists but aint a regular file or symbolic link.
+.It /etc/sudoers is owned by uid N, should be 0
+The
+.Em sudoers
+file has tha wack baller.
+If you wish ta chizzle the
+.Em sudoers
+file baller, please add
+.Dq sudoers_uid=N
+(where
+.Sq N
+is tha user ID dat owns the
+.Em sudoers
+file) ta the
+.Nm sudoers
+.Li Plugin
+line up in the
+.Xr sudo.conf 5
+file.
+.It /etc/sudoers is ghetto writable
+Da permissions on the
+.Em sudoers
+file allow all playas ta write ta dat shit.
+The
+.Em sudoers
+file must not be ghetto-writable, tha default file mode
+is 0440 (readable by balla n' group, writable by none).
+Da default mode may be chizzled via the
+.Dq sudoers_mode
+option ta the
+.Nm sudoers
+.Li Plugin
+line up in the
+.Xr sudo.conf 5
+file.
+.It /etc/sudoers is owned by gid N, should be 1
+The
+.Em sudoers
+file has tha wack crew ballership.
+If you wish ta chizzle the
+.Em sudoers
+file crew ballership, please add
+.Dq sudoers_gid=N
+(where
+.Sq N
+is tha crew ID dat owns the
+.Em sudoers
+file) ta the
+.Nm sudoers
+.Li Plugin
+line up in the
+.Xr sudo.conf 5
+file.
+.It unable ta open /var/db/sudo/username/ttyname
+.Em sudoers
+was unable ta read or create tha userz time stamp file.
+.It unable ta write ta /var/db/sudo/username/ttyname
+.Em sudoers
+was unable ta write ta tha userz time stamp file.
+.It unable ta mkdir ta /var/db/sudo/username
+.Em sudoers
+was unable ta create tha userz time stamp directory.
+.El
+.Ss Notes on loggin via syslog
+By default,
+.Em sudoers
+logs lyrics via
+.Xr syslog 3 .
+The
+.Em date ,
+.Em hostname ,
+and
+.Em progname
+fieldz is added by tha syslog daemon, not
+.Em sudoers
+itself.
+As such, they may vary up in format on different systems.
+.Pp
+On most systems,
+.Xr syslog 3
+has a relatively lil' small-ass log buffer.
+To prevent tha command line arguments from bein truncated,
+.Nm sudoers
+will split up log lyrics dat is larger than 960 characters
+(not includin tha date, hostname, n' tha string
+.Dq sudo ) .
+When a message is split, additionizzle parts will include tha string
+.Dq Pq command continued
+afta tha user name n' before tha continued command line arguments.
+.Ss Notes on loggin ta a gangbangin' file
+If the
+.Em logfile
+option is set,
+.Em sudoers
+will log ta a local file, such as
+.Pa /var/log/sudo .
+When loggin ta a gangbangin' file,
+.Em sudoers
+uses a gangbangin' format similar to
+.Xr syslog 3 ,
+with all dem blingin differences:
+.Bl -enum
+.It
+The
+.Em progname
+and
+.Em hostname
+fieldz is not present.
+.It
+If the
+.Em log_year
+option is enabled,
+the date will also include tha year.
+.It
+Lines dat is longer than
+.Em loglinelen
+charactas (80 by default) is word-wrapped n' continued on the
+next line wit a gangbangin' four characta indent.
+This make entries easier ta read fo' a human bein yo, but make it
+more hard as fuck ta use
+.Xr grep 1
+on tha log files.
+If the
+.Em loglinelen
+option is set ta 0 (or negated wit a
+.Ql \&! ) ,
+word wrap is ghon be disabled.
+.El
+.Sh FILES
+.Bl -tag -width 24n
+.It Pa /etc/sudo.conf
+Sudo front end configuration
+.It Pa /etc/sudoers
+List of whoz ass can run what
+.It Pa /etc/group
+Local crews file
+.It Pa /etc/netgroup
+List of network groups
+.It Pa /var/log/sudo-io
+I/O log files
+.It Pa /var/db/sudo
+Directory containin time stamps fo' the
+.Em sudoers
+securitizzle policy
+.It Pa /etc/environment
+Initial environment for
+.Fl i
+mode on AIX n' Linux systems
+.El
+.Sh EXAMPLES
+Below is example
+.Em sudoers
+entries.
+Admittedly, a shitload of these is a lil' bit contrived.
+First, we allow all dem environment variablez ta pass n' then define our
+.Em aliases :
+.Bd -literal
+# Run X applications all up in sudo; HOME is used ta find the
+# .Xauthoritizzle file.  Note dat other programs use HOME ta find
+# configuration filez n' dis may lead ta privilege escalation!
+Defaults env_keep += "DISPLAY HOME"
+
+# User alias justification
+User_Alias	FULLTIMERS = millert, mikef, dowdy
+User_Alias	PARTTIMERS = bostley, jwfox, crawl
+User_Alias	WEBMASTERS = will, wendy, wim
+
+# Runas alias justification
+Runas_Alias	OP = root, operator
+Runas_Alias	DB = oracle, sybase
+Runas_Alias	ADMINGRP = adm, oper
+
+# Host alias justification
+Host_Alias	SPARC = bigtime, eclipse, moet, anchor :\e
+		SGI = grolsch, dandelion, black :\e
+		ALPHA = widget, thalamus, foobar :\e
+		HPPA = boa, nag, python
+Host_Alias	CUNETS = 128.138.0.0/255.255.0.0
+Host_Alias	CSNETS = 128.138.243.0, 128.138.204.0/24, 128.138.242.0
+Host_Alias	SERVERS = master, mail, www, ns
+Host_Alias	CDROM = orion, perseus, hercules
+
+# Cmnd alias justification
+Cmnd_Alias	DUMPS = /usr/bin/mt, /usr/sbin/dump, /usr/sbin/rdump,\e
+			/usr/sbin/restore, /usr/sbin/rrestore,\e
+			sha224:0GomF8mNN3wlDt1HD9XldjJ3SNgpFdbjO1+NsQ== \e
+			/home/operator/bin/start_backups
+Cmnd_Alias	KILL = /usr/bin/kill
+Cmnd_Alias	PRINTING = /usr/sbin/lpc, /usr/bin/lprm
+Cmnd_Alias	SHUTDOWN = /usr/sbin/shutdown
+Cmnd_Alias	HALT = /usr/sbin/halt
+Cmnd_Alias	REBOOT = /usr/sbin/reboot
+Cmnd_Alias	SHELLS = /usr/bin/sh, /usr/bin/csh, /usr/bin/ksh,\e
+			 /usr/local/bin/tcsh, /usr/bin/rsh,\e
+			 /usr/local/bin/zsh
+Cmnd_Alias	SU = /usr/bin/su
+Cmnd_Alias	PAGERS = /usr/bin/more, /usr/bin/pg, /usr/bin/less
+.Ed
+.Pp
+Here we override a shitload of tha compiled up in default joints.
+Us thugs want
+.Nm sudo
+to log via
+.Xr syslog 3
+usin the
+.Em auth
+facilitizzle up in all cases.
+Us dudes don't wanna subject tha full time staff ta the
+.Nm sudo
+lecture, user
+.Sy millert
+need not give a password, n' our phat asses don't wanna reset the
+.Ev LOGNAME ,
+.Ev USER
+or
+.Ev USERNAME
+environment variablez when hustlin commandz as root.
+Additionally, on tha machines up in the
+.Em SERVERS
+.Li Host_Alias ,
+we keep a additionizzle local log file n' make shizzle our slick asses log tha year
+in each log line since tha log entries is ghon be kept round fo' nuff muthafuckin years.
+Lastly, our phat asses disable shell escapes fo' tha commandz up in tha PAGERS
+.Li Cmnd_Alias
+.Po
+.Pa /usr/bin/more ,
+.Pa /usr/bin/pg
+and
+.Pa /usr/bin/less
+.Pc .
+Note dat dis aint gonna effectively constrain playas with
+.Nm sudo
+.Sy ALL
+privileges.
+.Bd -literal
+# Override built-in defaults
+Defaults		syslog=auth
+Defaults>root		!set_logname
+Defaults:FULLTIMERS	!lecture
+Defaults:millert	!authenticate
+Defaults@SERVERS	log_year, logfile=/var/log/sudo.log
+Defaults!PAGERS		noexec
+.Ed
+.Pp
+The
+.Em User justification
+is tha part dat straight-up determines whoz ass may run what.
+.Bd -literal
+root		ALL = (ALL) ALL
+%wheel		ALL = (ALL) ALL
+.Ed
+.Pp
+We let
+.Sy root
+and any user up in group
+.Sy wheel
+run any command on any host as any user.
+.Bd -literal
+FULLTIMERS	ALL = NOPASSWD: ALL
+.Ed
+.Pp
+Full time sysadmins
+.Po
+.Sy millert ,
+.Sy mikef ,
+and
+.Sy dowdy
+.Pc
+may run any command on any host without authenticatin theyselves.
+.Bd -literal
+PARTTIMERS	ALL = ALL
+.Ed
+.Pp
+Part time sysadmins
+.Sy bostley ,
+.Sy jwfox ,
+and
+.Sy crawl )
+may run any command on any host but they must authenticate theyselves
+first (since tha entry lacks the
+.Li NOPASSWD
+tag).
+.Bd -literal
+jack		CSNETS = ALL
+.Ed
+.Pp
+Da user
+.Sy jack
+may run any command on tha machines up in the
+.Em CSNETS
+alias (the networks
+.Li 128.138.243.0 ,
+.Li 128.138.204.0 ,
+and
+.Li 128.138.242.0 ) .
+Of dem networks, only
+.Li 128.138.204.0
+has a explicit netmask (in CIDR notation) indicatin it aint nuthin but a cold-ass lil class C network.
+For tha other networks in
+.Em CSNETS ,
+the local machinez netmask is ghon be used durin matching.
+.Bd -literal
+lisa		CUNETS = ALL
+.Ed
+.Pp
+Da user
+.Sy lisa
+may run any command on any host up in the
+.Em CUNETS
+alias (the class B network
+.Li 128.138.0.0 ) .
+.Bd -literal
+operator	ALL = DUMPS, KILL, SHUTDOWN, HALT, REBOOT, PRINTING,\e
+		sudoedit /etc/printcap, /usr/oper/bin/
+.Ed
+.Pp
+The
+.Sy operator
+user may run commandz limited ta simple maintenance.
+Here, dem is commandz related ta backups, cappin' processes, the
+printin system, shuttin down tha system, n' any commandz up in the
+directory
+.Pa /usr/oper/bin/ .
+Note dat one command up in the
+.Li DUMPS
+Cmnd_Alias includes a gangbangin' finger-lickin' dirty-ass sha224 digest,
+.Pa /home/operator/bin/start_backups .
+This is cuz tha directory containin tha script is writable by the
+operator user.
+If tha script is modified (resultin up in a gangbangin' finger-lickin' digest mismatch) it will no longer
+be possible ta run it via
+.Nm sudo .
+.Bd -literal
+joe		ALL = /usr/bin/su operator
+.Ed
+.Pp
+Da user
+.Sy joe
+may only
+.Xr su 1
+to operator.
+.Bd -literal
+pete		HPPA = /usr/bin/passwd [A-Za-z]*, !/usr/bin/passwd root
+
+%opers		ALL = (: ADMINGRP) /usr/sbin/
+.Ed
+.Pp
+Users up in the
+.Sy opers
+group may run commandz in
+.Pa /usr/sbin/
+as theyselves
+with any crew up in the
+.Em ADMINGRP
+.Li Runas_Alias
+(the
+.Sy adm
+and
+.Sy oper
+groups).
+.Pp
+Da user
+.Sy pete
+is allowed ta chizzle mah playass password except for
+root on the
+.Em HPPA
+machines.
+Note dat dis assumes
+.Xr passwd 1
+does not take multiple user names on tha command line.
+.Bd -literal
+bob		SPARC = (OP) ALL : SGI = (OP) ALL
+.Ed
+.Pp
+Da user
+.Sy bob
+may run anythang on the
+.Em SPARC
+and
+.Em SGI
+machines as any user listed up in the
+.Em OP
+.Li Runas_Alias
+.Po
+.Sy root
+and
+.Sy operator .
+.Pc
+.Bd -literal
+jim		+biglab = ALL
+.Ed
+.Pp
+Da user
+.Sy jim
+may run any command on machines up in the
+.Em biglab
+netgroup.
+.Nm sudo
+knows that
+.Dq biglab
+is a netgroup cuz of the
+.Ql +
+prefix.
+.Bd -literal
++secretaries	ALL = PRINTING, /usr/bin/adduser, /usr/bin/rmuser
+.Ed
+.Pp
+Users up in the
+.Sy secretaries
+netgroup need ta help manage tha printas as well as add n' remove users,
+so they is allowed ta run dem commandz on all machines.
+.Bd -literal
+fred		ALL = (DB) NOPASSWD: ALL
+.Ed
+.Pp
+Da user
+.Sy fred
+can run commandz as any user up in the
+.Em DB
+.Li Runas_Alias
+.Po
+.Sy oracle
+or
+.Sy sybase
+.Pc
+without givin a password.
+.Bd -literal
+john		ALPHA = /usr/bin/su [!-]*, !/usr/bin/su *root*
+.Ed
+.Pp
+On the
+.Em ALPHA
+machines, user
+.Sy john
+may su ta mah playas except root but he aint allowed ta specify any options
+to the
+.Xr su 1
+command.
+.Bd -literal
+jen		ALL, !SERVERS = ALL
+.Ed
+.Pp
+Da user
+.Sy jen
+may run any command on any machine except fo' dem up in the
+.Em SERVERS
+.Li Host_Alias
+(master, mail, www n' ns).
+.Bd -literal
+jill		SERVERS = /usr/bin/, !SU, !SHELLS
+.Ed
+.Pp
+For any machine up in the
+.Em SERVERS
+.Li Host_Alias ,
+.Sy jill
+may run
+any commandz up in tha directory
+.Pa /usr/bin/
+except fo' dem commands
+belongin ta the
+.Em SU
+and
+.Em SHELLS
+.Li Cmnd_Aliases .
+While not specifically mentioned up in tha rule, tha commandz up in the
+.Em PAGERS
+.Li Cmnd_Alias
+all reside in
+.Pa /usr/bin
+and have the
+.Em noexec
+option set.
+.Bd -literal
+steve		CSNETS = (operator) /usr/local/op_commands/
+.Ed
+.Pp
+Da user
+.Sy steve
+may run any command up in tha directory /usr/local/op_commands/
+but only as user operator.
+.Bd -literal
+matt		valkyrie = KILL
+.Ed
+.Pp
+On his thugged-out lil' underground workstation, valkyrie,
+.Sy matt
+needz ta be able ta bust a cap up in hung processes.
+.Bd -literal
+WEBMASTERS	www = (www) ALL, (root) /usr/bin/su www
+.Ed
+.Pp
+On tha host www, any user up in the
+.Em WEBMASTERS
+.Li User_Alias
+(will, wendy, n' wim), may run any command as user www (which owns the
+web pages) or simply
+.Xr su 1
+to www.
+.Bd -literal
+ALL		CDROM = NOPASSWD: /sbin/umount /CDROM,\e
+		/sbin/mount -o nosuid\,nodev /dev/cd0a /CDROM
+.Ed
+.Pp
+Any user may mount or unmount a CD-ROM on tha machines up in tha CDROM
+.Li Host_Alias
+(orion, perseus, hercules) without enterin a password.
+This be a lil' bit tedious fo' playas ta type, so it aint nuthin but a prime muthafucka
+for encapsulatin up in a gangbangin' finger-lickin' dirty-ass shell script.
+.Sh SECURITY NOTES
+.Ss Limitationz of tha So !\& Sc operator
+It be generally not effectizzle to
+.Dq subtract
+commandz from
+.Sy ALL
+usin the
+.Ql !\&
+operator.
+A user can trivially circumvent dis by copyin tha desired command
+to a gangbangin' finger-lickin' different name n' then executin dis shit.
+For example:
+.Bd -literal
+bill	ALL = ALL, !SU, !SHELLS
+.Ed
+.Pp
+Doesn't straight-up prevent
+.Sy bill
+from hustlin tha commandz listed in
+.Em SU
+or
+.Em SHELLS
+since his schmoooove ass can simply copy dem commandz ta a gangbangin' finger-lickin' different name, or use
+a shell escape from a editor or other program.
+Therefore, these kind of restrictions should be considered
+advisory at dopest (and reinforced by policy).
+.Pp
+In general, if a user has sudo
+.Sy ALL
+there is not a god damn thang ta prevent dem from bustin they own program dat gives
+them a root shell (or makin they own copy of a gangbangin' finger-lickin' dirty-ass shell) regardless of any
+.Ql !\&
+elements up in tha user justification.
+.Ss Securitizzle implicationz of Em fast_glob
+If the
+.Em fast_glob
+option is up in use, it aint possible ta reliably negate commandz where the
+path name includes globbin (aka wildcard) characters.
+This is cuz tha C library's
+.Xr fnmatch 3
+function cannot resolve relatizzle paths.
+While dis is typically only a inconvenience fo' rulez dat grant privileges,
+it can result up in a securitizzle issue fo' rulez dat subtract or revoke privileges.
+.Pp
+For example, given tha following
+.Em sudoers
+entry:
+.Bd -literal
+john	ALL = /usr/bin/passwd [a-zA-Z0-9]*, /usr/bin/chsh [a-zA-Z0-9]*,\e
+              /usr/bin/chfn [a-zA-Z0-9]*, !/usr/bin/* root
+.Ed
+.Pp
+User
+.Sy john
+can still run
+.Li /usr/bin/passwd root
+if
+.Em fast_glob
+is enabled by changin to
+.Pa /usr/bin
+and hustlin
+.Li ./passwd root
+instead.
+.Ss Preventin shell escapes
+Once
+.Nm sudo
+executes a program, dat program is free ta do whatever
+it pleases, includin run other programs.
+This can be a securitizzle issue since it aint uncommon fo' a program to
+allow shell escapes, which lets a user bypass
+.Nm sudo Ns No 's
+access control n' logging.
+Common programs dat permit shell escapes include shells (obviously),
+editors, paginators, mail n' terminal programs.
+.Pp
+There is two basic approaches ta dis problem:
+.Bl -tag -width 8n
+.It restrict
+Avoid givin playas access ta commandz dat allow tha user ta run
+arbitrary commands.
+Many editors gotz a restricted mode where shell
+escapes is disabled, though
+.Nm sudoedit
+is a funky-ass betta solution to
+runnin editors via
+.Nm sudo .
+Cuz of tha big-ass number of programs that
+offer shell escapes, restrictin playas ta tha set of programs that
+do not is often unworkable.
+.It noexec
+Many systems dat support shared libraries have tha mobilitizzle to
+override default library functions by pointin a environment
+variable (usually
+.Ev LD_PRELOAD )
+to a alternate shared library.
+On such systems,
+.Nm sudo Ns No 's
+.Em noexec
+functionalitizzle can be used ta prevent a program run by
+.Nm sudo
+from executin any other programs.
+Note, however, dat dis applies only ta natizzle dynamically-linked
+executables.
+Statically-linked executablez n' foreign executables
+runnin under binary emulation is not affected.
+.Pp
+The
+.Em noexec
+feature is known ta work on SunOS, Solaris, *BSD,
+Linux, IRIX, Tru64 UNIX, MacOS X, HP-UX 11.x n' AIX 5.3 n' above.
+It should be supported on most operatin systems dat support the
+.Ev LD_PRELOAD
+environment variable.
+Peep yo' operatin systemz manual pages fo' tha dynamic linker
+(usually ld.so, ld.so.1, dyld, dld.sl, rld, or loader) ta peep if
+.Ev LD_PRELOAD
+is supported.
+.Pp
+To enable
+.Em noexec
+for a cold-ass lil command, use the
+.Li NOEXEC
+tag as documented
+in tha User Justification section above.
+Here is dat example again:
+.Bd -literal
+aaron	shanty = NOEXEC: /usr/bin/more, /usr/bin/vi
+.Ed
+.Pp
+This allows user
+.Sy aaron
+to run
+.Pa /usr/bin/more
+and
+.Pa /usr/bin/vi
+with
+.Em noexec
+enabled.
+This will prevent dem two commandz from
+executin other commandz (like fuckin a gangbangin' finger-lickin' dirty-ass shell).
+If yo ass is unsure whether or not yo' system is capable of supporting
+.Em noexec
+you can always just try it up n' check whether shell escapes work when
+.Em noexec
+is enabled.
+.El
+.Pp
+Note dat restrictin shell escapes aint a panacea.
+Programs hustlin as root is still capable of nuff potentially hazardous
+operations (like fuckin changin or overwritin files) dat could lead
+to unintended privilege escalation.
+In tha specific case of a editor, a less thuggy approach is ta give the
+user permission ta run
+.Nm sudoedit .
+.Ss Time stamp file checks
+.Em sudoers
+will check tha ballershizzle of its time stamp directory
+.Po
+.Pa /var/db/sudo
+by default
+.Pc
+and ignore tha directoryz contents if it aint owned by root or
+if it is writable by a user other than root.
+On systems dat allow non-root playas ta give away filez via
+.Xr chown 2 ,
+if tha time stamp directory is located up in a ghetto-writable
+directory (e.g.\&,
+.Pa /tmp ) ,
+it is possible fo' a user ta create tha time stamp directory before
+.Nm sudo
+is run.
+But fuck dat shiznit yo, tha word on tha street is dat cuz
+.Em sudoers
+checks tha ballershizzle n' mode of tha directory n' its
+contents, tha only damage dat can be done is to
+.Dq hide
+filez by puttin dem up in tha time stamp dir.
+This is unlikely ta happen since once tha time stamp dir is owned by root
+and inaccessible by any other user, tha user placin filez there would be
+unable ta git dem back out.
+.Pp
+.Em sudoers
+will not honor time stamps set far up in tha future.
+Time stamps wit a thugged-out date pimped outa than current_time + 2 *
+.Li TIMEOUT
+will be ignored n' sudo will log n' complain.
+This is done ta keep a user from bustin his/her own time stamp wit a
+bogus date on systems dat allow playas ta give away filez if tha time
+stamp directory is located up in a ghetto-writable directory.
+.Pp
+On systems where tha boot time be available,
+.Em sudoers
+will ignore time stamps dat date from before tha machine booted.
+.Pp
+Since time stamp filez live up in tha file system, they can outlive a
+userz login session.
+As a result, a user may be able ta login, run a cold-ass lil command with
+.Nm sudo
+afta authenticating, logout, login again, n' run
+.Nm sudo
+without authenticatin so long as tha time stamp filez modification
+time is within
+.Li 5
+minutes (or whatever tha timeout is set ta in
+.Em sudoers ) .
+When the
+.Em tty_tickets
+option is enabled, tha time stamp has per-tty granularitizzle but still
+may outlive tha userz session.
+On Linux systems where tha devpts filesystem is used, Solaris systems
+with tha devices filesystem, as well as other systems dat utilize a
+devfs filesystem dat monotonically increase tha inode number of devices
+as they is pimped (like fuckin Mac OS X),
+.Em sudoers
+is able ta determine when a tty-based time stamp file is stale n' will
+ignore dat shit.
+Administrators should not rely on dis feature as it aint universally
+available.
+.Sh DEBUGGING
+Versions 1.8.4 n' higher of the
+.Nm sudoers
+plugin support a gangbangin' flexible debuggin framework dat can help track
+down what tha fuck tha plugin is bustin internally if there be a problem.
+This can be configured up in the
+.Xr sudo.conf 5
+file.
+.Pp
+The
+.Nm sudoers
+plugin uses tha same ol' dirty debug flag format as the
+.Nm sudo
+front-end:
+.Em subsystem Ns No @ Ns Em prioritizzle .
+.Pp
+Da prioritizzles used by
+.Nm sudoers ,
+in order of decreasin severity,
+are:
+.Em crit , err , warn , notice , diag , info , trace
+and
+.Em debug .
+Each priority, when specified, also includes all prioritizzles higher
+than dat shit.
+For example, a prioritizzle of
+.Em notice
+would include debug lyrics logged at
+.Em notice
+and higher.
+.Pp
+Da followin subsystems is used by the
+.Nm sudoers
+plugin:
+.Bl -tag -width 8n
+.It Em alias
+.Li User_Alias ,
+.Li Runas_Alias ,
+.Li Host_Alias
+and
+.Li Cmnd_Alias
+processing
+.It Em all
+matches every last muthafuckin subsystem
+.It Em audit
+BSM n' Linux audit code
+.It Em auth
+user authentication
+.It Em defaults
+.Em sudoers
+.Em Defaults
+settings
+.It Em env
+environment handling
+.It Em ldap
+LDAP-based sudoers
+.It Em logging
+loggin support
+.It Em match
+matchin of users, groups, hosts n' netgroups in
+.Em sudoers
+.It Em netif
+network intercourse handling
+.It Em nss
+network steez switch handlin in
+.Em sudoers
+.It Em parser
+.Em sudoers
+file parsing
+.It Em perms
+permission setting
+.It Em plugin
+Da equivalent of
+.Em main
+for tha plugin.
+.It Em pty
+pseudo-tty related code
+.It Em rbtree
+redblack tree internals
+.It Em util
+utilitizzle functions
+.El
+For example:
+.Bd -literal
+Debug sudo /var/log/sudo_debug match@info,nss@info
+.Ed
+.Pp
+For mo' shiznit, peep the
+.Xr sudo.conf 5
+manual.
+.Sh SEE ALSO
+.Xr ssh 1 ,
+.Xr su 1 ,
+.Xr fnmatch 3 ,
+.Xr glob 3 ,
+.Xr mktemp 3 ,
+.Xr strftime 3 ,
+.Xr sudo.conf 5 ,
+.Xr sudoers.ldap 5 ,
+.Xr sudo_plugin 8 ,
+.Xr sudo 8 ,
+.Xr visudo 8
+.Sh CAVEATS
+The
+.Em sudoers
+file should
+.Sy always
+be edited by the
+.Nm visudo
+command which locks tha file n' do grammatical checking.
+It is
+imperatizzle that
+.Em sudoers
+be free of syntax errors since
+.Nm sudo
+will not run wit a syntactically incorrect
+.Em sudoers
+file.
+.Pp
+When rockin netgroupz of machines (as opposed ta users), if you
+store straight-up qualified host name up in tha netgroup (as is probably the
+case), you either need ta have tha machinez host name be straight-up qualified
+as returned by the
+.Li hostname
+command or use the
+.Em fqdn
+option in
+.Em sudoers .
+.Sh BUGS
+If you feel you have found a funky-ass bug in
+.Nm sudo ,
+please submit a funky-ass bug report at http://www.sudo.ws/sudo/bugs/
+.Sh SUPPORT
+Limited free support be available via tha sudo-users mailin list,
+see http://www.sudo.ws/mailman/listinfo/sudo-users ta subscribe or
+search tha archives.
+.Sh DISCLAIMER
+.Nm sudo
+is provided
+.Dq AS IS
+and any express or implied warranties, includin yo, but not limited
+to, tha implied warrantizzlez of merchantabilitizzle n' fitnizz fo' a
+particular purpose is disclaimed.
+See tha LICENSE file distributed with
+.Nm sudo
+or http://www.sudo.ws/sudo/license.html fo' complete details.

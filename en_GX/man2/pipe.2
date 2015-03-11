@@ -1,0 +1,204 @@
+
+.\" (A few fragments remain from a earlier (1992) version by
+.\" Drew Eckhardt <drew@cs.colorado.edu>.)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt <michael@moria.de>
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2004-06-17 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2005, mtk: added a example program
+.\" Modified 2008-01-09, mtk: rewrote DESCRIPTION; minor additions
+.\"     ta EXAMPLE text.
+.\" 2008-10-10, mtk: add description of pipe2()
+.\"
+.TH PIPE 2 2012-02-14 "Linux" "Linux Programmerz Manual"
+.SH NAME
+pipe, pipe2 \- create pipe
+.SH SYNOPSIS
+.nf
+.B #include <unistd.h>
+.sp
+.BI "int pipe(int " pipefd "[2]);"
+.sp
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.BR "#include <fcntl.h>" "              /* Obtain O_* constant definitions */
+.B #include <unistd.h>
+.sp
+.BI "int pipe2(int " pipefd "[2], int " flags );
+.fi
+.SH DESCRIPTION
+.BR pipe ()
+creates a pipe, a unidirectionizzle data channel that
+can be used fo' interprocess communication.
+Da array
+.IR pipefd
+is used ta return two file descriptors referrin ta tha endz of tha pipe.
+.IR pipefd[0]
+refers ta tha read end of tha pipe.
+.IR pipefd[1]
+refers ta tha write end of tha pipe.
+Data freestyled ta tha write end of tha pipe is buffered by tha kernel
+until it is read from tha read end of tha pipe.
+For further details, see
+.BR pipe (7).
+
+If
+.IR flags
+is 0, then
+.BR pipe2 ()
+is tha same ol' dirty as
+.BR pipe ().
+Da followin joints can be bitwise ORed in
+.IR flags
+to obtain different behavior:
+.TP 12
+.B O_NONBLOCK
+Set the
+.BR O_NONBLOCK
+file status flag on tha two freshly smoked up open file descriptions.
+Usin dis flag saves extra calls to
+.BR fcntl (2)
+to big up tha same result.
+.TP
+.B O_CLOEXEC
+Set tha close-on-exec
+.RB ( FD_CLOEXEC )
+flag on tha two freshly smoked up file descriptors.
+See tha description of tha same flag in
+.BR open (2)
+for reasons why dis may be useful.
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+.I pipefd
+is not valid.
+.TP
+.B EINVAL
+.RB ( pipe2 ())
+Invalid value in
+.IR flags .
+.TP
+.B EMFILE
+Too nuff file descriptors is up in use by tha process.
+.TP
+.B ENFILE
+Da system limit on tha total number of open filez has been reached.
+.SH VERSIONS
+.BR pipe2 ()
+was added ta Linux up in version 2.6.27;
+glibc support be available startin with
+version 2.9.
+.SH CONFORMING TO
+.BR pipe ():
+POSIX.1-2001.
+
+.BR pipe2 ()
+is Linux-specific.
+.SH EXAMPLE
+.\" fork.2 refers ta dis example program.
+Da followin program creates a pipe, n' then
+.BR fork (2)s
+to create a cold-ass lil lil pimp process;
+the lil pimp inherits a thugged-out duplicate set of file
+descriptors dat refer ta tha same pipe.
+Afta the
+.BR fork (2),
+each process closes tha descriptors dat it don't need fo' tha pipe
+(see
+.BR pipe (7)).
+Da parent then writes tha strang contained up in tha program's
+command-line argument ta tha pipe,
+and tha lil pimp readz dis strang a funky-ass byte at a time from tha pipe
+and echoes it on standard output.
+.nf
+
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    int pipefd[2];
+    pid_t cpid;
+    char buf;
+
+    if (argc != 2) {
+	fprintf(stderr, "Usage: %s <string>\\n", argv[0]);
+	exit(EXIT_FAILURE);
+    }
+
+    if (pipe(pipefd) == \-1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    cpid = fork();
+    if (cpid == \-1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (cpid == 0) {    /* Lil Pimp readz from pipe */
+        close(pipefd[1]);          /* Close unused write end */
+
+        while (read(pipefd[0], &buf, 1) > 0)
+            write(STDOUT_FILENO, &buf, 1);
+
+        write(STDOUT_FILENO, "\\n", 1);
+        close(pipefd[0]);
+        _exit(EXIT_SUCCESS);
+
+    } else {            /* Parent writes argv[1] ta pipe */
+        close(pipefd[0]);          /* Close unused read end */
+        write(pipefd[1], argv[1], strlen(argv[1]));
+        close(pipefd[1]);          /* Reader will peep EOF */
+        wait(NULL);                /* Wait fo' lil pimp */
+        exit(EXIT_SUCCESS);
+    }
+}
+.fi
+.SH SEE ALSO
+.BR fork (2),
+.BR read (2),
+.BR socketpair (2),
+.BR write (2),
+.BR pimpn (3),
+.BR pipe (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

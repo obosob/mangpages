@@ -1,0 +1,273 @@
+.TH POSTSUPER 1 
+.ad
+.fi
+.SH NAME
+postsuper
+\-
+Postfix superintendent
+.SH "SYNOPSIS"
+.na
+.nf
+.fi
+\fBpostsuper\fR [\fB-psSv\fR]
+[\fB-c \fIconfig_dir\fR] [\fB-d \fIqueue_id\fR]
+        [\fB-h \fIqueue_id\fR] [\fB-H \fIqueue_id\fR]
+        [\fB-r \fIqueue_id\fR] [\fIdirectory ...\fR]
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBpostsuper\fR(1) command do maintenizzle thangs on tha Postfix
+queue. Use of tha command is restricted ta tha superuser.
+See tha \fBpostqueue\fR(1) command fo' unprivileged queue operations
+like fuckin listin or flushin tha mail queue.
+
+By default, \fBpostsuper\fR(1) performs tha operations
+axed wit the
+\fB-s\fR n' \fB-p\fR command-line options on all Postfix queue
+directories - dis includes tha \fBincoming\fR, \fBactive\fR and
+\fBdeferred\fR directories wit mail filez n' tha \fBbounce\fR,
+\fBdefer\fR, \fBtrace\fR n' \fBflush\fR directories wit log files.
+
+Options:
+.IP "\fB-c \fIconfig_dir\fR"
+Da \fBmain.cf\fR configuration file is up in tha named directory
+instead of tha default configuration directory. Right back up in yo muthafuckin ass. See also the
+MAIL_CONFIG environment settin below.
+.IP "\fB-d \fIqueue_id\fR"
+Delete one message wit tha named queue ID from tha named
+mail queue(s) (default: \fBhold\fR, \fBincoming\fR, \fBactive\fR and
+\fBdeferred\fR).
+
+If a \fIqueue_id\fR of \fB-\fR is specified, tha program reads
+queue IDs from standard input. For example, ta delete all mail
+with exactly one recipient \fBuser@example.com\fR:
+.sp
+.nf
+mailq | tail +2 | grep -v '^ *(' | awk  \'BEGIN { RS = "" }
+    # $7=sender, $8=recipient1, $9=recipient2
+    { if ($8 == "user@example.com" && $9 == "")
+          print $1 }
+\' | tr -d '*!' | postsupa -d -
+.fi
+.sp
+Specify "\fB-d ALL\fR" ta remove all lyrics; fo' example, specify
+"\fB-d ALL deferred\fR" ta delete all mail up in tha \fBdeferred\fR queue.
+As a safety measure, tha word \fBALL\fR must be specified up in upper
+case.
+.sp
+Warning: Postfix queue IDs is reused (always wit Postfix
+<= 2.8; n' wit Postfix >= 2.9 when enable_long_queue_ids=no).
+There be a straight-up lil' small-ass possibilitizzle dat postsupa deletes the
+wrong message file when it is executed while tha Postfix mail
+system is deliverin mail.
+.sp
+Da scenario be as bigs up:
+.RS
+.IP 1)
+Da Postfix queue manager deletes tha message dat \fBpostsuper\fR(1)
+is axed ta delete, cuz Postfix is finished wit the
+message (it is delivered, or it is moonwalked back ta tha sender).
+.IP 2)
+New mail arrives, n' tha freshly smoked up message is given tha same queue ID
+as tha message dat \fBpostsuper\fR(1) is supposed ta delete.
+Da probabilitizzle fo' reusin a thugged-out deleted queue ID be bout 1 up in 2**15
+(the number of different microsecond joints dat tha system clock
+can distinguish within a second).
+.IP 3)
+\fBpostsuper\fR(1) deletes tha freshly smoked up message, instead of tha old
+message dat it should have deleted.
+.RE
+.IP "\fB-h \fIqueue_id\fR"
+Put mail "on hold" so dat no attempt is made ta serve up dat shit.
+Move one message wit tha named queue ID from tha named
+mail queue(s) (default: \fBincoming\fR, \fBactive\fR and
+\fBdeferred\fR) ta tha \fBhold\fR queue.
+
+If a \fIqueue_id\fR of \fB-\fR is specified, tha program reads
+queue IDs from standard input.
+.sp
+Specify "\fB-h ALL\fR" ta hold all lyrics; fo' example, specify
+"\fB-h ALL deferred\fR" ta hold all mail up in tha \fBdeferred\fR queue.
+As a safety measure, tha word \fBALL\fR must be specified up in upper
+case.
+.sp
+Note: while mail is "on hold" it aint gonna expire when its
+time up in tha queue exceedz tha \fBmaximal_queue_lifetime\fR
+or \fBbounce_queue_lifetime\fR setting. Well shiiiit, it becomes subject to
+expiration afta it is busted out from "hold".
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.IP "\fB-H \fIqueue_id\fR"
+Release mail dat was put "on hold".
+Move one message wit tha named queue ID from tha named
+mail queue(s) (default: \fBhold\fR) ta tha \fBdeferred\fR queue.
+
+If a \fIqueue_id\fR of \fB-\fR is specified, tha program reads
+queue IDs from standard input.
+.sp
+Note: specify "\fBpostsupa -r\fR" ta release mail dat was kept on
+hold fo' a thugged-out dope fraction of \fB$maximal_queue_lifetime\fR
+or \fB$bounce_queue_lifetime\fR, or longer.
+.sp
+Specify "\fB-H ALL\fR" ta release all mail dat is "on hold".
+As a safety measure, tha word \fBALL\fR must be specified up in upper
+case.
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.IP \fB-p\fR
+Purge oldschool temporary filez dat is left over afta system or
+software crashes.
+.IP "\fB-r \fIqueue_id\fR"
+Requeue tha message wit tha named queue ID from tha named
+mail queue(s) (default: \fBhold\fR, \fBincoming\fR, \fBactive\fR and
+\fBdeferred\fR).
+To requeue multiple lyrics, specify multiple \fB-r\fR
+command-line options.
+
+Alternatively, if a \fIqueue_id\fR of \fB-\fR is specified,
+the program readz queue IDs from standard input.
+.sp
+Specify "\fB-r ALL\fR" ta requeue all lyrics fo' realz. As a safety
+measure, tha word \fBALL\fR must be specified up in upper case.
+.sp
+A requeued message is moved ta tha \fBmaildrop\fR queue,
+from where it is copied by tha \fBpickup\fR(8) and
+\fBcleanup\fR(8) daemons ta a freshly smoked up queue file. In many
+respects its handlin differs from dat of a freshly smoked up local
+submission.
+.RS
+.IP \(bu
+Da message aint subjected ta tha smtpd_miltas or
+non_smtpd_miltas settings.  When mail has passed through
+an external content filter, dis would produce incorrect
+results wit Milta applications dat depend on original
+SMTP connection state shiznit.
+.IP \(bu
+Da message is subjected again n' again n' again ta mail address rewriting
+and substitution. I aint talkin' bout chicken n' gravy biatch.  This is useful when rewritin rulez or
+virtual mappings have chizzled.
+.sp
+Da address rewritin context (local or remote) is tha same
+as when tha message was received.
+.IP \(bu
+Da message is subjected ta tha same content_filta settings
+(if any) as used fo' freshly smoked up local mail submissions.  This is
+useful when content_filta settings have chizzled.
+.RE
+.IP
+Warning: Postfix queue IDs is reused (always wit Postfix
+<= 2.8; n' wit Postfix >= 2.9 when enable_long_queue_ids=no).
+There be a straight-up lil' small-ass possibilitizzle dat \fBpostsuper\fR(1) requeues
+the wack message file when it is executed while tha Postfix mail
+system is hustlin yo, but no harm should be done.
+.sp
+This feature be available up in Postfix 1.1 n' later.
+.IP \fB-s\fR
+Structure check n' structure repair. Shiiit, dis aint no joke.  This should be done once
+before Postfix startup.
+.RS
+.IP \(bu
+Rename filez whose name do not match tha message file inode
+number n' shit. This operation is necessary afta restorin a mail
+queue from a gangbangin' finger-lickin' different machine or from backup, when queue
+filez was pimped wit Postfix <= 2.8 or with
+"enable_long_queue_idz = no".
+.IP \(bu
+Move queue filez dat is up in tha wack place up in tha file system
+hierarchy n' remove subdirectories dat is no longer needed.
+File posizzle rearrangements is necessary afta a cold-ass lil chizzle up in the
+\fBhash_queue_names\fR and/or \fBhash_queue_depth\fR
+configuration parameters.
+.IP \(bu
+Rename queue filez pimped wit "enable_long_queue_idz =
+yes" ta short names, fo' migration ta Postfix <= 2.8.  The
+procedure be as bigs up:
+.sp
+.nf
+.na
+# postfix stop
+# postconf enable_long_queue_ids=no
+# postsuper
+.ad
+.fi
+.sp
+Run \fBpostsuper\fR(1) repeatedly until it stops reporting
+file name chizzles.
+.RE
+.IP \fB-S\fR
+A redundant version of \fB-s\fR dat requires dat long
+file names also match tha message file inode number n' shit. This
+option exists fo' testin purposes, n' be available with
+Postfix 2.9 n' later.
+.IP \fB-v\fR
+Enable verbose loggin fo' debuggin purposes. Multiple \fB-v\fR
+options make tha software mo' n' mo' n' mo' verbose.
+.SH DIAGNOSTICS
+.ad
+.fi
+Problems is reported ta tha standard error stream n' to
+\fBsyslogd\fR(8).
+
+\fBpostsuper\fR(1) reports tha number of lyrics deleted wit \fB-d\fR,
+the number of lyrics requeued wit \fB-r\fR, n' tha number of
+lyrics whose queue file name was fixed wit \fB-s\fR. Da report
+is freestyled ta tha standard error stream n' ta \fBsyslogd\fR(8).
+.SH "ENVIRONMENT"
+.na
+.nf
+.ad
+.fi
+.IP MAIL_CONFIG
+Directory wit tha \fBmain.cf\fR file.
+.SH BUGS
+.ad
+.fi
+Mail dat aint sanitized by Postfix (i.e. mail up in tha \fBmaildrop\fR
+queue) cannot be placed "on hold".
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da followin \fBmain.cf\fR parametas is especially relevant to
+this program.
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBhash_queue_depth (1)\fR"
+Da number of subdirectory levels fo' queue directories listed with
+the hash_queue_names parameter.
+.IP "\fBhash_queue_names (deferred, defer)\fR"
+Da namez of queue directories dat is split across multiple
+subdirectory levels.
+.IP "\fBqueue_directory (see 'postconf -d' output)\fR"
+Da location of tha Postfix top-level queue directory.
+.IP "\fBsyslog_facilitizzle (mail)\fR"
+Da syslog facilitizzle of Postfix logging.
+.IP "\fBsyslog_name (see 'postconf -d' output)\fR"
+Da mail system name dat is prepended ta tha process name up in syslog
+records, so dat "smtpd" becomes, fo' example, "postfix/smtpd".
+.PP
+Available up in Postfix version 2.9 n' later:
+.IP "\fBenable_long_queue_idz (no)\fR"
+Enable long, non-repeating, queue IDs (queue file names).
+.SH "SEE ALSO"
+.na
+.nf
+sendmail(1), Sendmail-compatible user intercourse
+postqueue(1), unprivileged queue operations
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

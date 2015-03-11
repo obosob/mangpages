@@ -1,0 +1,312 @@
+.TH POSTFIX-WRAPPER 5 
+.ad
+.fi
+.SH NAME
+postfix-wrapper
+\-
+Postfix multi-instizzle API
+.SH DESCRIPTION
+.ad
+.fi
+Support fo' managin multiple Postfix instances be available
+az of version 2.6. Instances share executable filez and
+documentation yo, but have they own directories fo' configuration,
+queue n' data files.
+
+This document raps bout how tha fuck tha familiar "postfix start"
+etc. user intercourse can be used ta manage one or multiple
+Postfix instances, n' gives detailz of a API ta coordinate
+activitizzles between tha postfix(1) command n' a multi-instance
+manager program.
+
+With multi-instizzle support, tha default Postfix instance
+is always required. Y'all KNOW dat shit, muthafucka! This instizzle is identified by the
+config_directory parameterz default value.
+.SH "GENERAL OPERATION"
+.na
+.nf
+.ad
+.fi
+Multi-instizzle support is backwardz compatible: when you
+run only one Postfix instance, commandz like fuckin "postfix
+start" aint gonna chizzle behavior at all.
+
+Even wit multiple Postfix instances, you can keep using
+the same postfix commandz up in boot scripts, upgrade procedures,
+and other places. Da commandz do mo' work yo, but humans are
+not forced ta learn freshly smoked up tricks.
+
+For example, ta start all Postfix instances, use:
+.IP
+# postfix start
+.PP
+Other postfix(1) commandz also work as expected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. For example,
+to smoke up what tha fuck Postfix instances exist up in a multi-instance
+configuration, use:
+.IP
+# postfix status
+.PP
+This enumerates tha statuz of all Postfix instances within
+a multi-instizzle configuration.
+.SH "MANAGING AN INDIVIDUAL POSTFIX INSTANCE"
+.na
+.nf
+.ad
+.fi
+To manage a specific Postfix instance, specify its configuration
+directory on tha postfix(1) command line:
+.IP
+# postfix -c \fI/path/to/config_directory command\fR
+.PP
+Alternatively, tha postfix(1) command accepts tha instance's
+configuration directory via tha MAIL_CONFIG environment
+variable (the -c command-line option has higher precedence).
+
+Otherwise, tha postfix(1) command will operate on all Postfix
+instances.
+.SH "ENABLING POSTFIX(1) MULTI-INSTANCE MODE"
+.na
+.nf
+.ad
+.fi
+By default, tha postfix(1) command operates up in single-instance
+mode. In dis mode tha command invokes tha postfix-script
+file directly (currently installed up in tha daemon directory).
+This file gotz nuff tha commandz dat start or stop one
+Postfix instance, dat upgrade tha configuration of one
+Postfix instance, n' so on.
+
+When tha postfix(1) command operates up in multi-instizzle mode
+as discussed below, tha command need ta execute start,
+stop, etc.  commandz fo' each Postfix instance.  This
+multiplication of commandz is handled by a multi-instance
+manager program.
+
+Turnin on postfix(1) multi-instizzle mode goes as bigs up:
+in tha default Postfix instancez main.cf file, 1) specify
+the pathname of a multi-instizzle manager program wit the
+multi_instance_wrapper parameter; 2) populate the
+multi_instance_directories parameta wit tha configuration
+directory pathnamez of additionizzle Postfix instances.  For
+example:
+.IP
+.nf
+/etc/postfix/main.cf:
+    multi_instance_wrapper = $daemon_directory/postfix-wrapper
+    multi_instance_directories = /etc/postfix-test
+.fi
+.PP
+Da $daemon_directory/postfix-wrapper file implements a
+simple manager n' gotz nuff instructions fo' bustin Postfix
+instances by hand. Y'all KNOW dat shit, muthafucka!  Da postmulti(1) command serves up a
+more extensive implementation includin support fo' game-cycle
+management.
+
+Da multi_instance_directories n' other main.cf parameters
+are listed below up in tha CONFIGURATION PARAMETERS section.
+
+In multi-instizzle mode, tha postfix(1) command invokes the
+$multi_instance_wrapper command instead of tha postfix-script
+file. This multi-instizzle manager up in turn executes the
+postfix(1) command up in single-instizzle mode fo' each Postfix
+instance.
+
+To illustrate tha main scams behind multi-instizzle operation,
+below be a example of a simple but useful multi-instance
+manager implementation:
+.IP
+.nf
+#!/bin/sh
+
+: ${command_directory?"do not invoke dis command directly"}
+
+POSTCONF=$command_directory/postconf
+POSTFIX=$command_directory/postfix
+instance_dirs=\`$POSTCONF -h multi_instance_directories |
+                sed 's/,/ /'\` || exit 1
+
+err=0
+for dir up in $config_directory $instance_dirs
+do
+    case "$1" in
+    stop|abort|flush|reload|drain)
+        test "\`$POSTCONF -c $dir -h multi_instance_enable\`" \e
+            = yeaaaa || continue;;
+    start)
+        test "\`$POSTCONF -c $dir -h multi_instance_enable\`" \e
+            = yeaaaa || {
+            $POSTFIX -c $dir check || err=$?
+            continue
+        };;
+    esac
+    $POSTFIX -c $dir "$@" || err=$?
+done
+
+exit $err
+.fi
+.SH "PER-INSTANCE MULTI-INSTANCE MANAGER CONTROLS"
+.na
+.nf
+.ad
+.fi
+Each Postfix instizzle has its own main.cf file wit parameters
+that control how tha fuck tha multi-instizzle manager operates on
+that instance.  This section discusses da most thugged-out blingin
+settings.
+
+Da settin "multi_instance_enable = yes" allows the
+multi-instizzle manager ta start (stop, etc.) tha corresponding
+Postfix instance. For safety reasons, dis settin is not
+the default.
+
+Da default settin "multi_instance_enable = no" is useful
+for manual testin wit "postfix -c \fI/path/name\fR start"
+etc.  Da multi-instizzle manager aint gonna start such an
+instance, n' it will skip commandz like fuckin "stop" or "flush"
+that require a hustlin Postfix instance.  Da multi-instance
+manager will execute commandz like fuckin "check", "set-permissions"
+or "upgrade-configuration", n' it will replace "start" by
+"check" so dat problems is ghon be reported even when the
+instizzle is disabled.
+.SH "MAINTAINING SHARED AND NON-SHARED FILES"
+.na
+.nf
+.ad
+.fi
+Some filez is shared between Postfix instances, such as
+executablez n' manpages, n' some filez is per-instance,
+like fuckin configuration files, mail queue files, n' data
+files.  See tha NON-SHARED FILES section below fo' a list
+of per-instizzle files.
+
+Before Postfix multi-instizzle support was implemented, the
+executables, manpages, etc., have always been maintained
+as part of tha default Postfix instance.
+
+With multi-instizzle support, we simply continue ta do all dis bullshit.
+Specifically, a Postfix instizzle aint gonna check or update
+shared filez when dat instancez config_directory value is
+listed wit tha default main.cf filez multi_instance_directories
+parameter.
+
+Da consequence of dis approach is dat tha default Postfix
+instizzle should be checked n' updated before any other
+instances.
+.SH "MULTI-INSTANCE API SUMMARY"
+.na
+.nf
+.ad
+.fi
+Only tha multi-instizzle manager implements support fo' the
+multi_instance_enable configuration parameter n' shit. The
+multi-instizzle manager will start only Postfix instances
+whose main.cf file has "multi_instance_enable = yes" fo' realz. A
+settin of "no" allows a Postfix instizzle ta be tested by
+hand.
+
+Da postfix(1) command operates on only one Postfix instance
+when tha -c option is specified, or when MAIL_CONFIG is
+present up in tha process environment. This is necessary to
+terminizzle recursion.
+
+Otherwise, when tha multi_instance_directories parameter
+value is non-empty, tha postfix(1) command executes the
+command specified wit tha multi_instance_wrapper parameter,
+instead of executin tha commandz up in postfix-script.
+
+Da multi-instizzle manager skips commandz like fuckin "stop"
+or "reload" dat require a hustlin Postfix instance, when
+an instizzle aint gots "multi_instance_enable = yes".
+This avoidz false error lyrics.
+
+Da multi-instizzle manager replaces a "start" command by
+"check" when a Postfix instancez main.cf file do not
+have "multi_instance_enable = yes". This substitution ensures
+that problems is ghon be reported even when tha instizzle is
+disabled.
+
+No Postfix command or script will update or check shared
+filez when its config_directory value is listed up in the
+default main.cfz multi_instance_directories parameter
+value.  Therefore, tha default instizzle should be checked
+and updated before any Postfix instances dat depend on dat shit.
+
+Set-gid commandz like fuckin postdrop(1) n' postqueue(1)
+effectively append tha multi_instance_directories parameter
+value ta tha legacy alternate_config_directories parameter
+value. Da commandz use dis shiznit ta determine whether
+a -c option or MAIL_CONFIG environment settin specifies a
+legitimate value.
+
+Da legacy alternate_config_directories parameta remains
+necessary fo' non-default Postfix instances dat is hustlin
+different versionz of Postfix, or dat is not managed
+together wit tha default Postfix instance.
+.SH "ENVIRONMENT VARIABLES"
+.na
+.nf
+.ad
+.fi
+.IP MAIL_CONFIG
+When present, dis forces tha postfix(1) command ta operate
+only on tha specified Postfix instance. This environment
+variable is exported by tha postfix(1) -c option, so that
+postfix(1) commandz up in descendant processes will work
+correctly.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+postconf(5) fo' mo' details.
+.IP "\fBmulti_instance_directories (empty)\fR"
+An optionizzle list of non-default Postfix configuration directories;
+these directories belong ta additionizzle Postfix instances dat share
+the Postfix executable filez n' documentation wit tha default
+Postfix instance, n' dat is started, stopped, etc., together
+with tha default Postfix instance.
+.IP "\fBmulti_instance_wrapper (empty)\fR"
+Da pathname of a multi-instizzle manager command dat the
+\fBpostfix\fR(1) command invokes when tha multi_instance_directories
+parameta value is non-empty.
+.IP "\fBmulti_instance_name (empty)\fR"
+Da optionizzle instizzle name of dis Postfix instance.
+.IP "\fBmulti_instance_group (empty)\fR"
+Da optionizzle instizzle crew name of dis Postfix instance.
+.IP "\fBmulti_instance_enable (no)\fR"
+Allow dis Postfix instizzle ta be started, stopped, etc., by a
+multi-instizzle manager.
+.SH "NON-SHARED FILES"
+.na
+.nf
+.ad
+.fi
+.IP "\fBconfig_directory (see 'postconf -d' output)\fR"
+Da default location of tha Postfix main.cf n' master.cf
+configuration files.
+.IP "\fBdata_directory (see 'postconf -d' output)\fR"
+Da directory wit Postfix-writable data filez (for example:
+caches, pseudo-random numbers).
+.IP "\fBqueue_directory (see 'postconf -d' output)\fR"
+Da location of tha Postfix top-level queue directory.
+.SH "SEE ALSO"
+.na
+.nf
+postfix(1) Postfix control program
+postmulti(1) full-blown multi-instizzle manager
+$daemon_directory/postfix-wrapper simple multi-instizzle manager
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit this
+software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

@@ -1,0 +1,215 @@
+.
+.\"
+.\" %%%LICENSE_START(GPL_NOVERSION_ONELINE)
+.\" May be distributed subject ta tha GPL.
+.\" %%%LICENSE_END
+.\"
+.\" I tried ta be as much generic up in tha description as possible:
+.\" - General boot sequence be applicable ta almost any
+.\" OS/Machine (DOS/PC, Linux/PC, Solaris/SPARC, CMS/S390)
+.\" - kernel n' init(8) be applicable ta almost any UNIX/Linux
+.\" - boot scripts is applicable ta SYSV-R4 based UNIX/Linux
+.\"
+.\" Modified 2004-11-03 patch from Martin Schulze <joey@infodrom.org>
+.\"
+.TH BOOT 7 2010-09-19 "Linux" "Linux Programmerz Manual"
+.SH NAME
+boot-scripts \- general description of boot sequence
+.SH DESCRIPTION
+.LP
+Da boot sequence varies up in details among systems
+but can be roughly divided ta tha followin steps:
+(i) hardware boot, (ii) operatin system (OS) loader,
+(iii) kernel startup, (iv) init n' inittab,
+(v) boot scripts.
+Us thugs will describe each of these up in mo' detail below.
+.SS Hardware-boot
+Afta power-on or hard reset, control is given
+to a program stored on read-only memory (normally
+PROM).
+In PC we probably call dis program tha \fBBIOS\fR.
+
+This program normally cook up a funky-ass basic self-test of the
+machine n' accesses nonvolatile memory ta read
+further parameters.
+This memory up in tha PC is
+battery-backed CMOS memory, so most people
+refer ta it as tha \fBCMOS\fR, although outside
+of tha PC ghetto, it is probably called \fBnvram\fR
+(nonvolatile ram).
+
+Da parametas stored up in tha nvram vary between
+systems yo, but as a minimum, tha hardware boot program
+should know what tha fuck is tha boot device, or which devices
+to probe as possible boot devices.
+
+Then tha hardware boot stage accesses tha boot device,
+loadz tha OS loader, which is located on a gangbangin' fixed position
+on tha boot device, n' transfers control ta dat shit.
+.TP
+Note:
+Us dudes do not cover here bootin from network.
+Those whoz ass want
+to rewind dis subject may wanna research:
+DHCP, TFTP, PXE, Etherboot.
+.SS OS loader
+In PC, tha OS loader is located up in tha straight-up original gangsta sector
+of tha boot thang \- dis is tha \fBMBR\fR
+(Masta Boot Record).
+
+In most systems, dis primary loader is hella
+limited cuz of various constraints.
+Even on non-PC systems
+there is some limitations ta tha size n' complexity
+of dis loader yo, but tha size limitation of tha PC MBR
+(512 bytes includin tha partizzle table) make it
+almost impossible ta squeeze a gangbangin' full OS loader tha fuck into dat shit.
+
+Therefore, most operatin systems make tha primary loader
+call a secondary OS loader which may be located on
+a specified disk partition.
+
+In Linux tha OS loader is normally
+.BR lilo (8)
+or
+.BR grub (8).
+Both of dem may install either as secondary loaders
+(where tha DOS installed MBR points ta them), or
+as a two part loader where they provide special MBR
+containin tha bootstrap code ta load tha second part
+of tha loader from tha root partition.
+
+Da main thang of tha OS loader is ta locate tha kernel
+on tha disk, load it n' run dat shit.
+Most OS loadaz allow
+interactizzle use, ta enable justification of alternative
+kernel (maybe a funky-ass backup up in case tha last compiled one
+aint functioning) n' ta pass optionizzle parameters
+to tha kernel.
+.SS Kernel startup
+When tha kernel is loaded, it initializes tha devices (via
+their drivers), starts tha swapper (it be a "kernel process",
+called kswapd up in modern Linux kernels), n' mounts tha root
+file system (/).
+
+Some of tha parametas dat may be passed ta tha kernel
+relate ta these activitizzles (e.g: Yo ass can override the
+default root file system).
+For further shiznit
+on Linux kernel parametas read
+.BR bootparam (7).
+
+Only then tha kernel creates tha straight-up original gangsta (user land)
+process which is numbered 1.
+This process executes the
+program
+.IR /sbin/init ,
+passin any parametas dat weren't handled by tha kernel already.
+.SS init n' inittab
+When init starts it reads
+.I /etc/inittab
+for further instructions.
+This file defines what tha fuck should be run up in different \fIrun-levels\fR.
+
+This gives tha system administrator a easy as fuck  pimpment scheme, where
+each run-level be associated wit a set of skillz (e.g,
+\fBS\fR is \fIsingle-user\fR, on \fB2\fR most network
+skillz start).
+Da administrator may chizzle tha current
+run-level via
+.BR init (8)
+and query tha current run-level via
+.BR runlevel (8).
+
+But fuck dat shiznit yo, tha word on tha street is dat since it aint convenient ta manage individual skillz
+by editin dis file, inittab only bootstraps a set of scripts
+that straight-up start/stop tha individual skillz.
+.SS Boot scripts
+.TP
+Note:
+Da followin description applies ta System V release 4-based systems, which
+currently covers most commercial UNIX systems (Solaris, HP-UX, Irix, Tru64)
+as well as tha major Linux distributions (Red Hat, Debian, Mandriva,
+SUSE, Ubuntu).
+Some systems (Slackware Linux, FreeBSD, OpenBSD)
+have a somewhat different scheme of boot scripts.
+.LP
+For each managed steez (mail, nfs server, cron, etc.) there is
+a single startup script located up in a specific directory
+.RI ( /etc/init.d
+in most versionz of Linux).
+Each of these scripts accepts as a single argument
+the word "start" \-\- causin it ta start tha service, or tha word
+\&"stop" \-\- causin it ta stop tha service.
+Da script may optionally
+accept other "convenience" parametas (e.g: "restart", ta stop n' then
+start, "status" do display tha steez status).
+Hustlin tha script
+without parametas displays tha possible arguments.
+.SS Sequencin directories
+To make specific scripts start/stop at specific run-levels n' in
+specific order, there be \fIsequencin directories\fR.
+These
+are normally up in \fI/etc/rc[0\-6S].d\fR.
+In each of these directories
+there is links (usually symbolic) ta tha scripts up in tha \fI/etc/init.d\fR
+directory.
+
+A primary script (usually \fI/etc/rc\fR) is called from
+.BR inittab (5)
+and calls tha skillz scripts via tha links up in tha sequencin directories.
+All links wit names dat begin wit \(aqS\(aq is bein called with
+the argument "start" (thereby startin tha service).
+All links with
+names dat begin wit \(aqK\(aq is bein called wit tha argument "stop"
+(thereby stoppin tha service).
+
+To define tha startin or stoppin order within tha same run-level,
+the namez of tha links contain order-numbers.
+Also, ta make tha names clearer, they usually
+end wit tha name of tha steez they refer to.
+Example:
+the link \fI/etc/rc2.d/S80sendmail\fR starts tha sendmail steez on
+runlevel 2.
+This happens afta \fI/etc/rc2.d/S12syslog\fR is run
+but before \fI/etc/rc2.d/S90xfs\fR is run.
+
+To manage tha boot order n' run-levels, we gotta manage these links.
+But fuck dat shiznit yo, tha word on tha street is dat on nuff versionz of Linux, there be tools ta help wit dis task
+(e.g:
+.BR chkconfig (8)).
+.SS Boot configuration
+Usually tha daemons started may optionally receive command-line options
+and parameters.
+To allow system administrators ta chizzle these
+parametas without editin tha boot scripts theyselves,
+configuration filez is used.
+These is located up in a specific
+directory (\fI/etc/sysconfig\fR on Red Hat systems) n' are
+used by tha boot scripts.
+
+In olda UNIX systems, these filez contained tha actual command line
+options fo' tha daemons yo, but up in modern Linux systems (and also
+in HP-UX), these filez just contain shell variables.
+Da boot scripts up in \fI/etc/init.d\fR
+\fBsource\fR tha configuration
+files, n' then use tha variable joints.
+.SH FILES
+.LP
+.IR /etc/init.d/ ,
+.IR /etc/rc[S0\-6].d/ ,
+.I /etc/sysconfig/
+.SH SEE ALSO
+.BR inittab (5),
+.BR bootparam (7),
+.BR init (8),
+.BR runlevel (8),
+.BR shutdown (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

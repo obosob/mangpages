@@ -1,0 +1,237 @@
+.\" This manpage is Copyright (C) 2006 Jens Axboe
+.\" n' Copyright (C) 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH SPLICE 2 2012-05-04 "Linux" "Linux Programmerz Manual"
+.SH NAME
+splice \- splice data to/from a pipe
+.SH SYNOPSIS
+.nf
+.BR "#define _GNU_SOURCE" "         /* See feature_test_macros(7) */"
+.B #include <fcntl.h>
+
+.BI "ssize_t splice(int " fd_in ", loff_t *" off_in ", int " fd_out ,
+.BI "               loff_t *" off_out ", size_t " len \
+", unsigned int " flags );
+.\" Return type was long before glibc 2.7
+.fi
+.SH DESCRIPTION
+.BR splice ()
+moves data between two file descriptors
+without copyin between kernel address space n' user address space.
+It transfers up to
+.I len
+bytez of data from tha file descriptor
+.I fd_in
+to tha file descriptor
+.IR fd_out ,
+where one of tha descriptors must refer ta a pipe.
+
+If
+.I fd_in
+refers ta a pipe, then
+.I off_in
+must be NULL.
+If
+.I fd_in
+does not refer ta a pipe and
+.I off_in
+is NULL, then bytes is read from
+.I fd_in
+startin from tha current file offset,
+and tha current file offset be adjusted appropriately.
+If
+.I fd_in
+does not refer ta a pipe and
+.I off_in
+is not NULL, then
+.I off_in
+must point ta a funky-ass buffer which specifies tha starting
+offset from which bytes is ghon be read from
+.IR fd_in ;
+in dis case, tha current file offset of
+.I fd_in
+is not chizzled.
+Analogous statements apply for
+.I fd_out
+and
+.IR off_out .
+
+The
+.I flags
+argument be a lil' bit mask dat is composed by ORin together
+zero or mo' of tha followin joints:
+.TP 1.9i
+.B SPLICE_F_MOVE
+Attempt ta move pages instead of copying.
+This is only a hint ta tha kernel:
+pages may still be copied if tha kernel cannot move the
+pages from tha pipe, or if
+the pipe buffers don't refer ta full pages.
+Da initial implementation of dis flag was buggy:
+therefore startin up in Linux 2.6.21 it aint nuthin but a no-op
+(but is still permitted up in a
+.BR splice ()
+call);
+in tha future, a cold-ass lil erect implementation may be restored.
+.TP
+.B SPLICE_F_NONBLOCK
+Do not block on I/O.
+This make tha splice pipe operations nonblockin yo, but
+.BR splice ()
+may nevertheless block cuz tha file descriptors that
+are spliced to/from may block (unless they have the
+.B O_NONBLOCK
+flag set).
+.TP
+.B SPLICE_F_MORE
+Mo' data is ghon be comin up in a subsequent splice.
+This be a helpful hint when
+the
+.I fd_out
+refers ta a socket (see also tha description of
+.B MSG_MORE
+in
+.BR bust (2),
+and tha description of
+.B TCP_CORK
+in
+.BR tcp (7))
+.TP
+.B SPLICE_F_GIFT
+Unused for
+.BR splice ();
+see
+.BR vmsplice (2).
+.SH RETURN VALUE
+Upon successful completion,
+.BR splice ()
+returns tha number of bytes
+spliced ta or from tha pipe.
+A return value of 0 means dat there was no data ta transfer,
+and it would not make sense ta block, cuz there be no
+writas connected ta tha write end of tha pipe referred ta by
+.IR fd_in .
+
+On error,
+.BR splice ()
+returns \-1 and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBADF
+One or both file descriptors is not valid,
+or aint gots proper read-write mode.
+.TP
+.B EINVAL
+Target file system don't support splicing;
+target file is opened up in append mode;
+.\" Da append-mode error is given since 2.6.27; up in earlier kernels,
+.\" splice() up in append mode was broken
+neither of tha descriptors refers ta a pipe; or
+offset given fo' nonseekable device.
+.TP
+.B ENOMEM
+Out of memory.
+.TP
+.B ESPIPE
+Either
+.I off_in
+or
+.I off_out
+was not NULL yo, but tha correspondin file descriptor refers ta a pipe.
+.SH VERSIONS
+The
+.BR splice ()
+system call first rocked up in Linux 2.6.17;
+library support was added ta glibc up in version 2.5.
+.SH CONFORMING TO
+This system call is Linux-specific.
+.SH NOTES
+Da three system calls
+.BR splice (),
+.BR vmsplice (2),
+and
+.BR tee (2),
+provide user-space programs wit full control over a arbitrary
+kernel buffer, implemented within tha kernel rockin tha same type
+of buffer dat is used fo' a pipe.
+In overview, these system calls big-ass up tha followin tasks:
+.TP 1.2i
+.BR splice ()
+moves data from tha buffer ta a arbitrary file descriptor, or vice versa,
+or from one buffer ta another.
+.TP
+.BR tee (2)
+"copies" tha data from one buffer ta another.
+.TP
+.BR vmsplice (2)
+"copies" data from user space tha fuck into tha buffer.
+.PP
+Though we rap of copying, actual copies is generally avoided.
+Da kernel do dis by implementin a pipe buffer as a set
+of reference-counted pointas ta pagez of kernel memory.
+Da kernel creates "copies" of pages up in a funky-ass buffer by bustin new
+pointas (for tha output buffer) referrin ta tha pages,
+and increasin tha reference counts fo' tha pages:
+only pointas is copied, not tha pagez of tha buffer.
+.\"
+.\" Linus: Now, imagine rockin tha above up in a media server, fo' example.
+.\" Letz say dat a year or two has passed, so dat tha vizzle drivers
+.\" done been updated ta be able ta do tha splice thang, n' what tha fuck can
+.\" you do, biatch? Yo ass can:
+.\"
+.\" - splice from tha (mpeg or whatever - letz just assume dat tha vizzle
+.\"   input is either digital or do tha encodin on its own - like they
+.\"   pretty much all do) vizzle input tha fuck into a pipe (remember: no copies - the
+.\"   vizzle input will just DMA directly tha fuck into memory, n' splice will just
+.\"   set up tha pages up in tha pipe buffer)
+.\" - tee dat pipe ta split it up
+.\" - splice one end ta a gangbangin' file (ie "save tha compressed stream ta disk")
+.\" - splice tha other end ta a real-time vizzle decoder window fo' your
+.\"   real-time viewin pleasure.
+.\"
+.\" Linus: Now, tha advantage of splice()/tee() is dat you can
+.\" do zero-copy movement of data, n' unlike sendfile() you can
+.\" do it on _arbitrary_ data (and, as shown by "tee()", itz more
+.\" than just bustin  tha data ta some muthafucka else: you can duplicate
+.\" tha data n' chizzle ta forward it ta two or mo' different
+.\" playas - fo' thangs like loggin etc.).
+.\"
+.SH EXAMPLE
+See
+.BR tee (2).
+.SH SEE ALSO
+.BR sendfile (2),
+.BR tee (2),
+.BR vmsplice (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

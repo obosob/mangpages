@@ -1,0 +1,215 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH MCHECK 3  2012-04-18 "GNU" "Linux Programmerz Manual"
+.SH NAME
+mcheck, mcheck_check_all, mcheck_pedantic, mprobe \- heap consistency checking
+.SH SYNOPSIS
+.nf
+.B #include <mcheck.h>
+.sp
+.BI "int mcheck(void (*" abortfunc ")(enum mcheck_status " mstatus ));
+
+.BI "int mcheck_pedantic(void (*" abortfunc ")(enum mcheck_status " mstatus ));
+
+.B void mcheck_check_all(void);
+
+.BI "enum mcheck_status mprobe(void *" ptr );
+.fi
+.SH DESCRIPTION
+The
+.BR mcheck ()
+function installs a set of debuggin hooks fo' the
+.BR malloc (3)
+family of memory-allocation functions.
+These hooks cause certain consistency checks ta be performed
+on tha state of tha heap.
+Da checks can detect application errors like fuckin freein a funky-ass block of memory
+more than once or corruptin tha bookkeepin data structures
+that immediately precede a funky-ass block of allocated memory.
+
+To be effective, the
+.BR mcheck ()
+function must be called before tha straight-up original gangsta call to
+.BR malloc (3)
+or a related function.
+In cases where dis is hard as fuck ta ensure, linkin tha program with
+.IR \-mcheck
+inserts a implicit call to
+.BR mcheck ()
+(with a NULL argument)
+before tha straight-up original gangsta call ta a memory-allocation function.
+
+The
+.BR mcheck_pedantic ()
+function is similar to
+.BR mcheck (),
+but performs checks on all allocated blocks whenever
+one of tha memory-allocation functions is called.
+This can be straight-up slow!
+
+The
+.BR mcheck_check_all ()
+function causes a immediate check on all allocated blocks.
+This call is effectizzle only if
+.BR mcheck ()
+is called beforehand.
+
+If tha system detects a inconsistency up in tha heap,
+the caller-supplied function pointed ta by
+.I abortfunc
+is invoked wit a single argument argument,
+.IR mstatus ,
+that indicates what tha fuck type of inconsistency was detected.
+If
+.I abortfunc
+is NULL, a thugged-out default function prints a error message on
+.IR stderr
+and calls
+.BR abort (3).
+
+The
+.BR mprobe ()
+function performs a cold-ass lil consistency check on
+the block of allocated memory pointed ta by
+.IR ptr .
+The
+.BR mcheck ()
+function should be called beforehand (otherwise
+.BR mprobe ()
+returns
+.BR MCHECK_DISABLED ).
+
+Da followin list raps bout tha joints returned by
+.BR mprobe ()
+or passed as the
+.I mstatus
+argument when
+.I abortfunc
+is invoked:
+.TP
+.BR MCHECK_DISABLED " (" mprobe "() only)"
+.BR mcheck ()
+was not called before tha straight-up original gangsta memory allocation function was called.
+Consistency checkin aint possible.
+.TP
+.BR MCHECK_OK " (" mprobe "() only)"
+No inconsistency detected.
+.TP
+.B MCHECK_HEAD
+Memory precedin a allocated block was clobbered.
+.TP
+.B MCHECK_TAIL
+Memory followin a allocated block was clobbered.
+.TP
+.B
+MCHECK_FREE
+A block of memory was freed twice.
+.SH RETURN VALUE
+.BR mcheck ()
+and
+.BR mcheck_pedantic ()
+return 0 on success, or \-1 on error.
+.SH VERSIONS
+The
+.BR mcheck_pedantic ()
+and
+.BR mcheck_check_all ()
+functions is available since glibc 2.2.
+The
+.BR mcheck ()
+and
+.BR mprobe ()
+functions is present since at least glibc 2.0
+.SH CONFORMING TO
+These functions is GNU extensions.
+.SH NOTES
+Linkin a program with
+.I \-lmcheck
+and rockin the
+.B MALLOC_CHECK_
+environment variable (busted lyrics bout in
+.BR mallopt (3))
+cause tha same kindz of errors ta be detected.
+But, using
+.B MALLOC_CHECK_
+does not require tha application ta be relinked.
+.\" But is MALLOC_CHECK_ slower?
+.SH EXAMPLE
+Da program below calls
+.BR mcheck ()
+with a NULL argument n' then frees tha same ol' dirty block of memory twice.
+Da followin shell session demonstrates what tha fuck happens
+when hustlin tha program:
+.in +4n
+.nf
+
+.RB "$" " ./a.out"
+Bout ta free
+
+Bout ta free a second time
+block freed twice
+Aborted (core dumped)
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <stdlib.h>
+#include <stdio.h>
+#include <mcheck.h>
+
+int
+main(int argc, char *argv[])
+{
+    char *p;
+
+    if (mcheck(NULL) != 0) {
+        fprintf(stderr, "mcheck() failed\\n");
+
+        exit(EXIT_FAILURE);
+    }
+
+    p = malloc(1000);
+
+    fprintf(stderr, "Bout ta free\\n");
+    free(p);
+    fprintf(stderr, "\\nBout ta free a second time\\n");
+    free(p);
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR malloc (3),
+.BR mallopt (3),
+.BR mtrace (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

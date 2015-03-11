@@ -1,0 +1,530 @@
+.\" Copyright (c)  2006   Dmitry Butskoy (dmitry@butskoy.name)
+.\" License: GPL v2 or any lata version
+.\" See COPYING fo' tha statuz of dis software
+.TH TRACEROUTE 8 "11 October 2006" "Traceroute" "Traceroute For Linux"
+.\" .UC 6
+.SH NAME
+traceroute \- print tha route packets trace ta network host
+.SH SYNOPSIS
+.na
+.BR traceroute " [" \-46dFITUnreAV "] [" "\-f first_ttl" "] [" "\-g gate,..." ]
+.br
+.ti +8
+.BR "" [ "-i device" "] [" "-m max_ttl" "] [" "-p port" "] [" "-s src_addr" ]
+.br
+.ti +8
+.BR "" [ "-q nqueries" "] [" "-N squeries" "] [" "-t tos" ]
+.br
+.ti +8
+.BR "" [ "-l flow_label" "] [" "-w waittime" "] [" "-z sendwait" "] [" "-UL" "] [" "-D" ]
+.br
+.ti +8
+.BR "" [ "-P proto" "] [" "--sport=port" "] [" "-M method" "] [" "-O mod_options" ]
+.br
+.ti +8
+.BR "" [ "--mtu" "] [" "--back" ]
+.br
+.ti +8
+.BR host " [" "packet_len" "]"
+.br
+.BR traceroute6
+.RI " [" options ]
+.ad
+.SH DESCRIPTION
+.I traceroute
+tracks tha route packets taken from a IP network on their
+way ta a given host. Well shiiiit, it utilizes tha IP protocolz time ta live (TTL) field
+and attempts ta elicit a ICMP TIME_EXCEEDED response from each gateway
+along tha path ta tha host.
+.P
+.I traceroute6
+is equivalent to
+.I traceroute
+.B \-6
+.PP
+Da only required parameta is tha name or IP address of the
+destination
+.BR host \ .
+Da optional
+.B packet_len\fR`gth
+is tha total size of tha probin packet (default 60 bytes
+for IPv4 n' 80 fo' IPv6). Da specified size can be ignored
+in some thangs or increased up ta a minimal value.
+.PP
+This program attempts ta trace tha route a IP packet would follow ta some
+internizzle host by launchin probe
+packets wit a lil' small-ass ttl (time ta live) then listenin fo' an
+ICMP "time exceeded" reply from a gateway.  We start our probes
+with a ttl of one n' increase by one until we git a ICMP "port
+unreachable" (or TCP reset), which means we gots ta tha "host", or hit a max (which
+defaults ta 30 hops). Three probes (by default) is busted at each ttl setting
+and a line is printed showin tha ttl, address of tha gateway and
+round trip time of each probe. Da address can be followed by additional
+information when requested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If tha probe lyrics come from
+different gateways, tha address of each respondin system will
+be printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If there is no response within a 5.0 secondz (default),
+an "*" (asterisk) is printed fo' dat probe.
+.PP
+Afta tha trip time, some additionizzle annotation can be printed:
+.BR !H ,
+.BR !N ,
+or
+.B !P
+(host, network or protocol unreachable),
+.B !S
+(source route failed),
+.B !F
+(fragmentation needed),
+.B !X
+(communication administratively prohibited),
+.B !V
+(host precedence violation),
+.B !C
+(precedence cutoff up in effect), or
+.B !<num>
+(ICMP unreachable code <num>).
+If almost all tha probes result up in some kind of unreachable, traceroute
+will give up n' exit.
+.PP
+Us dudes don't want tha destination host ta process tha UDP probe packets,
+so tha destination port is set ta a unlikely value (you can chizzle it wit the
+.B \-p
+flag). There is no such a problem fo' ICMP or TCP traceroutin (for TCP we
+use half-open technique, which prevents our probes ta be peeped by applications
+on tha destination host).
+.PP
+In tha modern network environment tha traditionizzle traceroute methods
+can not be always applicable, cuz of widespread use of firewalls.
+Such firewalls filta tha "unlikely" UDP ports, or even ICMP echoes.
+To solve this, some additionizzle traceroutin methodz is implemented
+(includin tcp), see
+.B LIST OF AVAILABLE METHODS
+below. Right back up in yo muthafuckin ass. Such methodz try ta use particular protocol
+and source/destination port, up in order ta bypass firewalls (to be seen
+by firewalls just as a start of allowed type of a network session).
+.SH OPTIONS
+.TP
+.BI \--help
+Print help info n' exit.
+.TP
+.BR \-4 ", " \-6
+Explicitly force IPv4 or IPv6 tracerouting. By default, tha program
+will try ta resolve tha name given, n' chizzle tha appropriate
+protocol automatically. If resolvin a host name returns both
+IPv4 n' IPv6 addresses,
+.I traceroute
+will use IPv4.
+.TP
+.B \-I, \-\-icmp
+Use ICMP ECHO fo' probes
+.TP
+.B \-T, \-\-tcp
+Use TCP SYN fo' probes
+.TP
+.B \-d, --debug
+Enable socket level debuggin (when tha Linux kernel supports it)
+.TP
+.B \-F, --dont-fragment
+Do not fragment probe packets, n' you can put dat on yo' toast. (For IPv4 it also sets DF bit, which tells
+intermediate routas not ta fragment remotely as well).
+.br
+
+.br
+Varyin tha size of tha probin packet by the
+.B packet_len
+command line parameter, you can manually obtain shiznit
+about tha MTU of individual network hops. The
+.B \--mtu
+option (see below) tries ta do dis automatically.
+.br
+
+.br
+Note, dat non-fragmented features (like
+.B \-F
+or
+.B \--mtu\fR)
+work properly since tha Linux kernel 2.6.22 only.
+Before dat version, IPv6 was always fragmented, IPv4 could use
+the once tha discovered final mtu only (from tha route cache), which can be
+less than tha actual mtu of a thugged-out device.
+.TP
+.BI \-f " first_ttl" ", --first=" first_ttl
+Specifies wit what tha fuck TTL ta start. Defaults ta 1.
+.TP
+.BI \-g " gateway" ", --gateway=" gateway
+Tells traceroute ta add a IP source routin option ta tha outgoing
+packet dat  drops some lyrics ta tha network ta route tha packet all up in the
+specified
+.IR gateway
+(most routas have disabled source routin fo' securitizzle reasons).
+In general, several
+.IR gateway\fR's
+is allowed (comma separated). For IPv6, tha form of
+.IR num\fB,\fIaddr\fB,\fIaddr...
+is allowed, where
+.IR num
+is a route header type (default is type 2). Note tha type 0 route header
+is now deprecated (rfc5095).
+.TP
+.BI \-i " intercourse" ", --interface=" intercourse
+Specifies tha intercourse all up in which
+.I traceroute
+should bust packets, n' you can put dat on yo' toast. By default, tha intercourse is selected
+accordin ta tha routin table.
+.TP
+.BI \-m " max_ttl" ", --max-hops=" max_ttl
+Specifies tha maximum number of hops (max time-to-live value)
+.I traceroute
+will probe. Da default is 30.
+.TP
+.BI \-N " squeries" ", --sim-queries=" squeries
+Specifies tha number of probe packets busted up simultaneously.
+Sendin nuff muthafuckin probes concurrently can speed up
+.I traceroute
+considerably. Da default value is 16.
+.br
+Note dat some routas n' hosts can use ICMP rate throttling. In such
+a thang specifyin too big-ass number can lead ta loss of some responses.
+.TP
+.BI \-n
+Do not try ta map IP addresses ta host names when displayin em.
+.TP
+.BI \-p " port" ", --port=" port
+For UDP tracing, specifies tha destination port base
+.I traceroute
+will use (the destination port number is ghon be incremented by each probe).
+.br
+For ICMP tracing, specifies tha initial ICMP sequence value (incremented
+by each probe too).
+.br
+For TCP n' others specifies just tha (constant) destination
+port ta connect.
+.TP
+.BI \-t " tos" ", --tos=" tos
+For IPv4, set tha Type of Service (TOS) n' Precedence value. Useful joints
+are 16 (low delay) n' 8 (high throughput). Note dat up in order ta use
+some TOS precedence joints, you gotta be supa user.
+.br
+For IPv6, set tha Traffic Control value.
+.TP
+.BI \-l " flow_label" ", --flowlabel=" flow_label
+Use specified flow_label fo' IPv6 packets.
+.TP
+.BI \-w " waittime" ", --wait=" waittime
+Set tha time (in seconds) ta wait fo' a response ta a probe (default 5.0 sec).
+.TP
+.BI \-q " nqueries" ", --queries=" nqueries
+Sets tha number of probe packets per hop. Da default is 3.
+.TP
+.BI \-r
+Bypass tha aiiight routin tablez n' bust directly ta a host on
+an attached network.  If tha host aint on a gangbangin' finger-lickin' directly-attached
+network, a error is returned. Y'all KNOW dat shit, muthafucka!  This option can be used ta pin a
+local host all up in a intercourse dat has no route all up in dat shit.
+.TP
+.BI \-s " source_addr" ", --source=" source_addr
+Chooses a alternatizzle source address. Note dat you must select the
+address of one of tha intercourses.
+By default, tha address of tha outgoin intercourse is used.
+.TP
+.BI \-z " sendwait" ", --sendwait=" sendwait
+Minimal time interval between probes (default 0).
+If tha value is mo' than 10, then it specifies a number up in milliseconds,
+else it aint nuthin but a fuckin shitload of secondz (float point joints allowed too).
+Useful when some routas use rate-limit fo' ICMP lyrics.
+.TP
+.B \-e, \-\-extensions
+Show ICMP extensions (rfc4884). Da general form is
+.I CLASS\fB/\fITYPE\fB:
+followed by a hexadecimal dump.
+Da MPLS (rfc4950) is shown parsed, up in a gangbangin' form:
+.B MPLS:L=\fIlabel\fB,E=\fIexp_use\fB,S=\fIstack_bottom\fB,T=\fITTL
+(more objects separated by
+.B /
+).
+.TP
+.B \-A, \-\-as\-path\-lookups
+Perform AS path lookups up in routin registries n' print thangs up in dis biatch
+directly afta tha correspondin addresses.
+.TP
+.B \-V, \-\-version
+Print tha version n' exit.
+.br
+.P
+There be a cold-ass lil couple additionizzle options, intended fo' a advanced usage
+(another trace methodz etc.):
+.TP
+.B \--sport\fR=\fIport
+Chooses tha source port ta use. Implies
+.BR \-N\ 1 .
+Normally source ports (if applicable) is chosen by tha system.
+.TP
+.B \--fwmark\fR=\fImark
+Set tha firewall mark fo' outgoin packets (since tha Linux kernel 2.6.25).
+.TP
+.BI \-M " method" ", --module=" name
+Use specified method fo' traceroute operations. Default traditionizzle udp method
+has name
+.IR default ,
+icmp
+.BR "" ( "-I" ) "
+and tcp
+.BR "" ( "-T" ) "
+have names
+.I icmp
+and
+.I tcp
+respectively.
+.br
+Method-specific options can be passed by
+.BR \-O\  .
+Most methodz have they simple shortcuts,
+.BR "" ( "-I " means " -M icmp" ,
+etc).
+.TP
+.BI \-O " option" ", --options=" options
+Specifies some method-specific option. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Several options is separated by comma (or use several
+.B \-O
+on cmdline).
+Each method may have its own specific options, or nuff not have dem at all.
+To print shiznit bout available options, use
+.BR \-O\ help .
+.TP
+.B \-U, \-\-udp
+Use UDP ta particular destination port fo' traceroutin (instead of increasing
+the port per each probe). Default port is 53 (dns).
+.TP
+.BI \-UL
+Use UDPLITE fo' traceroutin (default port is 53).
+.TP
+.B \-D, \-\-dccp
+Use DCCP Requests fo' probes.
+.TP
+.BI \-P " protocol" ", --protocol=" protocol
+Use raw packet of specified protocol fo' tracerouting. Default protocol is
+253 (rfc3692).
+.TP
+.BI \--mtu
+Discover MTU along tha path bein traced. Y'all KNOW dat shit, muthafucka! Implies
+.BR \-F\ \-N\ 1 .
+New
+.I mtu
+is printed once up in a gangbangin' form of
+.B F=\fINUM
+at tha straight-up original gangsta probe of a hop which requires such
+.I mtu
+to be reached. Y'all KNOW dat shit, muthafucka! (Actually, tha correspond "frag needed" icmp message
+normally is busted by tha previous hop).
+.br
+
+.br
+Note, dat some routas might cache once tha peeped shiznit
+on a gangbangin' fragmentation. I aint talkin' bout chicken n' gravy biatch. Thus you can receive tha final mtu from a cold-ass lil closer hop.
+Try ta specify a unusual
+.I tos
+by
+.B \-t
+, dis can help fo' one attempt (then it can be cached there as well).
+.br
+See
+.B \-F
+option fo' mo' info.
+.TP
+.BI \--back
+Print tha number of backward hops when it seems different wit tha forward
+direction. I aint talkin' bout chicken n' gravy biatch. This number is guessed up in assumption dat remote hops bust reply
+packets wit initial ttl set ta either 64, or 128 or 255 (which seems
+a common practice). Well shiiiit, it is printed as a negate value up in a gangbangin' form of '-NUM' .
+.SH LIST OF AVAILABLE METHODS
+In general, a particular traceroute method may gotta be chosen by
+.BR \-M\ name ,
+but most of tha methodz have they simple cmdline switches
+(you can peep dem afta tha method name, if present).
+.SS default
+Da traditional, ancient method of tracerouting. Used by default.
+.P
+Probe packets is udp datagrams wit so-called "unlikely" destination ports.
+Da "unlikely" port of tha straight-up original gangsta probe is 33434, then fo' each next probe
+it is incremented by one. Right back up in yo muthafuckin ass. Since tha ports is sposed ta fuckin be unused,
+the destination host normally returns "icmp unreach port" as a gangbangin' final response.
+(No Muthafucka knows what tha fuck happens when some application listens fo' such ports,
+though).
+.P
+This method be allowed fo' unprivileged users.
+.SS icmp \  \  \  \-I
+Most usual method fo' now, which uses icmp echo packets fo' probes.
+.br
+If you can ping(8) tha destination host, icmp traceroutin be applicable
+as well.
+.P
+This method may be allowed fo' unprivileged users
+since tha kernel 3.0 (IPv4 only), which supports new
+.I dgram icmp
+(or
+.IR \fR"\fIping\fR")
+sockets, n' you can put dat on yo' toast. To allow such sockets, sysadmin should provide
+.I net/ipv4/ping_group_range
+sysctl range ta match any crew of tha user.
+.br
+Options:
+.TP
+.B raw
+Use only raw sockets (the traditionizzle way).
+.br
+This way is tried first by default (for compatibilitizzle reasons),
+then freshly smoked up dgram icmp sockets as fallback.
+.TP
+.B dgram
+Use only dgram icmp sockets.
+.SS tcp \  \  \  \ \-T
+Well-known modern method, intended ta bypass firewalls.
+.br
+Uses tha constant destination port (default is 80, http).
+.P
+If some filtas is present up in tha network path, then most probably
+any "unlikely" udp ports (as for
+.I default
+method) or even icmp echoes (as for
+.IR icmp )
+are filtered, n' whole traceroutin will just stop at such a gangbangin' firewall.
+To bypass a network filter, we gotta use only allowed protocol/port
+combinations. If we trace fo' some, say, mailserver, then mo' likely
+.B \-T \-p 25
+can reach it, even when
+.B \-I
+can not.
+.P
+This method uses well-known "half-open technique", which prevents
+applications on tha destination host from seein our probes at all.
+Normally, a tcp syn is sent. For non-listened ports we receive tcp reset,
+and all is done. For actizzle listenin ports we receive tcp syn+ack yo, but
+answer by tcp reset (instead of expected tcp ack), dis way tha remote tcp
+session is dropped even without tha application eva takin notice.
+.P
+There be a cold-ass lil couple options for
+.I tcp
+method:
+.TP
+.B syn,ack,fin,rst,psh,urg,ece,cwr
+Sets specified tcp flags fo' probe packet, up in any combination.
+.TP
+.B flags\fR=\fInum
+Sets tha flags field up in tha tcp header exactly to
+.IR num .
+.TP
+.B ecn
+Send syn packet wit tcp flags ECE n' CWR (for Explicit Congestion
+Notification, rfc3168).
+.TP
+.B sack,timestamps,window_scaling
+Use tha correspondin tcp header option up in tha outgoin probe packet.
+.TP
+.B sysctl
+Use current sysctl
+.IR "" ( "/proc/sys/net/*" )
+settin fo' tha tcp header options above and
+.BR ecn .
+Always set by default, if not a god damn thang else specified.
+.TP
+.B mss\fR=\fInum
+Use value of
+.I num
+for maxseg tcp header option (when
+.BR syn ).
+.TP
+.B info
+Print tcp flagz of final tcp replies when tha target host is reached.
+Allows ta determine whether a application listens tha port and
+other useful thangs.
+.P
+Default options is
+.BR syn,sysctl .
+.SS tcpconn
+An initial implementation of tcp method, simple rockin connect(2) call,
+which do full tcp session opening. Not recommended fo' aiiight use, cuz
+a destination application be always affected (and can be confused).
+.SS udp \  \  \  \ \-U
+Use udp datagram wit constant destination port (default 53, dns).
+.br
+Intended ta bypass firewall as well. 
+.P
+Note, dat unlike in
+.I tcp
+method, tha correspond application on tha destination host
+.B always
+receive our probes (with random data), n' most can easily be confused
+by em. Most cases it aint gonna respond ta our packets though, so we will never
+see tha final hop up in tha trace. (Fortunately, it seems dat at least
+dns servers replies wit suttin' mad salty).
+.P
+This method be allowed fo' unprivileged users.
+.SS udplite \  \ \-UL
+Use udplite datagram fo' probes (with constant destination port,
+default 53).
+.P
+This method be allowed fo' unprivileged users.
+.br
+Options:
+.TP
+.B coverage\fR=\fInum
+Set udplite bust coverage to
+.IR num .
+.SS dccp \  \ \-D
+Use DCCP Request packets fo' probes (rfc4340).
+.P
+This method uses tha same ol' dirty "half-open technique" as used fo' TCP.
+Da default destination port is 33434.
+.P
+Options:
+.TP
+.B service\fR=\fInum
+Set DCCP steez code to
+.IR num
+(default is 1885957735).
+.SS raw \  \  \  \ \-P proto
+Send raw packet of protocol
+.IR proto .
+.br
+No protocol-specific headaz is used, just IP header only.
+.br
+Implies
+.BR \-N\ 1 .
+.br
+Options:
+.TP
+.B protocol\fR=\fIproto
+Use IP protocol
+.I proto
+(default 253).
+.SH NOTES
+.PP
+To speed up work, normally nuff muthafuckin probes is busted simultaneously.
+On tha other hand, it creates a "storm of packages", especially
+in tha reply direction. I aint talkin' bout chicken n' gravy biatch. Routas can throttle tha rate of icmp responses,
+and a shitload of replies can be lost. To avoid this, decrease tha number
+of simultaneous probes, or even set it ta 1 (like up in initial traceroute
+implementation), i.e.
+.B \-N 1
+.PP
+Da final (target) host can drop a shitload of tha simultaneous probes,
+and might even answer only tha sickest fuckin ones. Well shiiiit, it can lead ta extra
+"looks like expired" hops near tha final hop. We bust a smart-ass algorithm
+to auto-detect such a thang yo, but if it cannot help up in yo' case, just use
+.B \-N 1
+too.
+.PP
+For even pimped outa stabilitizzle you can slow down tha programz work by
+.B \-z
+option, fo' example use
+.B \-z 0.5
+for half-second pause between probes.
+.PP
+If some hops report not a god damn thang fo' every last muthafuckin method, tha last chizzle ta obtain
+suttin' is ta use
+.B pin -R
+command (IPv4, n' fo' nearest 8 hops only).
+.SH SEE ALSO
+.BR pin (8),
+.BR ping6 (8),
+.BR tcpdump (8),
+.BR netstat (8)

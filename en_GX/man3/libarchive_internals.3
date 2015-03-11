@@ -1,0 +1,365 @@
+.\" Copyright (c) 2003-2007 Slim Tim Kientzle
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd January 26, 2011
+.Dt LIBARCHIVE_INTERNALS 3
+.Os
+.Sh NAME
+.Nm libarchive_internals
+.Nd description of libarchive internal intercourses
+.Sh OVERVIEW
+The
+.Nm libarchive
+library serves up a gangbangin' flexible intercourse fo' readin n' writing
+streamin archive filez like fuckin tar n' cpio.
+Internally, it bigs up a modular layered design dat should
+make it easy as fuck  ta add freshly smoked up archive n' compression formats.
+.Sh GENERAL ARCHITECTURE
+Externally, libarchive exposes most operations all up in an
+opaque, object-style intercourse.
+The
+.Xr archive_entry 3
+objects store shiznit on some single filesystem object.
+Da rest of tha library serves up facilitizzles ta write
+.Xr archive_entry 3
+objects ta archive files,
+read dem from archive files,
+and write dem ta disk.
+(There is plans ta add a gangbangin' facilitizzle ta read
+.Xr archive_entry 3
+objects from disk as well.)
+.Pp
+Da read n' write APIs each have four layers: a hood API
+layer, a gangbangin' format layer dat understandz tha archive file format,
+a compression layer, n' a I/O layer.
+Da I/O layer is straight-up exposed ta clients whoz ass can replace
+it entirely wit they own functions.
+.Pp
+In order ta provide as much consistency as possible fo' clients,
+some hood functions is virtualized.
+Eventually, it should be possible fo' clients ta open
+an archive or disk writer, n' then bust a single set of
+code ta select n' write entries, regardless of tha target.
+.Sh READ ARCHITECTURE
+From tha outside, clients use the
+.Xr archive_read 3
+API ta manipulate an
+.Nm archive
+object ta read entries n' bodies from a archive stream.
+Internally, the
+.Nm archive
+object is cast ta an
+.Nm archive_read
+object, which holdz all read-specific data.
+Da API has four layers:
+Da lowest layer is tha I/O layer.
+This layer can be overridden by clients yo, but most clients use
+the packaged I/O callbacks provided, fo' example, by
+.Xr archive_read_open_memory 3 ,
+and
+.Xr archive_read_open_fd 3 .
+Da compression layer calls tha I/O layer to
+read bytes n' decompresses dem fo' tha format layer.
+Da format layer unpacks a stream of uncompressed bytes and
+creates
+.Nm archive_entry
+objects from tha incomin data.
+Da API layer tracks overall state
+(for example, it prevents clients from readin data before readin a header)
+and invokes tha format n' compression layer operations
+all up in registered function pointers.
+In particular, tha API layer drives tha format-detection process:
+When openin tha archive, it readz a initial block of data
+and offers it ta each registered compression handlez.
+Da one wit tha highest bid is initialized wit tha straight-up original gangsta block.
+Similarly, tha format handlezs is polled ta peep which handlez
+is tha dopest fo' each archive.
+(Prior ta 2.4.0, tha format biddaz was invoked fo' each
+entry yo, but dis design hindered error recovery.)
+.Ss I/O Layer n' Client Callbacks
+Da read API goes ta some lengths ta be sick ta clients.
+As a result, there be few restrictions on tha behavior of
+the client callbacks.
+.Pp
+Da client read callback is sposed ta fuckin provide a funky-ass block
+of data on each call.
+A zero-length return do indicate end of file yo, but otherwise
+blocks may be as lil' small-ass as one byte or as big-ass as tha entire file.
+In particular, blocks may be of different sizes.
+.Pp
+Da client skip callback returns tha number of bytes actually
+skipped, which may be much smalla than tha skip requested.
+Da only requirement is dat tha skip not be larger.
+In particular, clients is allowed ta return zero fo' any
+skip dat they don't wanna handle.
+Da skip callback must never be invoked wit a wack value.
+.Pp
+Keep it realz in mind dat not all clients is readin from disk:
+clients readin from networks may provide different-sized
+blocks on every last muthafuckin request n' cannot skip at all;
+advanced clients may use
+.Xr mmap 2
+to read tha entire file tha fuck into memory at once n' return the
+entire file ta libarchive as a single block;
+other clients may begin asynchronous I/O operations fo' the
+next block on each request.
+.Ss Decompresssion Layer
+Da decompression layer not only handlez decompression,
+it also buffers data so dat tha format handlezs peep a
+much sickr I/O model.
+Da decompression API be a two stage peek/consume model.
+A read_ahead request specifies a minimum read amount;
+the decompression layer must provide a pointa ta at least
+that much data.
+If mo' data is immediately available, it should return more:
+the format layer handlez bulk data readz by askin fo' a minimum
+of one byte n' then copyin as much data as be available.
+.Pp
+A subsequent call ta the
+.Fn consume
+function advances tha read pointer.
+Note dat data returned from a
+.Fn read_ahead
+call is guaranteed ta remain up in place until
+the next call to
+.Fn read_ahead .
+Intervenin calls to
+.Fn consume
+should not cause tha data ta move.
+.Pp
+Skip requests must always be handled exactly.
+Decompression handlezs dat cannot seek forward should
+not regista a skip handlez;
+the API layer fills up in a generic skip handlez dat readz n' discardz data.
+.Pp
+A decompression handlez has a specific gamecycle:
+.Bl -tag -compact -width indent
+.It Registration/Configuration
+When tha client invokes tha hood support function,
+the decompression handlez invokes tha internal
+.Fn __archive_read_register_compression
+function ta provide bid n' initialization functions.
+This function returns
+.Cm NULL
+on error or else a pointa ta a
+.Cm struct decompressor_t .
+This structure gotz nuff a
+.Va void * config
+slot dat can be used fo' storin any customization shiznit.
+.It Bid
+Da bid function is invoked wit a pointa n' size of a funky-ass block of data.
+Da decompressor can access its config data
+all up in the
+.Va decompressor
+element of the
+.Cm archive_read
+object.
+Da bid function is otherwise stateless.
+In particular, it must not big-ass up any I/O operations.
+.Pp
+Da value returned by tha bid function indicates its suitability
+for handlin dis data stream.
+A bid of zero will ensure dat dis decompressor is never invoked.
+Return zero if magic number checks fail.
+Otherwise, yo' initial implementation should return tha number of bits
+actually checked.
+For example, if you verify two full bytes n' three bitz of another
+byte, bid 19.
+Note dat tha initial block may be straight-up short;
+be careful ta only inspect tha data yo ass is given.
+(Da current decompressors require two bytes fo' erect bidding.)
+.It Initialize
+Da ballin bidder gonna git its init function called.
+This function should initialize tha remainin slotz of the
+.Va struct decompressor_t
+object pointed ta by the
+.Va decompressor
+element of the
+.Va archive_read
+object.
+In particular, it should allocate any hustlin data it needs
+in the
+.Va data
+slot of dat structure.
+Da init function is called wit tha block of data that
+was used fo' tokin.
+At dis point, tha decompressor is responsible fo' all I/O
+requests ta tha client callbacks.
+Da decompressor is free ta read mo' data as n' when
+necessary.
+.It Satisfy I/O requests
+Da format handlez will invoke the
+.Va read_ahead ,
+.Va consume ,
+and
+.Va skip
+functions as needed.
+.It Finish
+Da finish method is called only once when tha archive is closed.
+It should release anythang stored up in the
+.Va data
+and
+.Va config
+slotz of the
+.Va decompressor
+object.
+It should not invoke tha client close callback.
+.El
+.Ss Format Layer
+Da read formats gotz a similar gamecycle ta tha decompression handlezs:
+.Bl -tag -compact -width indent
+.It Registration
+Allocate yo' private data n' initialize yo' pointers.
+.It Bid
+Formats bid by invokin the
+.Fn read_ahead
+decompression method but not callin the
+.Fn consume
+method.
+This allows each bidder ta look ahead up in tha input stream.
+Biddaz should not look further ahead than necessary, as long
+look aheadz put heat on tha decompression layer ta buffer
+lotz of data.
+Most formats only require all dem hundred bytez of look ahead;
+look aheadz of all dem kilobytes is reasonable.
+(Da ISO9660 reader sometimes looks ahead by 48k, which
+should be considered a upper limit.)
+.It Read header
+Da header read is probably da most thugged-out complex part of any format.
+There is all dem strategies worth mentioning:
+For formats like fuckin tar or cpio, readin n' parsin tha header is
+straightforward since headaz alternate wit data.
+For formats dat store all header data all up in tha beginnin of tha file,
+the first header read request may gotta read all headaz into
+memory n' store dat data, sorted by tha location of tha file
+data.
+Subsequent header read requests will skip forward ta the
+beginnin of tha file data n' return tha correspondin header.
+.It Read Data
+Da read data intercourse supports sparse files; dis requires that
+each call return a funky-ass block of data specifyin tha file offset and
+size.
+This may require you ta carefully track tha location so dat you
+can return accurate file offsets fo' each read.
+Remember dat tha decompressor will return as much data as it has.
+Generally, yo big-ass booty is ghon wanna request one byte,
+examine tha return value ta peep how tha fuck much data be available, and
+possibly trim dat ta tha amount you can use.
+Yo ass should invoke consume fo' each block just before you return dat shit.
+.It Skip All Data
+Da skip data call should skip over all file data n' trailin padding.
+This is called automatically by tha API layer just before each
+header read.
+It be also called up in response ta tha client callin tha public
+.Fn data_skip
+function.
+.It Cleanup
+On cleanup, tha format should release all of its allocated memory.
+.El
+.Ss API Layer
+XXX ta do XXX
+.Sh WRITE ARCHITECTURE
+Da write API has a similar set of four layers:
+an API layer, a gangbangin' format layer, a cold-ass lil compression layer, n' a I/O layer.
+Da registration here is much simpla cuz only
+one format n' one compression can be registered at a time.
+.Ss I/O Layer n' Client Callbacks
+XXX To be freestyled XXX
+.Ss Compression Layer
+XXX To be freestyled XXX
+.Ss Format Layer
+XXX To be freestyled XXX
+.Ss API Layer
+XXX To be freestyled XXX
+.Sh WRITE_DISK ARCHITECTURE
+Da write_disk API is intended ta look just like tha write API
+to clients.
+Since it do not handle multiple formats or compression, it
+is not layered internally.
+.Sh GENERAL SERVICES
+The
+.Nm archive_read ,
+.Nm archive_write ,
+and
+.Nm archive_write_disk
+objects all contain a initial
+.Nm archive
+object which serves up common support fo' a set of standard skillz.
+(Recall dat ANSI/ISO C90 guarantees dat you can cast freely between
+a pointa ta a structure n' a pointa ta tha straight-up original gangsta element of that
+structure.)
+The
+.Nm archive
+object has a magic value dat indicates which API dis object
+is associated with,
+slots fo' storin error shiznit,
+and function pointas fo' virtualized API functions.
+.Sh MISCELLANEOUS NOTES
+Connectin existin archivin libraries tha fuck into libarchive is generally
+quite difficult.
+In particular, nuff existin libraries straight fuckin assume dat you
+are readin from a gangbangin' file; they seek forwardz n' backwardz as necessary
+to locate various piecez of shiznit.
+In contrast, libarchive never seeks backwardz up in its input, which
+sometimes requires straight-up different approaches.
+.Pp
+For example, libarchivez ISO9660 support operates straight-up differently
+from most ISO9660 readers.
+Da libarchive support utilizes a work-queue design that
+keeps a list of known entries sorted by they location up in tha input.
+Whenever libarchivez ISO9660 implementation be axed fo' tha next
+header, checks dis list ta find tha next item on tha disk.
+Directories is parsed when they is encountered n' new
+items is added ta tha list.
+This design relies heavily on tha ISO9660 image bein optimized so that
+directories always occur earlier on tha disk than tha filez they
+describe.
+.Pp
+Dependin on tha specific format, such approaches may not be possible.
+Da ZIP format justification, fo' example, allows archivers ta store
+key shiznit only all up in tha end of tha file.
+In theory, it is possible ta create ZIP archives dat cannot
+be read without seeking.
+Fortunately, such archives is straight-up rare, n' libarchive can read
+most ZIP archives, though it cannot always extract as much shiznit
+as a thugged-out dedicated ZIP program.
+.Sh SEE ALSO
+.Xr archive 3 ,
+.Xr archive_entry 3 ,
+.Xr archive_read 3 ,
+.Xr archive_write 3 ,
+.Xr archive_write_disk 3
+.Sh HISTORY
+The
+.Nm libarchive
+library first rocked up in
+.Fx 5.3 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm libarchive
+library was freestyled by
+.An Slim Tim Kientzle Aq kientzle@acm.org .

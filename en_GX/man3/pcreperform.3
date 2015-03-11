@@ -1,0 +1,177 @@
+.TH PCREPERFORM 3 "09 January 2012" "PCRE 8.30"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "PCRE PERFORMANCE"
+.rs
+.sp
+Two aspectz of performizzle is discussed below: memory usage n' processing
+time. Da way you express yo' pattern as a regular expression can affect both
+of em.
+.
+.SH "COMPILED PATTERN MEMORY USAGE"
+.rs
+.sp
+Patterns is compiled by PCRE tha fuck into a reasonably efficient interpretizzle code, so
+that most simple patterns do not use much memory. But fuck dat shiznit yo, tha word on tha street is dat there is one case
+where tha memory usage of a cold-ass lil compiled pattern can be unexpectedly large. If a
+parenthesized subpattern has a quantifier wit a minimum pimped outa than 1 and/or
+a limited maximum, tha whole subpattern is repeated up in tha compiled code. For
+example, tha pattern
+.sp
+  (abc|def){2,4}
+.sp
+is compiled as if it were
+.sp
+  (abc|def)(abc|def)((abc|def)(abc|def)?)?
+.sp
+(Technical aside: It be done dis way so dat backtrack points within each of
+the repetitions can be independently maintained.)
+.P
+For regular expressions whose quantifiers use only lil' small-ass numbers, dis is not
+usually a problem. But fuck dat shiznit yo, tha word on tha street is dat if tha numbers is large, n' particularly if such
+repetitions is nested, tha memory usage can become a embarrassment. For
+example, tha straight-up simple pattern
+.sp
+  ((ab){1,1000}c){1,3}
+.sp
+uses 51K bytes when compiled rockin tha 8-bit library. When PCRE is compiled
+with its default internal pointa size of two bytes, tha size limit on a
+compiled pattern is 64K data units, n' dis is reached wit tha above pattern
+if tha outa repetizzle is increased from 3 ta 4. PCRE can be compiled ta use
+larger internal pointas n' thus handle larger compiled patterns yo, but it is
+betta ta try ta rewrite yo' pattern ta use less memory if you can.
+.P
+One way of reducin tha memory usage fo' such patterns is ta make use of PCRE's
+.\" HTML <a href="pcrepattern.html#subpatternsassubroutines">
+.\" </a>
+"subroutine"
+.\"
+facility. Re-writin tha above pattern as
+.sp
+  ((ab)(?2){0,999}c)(?1){0,2}
+.sp
+reduces tha memory requirements ta 18K, n' indeed it remains under 20K even
+with tha outa repetizzle increased ta 100. But fuck dat shiznit yo, tha word on tha street is dat dis pattern is not
+exactly equivalent, cuz tha "subroutine" calls is treated as
+.\" HTML <a href="pcrepattern.html#atomicgroup">
+.\" </a>
+atomic groups
+.\"
+into which there can be no backtrackin if there be a subsequent matching
+failure. Therefore, PCRE cannot do dis kind of rewritin automatically.
+Furthermore, there be a noticeable loss of speed when executin tha modified
+pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch. Nevertheless, if tha atomic groupin aint a problem n' tha loss of
+speed be acceptable, dis kind of rewritin will allow you ta process patterns
+that PCRE cannot otherwise handle.
+.
+.
+.SH "STACK USAGE AT RUN TIME"
+.rs
+.sp
+When \fBpcre_exec()\fP or \fBpcre[16|32]_exec()\fP is used fo' matching, certain
+kindz of pattern can cause it ta use big-ass amountz of tha process stack. In
+some environments tha default process stack is like small, n' if it runs out
+the result is often SIGSEGV. This issue is probably da most thugged-out frequently raised
+problem wit PCRE. Rewritin yo' pattern can often help. The
+.\" HREF
+\fBpcrestack\fP
+.\"
+documentation discusses dis issue up in detail.
+.
+.
+.SH "PROCESSING TIME"
+.rs
+.sp
+Certain shit up in regular expression patterns is processed mo' efficiently
+than others. Well shiiiit, it is mo' efficient ta bust a cold-ass lil characta class like [aeiou] than a
+set of single-characta alternatives like fuckin (a|e|i|o|u). In general, the
+simplest construction dat serves up tha required behaviour is probably da most thugged-out
+efficient. Jeffrey Friedlz book gotz nuff a shitload of useful general rap
+about optimizin regular expressions fo' efficient performance. This document
+gotz nuff all dem observations bout PCRE.
+.P
+Usin Unicode characta propertizzles (the \ep, \eP, n' \eX escapes) is slow,
+because PCRE has ta bust a multi-stage table lookup whenever it needz a
+characterz property. If you can find a alternatizzle pattern dat do not use
+characta properties, it will probably be faster.
+.P
+By default, tha escape sequences \eb, \ed, \es, n' \ew, n' tha POSIX
+characta classes like fuckin [:alpha:] do not use Unicode properties, kinda for
+backwardz compatibility, n' kinda fo' performizzle reasons. But fuck dat shiznit yo, tha word on tha street is dat you can
+set PCRE_UCP if you want Unicode characta propertizzles ta be used. Y'all KNOW dat shit, muthafucka! This can
+double tha matchin time fo' shit like fuckin \ed, when matched with
+a traditionizzle matchin function; tha performizzle loss is less with
+a DFA matchin function, n' up in both cases there aint much difference for
+\eb.
+.P
+When a pattern begins wit .* not up in parentheses, or up in parentheses dat are
+not tha subject of a funky-ass backreference, n' tha PCRE_DOTALL option is set, the
+pattern is implicitly anchored by PCRE, since it can match only all up in tha start of
+a subject string. But fuck dat shiznit yo, tha word on tha street is dat if PCRE_DOTALL aint set, PCRE cannot make this
+optimization, cuz tha . metacharacta do not then match a newline, n' if
+the subject strang gotz nuff newlines, tha pattern may match from tha character
+immediately followin one of dem instead of from tha straight-up start. For example,
+the pattern
+.sp
+  .*second
+.sp
+matches tha subject "first\enand second" (where \en standz fo' a newline
+character), wit tha match startin all up in tha seventh character n' shit. In order ta do
+this, PCRE has ta retry tha match startin afta every last muthafuckin newline up in tha subject.
+.P
+If yo ass is rockin such a pattern wit subject strings dat do not contain
+newlines, tha dopest performizzle is obtained by settin PCRE_DOTALL, or starting
+the pattern wit ^.* or ^.*, biatch? ta indicate explicit anchoring. That saves PCRE
+from havin ta scan along tha subject lookin fo' a newline ta restart at.
+.P
+Beware of patterns dat contain nested indefinite repeats, n' you can put dat on yo' toast. These can take a
+long time ta run when applied ta a strang dat do not match. Consider the
+pattern fragment
+.sp
+  ^(a+)*
+.sp
+This can match "aaaa" up in 16 different ways, n' dis number increases hella
+rapidly as tha strang gets longer n' shit. (Da * repeat can match 0, 1, 2, 3, or 4
+times, n' fo' each of dem cases other than 0 or 4, tha + repeats can match
+different numberz of times.) When tha remainder of tha pattern is such dat the
+entire match is goin ta fail, PCRE has up in principle ta try every last muthafuckin possible
+variation, n' dis can take a mad long time, even fo' relatively short
+strings.
+.P
+An optimization catches a shitload of tha mo' simple cases such as
+.sp
+  (a+)*b
+.sp
+where a literal characta bigs up. Before embarkin on tha standard matching
+procedure, PCRE checks dat there be a "b" lata up in tha subject string, n' if
+there is not, it fails tha match immediately. But fuck dat shiznit yo, tha word on tha street is dat when there is no
+followin literal dis optimization cannot be used. Y'all KNOW dat shit, muthafucka! Yo ass can peep tha difference
+by comparin tha behaviour of
+.sp
+  (a+)*\ed
+.sp
+with tha pattern above. Da forma gives a gangbangin' failure almost instantly when
+applied ta a whole line of "a" characters, whereas tha latta takes an
+appreciable time wit strings longer than bout 20 characters.
+.P
+In nuff cases, tha solution ta dis kind of performizzle issue is ta use an
+atomic crew or a possessive quantifier.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 25 August 2012
+Copyright (c) 1997-2012 Universitizzle of Cambridge.
+.fi

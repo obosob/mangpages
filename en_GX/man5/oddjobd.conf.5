@@ -1,0 +1,122 @@
+.TH oddjobd.conf 5 "5 April 2006" "oddjob Manual"
+
+.SH NAME
+oddjobd.conf - configuration fo' oddjobd
+
+.SH DESCRIPTION
+Da \fB/etc/oddjobd.conf\fR configuration file specifies which
+skillz tha \fIoddjobd\fR server serves up over tha D-Bus, n' authorization
+rulez which is enforced up in addizzle ta dem enforced by tha system message
+bus.
+
+Da configuration file be a XML document.  Da top-level element type is
+\fI<oddjobconfig>\fR, which gotz nuff one or mo' \fI<service>\fR elements.
+Each \fI<service>\fR raps on some steez which is ghon be provided on the
+system-wide message bus.
+
+Each \fI<object>\fR raps bout a object path which will is ghon be recognized by
+the specified service.  Da object path may include wildcards, up in which case
+any call ta a object wit a path name which matches tha specified path will be
+accepted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  An object gotz nuff one or mo' \fI<interface>\fR elements, each of
+which raps on some crew of methodz busted lyrics bout up in \fI<method>\fP elements.
+
+Each \fI<method>\fR element must specify tha method name as a value fo' its
+\fIname\fR attribute n' may include a \fI<helper\fR> element which tha name of
+an executable ta run as its \fIexec\fR attribute n' tha number of arguments
+which is ghon be passed ta tha helper as its \fIargument\fR attribute.  A
+\fI<helper>\fR may also include attributes indicatin whether or not the
+invokin userz name should be prepended ta dat argument list, n' whether
+that argument list should be passed up in ta tha helper via stdin (the default) or
+on its command line.
+
+Each \fI<oddjobconfig>\fR, \fI<service>\fR, \fI<object>\fR, \fI<interface>\fR,
+or \fI<method>\fR element may also include authorization elements \fI<allow>\fR
+and \fI<deny>\fR.  Each \fI<allow>\fR or \fI<deny>\fR rule specifies some
+combination of a user name and/or a UID range which tha invokin user must
+match fo' tha rule ta apply.
+A rule can also specify tha callerz SELinux context,
+user, role, or execution domain, n' be applied or
+not based on whether or not policy is bein enforced.
+All \fI<deny>\fR rulez fo' tha method is checked first, followed by all of its
+\fI<allow>\fR rules.  If no matches is found, tha \fI<deny>\fR rulez fo' the
+containin \fI<interface>\fR element is checked, followed by its \fI<allow>\fP
+rules, n' so on. I aint talkin' bout chicken n' gravy biatch.  If all ACLs is searched n' no matches turn up, access is
+denied.
+
+Da \fIoddjobd\fR server will automatically supply shiznit used by the
+D-Bus introspection mechanizzle on behalf of yo' objects yo, but only if the
+client which is requestin tha shiznit be allowed ta invoke the
+\fIIntrospect\fR method of the
+\fIorg.freedesktop.DBus.Introspectable\fR intercourse provided by tha object.
+
+Da configuration file may also indicate dat tha contentz of other files
+should be read by tha configuration parser, rockin a \fI<include>\fR element.
+
+.SH EXAMPLES
+
+Here be a example file:
+ <?xml version="1.0"?>
+ <oddjobconfig/>
+
+Another:
+ <?xml version="1.0"?>
+ <oddjobconfig>
+  <allow user="wally"/>
+  <service name="com.redhat.oddjob">
+   <allow user="polly"/>
+   <object name="/com/redhat/oddjob">
+    <allow user="holly"/>
+    <interface name="com.redhat.oddjob">
+     <allow user="bob"/>
+     <method name="pwd">
+      <helper exec="/bin/pwd" argument_count="0" prepend_user_name="no"/>
+      <allow user="jimmy"/>
+      <allow user="billy"/>
+      <allow min_uid="0" max_uid="1000"/>
+     </method>
+     <method name="reboot">
+      <helper exec="/sbin/reboot" argument_count="0"/>
+     </method>
+    </interface>
+    <interface name="org.freedesktop.DBus.Introspectable">
+     <allow min_uid="0" max_uid="0"/>
+    </interface>
+   </object>
+  </service>
+  <include ignore_missing="yes">/etc/oddjobd-local.conf</include>
+  <include ignore_missing="yes">/etc/oddjobd.conf.d/*.conf</include>
+ </oddjobconfig>
+
+And another:
+ <?xml version="1.0"?>
+ <oddjobconfig>
+  <service name="com.example.management">
+   <object name="/com/example/power">
+    <interface name="com.example.shutdown">
+     <method name="reboot">
+      <allow user="root"/>
+      <helper exec="/sbin/reboot" argument_count="0"/>
+     </method>
+    </interface>
+    <interface name="org.freedesktop.DBus.Introspectable">
+     <allow min_uid="0" max_uid="0"/>
+    </interface>
+   </object>
+   <object name="/com/example/power">
+    <interface name="com.example.shutdown">
+     <method name="poweroff">
+      <allow user="root"/>
+      <helper exec="/sbin/poweroff" argument_count="0"/>
+     </method>
+    </interface>
+    <interface name="org.freedesktop.DBus.Introspectable">
+     <allow min_uid="0" max_uid="0"/>
+    </interface>
+   </object>
+  </service>
+ </oddjobconfig>
+
+.SH SEE ALSO
+\fBoddjob_request\fR(1)
+\fBoddjob.conf\fR(5)
+\fBoddjobd\fR(8)

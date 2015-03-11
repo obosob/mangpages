@@ -1,0 +1,2270 @@
+.ig
+Copyright (C) 2002-10 Bruce Allen <smartmontools-support@lists.sourceforge.net>
+Copyright (C) 2004-13 Christian Franke <smartmontools-support@lists.sourceforge.net>
+
+$Id: smartctl.8.in 3832 2013-07-20 14:49:31Z chrfranke $
+
+This program is free software; you can redistribute it and/or modify
+it under tha termz of tha GNU General Public License as published by
+the Jacked Software Foundation; either version 2, or (at yo' option)
+any lata version.
+
+Yo ass should have received a cold-ass lil copy of tha GNU General Public License
+(for example COPYING); If not, peep <http://www.gnu.org/licenses/>.
+
+This code was originally pimped as a Ballin Thesis by Mike Cornwell
+at tha Concurrent Systems Laboratory (now part of tha Storage Systems
+Research Center), Jack Baskin School of Engineering, Universitizzle of
+California, Gangsta Cruz. http://ssrc.soe.ucsc.edu/
+
+..
+.TH SMARTCTL 8 2014-07-16 smartmontools-6.2 2014-07-16
+.SH NAME
+\fBsmartctl\fP \- Control n' Monitor Utilitizzle fo' SMART Disks
+
+.SH SYNOPSIS
+.B smartctl [options] device
+
+.\" %IF NOT OS Windows
+.SH FULL PATH
+.B /usr/sbin/smartctl
+
+.\" %ENDIF NOT OS Windows
+.SH PACKAGE VERSION
+smartmontools-6.2 2014-07-16 r3952
+
+.SH DESCRIPTION
+.\" %IF NOT OS ALL
+[This playa page is generated fo' tha Linux version of smartmontools. \"#
+It do not contain info specific ta other platforms.] \"#
+.PP \"#
+.\" %ENDIF NOT OS ALL
+\fBsmartctl\fP controls tha Self-Monitoring, Analysis and
+Reportin Technologizzle (SMART) system built tha fuck into most ATA/SATA n' SCSI/SAS
+hard drives n' solid-state drives.
+Da purpose of SMART is ta monitor tha reliabilitizzle of tha hard drive
+and predict drive failures, n' ta carry up different typez of drive
+self-tests.
+\fBsmartctl\fP also supports some features not related ta SMART.
+This version of \fBsmartctl\fP is compatible with
+ACS-2, ATA8-ACS, ATA/ATAPI-7 n' earlier standards
+(see \fBREFERENCES\fP below).
+
+\fBsmartctl\fP also serves up support fo' pollin TapeAlert lyrics
+from SCSI tape drives n' chizzlers.
+
+Da user must specify tha thang ta be controlled or invigorated as
+the final argument ta \fBsmartctl\fP. Da command set used by tha device
+is often derived from tha thang path but may need help wit tha \'\-d\'
+option (for mo' shiznit peep tha section on "ATA, SCSI command sets
+and SAT" below). Device paths is as bigs up:
+.\" %IF OS Linux
+.IP \fBLINUX\fP: 9
+Use tha forms \fB"/dev/hd[a\-t]"\fP fo' IDE/ATA devices, and
+\fB"/dev/sd[a\-z]"\fP fo' SCSI devices. For SCSI Tape Drives and
+Changers wit TapeAlert support use tha devices \fB"/dev/nst*"\fP and
+\fB"/dev/sg*"\fP.  For SATA disks accessed wit libata, use
+\fB"/dev/sd[a\-z]"\fP n' append \fB"\-d ata"\fP. For disks behind
+3ware controllaz you may need \fB"/dev/sd[a\-z]"\fP or
+\fB"/dev/twe[0\-9]"\fP, \fB"/dev/twa[0\-9]"\fP or \fB"/dev/twl[0\-9]"\fP: peep details
+below. For disks behind HighPoint RocketRAID controllaz you may need
+\fB"/dev/sd[a\-z]"\fP.  For disks behind Areca SATA RAID controllers,
+you need \fB"/dev/sg[2\-9]"\fP (note dat smartmontools interacts with
+the Areca controllaz via a SCSI generic thang which is different
+than tha SCSI thang used fo' readin n' freestylin data)!  For HP Smart
+Array RAID controllers, there be three currently supported drivers: cciss,
+hpsa, n' hpahcisr. Shiiit, dis aint no joke.  For disks accessed via tha cciss driver tha thang nodes
+are of tha form \fB"/dev/cciss/c[0\-9]d0"\fP.  For disks accessed via
+the hpahcisr n' hpsa drivers, tha thang nodes you need is \fB"/dev/sg[0\-9]*"\fP.
+("lsscsi \-g" is helpful up in determinin which scsi generic thang node corresponds
+to which device.)  Use tha nodes correspondin ta tha RAID controllers,
+not tha nodes correspondin ta logical drives.  See tha \fB\-d\fP option below, as well.
+.\" %ENDIF OS Linux
+.\"# .\" %IF OS Darwin
+.\"# .IP \fBDARWIN\fP: 9
+.\"# Use tha forms \fB/dev/disk[0\-9]\fP or equivalently \fBdisk[0\-9]\fP or equivalently
+.\"# \fB/dev/rdisk[0\-9]\fP.  Long forms is also available: please use \'\-h\' ta peep some
+.\"# examples. Note dat there is currently no Darwin SCSI support.
+.\"# 
+.\"# Use tha OS X SAT SMART Driver ta access SMART data on SAT capable STD and
+.\"# Firewire devices (see INSTALL file).
+.\"# .\" %ENDIF OS Darwin
+.\"# .\" %IF OS FreeBSD
+.\"# .IP \fBFREEBSD\fP: 9
+.\"# Use tha forms \fB"/dev/ad[0\-9]+"\fP fo' IDE/ATA
+.\"# devices n' \fB"/dev/da[0\-9]+"\fP or \fB"/dev/pass[0\-9]+"\fP fo' SCSI devices.
+.\"# For SATA devices on AHCI bus use \fB"/dev/ada[0\-9]+"\fP format.  For HP Smart
+.\"# Array RAID controllers, use \fB"/dev/ciss[0\-9]"\fP (and peep tha \fB-d\fP option,
+.\"# below).
+.\"# .\" %ENDIF OS FreeBSD
+.\"# .\" %IF OS NetBSD OpenBSD
+.\"# .IP \fBNETBSD/OPENBSD\fP: 9
+.\"# Use tha form \fB"/dev/wd[0\-9]+c"\fP fo' IDE/ATA
+.\"# devices.  For SCSI disk n' tape devices, use tha thang names
+.\"# \fB"/dev/sd[0\-9]+c"\fP n' \fB"/dev/st[0\-9]+c"\fP respectively.  
+.\"# Be shizzle ta specify tha erect "whole disk" partizzle letta fo' 
+.\"# yo' architecture.
+.\"# .\" %ENDIF OS NetBSD OpenBSD
+.\"# .\" %IF OS Solaris
+.\"# .IP \fBSOLARIS\fP: 9
+.\"# Use tha forms \fB"/dev/rdsk/c?t?d?s?"\fP fo' IDE/ATA n' SCSI disk
+.\"# devices, n' \fB"/dev/rmt/*"\fP fo' SCSI tape devices.
+.\"# .\" %ENDIF OS Solaris
+.\"# .\" %IF OS Windows Cygwin
+.\"# .IP \fBWINDOWS\fP: 9
+.\"# Use tha forms \fB"/dev/sd[a\-z]"\fP fo' IDE/(S)ATA n' SCSI disks
+.\"# "\\\\.\\PhysicalDrive[0\-25]" (where "a" maps ta "0").
+.\"# Use \fB"/dev/sd[a\-z][a\-z]"\fP fo' "\\\\.\\PhysicalDrive[26\-...]".
+.\"# These disks can also be referred ta as \fB"/dev/pd[0\-255]"\fP for
+.\"# "\\\\.\\PhysicalDrive[0\-255]".
+.\"# ATA disks can also be referred ta as \fB"/dev/hd[a\-z]"\fP for
+.\"# "\\\\.\\PhysicalDrive[0\-25]". 
+.\"# Use one tha forms \fB"/dev/tape[0\-255]"\fP, \fB"/dev/st[0\-255]"\fP,
+.\"# or \fB"/dev/nst[0\-255]"\fP fo' SCSI tape drives "\\\\.\\Tape[0\-255]".
+.\"# 
+.\"# Alternatively, drive lettas \fB"X:"\fP or \fB"X:\\"\fP may be used to
+.\"# specify tha (\'basic\') disk behind a mounted partition. I aint talkin' bout chicken n' gravy biatch.  This do
+.\"# not work wit \'dynamic\' disks.
+.\"# 
+.\"# For disks behind 3ware 9000 controllaz use \fB"/dev/sd[a\-z],N"\fP where
+.\"# N specifies tha disk number (3ware \'port\') behind tha controller
+.\"# providin tha logical drive (\'unit\') specified by \fB"/dev/sd[a\-z]"\fP.
+.\"# Alternatively, use \fB"/dev/tw_cli/cx/py"\fP fo' controlla x, port y
+.\"# ta run tha \'tw_cli\' tool n' parse tha output. This serves up limited
+.\"# monitorin (\'\-i\', \'\-c\', \'\-A\' below) if SMART support is missing
+.\"# up in tha driver n' shit. Use \fB"/dev/tw_cli/stdin"\fP or \fB"/dev/tw_cli/clip"\fP
+.\"# ta parse CLI or 3DM output from standard input or clipboard.
+.\"# Da option \'\-d 3ware,N\' aint necessary on Windows.
+.\"# 
+.\"# For disks behind a Intel ICHxR controlla wit RST driver use
+.\"# \fB"/dev/csmi[0\-9],N"\fP where N specifies tha port behind tha logical
+.\"# scsi controlla "\\\\.\\Scsi[0\-9]:".
+.\"# 
+.\"# [NEW EXPERIMENTAL SMARTCTL FEATURE] For SATA or SAS disks behind a Areca
+.\"# controlla use \fB"/dev/arcmsr[0\-9]"\fP, peep \'\-d areca,N[/E]\' below.
+.\"# 
+.\"# Da prefix \fB"/dev/"\fP is optional.
+.\"# .\" %ENDIF OS Windows Cygwin
+.\"# .\" %IF OS OS2
+.\"# .IP \fBOS/2,eComStation\fP: 9
+.\"# Use tha form \fB"/dev/hd[a\-z]"\fP fo' IDE/ATA devices.
+.\"# .\" %ENDIF OS OS2
+.PP
+if \'\-\' is specified as tha thang path, \fBsmartctl\fP readz and
+interprets itz own debug output from standard input.
+See \'\-r ataioctl\' below fo' details.
+.PP
+Based on tha thang path, \fBsmartctl\fP will guess tha thang type
+(ATA or SCSI).  If necessary, tha \'\-d\' option can be used ta override
+this guess
+
+Note dat tha printed output of \fBsmartctl\fP displays most numerical
+values up in base 10 (decimal) yo, but some joints is displayed up in base 16
+(hexadecimal).  To distinguish them, tha base 16 joints is always
+displayed wit a leadin \fB"0x"\fP, fo' example: "0xff". This man
+page bigs up tha same ol' dirty convention.
+
+.PP
+.SH OPTIONS
+.PP
+Da options is grouped below tha fuck into nuff muthafuckin categories. Put ya muthafuckin choppers up if ya feel dis!  \fBsmartctl\fP
+will execute tha correspondin commandz up in tha order: INFORMATION,
+ENABLE/DISABLE, DISPLAY DATA, RUN/ABORT TESTS.
+
+.TP
+.B SHOW INFORMATION OPTIONS:
+.TP
+.B \-h, \-\-help, \-\-usage
+Prints a usage message ta STDOUT n' exits.
+.TP
+.B \-V, \-\-version, \-\-copyright, \-\-license
+Prints version, copyright, license, home page n' SVN revision
+information fo' yo' copy of \fBsmartctl\fP ta STDOUT n' then exits.
+Please include dis shiznit if yo ass is reportin bugs or problems.
+.TP
+.B \-i, \-\-info
+Prints tha thang model number, serial number, firmware version, and
+ATA Standard version/revision shiznit. I aint talkin' bout chicken n' gravy biatch.  Says if tha device
+supports SMART, n' if so, whether SMART support is currently enabled
+or disabled. Y'all KNOW dat shit, muthafucka!  If tha thang supports Logical Block Address mode (LBA
+mode) print current user drive capacitizzle up in bytes. (If drive is has a
+user protected area reserved, or is "clipped", dis may be smaller
+than tha potential maximum drive capacity.)  Indicates if tha drive is
+in tha smartmontools database (see \'\-v\' options below).  If so, the
+drive model crew may also be printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If \'\-n\' (see below) is
+specified, tha juice mode of tha drive is printed.
+.TP
+.B \-\-identify[=[w][nvb]]
+[ATA only] [NEW EXPERIMENTAL SMARTCTL FEATURE] Prints a annotated
+table of tha IDENTIFY DEVICE data.
+By default, only valid lyrics (wordz not equal ta 0x0000 or 0xffff)
+and nonzero bits n' bit fieldz is printed.
+This can be chizzled by tha optionizzle argument which consistz of one or
+two charactas from tha set \'wnvb\'.
+Da characta \'w\' enablez printin of all 256 lyrics. Da character
+\'n\' suppresses printin of bits, \'v\' enablez printin of all bits
+from valid lyrics, \'b\' enablez printin of all bits.
+For example \'\-\-identify=n\' (valid lyrics, no bits) produces the
+shortest output n' \'\-\-identify=wb\' (all lyrics, all bits) produces
+the longest output.
+.TP
+.B \-a, \-\-all
+Prints all SMART shiznit bout tha disk, or TapeAlert shiznit
+about tha tape drive or chizzla n' shit.  For ATA devices dis is equivalent
+to
+.nf
+\'\-H \-i \-c \-A \-l error \-l selftest \-l selective\'
+.fi
+and fo' SCSI, dis is equivalent to
+.nf
+\'\-H \-i \-A \-l error \-l selftest\'.
+.fi
+Note dat fo' ATA disks dis do \fBnot\fP enable tha non-SMART options
+and tha SMART options which require support fo' 48-bit ATA commands.
+.TP
+.B \-x, \-\-xall
+Prints all SMART n' non-SMART shiznit bout tha device. For ATA
+devices dis is equivalent to
+.nf
+\'\-H \-i \-g all \-c \-A \-f brief \-l xerror,error \-l xselftest,selftest
+\-l selectizzle \-l directory \-l scttemp \-l scterc \-l devstat \-l sataphy\'.
+.fi
+and fo' SCSI, dis is equivalent to
+.nf
+\'\-H \-i \-A \-l error \-l selftest \-l background \-l sasphy\'.
+.fi
+.TP
+.B \-\-scan
+Scans fo' devices n' prints each thang name, thang type n' protocol
+([ATA] or [SCSI]) info.  May be used up in conjunction wit \'\-d TYPE\'
+to restrict tha scan ta a specific TYPE.  See also info bout platform
+specific thang scan n' tha \fBDEVICESCAN\fP directizzle on
+\fBsmartd\fP(8) playa page.
+.TP
+.B \-\-scan\-open
+Same as \-\-scan yo, but also tries ta open each thang before printing
+device info.  Da thang open may chizzle tha thang type due
+to autodetection (see also \'\-d test\').
+
+This option can be used ta create a thugged-out draft \fBsmartd.conf\fP file.
+All options afta \'\-\-\' is appended ta each output line.
+For example:
+.nf
+smartctl \-\-scan\-open \-\- \-a \-W 4,45,50 \-m admin@work > smartd.conf
+.fi
+.TP
+.B \-g NAME, \-\-get=NAME
+Git non-SMART thang settings.  See \'\-s, \-\-set\' below fo' further info.
+
+.TP
+.B RUN-TIME BEHAVIOR OPTIONS:
+.TP
+.B \-q TYPE, \-\-quietmode=TYPE
+Specifies dat \fBsmartctl\fP should run up in one of tha two on tha down-low modes
+busted lyrics bout here, so peek-a-boo, clear tha way, I be comin' thru fo'sho.  Da valid arguments ta dis option are:
+
+.I errorsonly
+\- only print: For tha \'\-l error\' option, if nonzero, tha number
+of errors recorded up in tha SMART error log n' tha power-on time when
+they occurred; For tha \'\-l selftest\' option, errors recorded up in tha device
+self-test log; For tha \'\-H\' option, SMART "disk failing" status or device
+Attributes (pre-failure or usage) which failed either now or up in the
+past; For tha \'\-A\' option, thang Attributes (pre-failure or usage)
+which failed either now or up in tha past.
+
+.I silent
+\- print no output.  Da only way ta learn bout what tha fuck was found is to
+use tha exit statuz of \fBsmartctl\fP (see RETURN VALUES below).
+
+.I noserial
+\- Do not print tha serial number of tha device.
+.TP
+.B \-d TYPE, \-\-device=TYPE
+Specifies tha type of tha device.
+Da valid arguments ta dis option are:
+
+.I auto
+\- attempt ta guess tha thang type from tha thang name or from
+controlla type info provided by tha operatin system or from
+a matchin STD ID entry up in tha drive database.
+This is tha default.
+
+.I test
+\- prints tha guessed type, then opens tha thang n' prints the
+(possibly chizzled) TYPE name n' then exists without struttin
+any further commands.
+
+.I ata
+\- tha thang type is ATA.  This prevents
+\fBsmartctl\fP
+from issuin SCSI commandz ta a ATA device.
+
+.\" %IF NOT OS Darwin
+.I scsi
+\- tha thang type is SCSI.  This prevents
+\fBsmartctl\fP
+from issuin ATA commandz ta a SCSI device.
+
+.I sat[,auto][,N]
+\- tha thang type is SCSI ta ATA Translation (SAT).
+This is fo' ATA disks dat gotz a SCSI ta ATA Translation (SAT) Layer
+(SATL) between tha disk n' tha operatin system.
+SAT defines two ATA PASS THROUGH SCSI commands, one 12 bytes long and
+the other 16 bytes long.  Da default is tha 16 byte variant which can be
+overridden wit either \'\-d sat,12\' or \'\-d sat,16\'.
+
+If \'\-d sat,auto\' is specified, thang type SAT (for ATA/SATA disks) is
+only used if tha SCSI INQUIRY data reports a SATL (VENDOR: "ATA     ").
+Otherwise thang type SCSI (for SCSI/SAS disks) is used.
+
+.I usbcypress
+\- dis thang type is fo' ATA disks dat is behind a Cypress STD ta PATA
+bridge.  This will use tha ATACB proprietary scsi pass all up in command.
+Da default SCSI operation code is 0x24 yo, but although it can be overridden
+with \'\-d usbcypress,0xN\', where N is tha scsi operation code,
+yo ass is hustlin tha risk of damage ta tha thang or filesystems on dat shit.
+
+.I usbjmicron[,p][,x][,PORT]
+\- dis thang type is fo' SATA disks dat is behind a JMicron STD to
+PATA/SATA bridge.  Da 48-bit ATA commandz (required e.g. fo' \'\-l xerror\',
+see below) do not work wit all of these bridges n' is therefore disabled by
+default.  These commandz can be enabled by \'\-d usbjmicron,x\'.
+If two disks is connected ta a funky-ass bridge wit two ports, a error message is printed
+if no PORT is specified.
+Da port can be specified by \'\-d usbjmicron[,x],PORT\' where PORT is 0
+(master) or 1 (slave).  This aint necessary if tha thang uses a port
+multiplier ta connect multiple disks ta one port.  Da disks step tha fuck up under
+separate /dev/ice names then.
+CAUTION: Specifyin \',x\' fo' a thang which do not support it thangs up in dis biatch
+in I/O errors n' may disconnect tha drive.  Da same applies if tha specified
+PORT do not exist or aint connected ta a gangbangin' finger-lickin' disk.
+
+[NEW EXPERIMENTAL SMARTCTL FEATURE]
+Da Prolific PL2507/3507 STD bridges wit olda firmware support a pass-through
+command similar ta JMicron n' work wit \'\-d usbjmicron,0\'.
+Newer Prolific firmware requires a modified command which can be selected by
+\'\-d usbjmicron,p\'.
+Note dat dis do not yet support tha SMART status command.
+
+.I usbsunplus
+\- dis thang type is fo' SATA disks dat is behind a SunplusIT STD ta SATA
+bridge.
+
+.\" %ENDIF NOT OS Darwin
+.\" %IF OS Linux
+.I marvell
+\- [Linux only] interact wit SATA disks behind Marvell chip-set
+controllaz (usin tha Marvell rather than libata driver).
+
+.I megaraid,N
+\- [Linux only] tha thang consistz of one or mo' SCSI/SAS disks connected
+to a MegaRAID controlla n' shit.  Da non-negatizzle integer N (in tha range of 0 to
+127 inclusive) denotes which disk on tha controlla is monitored.
+Use syntax such as:
+.nf
+\fBsmartctl \-a \-d megaraid,2 /dev/sda\fP
+.fi
+.nf
+\fBsmartctl \-a \-d megaraid,0 /dev/sdb\fP
+.fi
+.nf
+\fBsmartctl \-a \-d megaraid,0 /dev/bus/0\fP
+.fi
+This intercourse will also work fo' Dell PERC controllers.
+It be possible ta set RAID thang name as /dev/bus/N, where N be a SCSI bus
+number.
+
+Da followin entry up in /proc/devices must exist:
+.fi
+For PERC2/3/4 controllers: \fBmegadevN\fP
+.fi
+For PERC5/6 controllers: \fBmegaraid_sas_ioctlN\fP
+
+.\" %ENDIF OS Linux
+.\" %IF OS FreeBSD Linux
+.I 3ware,N
+\- [FreeBSD n' Linux only] tha thang consistz of one or mo' ATA disks
+connected ta a 3ware RAID controlla n' shit.  Da non-negatizzle integer N
+(in tha range from 0 ta 127 inclusive) denotes which disk on tha controller
+is monitored.
+Use syntax such as:
+.nf
+\fBsmartctl \-a \-d 3ware,2 /dev/sda\fP  [Linux only]
+.fi
+.nf
+\fBsmartctl \-a \-d 3ware,0 /dev/twe0\fP
+.fi
+.nf
+\fBsmartctl \-a \-d 3ware,1 /dev/twa0\fP
+.fi
+.nf
+\fBsmartctl \-a \-d 3ware,1 /dev/twl0\fP [Linux only]
+.fi
+.nf
+\fBsmartctl \-a \-d 3ware,1 /dev/tws0\fP [FreeBSD only]
+.fi
+Da first two forms, which refer ta devices /dev/sda\-z n' /dev/twe0\-15,
+may be used wit 3ware series 6000, 7000, n' 8000 series controllers
+that use tha 3x-xxxx driver.
+\fBNote dat tha /dev/sda\-z form is deprecated\fP startin with
+the Linux 2.6 kernel series n' may not be supported by tha Linux
+kernel up in tha near future.  Da final form, which refers ta devices
+/dev/twa0\-15, must be used wit 3ware 9000 series controllers, which
+use tha 3w\-9xxx driver.
+
+Da devices /dev/twl0\-15 [Linux] or /dev/tws0\-15 [FreeBSD] must be used wit tha 3ware/LSI 9750 series
+controllaz which use tha 3w-sas driver.
+
+Note dat if tha special characta thang nodes /dev/tw[ls]?, /dev/twa?
+and /dev/twe, biatch? do not exist, or exist wit tha incorrect major or minor
+numbers, smartctl will recreate dem on tha fly.  Typically /dev/twa0
+refers ta tha straight-up original gangsta 9000-series controller, /dev/twa1 refers ta the
+second 9000 series controller, n' so on. I aint talkin' bout chicken n' gravy biatch.  Da /dev/twl0 devices refers
+to tha straight-up original gangsta 9750 series controller, /dev/twl1 resfers ta tha second
+9750 series controller, n' so on. I aint talkin' bout chicken n' gravy biatch.  Likewise /dev/twe0 refers to
+the first 6/7/8000-series controller, /dev/twe1 refers ta tha second
+6/7/8000 series controller, n' so on.
+
+Note dat fo' tha 6/7/8000 controllers, \fBany\fP of tha physical
+disks can be queried or examined rockin \fBany\fP of tha 3warez SCSI
+logical thang /dev/sd, biatch?  entries. Put ya muthafuckin choppers up if ya feel dis!  Thus, if logical thang /dev/sda is
+made up of two physical disks (3ware ports zero n' one) n' logical
+device /dev/sdb is made up of two other physical disks (3ware ports
+two n' three) then you can examine tha SMART data on \fBany\fP of the
+four physical disks rockin \fBeither\fP SCSI thang /dev/sda \fBor\fP
+/dev/sdb.  If you need ta know which logical SCSI thang a particular
+physical disk (3ware port) be associated with, use tha dmesg or SYSLOG
+output ta show which SCSI ID correspondz ta a particular 3ware unit,
+and then use tha 3ware CLI or 3dm tool ta determine which ports
+(physical disks) correspond ta particular 3ware units.
+
+If tha value of N correspondz ta a port dat do \fBnot\fP exist on
+the 3ware controller, or ta a port dat do not physically have a
+disk attached ta it, tha behavior of \fBsmartctl\fP dependz upon the
+specific controlla model, firmware, Linux kernel n' platform.  In
+some cases yo big-ass booty is ghon git a warnin message dat tha thang do not
+exist.  In other cases yo big-ass booty is ghon be presented wit \'void\' data fo' a
+non-existent device.
+
+Note dat if tha /dev/sd, biatch? addressin form is used, then olda 3w-xxxx
+drivers do not pass tha "Enable Autosave"
+(\'\fB\-S on\fP\') n' "Enable Automatic Offline" (\'\fB\-o on\fP\')
+commandz ta tha disk, n' produce these typez of harmless syslog error
+lyrics instead: "\fB3w-xxxx: tw_ioctl(): Passthru size (123392) too
+big\fP".  This can be fixed by upgradin ta version 1.02.00.037 or
+lata of tha 3w-xxxx driver, or by applyin a patch ta older
+versions.  Alternatively, use tha characta thang /dev/twe0\-15 intercourse.
+
+Da selectizzle self-test functions (\'\-t select,A\-B\') is only supported
+usin tha characta thang intercourse /dev/twl0\-15, /dev/tws0\-15, /dev/twa0\-15 n' /dev/twe0\-15.
+Da necessary WRITE LOG commandz can not be passed all up in tha SCSI
+interface.
+
+.\" %ENDIF OS FreeBSD Linux
+.\" %IF OS FreeBSD Linux Windows Cygwin
+.I areca,N
+\- [FreeBSD, Linux, Windows n' Cygwin only] tha thang consistz of one or mo' SATA disks
+connected ta a Areca SATA RAID controlla n' shit.  Da positizzle integer N (in tha range
+from 1 ta 24 inclusive) denotes which disk on tha controlla is monitored.
+.\" %ENDIF OS FreeBSD Linux Windows Cygwin
+.\" %IF OS Linux
+On Linux use syntax such as:
+.nf
+\fBsmartctl \-a \-d areca,2 /dev/sg2\fP
+.fi
+.nf
+\fBsmartctl \-a \-d areca,3 /dev/sg3\fP
+.fi
+.\" %ENDIF OS Linux
+.\"# .\" %IF OS FreeBSD
+.\"# On FreeBSD use syntax such as:
+.\"# .nf
+.\"# \fBsmartctl \-a \-d areca,2 /dev/arcmsr1\fP
+.\"# .fi
+.\"# .nf
+.\"# \fBsmartctl \-a \-d areca,3 /dev/arcmsr2\fP
+.\"# .fi
+.\"# .\" %ENDIF OS FreeBSD
+.\"# .\" %IF OS Windows Cygwin
+.\"# [NEW EXPERIMENTAL SMARTCTL FEATURE] On Windows n' Cygwin use syntax such as:
+.\"# .nf
+.\"# \fBsmartctl \-a \-d areca,2 /dev/arcmsr0\fP
+.\"# .fi
+.\"# .nf
+.\"# \fBsmartctl \-a \-d areca,3 /dev/arcmsr1\fP
+.\"# .fi
+.\"# .\" %ENDIF OS Windows Cygwin
+.\" %IF OS FreeBSD Linux Windows Cygwin
+Da first line above addresses tha second disk on tha straight-up original gangsta Areca RAID controller.
+Da second line addresses tha third disk on tha second Areca RAID
+controlla n' shit.  
+.\" %ENDIF OS FreeBSD Linux Windows Cygwin
+.\" %IF OS Linux
+To help identify tha erect thang on Linux, use tha command:
+.nf
+\fBcat /proc/scsi/sg/device_hdr /proc/scsi/sg/devices\fP
+.fi
+to show tha SCSI generic devices (one per line, startin with
+/dev/sg0).  Da erect SCSI generic devices ta address for
+smartmontools is tha ones wit tha type field equal ta 3.  If the
+incorrect thang be addressed, please read tha warning/error lyrics
+carefully.  They should provide hints bout what tha fuck devices ta use.
+.\" %ENDIF OS Linux
+.\" %IF OS FreeBSD Linux Windows Cygwin
+
+Important: tha Areca controlla must have firmware version 1.46 or
+later n' shit.  Lower-numbered firmware versions will give (harmless) SCSI
+error lyrics n' no SMART shiznit.
+
+.I areca,N/E
+\- [FreeBSD, Linux, Windows n' Cygwin only] [NEW EXPERIMENTAL SMARTCTL FEATURE] the
+device consistz of one or mo' SATA or SAS disks connected ta a Areca SAS RAID controller.
+Da integer N (range 1 ta 128) denotes tha channel (slot) n' E (range
+1 ta 8) denotes tha enclosure.
+Important: This requires Areca SAS controlla firmware version 1.51 or later.
+
+.\" %ENDIF OS FreeBSD Linux Windows Cygwin
+.\" %IF OS FreeBSD Linux
+.I cciss,N
+\- [FreeBSD n' Linux only] tha thang consistz of one or mo' SCSI/SAS or SATA disks
+connected ta a cold-ass lil cciss RAID controlla n' shit.  Da non-negatizzle integer N (in tha range
+from 0 ta 15 inclusive) denotes which disk on tha controlla is monitored.
+
+To peep disks behind HP Smart Array controllers, use syntax
+such as:
+.\" %ENDIF OS FreeBSD Linux
+.\" %IF OS Linux
+.nf
+\fBsmartctl \-a \-d cciss,0 /dev/cciss/c0d0\fP    (cciss driver under Linux)
+.fi
+.nf
+\fBsmartctl \-a \-d cciss,0 /dev/sg2\fP    (hpsa or hpahcisr drivers under Linux)
+.fi
+.\" %ENDIF OS Linux
+.\"# .\" %IF OS FreeBSD
+.\"# .nf
+.\"# \fBsmartctl \-a \-d cciss,0 /dev/ciss0\fP    (under FreeBSD)
+.\"# .fi
+.\"# .\" %ENDIF OS FreeBSD
+.\" %IF OS FreeBSD Linux
+
+.I hpt,L/M/N
+\- [FreeBSD n' Linux only] tha thang consistz of one or mo' ATA disks
+connected ta a HighPoint RocketRAID controlla n' shit.  Da integer L is the
+controlla id, tha integer M is tha channel number, n' tha integer N
+is tha PMPort number if it be available.  Da allowed jointz of L are
+from 1 ta 4 inclusive, M is from 1 ta 128 inclusive n' N from 1 ta 4
+if PMPort available.  And also these joints is limited by tha model
+of tha HighPoint RocketRAID controller.
+Use syntax such as:
+.\" %ENDIF OS FreeBSD Linux
+.\" %IF OS Linux
+.nf
+\fBsmartctl \-a \-d hpt,1/3 /dev/sda\fP    (under Linux)
+.fi
+.nf
+\fBsmartctl \-a \-d hpt,1/2/3 /dev/sda\fP    (under Linux)
+.fi
+.\" %ENDIF OS Linux
+.\"# .\" %IF OS FreeBSD
+.\"# .nf
+.\"# \fBsmartctl \-a \-d hpt,1/3 /dev/hptrr\fP    (under FreeBSD)
+.\"# .fi
+.\"# .nf
+.\"# \fBsmartctl \-a \-d hpt,1/2/3 /dev/hptrr\fP    (under FreeBSD)
+.\"# .fi
+.\"# .\" %ENDIF OS FreeBSD
+.\" %IF OS FreeBSD Linux
+Note dat tha /dev/sda\-z form should be tha thang node which standz for
+the disks derived from tha HighPoint RocketRAID controllaz under Linux and
+under FreeBSD, it is tha characta thang which tha driver registered (eg,
+/dev/hptrr, /dev/hptmv6).
+.\" %ENDIF OS FreeBSD Linux
+.TP
+.B \-T TYPE, \-\-tolerance=TYPE
+[ATA only] Specifies how tha fuck tolerant \fBsmartctl\fP should be of ATA n' SMART
+command failures. 
+
+Da behavior of \fBsmartctl\fP dependz upon whether tha command is
+"\fBoptional\fP" or "\fBmandatory\fP" yo. Here "\fBmandatory\fP" means
+"required by tha ATA Justification if tha thang implements
+the SMART command set" n' "\fBoptional\fP" means "not required by the
+ATA Justification even if tha thang implements tha SMART
+command set."  Da "\fBmandatory\fP" ATA n' SMART commandz are: (1)
+ATA IDENTIFY DEVICE, (2) SMART ENABLE/DISABLE ATTRIBUTE AUTOSAVE, (3)
+SMART ENABLE/DISABLE, n' (4) SMART RETURN STATUS.
+
+Da valid arguments ta dis option are:
+
+.I normal
+\- exit on failure of any \fBmandatory\fP SMART command, n' ignore
+all failurez of \fBoptional\fP SMART commands.  This is tha default.
+Note dat on some devices, issuin unimplemented optionizzle SMART
+commandz don\'t cause a error. Shiiit, dis aint no joke.  This can result up in misleading
+\fBsmartctl\fP lyrics like fuckin "Feature X not implemented", followed
+shortly by "Feature X: enabled".  In most such cases, contrary ta the
+final message, Feature X is \fBnot\fP enabled.
+
+.I conservative
+\- exit on failure of any \fBoptional\fP SMART command.
+
+.I permissive
+\- ignore failure(s) of \fBmandatory\fP SMART commands.  This option
+may be given mo' than once.  Each additionizzle use of dis option will
+cause one mo' additionizzle failure ta be ignored. Y'all KNOW dat shit, muthafucka!  Note dat tha use of
+this option can lead ta lyrics like "Feature X not supported",
+followed shortly by "Feature X enable failed".  In a gangbangin' few
+such cases, contrary ta tha final message, Feature X \fBis\fP enabled.
+
+.I hellapermissive
+\- equivalent ta givin a big-ass number of \'\-T permissive\' options:
+ignore failurez of \fBany number\fP of \fBmandatory\fP SMART commands.
+Please peep tha note above.
+.TP
+.B \-b TYPE, \-\-badsum=TYPE
+[ATA only] Specifies tha action \fBsmartctl\fP should take if a cold-ass lil checksum
+error is detected up in the: (1) Device Identitizzle Structure, (2) SMART
+Self-Test Log Structure, (3) SMART Attribute Value Structure, (4) SMART
+Attribute Threshold Structure, or (5) ATA Error Log Structure.
+
+Da valid arguments ta dis option are:
+
+.I warn
+\- report tha incorrect checksum but carry on up in spite of dat shit.  This is the
+default.
+
+.I exit
+\- exit \fBsmartctl\fP.
+
+.I ignore
+\- continue silently without issuin a warning.
+.TP
+.B \-r TYPE, \-\-report=TYPE
+Intended primarily ta help \fBsmartmontools\fP pimpers understand
+the behavior of \fBsmartmontools\fP on non-conformin or skankyly
+conformin hardware.  This option reports detailz of \fBsmartctl\fP
+transactions wit tha device.  Da option can be used multiple times.
+When used just once, it shows a record of tha ioctl() transactions
+with tha device.  When used mo' than once, tha detail of these
+ioctl() transactions is reported up in pimped outa detail.  Da valid
+arguments ta dis option are:
+
+.I ioctl
+\- report all ioctl() transactions.
+
+.I ataioctl
+\- report only ioctl() transactions wit ATA devices.
+
+.I scsiioctl
+\- report only ioctl() transactions wit SCSI devices. Invokin dis once
+shows tha SCSI commandz up in hex n' tha correspondin status. Invoking
+it a second time addz a hex listin of tha straight-up original gangsta 64 bytez of data bust to, 
+or received from tha device.
+
+Any argument may include a positizzle integer ta specify tha level of detail
+that should be reported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da argument should be followed by a cold-ass lil comma then
+the integer wit no spaces.  For example, 
+.I ataioctl,2
+Da default
+level is 1, so \'\-r ataioctl,1\' n' \'\-r ataioctl\' is equivalent.
+
+For testin purposes, tha output of \'\-r ataioctl,2\' can lata be parsed
+by \fBsmartctl\fP itself if \'\-\' is used as thang path argument.
+Da ATA command input parameters, sector data n' return joints are
+reconstructed from tha debug report read from stdin.
+Then \fBsmartctl\fP internally simulates a ATA thang wit tha same
+behaviour. Shiiit, dis aint no joke. This is do not work fo' SCSI devices yet.
+.TP
+.B \-n POWERMODE, \-\-nocheck=POWERMODE
+[ATA only] Specifies if \fBsmartctl\fP should exit before struttin any
+checks when tha thang is up in a low-power mode. Well shiiiit, it may be used ta prevent
+a disk from bein spun-up by \fBsmartctl\fP. Da juice mode is ignored by
+default.  A nonzero exit status is returned if tha thang is up in one of the
+specified low-power modes (see RETURN VALUES below).
+
+Note: If dis option is used it may also be necessary ta specify tha device
+type wit tha \'\-d\' option. I aint talkin' bout chicken n' gravy biatch.  Otherwise tha thang may spin up due to
+commandz issued durin thang type autodetection.
+
+Da valid arguments ta dis option are:
+
+.I never
+\- check tha thang always yo, but print tha juice mode if \'\-i\' is
+specified.
+
+.I chill
+\- check tha thang unless it is up in SLEEP mode.
+
+.I standby
+\- check tha thang unless it is up in SLEEP or STANDBY mode.  In
+these modes most disks is not spinning, so if you wanna prevent
+a disk from spinnin up, dis is probably what tha fuck you want.
+
+.I idle
+\- check tha thang unless it is up in SLEEP, STANDBY or IDLE mode.
+In tha IDLE state, most disks is still spinning, so dis is probably
+not what tha fuck you want.
+
+.TP
+.B SMART FEATURE ENABLE/DISABLE COMMANDS:
+.IP
+.B Note: 
+if multiple options is used ta both enable n' disable a
+feature, then 
+.B both
+the enable n' disable commandz is ghon be issued. Y'all KNOW dat shit, muthafucka!  Da enable command
+will always be issued
+.B before
+the correspondin disable command.
+.TP
+.B \-s VALUE, \-\-smart=VALUE 
+Enablez or disablez SMART on device.  Da valid arguments to
+this option is \fIon\fP n' \fIoff\fP.  Note dat tha command \'\-s on\'
+(like used wit with tha \'\-o on\' n' \'\-S on\' options) should be
+placed up in a start-up script fo' yo' machine, fo' example up in rc.local or
+rc.sysinit. In principle tha SMART feature settings is preserved over
+power-cyclin yo, but it don\'t hurt ta be sure. Well shiiiit, it aint necessary (or
+useful) ta enable SMART ta peep tha TapeAlert lyrics.
+.TP
+.B \-o VALUE, \-\-offlineauto=VALUE
+[ATA only] Enablez or disablez SMART automatic offline test, which scans the
+drive every last muthafuckin four minutes fo' disk defects, n' you can put dat on yo' toast. This command can be given during
+normal system operation. I aint talkin' bout chicken n' gravy biatch.  Da valid arguments ta dis option is \fIon\fP
+and \fIoff\fP.
+
+Note dat tha SMART automatic offline test command is listed as
+"Obsolete" up in every last muthafuckin version of tha ATA n' ATA/ATAPI Justifications.
+Dat shiznit was originally part of tha SFF-8035i Revision 2.0 justification,
+but was never part of any ATA justification. I aint talkin' bout chicken n' gravy biatch.  However it is
+implemented n' used by nuff vendors. [Dope documentation can be found
+in IBM\z Straight-Up Legit Published Disk Justifications.  For example tha IBM
+Travelstar 40GNX Hard Disk Drive Justifications (Revision 1.1, 22
+April 2002, Publication # 1541, Document S07N-7715-02) page 164. You
+can also read tha SFF-8035i Justification -- peep REFERENCES below.]
+Yo ass can tell if automatic offline testin is supported by seein if
+this command enablez n' disablez it, as indicated by tha \'Auto
+Offline Data Collection\' part of tha SMART capabilitizzles report
+(displayed wit \'\-c\').
+
+SMART serves up \fBthree\fP basic categoriez of testing.  The
+\fBfirst\fP category, called "online" testing, has no effect on the
+performizzle of tha device.  It be turned on by tha \'\-s on\' option.
+
+Da \fBsecond\fP category of testin is called "offline" testing. This
+type of test can, up in principle, degrade tha thang performance.  The
+\'\-o on\' option causes dis offline testin ta be carried out,
+automatically, on a regular scheduled basis.  Normally, tha disk will
+suspend offline testin while disk accesses is takin place, n' then
+automatically resume it when tha disk would otherwise be idle, so in
+practice it has lil effect.  Note dat a one-time offline test can
+also be carried up immediately upon receipt of a user command. Y'all KNOW dat shit, muthafucka!  See
+the \'\-t offline\' option below, which causes a one-time offline test
+to be carried up immediately.
+
+Da chizzle (made by tha SFF-8035i n' ATA justification authors) of
+the word \fItesting\fP fo' these first two categories is unfortunate,
+and often leadz ta mad drama.  In fact these first two categories of
+online n' offline testin could done been mo' accurately busted lyrics about
+as online n' offline \fBdata collection\fP.
+
+Da thangs up in dis biatch of dis automatic or immediate offline testin (data
+collection) is reflected up in tha jointz of tha SMART Attributes.
+Thus, if problems or errors is detected, tha jointz of these
+Attributes will go below they failure thresholds; some types of
+errors may also step tha fuck up in tha SMART error log. These is visible with
+the \'\-A\' n' \'\-l error\' options respectively.
+
+Some SMART attribute joints is updated only durin off-line data
+collection activities; tha rest is updated durin aiiight operation of
+the thang or durin both aiiight operation n' off-line testing.  The
+Attribute value table produced by tha \'\-A\' option indicates dis in
+the UPDATED column. I aint talkin' bout chicken n' gravy biatch.  Attributez of tha straight-up original gangsta type is labeled
+"Offline" n' Attributez of tha second type is labeled "Always".
+
+Da \fBthird\fP category of testin (and tha \fIonly\fP category for
+which tha word \'testing\' is straight-up a appropriate chizzle) is "self"
+testing.  This third type of test is only performed (immediately) when
+a command ta run it is issued. Y'all KNOW dat shit, muthafucka!  Da \'\-t\' n' \'\-X\' options can be
+used ta carry up n' abort such self-tests; please peep below for
+further details.
+
+Any errors detected up in tha self testin is ghon be shown up in the
+SMART self-test log, which can be examined rockin tha \'\-l selftest\'
+option.
+
+\fBNote:\fP up in dis manual page, tha word \fB"Test"\fP is used in
+connection wit tha second category just busted lyrics about, e.g. fo' the
+"offline" testing.  Da lyrics \fB"Self-test"\fP is used in
+connection wit tha third category.
+.TP
+.B \-S VALUE, \-\-saveauto=VALUE
+[ATA] Enablez or disablez SMART autosave of thang vendor-specific
+Attributes. Da valid arguments ta dis option is \fIon\fP
+and \fIoff\fP.  Note dat dis feature is preserved across disk power
+cycles, so you should only need ta issue it once.
+
+Da ATA standard do not specify a method ta check whether SMART
+autosave is enabled. Y'all KNOW dat shit, muthafucka! Unlike SCSI (below), smartctl is unable ta print
+a warnin if autosave is disabled.
+
+[SCSI] For SCSI devices dis togglez tha value of tha Global Logging
+Target Save Disabled (GLTSD) bit up in tha Control Mode Page. Right back up in yo muthafuckin ass. Some disk
+manufacturers set dis bit by default. This prevents error counters,
+power-up minutes n' other useful data from bein placed up in non-volatile
+storage, so these joints may be reset ta zero tha next time tha device
+is power-cycled. Y'all KNOW dat shit, muthafucka!  If tha GLTSD bit is set then \'smartctl \-a\' will
+issue a warning. Use \fIon\fP ta clear tha GLTSD bit n' thus enable
+savin countas ta non-volatile storage. For off tha hook streaming-video
+type applications you might consider rockin \fIoff\fP ta set tha GLTSD
+bit.
+.TP
+.B \-g NAME, \-\-get=NAME, \-s NAME[,VALUE], \-\-set=NAME[,VALUE]
+Gets/sets non-SMART thang settings.
+Note dat tha \'\-\-set\' option shares its short option \'\-s\' with
+\'\-\-smart\'.  Valid arguments are:
+
+.I all
+\- Gets all joints, n' you can put dat on yo' toast. This is equivalent to
+.nf
+\'-g aam -g apm -g lookahead -g securitizzle -g wcache\'
+.fi
+
+.I aam[,N|off]
+\- [ATA only] Gets/sets tha Automatic Acoustic Management (AAM) feature
+(if supported).  A value of 128 sets da most thugged-out on tha down-low (slowest) mode n' 254
+the fastest (loudest) mode, \'off\' disablez AAM.  Devices may support
+intermediate levels.  Values below 128 is defined as vendor specific (0)
+or retired (1 ta 127).  Note dat tha AAM feature was declared obsolete in
+ATA ACS-2 Revision 4a (Dec 2010).
+
+.I apm[,N|off]
+\- [ATA only] Gets/sets tha Advanced Juice Management (APM) feature on
+device (if supported).  If a value between 1 n' 254 is provided, it will
+attempt ta enable APM n' set tha specified value, \'off\' disablez APM.
+Note tha actual behavior dependz on tha drive, fo' example some drives disable
+APM if they value is set above 128.  Values below 128 is supposed ta allow
+drive spindown, joints 128 n' above adjust only head-parkin frequency,
+although tha actual behavior defined be also vendor-specific.
+
+.I lookahead[,on|off]
+\- [ATA only] Gets/sets tha read look-ahead feature (if supported).
+Read look-ahead is probably enabled by default.
+
+.I security
+\- [ATA only] Gets tha statuz of ATA Securitizzle feature (if supported).
+If ATA Securitizzle is enabled a ATA user password is set.  Da drive will be
+locked on next reset then.
+
+.I security-freeze
+\- [ATA only] Sets ATA Securitizzle feature ta frozen mode.  This prevents that
+the drive accepts any securitizzle commandz until next reset.  Note dat the
+frozen mode may already be set by BIOS or OS.
+
+.I standby,[N|off]
+\- [ATA only] Sets tha standby (spindown) timer n' places tha drive up in the
+IDLE mode.  A value of 0 or \'off\' disablez tha standby timer.
+Values from 1 ta 240 specify timeouts from 5 secondz ta 20 minutes up in 5
+second increments, n' you can put dat on yo' toast.  Values from 241 ta 251 specify timeouts from 30 minutes
+to 330 minutes up in 30 minute increments, n' you can put dat on yo' toast.  Value 252 specifies 21 minutes.
+Value 253 specifies a vendor specific time between 8 n' 12 hours.  Value
+255 specifies 21 minutes n' 15 seconds.  Some drives may bust a vendor
+specific interpretation fo' tha joints, n' you can put dat on yo' toast.  Note dat there is no git option
+because ATA standardz do not specify a method ta read tha standby timer.
+
+.I standby,now
+\- [ATA only] Places tha drive up in tha STANDBY mode.  This probably spins down
+the drive.  Da settin of tha standby timer aint affected.
+
+.I wcache[,on|off]
+\- [ATA] Gets/sets tha volatile write cache feature (if supported).
+Da write cache is probably enabled by default.
+
+.I wcache[,on|off]
+\- [SCSI] [NEW EXPERIMENTAL SMARTCTL FEATURE]
+Gets/sets tha \'Write Cache Enable\' (WCE) bit (if supported).
+Da write cache is probably enabled by default.
+
+.I wcreorder[,on|off]
+\- [ATA only] [NEW EXPERIMENTAL SMARTCTL FEATURE]
+Gets/sets Write Cache Reordering.
+If it is disabled (off), disk write schedulin is executed on a 
+first-in-first-out (FIFO) basis. If Write Cache Reorderin is enabled (on),
+then disk write schedulin may be reordered by tha drive. If write cache is
+disabled, tha current Write Cache Reorderin state is remembered but has
+no effect on non-cached writes, which is always freestyled up in tha order received.
+Da state of Write Cache Reorderin has no effect on either NCQ or LCQ queued
+commands.
+
+.I rcache[,on|off]
+\- [SCSI only] [NEW EXPERIMENTAL SMARTCTL FEATURE]
+Gets/sets tha \'Read Cache Disable\' (RCE) bit. \'Off\' value disablez read cache
+(if supported).
+Da read cache is probably enabled by default.
+
+.TP
+.B SMART READ AND DISPLAY DATA OPTIONS:
+.TP
+.B \-H, \-\-health
+Check: Ask tha thang ta report its SMART game status or pending
+TapeAlert lyrics.  SMART status is based on
+information dat it has gathered from online n' offline
+tests, which was used ta determine/update its
+SMART vendor-specific Attribute joints, n' you can put dat on yo' toast. TapeAlert status is obtained
+by readin tha TapeAlert log page.
+
+If tha thang reports failin game status, dis means
+.B either
+that tha thang has already failed, 
+.B or 
+that it is predictin its own failure within tha next 24 hours.  If
+this happens, use tha \'\-a\' option ta git mo' shiznit, and
+.B git yo' data off tha disk n' ta someplace safe as soon as you can.
+.TP
+.B \-c, \-\-capabilities
+[ATA only] Prints only tha generic SMART capabilities. Put ya muthafuckin choppers up if ya feel dis!  These
+show what tha fuck SMART features is implemented n' how tha fuck tha thang will
+respond ta a shitload of tha different SMART commands.  For example it
+shows if tha thang logs errors, if it supports offline surface
+scanning, n' so on. I aint talkin' bout chicken n' gravy biatch.  If tha thang can carry up self-tests, this
+option also shows tha estimated time required ta run dem tests.
+
+Note dat tha time required ta run tha Self-tests (listed up in minutes)
+are fixed. Y'all KNOW dat shit, muthafucka!  However tha time required ta run tha Immediate Offline
+Test (listed up in seconds) is variable.  This means dat if you issue a
+command ta big-ass up a Immediate Offline test wit tha \'\-t offline\' option,
+then tha time may jump ta a larger value n' then count down as the
+Immediate Offline Test is carried out.  Please peep REFERENCES below
+for further shiznit bout tha the flags n' capabilitizzles busted lyrics about
+by dis option.
+.TP
+.B \-A, \-\-attributes
+[ATA] Prints only tha vendor specific SMART Attributes.  Da Attributes
+are numbered from 1 ta 253 n' have specific names n' ID numbers. For
+example Attribute 12 is "power cycle count": how tha fuck nuff times has the
+disk been powered up.
+
+Each Attribute has a "Raw" value, printed under tha heading
+"RAW_VALUE", n' a "Normalized" value printed under tha heading
+"VALUE".  [Note: \fBsmartctl\fP prints these joints up in base-10.]  In
+the example just given, tha "Raw Value" fo' Attribute 12 would be the
+actual number of times dat tha disk has been power-cycled, for
+example 365 if tha disk has been turned on once per dizzle fo' exactly
+one year. Shiiit, dis aint no joke.  Each vendor uses they own algorithm ta convert dis "Raw"
+value ta a "Normalized" value up in tha range from 1 ta 254.  Please keep
+in mind dat \fBsmartctl\fP only reports tha different Attribute
+types, joints, n' thresholdz as read from tha device.  It do
+\fBnot\fP carry up tha conversion between "Raw" n' "Normalized"
+values: dis is done by tha disk\z firmware.
+
+Da conversion from Raw value ta a quantitizzle wit physical units is
+not specified by tha SMART standard. Y'all KNOW dat shit, muthafucka! In most cases, tha joints printed
+by \fBsmartctl\fP is sensible.  For example tha temperature Attribute
+generally has its raw value equal ta tha temperature up in Celsius.
+However up in some cases vendors use unusual conventions.  For example
+the Hitachi disk on mah laptop reports its power-on minutes up in minutes,
+not hours. Right back up in yo muthafuckin ass. Some IBM disks track three temperatures rather than one, in
+their raw joints, n' you can put dat on yo' toast.  And so on.
+
+Each Attribute also has a Threshold value (whose range is 0 ta 255)
+which is printed under tha headin "THRESH".  If tha Normalized value
+is \fBless than or equal to\fP tha Threshold value, then tha Attribute
+is holla'd ta have failed. Y'all KNOW dat shit, muthafucka!  If tha Attribute be a pre-failure Attribute,
+then disk failure is imminent.
+
+Each Attribute also has a "Worst" value shown under tha heading
+"WORST".  This is tha smallest (closest ta failure) value dat the
+disk has recorded at any time durin its gametime when SMART was
+enabled. Y'all KNOW dat shit, muthafucka!  [Note however dat some vendors firmware may actually
+\fBincrease\fP tha "Worst" value fo' some "rate-type" Attributes.]
+
+Da Attribute table printed up by \fBsmartctl\fP also shows the
+"TYPE" of tha Attribute fo' realz. Attributes is one of two possible types:
+Pre-failure or Oldskool age.  Pre-failure Attributes is ones which, if
+less than or equal ta they threshold joints, indicate pendin disk
+failure.  Oldskool age, or usage Attributes, is ones which indicate
+end-of-thang game from old-age or aiiight agin n' wearout, if
+the Attribute value is less than or equal ta tha threshold. Y'all KNOW dat shit, muthafucka!  \fBPlease
+note\fP: tha fact dat a Attribute iz of type 'Pre-fail' do
+\fBnot\fP mean dat yo' disk be bout ta fail!  It only has this
+meanin if tha Attribute\z current Normalized value is less than or
+equal ta tha threshold value.
+
+If tha Attribute\z current Normalized value is less than or equal to
+the threshold value, then tha "WHEN_FAILED" column will display
+"FAILING_NOW". If not yo, but da most thugged-out shitty recorded value is less than or
+equal ta tha threshold value, then dis column will display
+"In_the_past".  If tha "WHEN_FAILED" column has no entry (indicated by
+a dash: \'\-\') then dis Attribute is OK now (not failing) n' has
+also never failed up in tha past.
+
+Da table column labeled "UPDATED" shows if tha SMART Attribute joints
+are updated durin both aiiight operation n' off-line testing, or
+only durin offline testing.  Da forma is labeled "Always" n' the
+latta is labeled "Offline".
+
+So ta summarize: tha Raw Attribute joints is tha ones dat might have
+a real physical interpretation, like fuckin "Temperature Celsius",
+"Hours", or "Start-Quit Cycles".  Each manufacturer converts these,
+usin they detailed knowledge of tha disk\z operations n' failure
+modes, ta Normalized Attribute joints up in tha range 1\-254.  The
+current n' most shitty (lowest measured) of these Normalized Attribute
+values is stored on tha disk, along wit a Threshold value dat the
+manufacturer has determined will indicate dat tha disk is goin to
+fail, or dat it has exceeded its design age or agin limit.
+\fBsmartctl\fP do \fBnot\fP calculate any of tha Attribute joints,
+thresholds, or types, it merely reports dem from tha SMART data on
+the device.
+
+Note dat startin wit ATA/ATAPI-4, revision 4, tha meanin of these
+Attribute fieldz has been made entirely vendor-specific.  However most
+newer ATA/SATA disks seem ta respect they meaning, so our crazy asses have retained
+the option of printin tha Attribute joints.
+
+Solid-state drives use different meanings fo' a shitload of tha attributes.
+In dis case tha attribute name printed by smartctl is incorrect unless
+the drive be already up in tha smartmontools drive database.
+
+[SCSI] For SCSI devices tha "attributes" is obtained from tha temperature
+and start-stop cycle counta log pages. Certain vendor specific
+attributes is listed if recognised. Y'all KNOW dat shit, muthafucka! Da attributes is output up in a
+relatively free format (compared wit ATA disk attributes).
+.TP
+.B \-f FORMAT, \-\-format=FORMAT
+[ATA only] Selects tha output format of tha attributes:
+
+.I old
+\- Oldskool smartctl format. This is tha default unless tha \'\-x\' option is
+specified.
+
+.I brief
+\- New format which fits tha fuck into 80 colums (except up in some rare cases).
+This format also decodes four additionizzle attribute flags.
+This is tha default if tha '\-x\' option is specified.
+
+.I hex,id
+\- Print all attribute IDs as hexadecimal numbers.
+
+.I hex,val
+\- Print all normalized joints as hexadecimal numbers.
+
+.I hex
+\- Same as \'\-f hex,id \-f hex,val\'.
+.TP
+.B \-l TYPE, \-\-log=TYPE
+Prints either tha SMART Error Log, tha SMART Self-Test Log, tha SMART
+Selectizzle Self-Test Log [ATA only], tha Log Directory [ATA only], or
+the Background Scan Results Log [SCSI only].
+Da valid arguments ta dis option are:
+
+.I error
+\- [ATA] prints tha Summary SMART error log.  SMART disks maintain a log
+of da most thugged-out recent five non-trivial errors. For each of these errors, the
+disk power-on gametime at which tha error occurred is recorded, as is
+the thang status (idle, standby, etc) all up in tha time of tha error. Shiiit, dis aint no joke.  For
+some common typez of errors, tha Error Regista (ER) n' Status
+Regista (SR) joints is decoded n' printed as text. Da meaningz of these
+are:
+.nf
+   \fBABRT\fP:  Command \fBAB\fPo\fBRT\fPed
+   \fBAMNF\fP:  \fBA\fPddress \fBM\fPark \fBN\fPot \fBF\fPound
+   \fBCCTO\fP:  \fBC\fPommand \fBC\fPompletion \fBT\fPimed \fBO\fPut
+   \fBEOM\fP:   \fBE\fPnd \fBO\fPf \fBM\fPedia
+   \fBICRC\fP:  \fBI\fPnterface \fBC\fPyclic \fBR\fPedundancy \fBC\fPode (CRC) error
+   \fBIDNF\fP:  \fBID\fPentitizzle \fBN\fPot \fBF\fPound
+   \fBILI\fP:   (packet command-set specific)
+   \fBMC\fP:    \fBM\fPedia \fBC\fPhanged
+   \fBMCR\fP:   \fBM\fPedia \fBC\fPhange \fBR\fPequest
+   \fBNM\fP:    \fBN\fPo \fBM\fPedia
+   \fBobs\fP:   \fBobs\fPolete
+   \fBTK0NF\fP: \fBT\fPrac\fBK 0 N\fPot \fBF\fPound
+   \fBUNC\fP:   \fBUNC\fPorrectable Error up in Data
+   \fBWP\fP:    Media is \fBW\fPrite \fBP\fProtected
+.fi
+In addition, up ta tha last five commandz dat preceded tha error are
+listed, along wit a timestamp measured from tha start of the
+correspondin juice cycle. This is displayed up in tha form
+Dd+HH:MM:SS.msec where D is tha number of days, HH is hours, MM is
+minutes, SS is secondz n' msec is milliseconds.  [Note: dis time
+stamp wraps afta 2^32 milliseconds, or 49 minutes 17 minutes 2 minutes and
+47.296 seconds.]  Da key ATA disk registas is also recorded up in the
+log.  Da final column of tha error log be a text-strin description
+of tha ATA command defined by tha Command Regista (CR) n' Feature
+Regista (FR) joints, n' you can put dat on yo' toast.  Commandz dat is obsolete up in da most thugged-out current
+spec is listed like this: \fBREAD LONG (w/ retry) [OBS-4]\fP,
+indicatin dat tha command became obsolete wit or up in tha ATA-4
+specification. I aint talkin' bout chicken n' gravy biatch.  Similarly, tha notation \fB[RET\-\fP\fIN\fP\fB]\fP is
+used ta indicate dat a cold-ass lil command was retired up in tha ATA-\fIN\fP
+specification. I aint talkin' bout chicken n' gravy biatch.  Some commandz is not defined up in any version of the
+ATA justification but is up in common use nonetheless; these is marked
+\fB[NS]\fP, meanin non-standard.
+
+Da ATA Justification (ATA-5 Revision 1c, Section 8.41.6.8.2) says:
+\fB"Error log structures shall include UNC errors, IDNF errors for
+which tha address axed was valid, servo errors, write fault
+errors, etc.  Error log data structures shall not include errors
+attributed ta tha receipt of faulty commandz like fuckin command codes not
+implemented by tha thang or requests wit invalid parametas or
+invalid addresses."\fP Da definitionz of these terms are:
+.br
+\fBUNC\fP (\fBUNC\fPorrectable): data is uncorrectable.  This refers
+to data which has been read from tha disk yo, but fo' which tha Error
+Checkin n' Correction (ECC) codes is inconsistent.  In effect, this
+means dat tha data can not be read.
+.br
+\fBIDNF\fP (\fBID N\fPot \fBF\fPound): user-accessible address could
+not be found. Y'all KNOW dat shit, muthafucka! For READ LOG type commands, \fBIDNF\fP can also indicate
+that a thang data log structure checksum was incorrect.
+
+If tha command dat caused tha error was a READ or WRITE command, then
+the Logical Block Address (LBA) at which tha error occurred will be
+printed up in base 10 n' base 16.  Da LBA be a linear address, which
+counts 512-byte sectors on tha disk, startin from zero.  (Because of
+the limitationz of tha SMART error log, if tha LBA is pimped outa than
+0xfffffff, then either no error log entry is ghon be made, or tha error
+log entry gonna git a incorrect LBA. This may happen fo' drives with
+a capacitizzle pimped outa than 128 GiB or 137 GB.) On Linux systems the
+smartmontools wizzy page has instructions bout how tha fuck ta convert tha LBA
+address ta tha name of tha disk file containin tha erroneous disk
+sector.
+
+Please note dat some manufacturers \fBignore\fP tha ATA
+specifications, n' make entries up in tha error log if tha device
+receives a cold-ass lil command which aint implemented or aint valid.
+
+.I error
+\- [SCSI] prints tha error counta log pages fo' reads, write n' verifies.
+Da verify row is only output if it has a element other than zero.
+
+.I xerror[,NUM][,error]
+\- [ATA only] prints tha Extended Comprehensive SMART error log
+(General Purpose Log address 0x03).  Unlike tha Summary SMART error
+log (see \'\-l error\' above), it serves up sufficient space ta log
+the contentz of tha 48-bit LBA regista set introduced wit ATA-6.
+It also supports logs wit mo' than one sector. Shiiit, dis aint no joke.  Each sector holds
+up ta 4 log entries. Put ya muthafuckin choppers up if ya feel dis! Da actual number of log sectors is vendor
+specific, typical joints fo' HDD is 2 (Samsung), 5 (Seagate) or
+6 (WD).
+
+Only tha 8 most recent error log entries is printed by default.
+This number can be chizzled by tha optionizzle parameta NUM.
+
+If ',error' be appended n' tha Extended Comprehensive SMART error
+log aint supported, tha Summary SMART self-test log is printed.
+
+Please note dat recent drives may report errors only up in tha Extended
+Comprehensive SMART error log.  Da Summary SMART error log may be reported
+as supported but be always empty then.
+
+.I selftest
+\- [ATA] prints tha SMART self-test log.  Da disk maintains a self-test
+log showin tha thangs up in dis biatch of tha self tests, which can be run rockin the
+\'\-t\' option busted lyrics bout below.  For each of da most thugged-out recent
+twenty-one self-tests, tha log shows tha type of test (short or
+extended, off-line or captive) n' tha final statuz of tha test.  If
+the test did not complete successfully, then tha cementage of the
+test remainin is shown. I aint talkin' bout chicken n' gravy biatch.  Da time at which tha test took place,
+measured up in minutez of disk gametime, be also printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. [Note: dis time
+stamp wraps afta 2^16 hours, or 2730 minutes n' 16 hours, or bout 7.5
+years.] If any errors was detected, tha Logical Block Address (LBA)
+of tha straight-up original gangsta error is printed up in decimal notation. I aint talkin' bout chicken n' gravy biatch.  On Linux systems the
+smartmontools wizzy page has instructions bout how tha fuck ta convert dis LBA
+address ta tha name of tha disk file containin tha erroneous block.
+
+.I selftest
+\- [SCSI] tha self-test log fo' a SCSI thang has a slightly different
+format than fo' a ATA device.  For each of da most thugged-out recent twenty
+self-tests, it shows tha type of test n' tha status (final or in
+progress) of tha test. Right back up in yo muthafuckin ass. SCSI standardz use tha terms "foreground" and
+"background" (rather than ATA\z correspondin "captive" and
+"off-line") n' "short" n' "long" (rather than ATA\z corresponding
+"short" n' "extended") ta describe tha type of tha test.  Da printed
+segment number is only relevant when a test fails up in tha third or
+lata test segment.  It identifies tha test dat failed n' consists
+of either tha number of tha segment dat failed durin tha test, or
+the number of tha test dat failed n' tha number of tha segment in
+which tha test was run, rockin a vendor-specific method of puttin both
+numbers tha fuck into a single byte.  Da Logical Block Address (LBA) of the
+first error is printed up in hexadecimal notation. I aint talkin' bout chicken n' gravy biatch.  On Linux systems the
+smartmontools wizzy page has instructions bout how tha fuck ta convert dis LBA
+address ta tha name of tha disk file containin tha erroneous block.
+If provided, tha SCSI Sense Key (SK), Additionizzle Sense Code (ASC) and
+Additionizzle Sense Code Qualifier (ASQ) is also printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da self tests
+can be run rockin tha \'\-t\' option busted lyrics bout below (usin tha ATA
+test terminology).
+
+.I xselftest[,NUM][,selftest]
+\- [ATA only] prints tha Extended SMART self-test log (General Purpose
+Log address 0x07). Unlike tha SMART self-test log (see \'\-l selftest\'
+above), it supports 48-bit LBA n' logs wit mo' than one sector.
+Each sector holdz up ta 19 log entries. Put ya muthafuckin choppers up if ya feel dis! Da actual number of log sectors
+is vendor specific, typical joints is 1 (Seagate) or 2 (Samsung).
+
+Only tha 25 most recent log entries is printed by default. This number
+can be chizzled by tha optionizzle parameta NUM.
+
+If ',selftest' be appended n' tha Extended SMART self-test log is not
+supported, tha oldschool SMART self-test log is printed.
+
+.I selective
+\- [ATA only] Please peep tha \'\-t select\' option below fo' a
+description of selectizzle self-tests, n' you can put dat on yo' toast.  Da selectizzle self-test log
+shows tha start/end Logical Block Addresses (LBA) of each of tha five
+test spans, n' they current test status.  If tha span is being
+tested or tha remainder of tha disk is bein read-scanned, the
+current 65536-sector block of LBAs bein tested be also displayed.
+Da selectizzle self-test log also shows if a read-scan of the
+remainder of tha disk is ghon be carried up afta tha selective
+self-test has completed (see \'\-t afterselect\' option) n' tha time
+delay before restartin dis read-scan if it is interrupted (see
+\'\-t pending\' option).
+
+.I directory[,gs]
+\- [ATA only] if tha thang supports tha General Purpose Loggin feature
+set (ATA-6 n' above) then dis prints tha Log Directory (the log at
+address 0).  Da Log Directory shows what tha fuck logs is available n' their
+length up in sectors (512 bytes).  Da contentz of tha logs at address 1
+[Summary SMART error log] n' at address 6 [SMART self-test log] may
+be printed rockin tha previously-busted lyrics about
+.I error
+and
+.I selftest
+arguments ta dis option.
+If yo' version of smartctl supports 48-bit ATA commands, both the
+General Purpose Log (GPL) n' SMART Log (SL) directories is printed in
+one combined table. Da output can be restricted ta tha GPL directory or
+SL directory by \'\-l directory,q\' or \'\-l directory,s\' respectively.
+
+.I background
+\- [SCSI only] tha background scan thangs up in dis biatch log outputs shiznit derived
+from Background Media Scans (BMS) done afta juice up and/or periodically
+(e.g. every last muthafuckin 24 hours) on recent SCSI disks. If supported, tha BMS status
+is output first, indicatin whether a funky-ass background scan is currently
+underway (and if so a progress cementage), tha amount of time tha disk
+has been powered up n' tha number of scans already completed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Then there
+is a header n' a line fo' each background scan "event". These will
+typically be either recovered or unrecoverable errors. That latta group
+may need some attention. I aint talkin' bout chicken n' gravy biatch. There be a thugged-out description of tha background scan
+mechanizzle up in section 4.18 of SBC-3 revision 6 (see www.t10.org ).
+
+.I scttemp, scttempsts, scttemphist
+\- [ATA only] prints tha disk temperature shiznit provided by the
+SMART Command Transhiznit (SCT) commands.
+Da option \'scttempsts\' prints current temperature n' temperature
+ranges returned by tha SCT Status command, \'scttemphist\' prints
+temperature limits n' tha temperature history table returned by
+the SCT Data Table command, n' \'scttemp\' prints both.
+Da temperature joints is preserved across juice cycles.
+Da loggin interval can be configured wit the
+\'\-l scttempint,N[,p]\' option, peep below.
+Da SCT commandz was introduced up in ATA8-ACS n' was also
+supported by nuff ATA-7 disks.
+
+.I scttempint,N[,p]
+\- [ATA only] clears tha SCT temperature history table n' sets the
+time interval fo' temperature loggin ta N minutes.
+If \',p\' is specified, tha settin is preserved across juice cycles.
+Otherwise, tha settin is volatile n' is ghon be reverted ta tha last
+non-volatile settin by tha next hard reset.  Da default interval
+is vendor specific, typical joints is 1, 2, or 5 minutes.
+
+.I scterc[,READTIME,WRITETIME]
+\- [ATA only] prints joints n' descriptionz of tha SCT Error Recovery
+Control settings. These is equivalent ta TLER (as used by Western
+Digital), CCTL (as used by Samsung n' Hitachi) n' ERC (as used by
+Seagate). READTIME n' WRITETIME arguments (deciseconds) set the
+specified joints, n' you can put dat on yo' toast. Valuez of 0 disable tha feature, other joints less
+than 65 is probably not supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. For RAID configurations, dis is
+typically set ta 70,70 deciseconds.
+
+.I devstat[,PAGE]
+\- [ATA only] prints joints n' descriptionz of tha ATA Device Statistics
+log pages (General Purpose Log address 0x04).  If no PAGE number is specified,
+entries from all supported pages is printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If PAGE 0 is specified,
+the list of supported pages is printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Device Statistics was
+introduced up in ACS-2 n' is only supported by some recent devices
+(e.g yo. Hitachi 7K3000, Intel 320, 330, 520 n' 710 Series SSDs, Crucial/Micron
+m4 SSDs).
+
+.I sataphy[,reset]
+\- [SATA only] prints joints n' descriptionz of tha SATA Phy Event
+Countas (General Purpose Log address 0x11).  If \'\-l sataphy,reset\'
+is specified, all countas is reset afta readin tha joints.
+This also works fo' SATA devices wit Packet intercourse like CD/DVD
+drives.
+
+.I sasphy[,reset]
+\- [SAS (SCSI) only] prints joints n' descriptionz of tha SAS (SSP)
+Protocol Specific log page (log page 0x18).  If \'\-l sasphy,reset\'
+is specified, all countas is reset afta readin tha joints.
+
+.I gplog,ADDR[,FIRST[\-LAST|+SIZE]]
+\- [ATA only] prints a hex dump of any log accessible via General
+Purpose Loggin (GPL) feature.  Da log address ADDR is tha hex address
+listed up in tha log directory (see \'\-l directory\' above).
+Da range of log sectors (pages) can be specified by decimal joints
+FIRST\-LAST or FIRST+SIZE.  FIRST defaults ta 0, SIZE defaults ta 1.
+LAST can be set ta \'max\' ta specify tha last page of tha log.
+
+.I smartlog,ADDR[,FIRST[\-LAST|+SIZE]]
+\- [ATA only] prints a hex dump of any log accessible via SMART Read
+Log command. Y'all KNOW dat shit, muthafucka!  See \'\-l gplog,...\' above fo' parameta syntax.
+
+For example, all these commands:
+.nf
+  smartctl \-l gplog,0x80,10-15 /dev/sda
+  smartctl \-l gplog,0x80,10+6 /dev/sda
+  smartctl \-l smartlog,0x80,10-15 /dev/sda
+.fi
+print pages 10-15 of log 0x80 (first host vendor specific log).
+
+Da hex dump format is compatible wit tha \'xxd \-r\' command.
+This command:
+.nf
+  smartctl \-l gplog,0x11 /dev/sda | grep ^0 | xxd -r >log.bin
+.fi
+writes a funky-ass binary representation of tha one sector log 0x11
+(SATA Phy Event Counters) ta file log.bin.
+
+.I ssd
+\- [ATA] prints tha Solid State Device Statistics log page.
+This has tha same ol' dirty effect as \'\-l devstat,7\', peep above.
+
+.I ssd
+\- [SCSI] prints tha Solid State Media cementage used endurance
+indicator fo' realz. A value of 0 indicates as freshly smoked up condizzle while 100
+indicates tha thang be all up in tha end of its gametime as projected by the
+manufacturer n' shit. Da value may reach 255.
+.TP
+.B \-v ID,FORMAT[:BYTEORDER][,NAME], \-\-vendorattribute=ID,FORMAT[:BYTEORDER][,NAME]
+[ATA only] Sets a vendor-specific raw value print FORMAT, a optional
+BYTEORDER n' a optionizzle NAME fo' Attribute ID.
+This option may be used multiple times.
+
+Da Attribute ID can be up in tha range 1 ta 255. If \'N\' is specified as
+ID, tha settings fo' all Attributes is chizzled.
+
+Da optionizzle BYTEORDER consistz of 1 ta 8 charactas from the
+set \'012345rvwz\'. Da charactas \'0\' ta \'5\' select tha byte 0
+to 5 from tha 48-bit raw value, \'r\' selects tha reserved byte of
+the attribute data block, \'v\' selects tha normalized value, \'w\'
+selects da most thugged-out shitty value n' \'z\' bangs a zero byte.
+Da default BYTEORDER is \'543210\' fo' all 48-bit formats, \'r543210\'
+for tha 54-bit formats, n' \'543210wv\' fo' tha 64-bit formats.
+For example, \'\-v 5,raw48:012345\' prints tha raw value of
+attribute 5 wit big-ass endian instead of lil endian
+byte ordering.
+
+Da NAME be a strang of letters, digits n' underscore.  Its length should
+not exceed 23 characters.  Da \'\-P showall\' option reports a error if
+this is tha case.
+
+.I \-v help
+\- Prints (to STDOUT) a list of all valid arguments ta dis option,
+then exits.
+
+Valid arguments fo' FORMAT are:
+
+.I raw8
+\- Print tha Raw value as six 8-bit unsigned base-10 integers.
+This may be useful fo' decodin tha meanin of tha Raw value.
+
+.I raw16
+\- Print tha Raw value as three 16-bit unsigned base-10 integers.
+This may be useful fo' decodin tha meanin of tha Raw value.
+
+.I raw48
+\- Print tha Raw value as a 48-bit unsigned base-10 integer.
+This is tha default fo' most attributes.
+
+.I hex48
+\- Print tha Raw value as a 12 digit hexadecimal number.
+This may be useful fo' decodin tha meanin of tha Raw value.
+
+.I raw56
+\- Print tha Raw value as a 54-bit unsigned base-10 integer.
+This includes tha reserved byte which bigs up tha 48-bit raw value.
+
+.I hex56
+\- Print tha Raw value as a 14 digit hexadecimal number.
+This includes tha reserved byte which bigs up tha 48-bit raw value.
+
+.I raw64
+\- Print tha Raw value as a 64-bit unsigned base-10 integer.
+This includes two bytes from tha normalized n' most shitty attribute value.
+This raw format is used by some SSD devices wit Indilinx controller.
+
+.I hex64
+\- Print tha Raw value as a 16 digit hexadecimal number.
+This includes two bytes from tha normalized n' most shitty attribute value.
+This raw format is used by some SSD devices wit Indilinx controller.
+
+.I min2hour
+\- Raw Attribute is power-on time up in minutes.  Its raw value
+will be displayed up in tha form "Xh+Ym".  Here X is hours, n' Y is
+minutes up in tha range 0\-59 inclusive.  Y be always printed wit two
+digits, fo' example "06" or "31" or "00".
+
+.I sec2hour
+\- Raw Attribute is power-on time up in seconds.  Its raw value
+will be displayed up in tha form "Xh+Ym+Zs".  Here X is hours, Y is
+minutes up in tha range 0\-59 inclusive, n' Z is secondz up in tha range
+0\-59 inclusive.  Y n' Z is always printed wit two digits, for
+example "06" or "31" or "00".
+
+.I halfmin2hour
+\- Raw Attribute is power-on time, measured up in unitz of 30
+seconds.  This format is used by some Samsung disks.  Its raw value
+will be displayed up in tha form "Xh+Ym".  Here X is hours, n' Y is
+minutes up in tha range 0\-59 inclusive.  Y be always printed wit two
+digits, fo' example "06" or "31" or "00".
+
+.I msec24hour32
+\- Raw Attribute is power-on time measured up in 32-bit minutes n' 24-bit
+millisecondz since last minute update.  It is ghon be displayed up in tha form
+"Xh+Ym+Z.Ms".  Here X is hours, Y is minutes, Z is secondz n' M is
+milliseconds.
+
+.I tempminmax
+\- Raw Attribute is tha disk temperature up in Celsius.  Info about
+Min/Max temperature is printed if available.  This is tha default
+for Attributes 190 n' 194.  Da recordin interval (lifetime,
+last juice cycle, last soft reset) of tha min/max joints is device
+specific.
+
+.I temp10x
+\- Raw Attribute is ten times tha disk temperature up in Celsius.
+
+.I raw16(raw16)
+\- Print tha raw attribute as a 16-bit value n' two optional
+16-bit joints if these lyrics is nonzero.  This is tha default
+for Attributes 5 n' 196.
+
+.I raw16(avg16)
+\- Raw attribute is spin-up time.  It be printed as a 16-bit value
+and a optionizzle "Average" 16-bit value if tha word is nonzero.
+This is tha default fo' Attribute 3.
+
+.I raw24(raw8)
+\- Print tha raw attribute as a 24-bit value n' three optional
+8-bit joints if these bytes is nonzero.  This is tha default
+for Attribute 9.
+
+.I raw24/raw24
+\- Raw Attribute gotz nuff two 24-bit joints, n' you can put dat on yo' toast. Da first is the
+number of load cycles.  Da second is tha number of unload cycles.
+Da difference between these two joints is tha number of times that
+the drive was unexpectedly powered off (also called a emergency
+unload) fo' realz. As a rule of thumb, tha mechanical stress pimped by one
+emergency unload is equivalent ta dat pimped by one hundred normal
+unloads.
+
+.I raw24/raw32
+\- Raw attribute be a error rate which consistz of a 24-bit error
+count n' a 32-bit total count.
+
+Da followin oldschool arguments ta \'\-v\' is also still valid:
+
+.I 9,minutes
+\- same as:
+.I 9,min2hour,Power_On_Minutes.
+
+.I 9,seconds
+\- same as:
+.I 9,sec2hour,Power_On_Seconds.
+
+.I 9,halfminutes
+\- same as:
+.I 9,halfmin2hour,Power_On_Half_Minutes.
+
+.I 9,temp
+\- same as:
+.I 9,tempminmax,Temperature_Celsius.
+
+.I 192,emergencyretractcyclect
+\- same as:
+.I 192,raw48,Emerg_Retract_Cycle_Ct
+
+.I 193,loadunload
+\- same as:
+.I 193,raw24/raw24.
+
+.I 194,10xCelsius
+\- same as:
+.I 194,temp10x,Temperature_Celsius_x10.
+
+.I 194,unknown
+\- same as:
+.I 194,raw48,Unknown_Attribute.
+
+.I 197,increasing
+\- same as:
+.I 197,raw48,Total_Pending_Sectors.
+Also means dat Attribute number 197 (Current Pendin Sector Count)
+is not reset if uncorrectable sectors is reallocated
+(see \fBsmartd.conf\fP(5) playa page).
+
+.I 198,increasing
+\- same as:
+.I 198,raw48,Total_Offl_Uncorrectabl.
+Also means dat Attribute number 198 (Offline Uncorrectable Sector Count)
+is not reset if uncorrectable sectors is reallocated
+(see \fBsmartd.conf\fP(5) playa page).
+
+.I 198,offlinescanuncsectorct
+\- same as:
+.I 198,raw48,Offline_Scan_UNC_SectCt.
+
+.I 200,writeerrorcount
+\- same as:
+.I 200,raw48,Write_Error_Count.
+
+.I 201,detectedtacount
+\- same as:
+.I 201,raw48,Detected_TA_Count.
+
+.I 220,temp
+\- same as:
+.I 220,tempminmax,Temperature_Celsius.
+
+Note: a table of hard drive models, listin which Attribute
+correspondz ta temperature, can be found at:
+\fBhttp://www.guzu.net/linux/hddtemp.db\fP
+.TP
+.B \-F TYPE, \-\-firmwarebug=TYPE
+[ATA only] Modifies tha behavior of \fBsmartctl\fP ta compensate fo' some
+known n' understood thang firmware or driver bug.  This option may be used
+multiple times.  Da valid arguments are:
+
+.I none
+\- Assume dat tha thang firmware obeys tha ATA justifications.  This
+is tha default, unless tha thang has presets fo' \'\-F\' up in the
+drive database.  Usin dis option on tha command line will over-ride any
+preset joints.
+
+.I nologdir
+\- Suppresses read attemptz of SMART or GP Log Directory.
+Support fo' all standard logs be assumed without a actual check.
+Some Intel SSDs may freeze if log address 0 is read.
+
+.I samsung
+\- In some Samsung disks (example: model SV4012H Firmware Version:
+RM100-08) a shitload of tha two- n' four-byte quantitizzles up in tha SMART data
+structures is byte-swapped (relatizzle ta tha ATA justification).
+Enablin dis option  drops some lyrics ta \fBsmartctl\fP ta evaluate these quantities
+in byte-reversed order n' shit.  Some signs dat yo' disk needz dis option
+are (1) no self-test log printed, even though you have run self-tests;
+(2) straight-up big-ass numberz of ATA errors reported up in tha ATA error log;
+(3) strange n' impossible joints fo' tha ATA error log timestamps.
+
+.I samsung2
+\- In some Samsung disks tha number of ATA errors reported is byte swapped.
+Enablin dis option  drops some lyrics ta \fBsmartctl\fP ta evaluate dis quantitizzle in
+byte-reversed order n' shiznit fo' realz. An indication dat yo' Samsung disk needz this
+option is dat tha self-test log is printed erectly yo, but there be a
+very big-ass number of errors up in tha SMART error log.  This is cuz
+the error count is byte swapped. Y'all KNOW dat shit, muthafucka!  Thus a gangbangin' finger-lickin' disk wit five errors
+(0x0005) will step tha fuck up ta have 20480 errors (0x5000).
+
+.I samsung3
+\- Some Samsung disks (at least SP2514N wit Firmware VF100-37) report
+a self-test still up in progress wit 0% remainin when tha test was already
+completed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Enablin dis option modifies tha output of tha self-test
+execution status (see options \'\-c\' or \'\-a\' above) accordingly.
+
+.I xerrorlba
+\- Fixes LBA byte orderin up in Extended Comprehensive SMART error log.
+Some disk use lil endian byte orderin instead of ATA register
+orderin ta specifiy tha LBA addresses up in tha log entries.
+
+.I swapid
+\- Fixes byte swapped ATA identify strings (device name, serial number,
+firmware version) returned by some buggy thang drivers.
+.TP
+.B \-P TYPE, \-\-presets=TYPE
+[ATA only] Specifies whether \fBsmartctl\fP should use any preset options
+that is available fo' dis drive. By default, if tha drive is recognized
+in tha \fBsmartmontools\fP database, then tha presets is used.
+
+\fBsmartctl\fP can automatically set appropriate options fo' known
+drives.  For example, tha Maxtor 4D080H4 uses Attribute 9 ta stores
+power-on time up in minutes whereas most drives use dat Attribute to
+store tha power-on time up in hours.  Da command-line option \'\-v
+9,minutes\' ensures dat \fBsmartctl\fP erectly interprets Attribute
+9 up in dis case yo, but dat option is preset fo' tha Maxtor 4D080H4 and
+so need not be specified by tha user on tha \fBsmartctl\fP command
+line.
+
+Da argument
+.I show
+will show any preset options fo' yo' drive n' tha argument
+.I showall
+will show all known drives up in tha \fBsmartmontools\fP database, along
+with they preset options.  If there be no presets fo' yo' drive and
+you be thinkin there should be (for example, a \-v or \-F option is needed
+to git \fBsmartctl\fP ta display erect joints) then please contact
+the \fBsmartmontools\fP pimpers so dat dis shiznit can be
+added ta tha \fBsmartmontools\fP database.  Contact shiznit be at the
+end of dis playa page.
+
+Da valid arguments ta dis option are:
+
+.I use
+\- if a thugged-out drive is recognized, then use tha stored presets fo' dat shit.  This
+is tha default. Note dat presets will NOT override additional
+Attribute interpretation (\'\-v N,something\') command-line options or
+explicit \'\-F\' command-line options..
+
+.I ignore
+\- do not use presets.
+
+.I show
+\- show if tha drive is recognized up in tha database, n' if so, its
+presets, then exit.
+
+.I showall
+\- list all recognized drives, n' tha presets dat is set fo' them,
+then exit.  This also checks tha drive database regular expressions
+and settings fo' syntax errors.
+
+Da \'\-P showall\' option takes up ta two optionizzle arguments to
+match a specific drive type n' firmware version. I aint talkin' bout chicken n' gravy biatch. Da command:
+.nf
+  smartctl \-P showall
+.fi
+lists all entries, tha command:
+.nf
+  smartctl \-P showall \'MODEL\'
+.fi
+lists all entries matchin MODEL, n' tha command:
+.nf
+  smartctl \-P showall \'MODEL\' \'FIRMWARE\'
+.fi
+lists all entries fo' dis MODEL n' a specific FIRMWARE version.
+.TP
+.B \-B [+]FILE, \-\-drivedb=[+]FILE
+[ATA only] Read tha drive database from FILE.  Da freshly smoked up database replaces
+the built up in database by default.  If \'+\' is specified, then tha new
+entries prepend tha built up in entries.
+
+Optionizzle entries is read from tha file
+.\" %IF NOT OS Windows
+\fB/etc/smartmontools/smart_drivedb.h\fP
+.\" %ENDIF NOT OS Windows
+.\"# .\" %IF OS ALL
+.\"#  (Windows: \fBEXEDIR/drivedb-add.h\fP)
+.\"# .\" %ENDIF OS ALL
+.\"# .\" %IF OS Windows
+.\"# .\"! \fBEXEDIR/drivedb-add.h\fP.
+.\"# .\" %ENDIF OS Windows
+.\" %IF ENABLE_DRIVEDB
+if dis option aint specified.
+
+If
+.\" %IF NOT OS Windows
+\fB/usr/share/smartmontools/drivedb.h\fP
+.\" %ENDIF NOT OS Windows
+.\"# .\" %IF OS ALL
+.\"# (Windows: \fBEXEDIR/drivedb.h\fP)
+.\"# .\" %ENDIF OS ALL
+.\"# .\" %IF OS Windows
+.\"# .\"! \fBEXEDIR/drivedb.h\fP
+.\"# .\" %ENDIF OS Windows
+is present, tha contentz of dis file is used instead of tha built up in table.
+
+Run
+.\" %IF NOT OS Windows
+\fB/usr/sbin/update-smart-drivedb\fP
+.\" %ENDIF NOT OS Windows
+.\"# .\" %IF OS ALL
+.\"# (Windows: \fBEXEDIR/update-smart-drivedb.exe\fP)
+.\"# .\" %ENDIF OS ALL
+.\"# .\" %IF OS Windows
+.\"# .\"! \fBEXEDIR/update-smart-drivedb.exe\fP
+.\"# .\" %ENDIF OS Windows
+to update dis file from tha smartmontools SVN repository.
+.\" %ENDIF ENABLE_DRIVEDB
+
+Da database filez use tha same C/C++ syntax dat is used ta initialize
+the built up in database array. C/C++ steez comments is allowed.
+Example:
+
+.nf
+  /* Full entry: */
+  {
+    "Model crew",    // Info bout model crew/series.
+    "MODEL1.*REGEX",   // Regular expression ta match model of device.
+    "VERSION.*REGEX",  // Regular expression ta match firmware version(s).
+    "Some warning",    // Warnin message.
+    "\-v 9,minutes"     // Strin of preset \-v n' \-F options.
+  },
+  /* Minimal entry: */
+  {
+    "",                // No model crew/series info.
+    "MODEL2.*REGEX",   // Regular expression ta match model of device.
+    "",                // All firmware versions.
+    "",                // No warning.
+    ""                 // No options preset.
+  },
+  /* STD ID entry: */
+  {
+    "STD: Device; Bridge", // Info bout STD thang n' bridge name.
+    "0x1234:0xabcd",   // Regular expression ta match vendor:thang ID.
+    "0x0101",          // Regular expression ta match bcdDevice.
+    "",                // Not used.
+    "\-d sat"           // Strin wit thang type option.
+  },
+  /* ... */
+.fi
+
+.TP
+.B SMART RUN/ABORT OFFLINE TEST AND self-test OPTIONS:
+.TP
+.B \-t TEST, \-\-test=TEST
+Executes TEST immediately.  Da \'\-C\' option can be used in
+conjunction wit dis option ta run tha short or long (and also for
+ATA devices, selectizzle or conveyance) self-tests up in captizzle mode
+(known as "foreground mode" fo' SCSI devices).  Note dat only one
+test type can be run at a time, so only one test type should be
+specified per command line.  Note also dat if a cold-ass lil computa is shutdown
+or juice cycled durin a self-test, no harm should result.  The
+self-test will either be aborted or will resume automatically.
+
+All \'\-t TEST\' commandz can be given durin aiiight system operation
+unless captizzle mode (\'\-C\' option) is used.
+A hustlin self-test can, however, degrade performizzle of tha drive.
+Frequent I/O requests from tha operatin system increase tha duration
+of a test.  These impacts may vary from thang ta device.
+
+If a test failure occurs then tha thang may discontinue tha testing
+and report tha result immediately.
+
+Da valid arguments ta dis option are:
+
+.I offline
+\- [ATA] runs SMART Immediate Offline Test.  This immediately
+starts tha test busted lyrics bout above.  This command can be given during
+normal system operation. I aint talkin' bout chicken n' gravy biatch.  Da effectz of dis test is visible only in
+that it thugged-out shiznit tha SMART Attribute joints, n' if errors are
+found they will step tha fuck up in tha SMART error log, visible wit tha \'\-l error\'
+option.
+
+If tha \'\-c\' option ta \fBsmartctl\fP shows dat tha thang has the
+"Suspend Offline collection upon freshly smoked up command" capabilitizzle then you can
+track tha progress of tha Immediate Offline test rockin tha \'\-c\'
+option ta \fBsmartctl\fP.  If tha \'\-c\' option show dat tha device
+has tha "Abort Offline collection upon freshly smoked up command" capabilitizzle then
+most commandz will abort tha Immediate Offline Test, so you should not
+try ta track tha progress of tha test wit \'\-c\', as it will abort
+the test.
+
+.I offline
+\- [SCSI] runs tha default self test up in foreground. Y'all KNOW dat shit, muthafucka! No entry is placed
+in tha self test log.
+
+.I short
+\- [ATA] runs SMART Short Self Test (usually under ten minutes).
+This command can be given durin aiiight system operation (unless run in
+captizzle mode \- peep tha \'\-C\' option below).  This be a
+test up in a gangbangin' finger-lickin' different category than tha immediate or automatic offline
+tests, n' you can put dat on yo' toast.  Da "Self" tests check tha electrical n' mechanical
+performizzle as well as tha read performizzle of tha disk.  Their
+results is reported up in tha Self Test Error Log, readable with
+the \'\-l selftest\' option. I aint talkin' bout chicken n' gravy biatch.  Note dat on some disks tha progress of the
+self-test can be monitored by watchin dis log durin tha self-test; wit other disks
+use tha \'\-c\' option ta monitor progress.
+
+.I short
+\- [SCSI] runs tha "Background short" self-test.
+
+.I long
+\- [ATA] runs SMART Extended Self Test (tenz of minutes). This be a
+longer n' mo' thorough version of tha Short Self Test busted lyrics about
+above.  Note dat dis command can be given durin normal
+system operation (unless run up in captizzle mode \- peep tha \'\-C\' option below).
+
+.I long
+\- [SCSI] runs tha "Background long" self-test.
+
+.I conveyance
+\- [ATA only] runs a SMART Conveyizzle Self Test (minutes).  This
+self-test routine is intended ta identify damage incurred during
+transportin of tha device. This self-test routine should take on the
+order of minutes ta complete.  Note dat dis command can be given
+durin aiiight system operation (unless run up in captizzle mode \- peep the
+\'\-C\' option below).
+
+.I select,N\-M, select,N+SIZE
+\- [ATA only] runs a SMART Selectizzle Self Test, ta test a \fBrange\fP
+of disk Logical Block Addresses (LBAs), rather than tha entire disk.
+Each range of LBAs dat is checked is called a "span" n' is specified
+by a startin LBA (N) n' a endin LBA (M) wit N less than or equal
+to M. Da range can also be specified as N+SIZE fo' realz. A span all up in tha end of
+a disk can be specified by N\-\fBmax\fP.
+
+For example tha commands:
+.nf
+  smartctl \-t select,10\-20 /dev/hda
+  smartctl \-t select,10+11 /dev/hda
+.fi
+both runs a self test on one span consistin of LBAs ten ta twenty
+(inclusive). Da command:
+.nf
+  smartctl \-t select,100000000\-max /dev/hda
+.fi
+run a self test from LBA 100000000 up ta tha end of tha disk.
+Da \'\-t\' option can be given up ta five times, ta test
+up ta five spans.  For example tha command:
+.nf
+  smartctl \-t select,0\-100 \-t select,1000\-2000 /dev/hda
+.fi
+runs a self test on two spans.  Da first span consistz of 101 LBAs
+and tha second span consistz of 1001 LBAs.  Note dat tha spans can
+overlap partially or straight-up, fo' example:
+.nf
+  smartctl \-t select,0\-10 \-t select,5\-15 \-t select,10\-20 /dev/hda
+.fi
+Da thangs up in dis biatch of tha selectizzle self-test can be obtained (both during
+and afta tha test) by printin tha SMART self-test log, rockin the
+\'\-l selftest\' option ta smartctl.
+
+Selectizzle self tests is particularly useful as disk capacities
+increase: a extended self test (smartctl \-t long) can take several
+hours.  Selectizzle self-tests is helpful if (based on SYSLOG error
+lyrics, previous failed self-tests, or SMART error log entries) you
+suspect dat a gangbangin' finger-lickin' disk is havin problems at a particular range of
+Logical Block Addresses (LBAs).
+
+Selectizzle self-tests can be run durin aiiight system operation (unless
+done up in captizzle mode \- peep tha \'\-C\' option below).
+
+Da followin variantz of tha selectizzle self-test command use spans based
+on tha ranges from past tests already stored on tha disk:
+
+.I select,redo[+SIZE]
+\- [ATA only] redo tha last SMART Selectizzle Self Test rockin tha same LBA
+range. Da startin LBA is identical ta tha LBA used by last test, same
+for endin LBA unless a freshly smoked up span size is specified by optionizzle +SIZE
+argument.
+
+For example tha commands:
+.nf
+  smartctl \-t select,10\-20 /dev/hda
+  smartctl \-t select,redo /dev/hda
+  smartctl \-t select,redo+20 /dev/hda
+.fi
+have tha same effect as:
+.nf
+  smartctl \-t select,10\-20 /dev/hda
+  smartctl \-t select,10\-20 /dev/hda
+  smartctl \-t select,10\-29 /dev/hda
+.fi
+
+.I select,next[+SIZE]
+\- [ATA only] runs a SMART Selectizzle Self Test on tha LBA range which
+bigs up tha range of tha last test. Da startin LBA is set ta (ending
+LBA +1) of tha last test fo' realz. A freshly smoked up span size may be specified by the
+optionizzle +SIZE argument.
+
+For example tha commands:
+.nf
+  smartctl \-t select,0\-999 /dev/hda
+  smartctl \-t select,next /dev/hda
+  smartctl \-t select,next+2000 /dev/hda
+.fi
+have tha same effect as:
+.nf
+  smartctl \-t select,0\-999 /dev/hda
+  smartctl \-t select,1000\-1999 /dev/hda
+  smartctl \-t select,2000\-3999 /dev/hda
+.fi
+
+If tha last test ended all up in tha last LBA of tha disk, tha freshly smoked up range starts
+at LBA 0. Da span size of tha last span of a gangbangin' finger-lickin' disk be adjusted such that
+the total number of spans ta check tha full disk aint gonna be chizzled
+by future usez of \'\-t select,next\'.
+
+.I select,cont[+SIZE]
+\- [ATA only] performs a \'redo\' (above) if tha self test status reports
+that tha last test was aborted by tha host. Otherwise it run tha \'next\'
+(above) test.
+
+.I afterselect,on
+\- [ATA only] big-ass up a offline read scan afta a Selectizzle self-test
+has completed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. This option must be used together wit one or mo' of
+the \fIselect,N\-M\fP options above. If tha LBAs dat have been
+specified up in tha Selectizzle self-test pass tha test wit no errors
+found, then read scan tha \fBremainder\fP of tha disk.  If tha device
+is powered-cycled while dis read scan is up in progress, tha read scan
+will be automatically resumed afta a time specified by tha pending
+timer (see below).  Da value of dis option is preserved between
+selectizzle self-tests.
+
+.I afterselect,off
+\- [ATA only] do not read scan tha remainder of tha disk afta a
+Selectizzle self-test has completed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This option must be use together
+with one or mo' of tha \fIselect,N\-M\fP options above.  Da value of this
+option is preserved between selectizzle self-tests.
+
+.I pending,N 
+\- [ATA only] set tha pendin offline read scan timer ta N minutes.
+Here N be a integer up in tha range from 0 ta 65535 inclusive.  If the
+device is powered off durin a read scan afta a Selectizzle self-test,
+then resume tha test automatically N minutes afta power-up.  This
+option must be use together wit one or mo' of tha \fIselect,N\-M\fP
+options above. Da value of dis option is preserved between selective
+self-tests.
+
+.I vendor,N
+\- [ATA only] thangs tha ATA command SMART EXECUTE OFF-LINE IMMEDIATE
+with subcommand N up in LBA LOW regista n' shit. Da subcommand is specified as
+a hex value up in tha range 0x00 ta 0xff.  Subcommandz 0x40-0x7e and
+0x90-0xff is reserved fo' vendor specific use, peep table 61 of
+T13/1699-D Revision 6a (ATA8-ACS).  Note dat tha subcommands
+0x00-0x04,0x7f,0x81-0x84 is supported by other smartctl options
+(e.g. 0x01: \'\-t short\', 0x7f: \'\-X\', 0x82: \'\-C \-t long\').
+
+\fBWARNING: Only run subcommandz documented by tha vendor of the
+device.\fP
+
+Example fo' Intel (X18/X25-M G2, 320, 520 n' 710 Series) SSDs only:
+Da subcommand 0x40 (\'\-t vendor,0x40\') clears tha timed workload
+related SMART attributes (226, 227, 228).  Note dat tha raw joints of
+these attributes is held at 65535 (0xffff) until tha workload timer
+reaches 60 minutes.
+
+.I force
+\- start freshly smoked up self-test even if another test be already hustlin.
+By default a hustlin self-test aint gonna be interrupted ta begin another
+test.
+.TP
+.B \-C, \-\-captive
+[ATA] Runs self-tests up in captizzle mode.  This has no effect wit \'\-t
+offline\' or if tha \'\-t\' option aint used.
+
+\fBWARNING: Tests run up in captizzle mode may busy up tha drive fo' the
+length of tha test.  Only run captizzle tests on drives without any
+mounted partitions!\fP
+
+[SCSI] Runs tha self-test up in "Foreground" mode.
+.TP
+.B \-X, \-\-abort
+Aborts non-captizzle SMART Self Tests, n' you can put dat on yo' toast.  Note dat this
+command will abort tha Offline Immediate Test routine only if your
+disk has tha "Abort Offline collection upon freshly smoked up command" capability.
+.PP
+.SH ATA, SCSI command sets n' SAT
+In tha past there has been a cold-ass lil clear distinction between storage devices
+that used tha ATA n' SCSI command sets, n' you can put dat on yo' toast. This distinction was often
+reflected up in they thang namin n' hardware. Now various SCSI
+transports (e.g. Right back up in yo muthafuckin ass. SAS, FC n' iSCSI) can interconnect ta both SCSI
+disks (e.g. FC n' SAS) n' ATA disks (especially SATA). Right back up in yo muthafuckin ass. STD and
+IEEE 1394 storage devices use tha SCSI command set externally but
+almost always contain ATA or SATA disks (or flash). Da storage
+subsystems up in some operatin systems have started ta remove the
+distinction between ATA n' SCSI up in they thang namin policies.
+.PP
+99% of operations dat a OS performs on a gangbangin' finger-lickin' disk involve tha SCSI INQUIRY,
+READ CAPACITY, READ n' WRITE commands, or they ATA equivalents, n' you can put dat on yo' toast. Right back up in yo muthafuckin ass. Since
+the SCSI commandz is slightly mo' general than they ATA equivalents,
+many OSes is generatin SCSI commandz (mainly READ n' WRITE) and
+lettin a lower level translate dem ta they ATA equivalents as the
+need arises fo' realz. An blingin note here is dat "lower level" may be in
+external shiznit n' hence outside tha control of a OS.
+.PP
+SCSI ta ATA Translation (SAT) be a standard (ANSI INCITS 431-2007) that
+specifies how tha fuck dis translation is done. For tha other 1% of operations
+that a OS performs on a gangbangin' finger-lickin' disk, SAT serves up two options. First be an
+optionizzle ATA PASS-THROUGH SCSI command (there is two variants). The
+second be a translation from tha closest SCSI command. Y'all KNOW dat shit, muthafucka! Most current
+interest is up in tha "pass-through" option.
+.PP
+Da relevizzle ta smartmontools (and hence smartctl) is dat its
+interactions wit disks fall solidly tha fuck into tha "1%" category. Right back up in yo muthafuckin ass. So even
+if tha OS can happily treat (and name) a gangbangin' finger-lickin' disk as "SCSI", smartmontools
+needz ta detect tha natizzle command set n' act accordingly.
+As mo' storage manufacturers (includin external SATA drives) comply
+with SAT, smartmontools be able ta automatically distinguish tha native
+command set of tha device. In some cases tha '\-d sat' option is needed
+on tha command line.
+.PP
+There is also virtual disks which typically have no useful shiznit
+to convey ta smartmontools yo, but could conceivably up in tha future fo' realz. An
+example of a virtual disk is tha OSz view of a RAID 1 box. There are
+most likely two SATA disks inside a RAID 1 box fo' realz. Addressin dem SATA
+disks from a gangbangin' finger-lickin' distant OS be a cold-ass lil challenge fo' smartmontools fo' realz. Another
+approach is hustlin a tool like smartmontools inside tha RAID 1 box (e.g.
+a Network Attached Storage (NAS) box) n' fetchin tha logs via a
+browser n' shit. 
+.PP
+.SH EXAMPLES
+.nf
+.B smartctl \-a /dev/hda
+.fi
+Print a big-ass amount of SMART shiznit fo' drive /dev/hda which is
+typically a ATA (IDE) or SATA disk up in Linux.
+.PP
+.nf
+.B smartctl \-a /dev/sdb
+.fi
+Print a big-ass amount of SMART shiznit fo' drive /dev/sdb . This may
+be a SCSI disk or a ATA (SATA) disk.
+.PP
+.nf
+.B smartctl \-s off /dev/hdd
+.fi
+Disable SMART monitorin n' data log collection on drive /dev/hdd .
+.PP
+.nf
+.B smartctl \-\-smart=on \-\-offlineauto=on \-\-saveauto=on /dev/hda
+.fi
+Enable SMART on drive /dev/hda, enable automatic offline
+testin every last muthafuckin four hours, n' enable autosavin of
+SMART Attributes.  This be a phat start-up line fo' yo' system\'s
+init files.  Yo ass can issue dis command on a hustlin system.
+.PP
+.nf
+.B smartctl \-t long /dev/hdc
+.fi
+Begin a extended self-test of drive /dev/hdc.  Yo ass can issue this
+command on a hustlin system.  Da thangs up in dis biatch can be peeped up in tha self-test
+log visible wit tha \'\-l selftest\' option afta it has completed.
+.PP
+.nf
+.B smartctl \-s on \-t offline /dev/hda
+.fi
+Enable SMART on tha disk, n' begin a immediate offline test of
+drive /dev/hda.  Yo ass can issue dis command on a hustlin system.  The
+results is only used ta update tha SMART Attributes, visible
+with tha \'\-A\' option. I aint talkin' bout chicken n' gravy biatch.  If any thang errors occur, they is logged to
+the SMART error log, which can be peeped wit tha \'\-l error\' option.
+.PP
+.nf
+.B smartctl \-A \-v 9,minutes /dev/hda
+.fi
+Shows tha vendor Attributes, when tha disk stores its power-on time
+internally up in minutes rather than hours.
+.PP
+.nf
+.B smartctl \-q errorsonly \-H \-l selftest /dev/hda
+.fi
+Produces output only if tha thang returns failin SMART status,
+or if a shitload of tha logged self-tests ended wit errors.
+.PP
+.nf
+.B smartctl \-q silent \-a /dev/hda
+.fi
+Examine all SMART data fo' thang /dev/hda yo, but produce no
+printed output.  Yo ass must use tha exit status (the
+.B $?
+shell variable) ta learn if any Attributes is outta bound, if the
+SMART status is failing, if there be errors recorded up in the
+self-test log, or if there be errors recorded up in tha disk error log.
+.PP
+.nf
+.B smartctl \-a \-d 3ware,0 /dev/sda
+.fi
+Examine all SMART data fo' tha straight-up original gangsta ATA disk connected ta a 3ware
+RAID controlla card.
+.PP
+.nf
+.B smartctl \-a \-d 3ware,0 /dev/twe0
+.fi
+Examine all SMART data fo' tha straight-up original gangsta ATA disk connected ta a 3ware
+RAID 6000/7000/8000 controlla card.
+.PP
+.nf
+.B smartctl \-a \-d 3ware,0 /dev/twa0
+.fi
+Examine all SMART data fo' tha straight-up original gangsta ATA disk connected ta a
+3ware RAID 9000 controlla card.
+.PP
+.nf
+.B smartctl \-a \-d 3ware,0 /dev/twl0
+.fi
+Examine all SMART data fo' tha straight-up original gangsta SATA (not SAS) disk connected ta a
+3ware RAID 9750 controlla card.
+.PP
+.nf
+.B smartctl \-t short \-d 3ware,3 /dev/sdb
+.fi
+Start a gangbangin' finger-lickin' dirty-ass short self-test on tha fourth ATA disk connected ta tha 3ware RAID
+controlla card which is tha second SCSI thang /dev/sdb.
+.PP
+.nf
+.B smartctl \-t long \-d areca,4 /dev/sg2
+.fi
+Start a long-ass self-test on tha fourth SATA disk connected ta a Areca RAID
+controlla addressed by /dev/sg2.
+.PP
+.nf
+.B smartctl \-a \-d hpt,1/3 /dev/sda    (under Linux)
+.B smartctl \-a \-d hpt,1/3 /dev/hptrr    (under FreeBSD)
+.fi
+Examine all SMART data fo' tha (S)ATA disk directly connected ta tha third channel of the
+first HighPoint RocketRAID controlla card.
+.nf
+.PP
+.nf
+.B smartctl \-t short \-d hpt,1/1/2 /dev/sda    (under Linux)
+.B smartctl \-t short \-d hpt,1/1/2 /dev/hptrr    (under FreeBSD)
+.fi
+Start a gangbangin' finger-lickin' dirty-ass short self-test on tha (S)ATA disk connected ta second pmport on the
+first channel of tha straight-up original gangsta HighPoint RocketRAID controlla card.
+.PP
+.nf
+.B smartctl \-t select,10\-100 \-t select,30\-300 \-t afterselect,on \-t pending,45 /dev/hda
+.fi
+Run a selectizzle self-test on LBAs 10 ta 100 n' 30 ta 300.  Afta the
+these LBAs done been tested, read-scan tha remainder of tha disk.  If tha disk is
+power-cycled durin tha read-scan, resume tha scan 45 minutes afta juice ta the
+device is restored.
+.PP
+.nf
+.B smartctl \-a \-d cciss,0 /dev/cciss/c0d0
+.fi
+Examine all SMART data fo' tha straight-up original gangsta SCSI disk connected ta a cold-ass lil cciss
+RAID controlla card.
+.PP
+.SH RETURN VALUES
+Da return jointz of \fBsmartctl\fP is defined by a funky-ass bitmask.  If all
+is well wit tha disk, tha return value (exit status) of
+\fBsmartctl\fP is 0 (all bits turned off).  If a problem occurs, or an
+error, potential error, or fault is detected, then a non-zero status
+is returned. Y'all KNOW dat shit, muthafucka!  In dis case, tha eight different bits up in tha return
+value have tha followin meanings fo' ATA disks; a shitload of these joints
+may also be returned fo' SCSI disks.
+.TP
+.B Bit 0:
+Command line did not parse.
+.TP
+.B Bit 1:
+Device open failed, thang did not return a IDENTIFY DEVICE structure,
+or thang is up in a low-power mode (see \'\-n\' option above).
+.TP
+.B Bit 2:
+Some SMART or other ATA command ta tha disk failed, or there was a cold-ass lil checksum
+error up in a SMART data structure (see \'\-b\' option above).
+.TP
+.B Bit 3:
+SMART status check returned "DISK FAILING".
+.TP
+.B Bit 4:
+We found prefail Attributes <= threshold.
+.TP
+.B Bit 5:
+SMART status check returned "DISK OK" but we found dat some (usage
+or prefail) Attributes done been <= threshold at some time up in the
+past. 
+.TP
+.B Bit 6:
+Da thang error log gotz nuff recordz of errors.
+.TP
+.B Bit 7:
+Da thang self-test log gotz nuff recordz of errors.
+[ATA only] Failed self-tests outdated by a newer successful extended
+self-test is ignored.
+.PP
+To test within tha shell fo' whether or not tha different bits are
+turned on or off, you can use tha followin type of construction (this
+is bash syntax):
+.nf
+.B smartstat=$(($, biatch? & 8))
+.fi
+This looks at only at bit 3 of tha exit status
+.B $?
+(since 8=2^3).  Da shell variable
+$smartstat is ghon be nonzero if SMART status check returned "disk
+failing" n' zero otherwise.
+
+This bash script prints all status bits:
+.nf
+status=$?
+for ((i=0; i<8; i++)); do
+  echo "Bit $i: $((status & 2**i && 1))"
+done
+.fi
+
+.PP
+.SH NOTES
+Da TapeAlert log page flags is cleared fo' tha initiator when the
+page is read. Y'all KNOW dat shit, muthafucka! This means dat each alert condizzle is reported only
+once by \fBsmartctl\fP fo' each initiator fo' each activation of the
+condition.
+
+.PP
+.SH AUTHORS
+\fBBruce Allen\fP
+.br
+Universitizzle of Wisconsin \- Milwaukee Physics Department
+.br
+\fBChristian Franke\fP (Windows intercourse, C++ redesign, most enhancements
+since 2009)
+.br
+\fBsmartmontools\-support@lists.sourceforge.net\fP
+
+.PP
+.SH CONTRIBUTORS
+Da followin have made big-ass contributions ta smartmontools:
+.nf
+\fBCasper Dik\fP (Solaris SCSI intercourse)
+\fBDouglas Gilbert\fP (SCSI subsystem)
+\fBGuido Guenther\fP (Autoconf/Automake packaging)
+\fBGeoffrey Keating\fP (Darwin ATA intercourse)
+\fBEduard Martinescu\fP (FreeBSD intercourse)
+\fBFr\['e]d\['e]ric L. W. Meunier\fP (Web joint n' Mailin list)
+\fBGabriele Pohl\fP (Web joint n' Wiki, conversion from CVS ta SVN)
+\fBKeiji Sawada\fP (Solaris ATA intercourse)
+\fBManfred Schwarb\fP (Drive database)
+\fBSergey Svishchev\fP (NetBSD intercourse)
+\fBDizzy Snyder n' Sergey Svishchev\fP (OpenBSD intercourse)
+\fBPhil Williams\fP (User intercourse n' drive database)
+\fBYuri Dario\fP (OS/2, eComStation intercourse)
+\fBShengfeng Zhou\fP (Linux/FreeBSD HighPoint RocketRAID intercourse)
+.fi
+Many other dudes have made smalla contributions n' erections.
+
+.PP
+.SH CREDITS
+.fi
+This code was derived from tha smartsuite package, freestyled by Michael
+Cornwell, n' from tha previous UCSC smartsuite package.  It extends
+these ta cover ATA-5 disks.  This code was originally pimped as a
+Ballin Thesis by Mike Cornwell all up in tha Concurrent Systems Laboratory
+(now part of tha Storage Systems Research Center), Jack Baskin School
+of Engineering, Universitizzle of California, Gangsta
+Cruz. \fBhttp://ssrc.soe.ucsc.edu/\fP .
+.SH
+HOME PAGE FOR SMARTMONTOOLS: 
+.fi
+Please peep tha followin wizzy joint fo' thugged-out shit, further documentation, bug
+reports n' patches: \fBhttp://smartmontools.sourceforge.net/\fP
+
+.SH
+SEE ALSO:
+\fBsmartd\fP(8), \fBbadblocks\fP(8), \fBide\-smart\fP(8).
+.SH
+REFERENCES FOR SMART
+.fi
+An introductory article bout smartmontools is \fIMonitorin Hard
+Disks wit SMART\fP, by Bruce Allen, Linux Journal, January 2004,
+pages 74-77. This is \fBhttp://www.linuxjournal.com/article/6983\fP
+online.
+
+If you wanna KNOW betta how tha fuck SMART works, n' what tha fuck it
+does, a phat place ta start is wit Sections 4.8 n' 6.54 of tha first
+volume of tha \'AT Attachment wit Packet Interface-7\' (ATA/ATAPI-7)
+specification Revision 4b.  This documents tha SMART functionalitizzle which the
+\fBsmartmontools\fP utilitizzles provide access to.
+
+.fi
+Da functionin of SMART was originally defined by tha SFF-8035i
+revision 2 n' tha SFF-8055i revision 1.4 justifications.  These are
+publicationz of tha Lil Small-Ass Form Factors (SFF) Committee.
+
+Links ta these n' other documents may be found on tha Links page of the
+\fBsmartmontools\fP Wiki at
+\fBhttp://sourceforge.net/apps/trac/smartmontools/wiki/Links\fP .
+
+.SH
+SVN ID OF THIS PAGE:
+$Id: smartctl.8.in 3832 2013-07-20 14:49:31Z chrfranke $

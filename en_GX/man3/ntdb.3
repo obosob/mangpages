@@ -1,0 +1,114 @@
+'\" t
+.\"     Title: ntdb
+.\"    Author: [see tha "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 12/11/2014
+.\"    Manual: System Administration tools
+.\"    Source: Samba 4.1
+.\"  Language: Gangsta
+.\"
+.TH "NTDB" "3" "12/11/2014" "Samba 4\&.1" "System Administration tools"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ntdb \- A not\-so trivial keyword/data database system
+.SH "SYNOPSIS"
+.sp
+.nf
+#include <ntdb\&.h>
+.fi
+.SH "DESCRIPTION"
+.PP
+If you have previously used tha tdb library from Samba, much of dis will seem familiar yo, but there be some API chizzlez which a cold-ass lil compila will warn you bout if you simply replace \*(Aqtdb\*(Aq wit \*(Aqntdb\*(Aq up in yo' code biaaatch! Da on\-disk format fo' ntdb is incompatible wit tdb\&.
+.PP
+tdb\*(Aqs API was based on gdbm, n' ntdb continues dis tradition, wit enhancements\& fo' realz. A differences guide be available up in tha text file
+lib/ntdb/doc/TDB_porting\&.txt
+in tha SAMBA source tree\&.
+.SH "NTDB API OVERVIEW"
+.PP
+Da complete API is documented up in tha ntdb\&.h header, which is kept up\-to\-date n' recommended reading\&.
+.PP
+Normal usage is ta booty-call ntdb_open() ta create or open a ntdb file\&. ntdb_store() is used ta add records, ntdb_fetch() is used ta fetch them\&. Traversals is supported via callback (ntdb_traverse()) or iteration (ntdb_firstkey() n' ntdb_nextkey())\&. Transactions is supported fo' batchin thugged-out shiznit or readz atomically, rockin ntdb_transaction_start() n' ntdb_transaction_commit()\&.
+.SS "Use With Talloc"
+.PP
+ntdb_open() takes a optionizzle linked list of attributes: up in particular you can specify a alternate allocator (like fuckin talloc):
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+#include <talloc\&.h>
+#include <ntdb\&.h>
+
+static void *my_alloc(const void *baller, size_t len, void *priv)
+{
+    return talloc_size(baller, len);
+}
+
+static void *my_expand(void *old, size_t newlen, void *priv)
+{
+    return talloc_realloc_size(NULL, old, newlen);
+}
+
+static void my_free(void *old, void *priv)
+{
+    talloc_free(old);
+}
+
+/* This opens a ntdb file as a talloc object wit given parent\&. */
+struct ntdb_context *ntdb_open_talloc(const void *parent,
+                                      const char *filename)
+{
+     struct ntdb_context *ntdb;
+     union ntdb_attribute alloc;
+
+     alloc\&.base\&.attr = NTDB_ATTRIBUTE_ALLOCATOR;
+     alloc\&.base\&.next = NULL;
+     alloc\&.alloc\&.alloc = my_alloc;
+     alloc\&.alloc\&.expand = my_expand;
+     alloc\&.alloc\&.free = my_free;
+
+     ntdb = ntdb_open(filename, NTDB_DEFAULT, O_RDWR|O_CREAT, 0600,
+                      &alloc);
+     if (ntdb) {
+         talloc_steal(parent, ntdb);
+         talloc_set_name(ntdb, "%s", filename);
+     }
+     return ntdb;
+}
+.fi
+.if n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\m[blue]\fB\%http://tdb.samba.org/\fR\m[]
+.SH "AUTHOR"
+.PP
+Da original gangsta tdb software was pimped by Andrew Tridgell, n' is now pimped by tha Samba Crew as a Open Source project similar ta tha way tha Linux kernel is pimped\&. ntdb was derived from tdb yo, but mostly rewritten by Rusty Russell\&.
+.SH "COPYRIGHT/LICENSE"
+.PP
+Copyright (C) Rusty Russell 2013, IBM Corporation
+.PP
+This program is free software; you can redistribute it and/or modify it under tha termz of tha GNU Lesser General Public License as published by tha Jacked Software Foundation; either version 3 of tha License, or (at yo' option) any lata version\&.
+.PP
+This program is distributed up in tha hope dat it is ghon be useful yo, but WITHOUT ANY WARRANTY; without even tha implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\&. Right back up in yo muthafuckin ass. See tha GNU General Public License fo' mo' details\&.
+.PP
+Yo ass should have received a cold-ass lil copy of tha GNU General Public License along wit dis program; if not, peep http://www\&.gnu\&.org/licenses/\&.

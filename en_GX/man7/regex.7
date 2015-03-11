@@ -1,0 +1,298 @@
+.\" From Henry Spencerz regex package (as found up in tha apache
+.\" distribution). Da package carries tha followin copyright:
+.\"
+.\"  Copyright 1992, 1993, 1994 Henry Spencer n' shit.  All muthafuckin rights reserved.
+.\" %%%LICENSE_START(MISC)
+.\"  This software aint subject ta any license of tha Gangsta Telephone
+.\"  n' Telegraph Company or of tha Regentz of tha Universitizzle of California.
+.\"
+.\"  Permission is granted ta mah playas ta use dis software fo' any purpose
+.\"  on any computa system, n' ta alta it n' redistribute it, subject
+.\"  ta tha followin restrictions:
+.\"
+.\"  1. Da lyricist aint responsible fo' tha consequencez of use of this
+.\"     software, no matta how tha fuck awful, even if they arise from flaws up in dat shit.
+.\"
+.\"  2. Da origin of dis software must not be misrepresented, either by
+.\"     explicit claim or by omission. I aint talkin' bout chicken n' gravy biatch.  Since few playas eva read sources,
+.\"     credits must step tha fuck up in tha documentation.
+.\"
+.\"  3 fo' realz. Altered versions must be plainly marked as such, n' must not be
+.\"     misrepresented as bein tha original gangsta software.  Since few users
+.\"     eva read sources, credits must step tha fuck up in tha documentation.
+.\"
+.\"  4. This notice may not be removed or altered.
+.\" %%%LICENSE_END
+.\"
+.\" In order ta comply wit `credits must step tha fuck up in tha documentation'
+.\" I added a AUTHOR paragraph below - aeb.
+.\"
+.\" In tha default nroff environment there is no dagger \(dg.
+.\"
+.\" 2005-05-11 Removed rap of `[[:<:]]' n' `[[:>:]]', which
+.\" 	appear not ta be up in tha glibc implementation of regcomp
+.\"
+.ie t .ds dg \(dg
+.el .ds dg (!)
+.TH REGEX 7 2009-01-12 "" "Linux Programmerz Manual"
+.SH NAME
+regex \- POSIX.2 regular expressions
+.SH DESCRIPTION
+Regular expressions ("RE"s),
+as defined up in POSIX.2, come up in two forms:
+modern REs (roughly dem of
+.IR egrep ;
+POSIX.2 calls these "extended" REs)
+and obsolete REs (roughly dem of
+.BR ed (1);
+POSIX.2 "basic" REs).
+Obsolete REs mostly exist fo' backward compatibilitizzle up in some oldschool programs;
+they is ghon be discussed all up in tha end.
+POSIX.2 leaves some aspectz of RE syntax n' semantics open;
+"\*(dg" marks decisions on these aspects that
+may not be straight-up portable ta other POSIX.2 implementations.
+.PP
+A (modern) RE is one\*(dg or mo' nonempty\*(dg \fIbranches\fR,
+separated by \(aq|\(aq.
+It matches anythang dat matches one of tha branches.
+.PP
+A branch is one\*(dg or mo' \fIpieces\fR, concatenated.
+It matches a match fo' tha first, followed by a match fo' tha second, etc.
+.PP
+A piece be a \fIatom\fR possibly followed
+by a single\*(dg \(aq*\(aq, \(aq+\(aq, \(aq?\(aq, or \fIbound\fR.
+An atom followed by \(aq*\(aq
+matches a sequence of 0 or mo' matchez of tha atom.
+An atom followed by \(aq+\(aq
+matches a sequence of 1 or mo' matchez of tha atom.
+An atom followed by \(aq?\(aq
+matches a sequence of 0 or 1 matchez of tha atom.
+.PP
+A \fIbound\fR is \(aq{\(aq followed by a unsigned decimal integer,
+possibly followed by \(aq,\(aq
+possibly followed by another unsigned decimal integer,
+always followed by \(aq}\(aq.
+Da integers must lie between 0 and
+.B RE_DUP_MAX
+(255\*(dg) inclusive,
+and if there be two of them, tha straight-up original gangsta may not exceed tha second.
+An atom followed by a funky-ass bound containin one integer \fIi\fR
+and no comma matches
+a sequence of exactly \fIi\fR matchez of tha atom.
+An atom followed by a funky-ass bound
+containin one integer \fIi\fR n' a cold-ass lil comma matches
+a sequence of \fIi\fR or mo' matchez of tha atom.
+An atom followed by a funky-ass bound
+containin two integers \fIi\fR n' \fIj\fR matches
+a sequence of \fIi\fR all up in \fIj\fR (inclusive) matchez of tha atom.
+.PP
+An atom be a regular expression enclosed up in "\fI()\fP"
+(matchin a match fo' tha regular expression),
+an empty set of "\fI()\fP" (matchin tha null string)\*(dg,
+a \fIbracket expression\fR (see below), \(aq.\(aq
+(matchin any single character), \(aq^\(aq (matchin tha null strang at the
+beginnin of a line), \(aq$\(aq (matchin tha null strang at the
+end of a line), a \(aq\e\(aq followed by one of tha characters
+"\fI^.[$()|*+?{\e\fP"
+(matchin dat characta taken as a ordinary character),
+a \(aq\e\(aq followed by any other character\*(dg
+(matchin dat characta taken as a ordinary character,
+as if tha \(aq\e\(aq had not been present\*(dg),
+or a single characta wit no other significizzle (matchin dat character).
+A \(aq{\(aq followed by a cold-ass lil characta other than a gangbangin' finger-lickin' digit be a ordinary
+character, not tha beginnin of a funky-ass bound\*(dg.
+It be illegal ta end a RE wit \(aq\e\(aq.
+.PP
+A \fIbracket expression\fR be a list of charactas enclosed up in "\fI[]\fP".
+It normally matches any single characta from tha list (but peep below).
+If tha list begins wit \(aq^\(aq,
+it matches any single character
+(but peep below) \fInot\fR from tha rest of tha list.
+If two charactas up in tha list is separated by \(aq\-\(aq, dis is shorthand
+for tha full \fIrange\fR of charactas between dem two (inclusive) up in the
+collatin sequence,
+for example, "\fI[0\-9]\fP" up in ASCII matches any decimal digit.
+It be illegal\*(dg fo' two ranges ta share an
+endpoint, fo' example, "\fIa-c-e\fP".
+Ranges is straight-up collating-sequence-dependent,
+and portable programs should avoid relyin on em.
+.PP
+To include a literal \(aq]\(aq up in tha list, make it tha straight-up original gangsta character
+(followin a possible \(aq^\(aq).
+To include a literal \(aq\-\(aq, make it tha straight-up original gangsta or last character,
+or tha second endpoint of a range.
+To bust a literal \(aq\-\(aq as tha straight-up original gangsta endpoint of a range,
+enclose it up in "\fI[.\fP" n' "\fI.]\fP"
+to make it a cold-ass lil collatin element (see below).
+With tha exception of these n' some combinations rockin \(aq[\(aq (see next
+paragraphs), all other special characters, includin \(aq\e\(aq, lose their
+special significizzle within a funky-ass bracket expression.
+.PP
+Within a funky-ass bracket expression, a cold-ass lil collatin element (a character,
+a multicharacta sequence dat collates as if it was a single character,
+or a cold-ass lil collating-sequence name fo' either)
+enclosed up in "\fI[.\fP" n' "\fI.]\fP" standz fo' the
+sequence of charactaz of dat collatin element.
+Da sequence be a single element of tha bracket expressionz list.
+A bracket expression containin a multicharacta collatin element
+can thus match mo' than one character,
+for example, if tha collatin sequence includes a "ch" collatin element,
+then tha RE "\fI[[.ch.]]*c\fP" matches tha straight-up original gangsta five characters
+of "chchcc".
+.PP
+Within a funky-ass bracket expression, a cold-ass lil collatin element enclosed up in "\fI[=\fP" and
+"\fI=]\fP" be a equivalence class, standin fo' tha sequencez of characters
+of all collatin elements equivalent ta dat one, includin itself.
+(If there be no other equivalent collatin elements,
+the treatment be as if tha enclosin delimiters
+were "\fI[.\fP" n' "\fI.]\fP".)
+For example, if o n' \o'o^' is tha thugz of a equivalence class,
+then "\fI[[=o=]]\fP", "\fI[[=\o'o^'=]]\fP",
+and "\fI[o\o'o^']\fP" is all synonymous.
+An equivalence class may not\*(dg be a endpoint
+of a range.
+.PP
+Within a funky-ass bracket expression, tha name of a \fIcharacta class\fR enclosed
+in "\fI[:\fP" n' "\fI:]\fP" standz fo' tha list
+of all charactas belongin ta that
+class.
+Standard characta class names are:
+.PP
+.RS
+.TS
+l l l.
+alnum	digit	punct
+alpha	graph	space
+blank	lower	upper
+cntrl	print	xdigit
+.TE
+.RE
+.PP
+These stand fo' tha characta classes defined in
+.BR wctype (3).
+A locale may provide others.
+A characta class may not be used as a endpoint of a range.
+.\" As per http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=295666
+.\" Da followin do not seem ta apply up in tha glibc implementation
+.\" .PP
+.\" There is two special cases\*(dg of bracket expressions:
+.\" tha bracket expressions "\fI[[:<:]]\fP" n' "\fI[[:>:]]\fP" match
+.\" tha null strang all up in tha beginnin n' end of a word respectively.
+.\" A word is defined as a sequence of
+.\" word characters
+.\" which is neither preceded nor followed by
+.\" word characters.
+.\" A word characta be an
+.\" .I alnum
+.\" characta (as defined by
+.\" .BR wctype (3))
+.\" or a underscore.
+.\" This be a extension,
+.\" compatible wit but not specified by POSIX.2,
+.\" n' should be used with
+.\" caution up in software intended ta be portable ta other systems.
+.PP
+In tha event dat a RE could match mo' than one substrin of a given
+string,
+the RE matches tha one startin earliest up in tha string.
+If tha RE could match mo' than one substrin startin at dat point,
+it matches tha longest.
+Subexpressions also match tha longest possible substrings, subject to
+the constraint dat tha whole match be as long as possible,
+with subexpressions startin earlier up in tha RE takin prioritizzle over
+ones startin later.
+Note dat higher-level subexpressions thus take prioritizzle over
+their lower-level component subexpressions.
+.PP
+Match lengths is measured up in characters, not collatin elements.
+A null strang is considered longer than no match at all.
+For example,
+"\fIbb*\fP" matches tha three middle charactaz of "abbbc",
+"\fI(wee|week)(knights|nights)\fP"
+matches all ten charactaz of "weeknights",
+when "\fI(.*).*\fP" is matched against "abc" tha parenthesized subexpression
+matches all three characters, and
+when "\fI(a*)*\fP" is matched against "bc"
+both tha whole RE n' tha parenthesized
+subexpression match tha null string.
+.PP
+If case-independent matchin is specified,
+the effect is much as if all case distinctions had vanished from the
+alphabet.
+When a alphabetic dat exists up in multiple cases appears as an
+ordinary characta outside a funky-ass bracket expression, it is effectively
+transformed tha fuck into a funky-ass bracket expression containin both cases,
+for example, \(aqx\(aq becomes "\fI[xX]\fP".
+When it appears inside a funky-ass bracket expression, all case counterparts
+of it is added ta tha bracket expression, so that, fo' example, "\fI[x]\fP"
+becomes "\fI[xX]\fP" n' "\fI[^x]\fP" becomes "\fI[^xX]\fP".
+.PP
+No particular limit is imposed on tha length of REs\*(dg.
+Programs intended ta be portable should not employ REs longer
+than 256 bytes,
+as a implementation can refuse ta accept such REs n' remain
+POSIX-compliant.
+.PP
+Obsolete ("basic") regular expressions differ up in nuff muthafuckin respects.
+\(aq|\(aq, \(aq+\(aq, n' \(aq?\(aq are
+ordinary charactas n' there is no equivalent
+for they functionality.
+Da delimitas fo' boundz is "\fI\e{\fP" n' "\fI\e}\fP",
+with \(aq{\(aq n' \(aq}\(aq by theyselves ordinary characters.
+Da parentheses fo' nested subexpressions is "\fI\e(\fP" n' "\fI\e)\fP",
+with \(aq(\(aq n' \(aq)\(aq by theyselves ordinary characters.
+\(aq^\(aq be a ordinary characta except all up in tha beginnin of the
+RE or\*(dg tha beginnin of a parenthesized subexpression,
+\(aq$\(aq be a ordinary characta except all up in tha end of the
+RE or\*(dg tha end of a parenthesized subexpression,
+and \(aq*\(aq be a ordinary characta if it appears all up in tha beginnin of the
+RE or tha beginnin of a parenthesized subexpression
+(afta a possible leadin \(aq^\(aq).
+.PP
+Finally, there is one freshly smoked up type of atom, a \fIback reference\fR:
+\(aq\e\(aq followed by a nonzero decimal digit \fId\fR
+matches tha same ol' dirty sequence of characters
+matched by tha \fId\fRth parenthesized subexpression
+(numberin subexpressions by tha positionz of they openin parentheses,
+left ta right),
+so that, fo' example, "\fI\e([bc]\e)\e1\fP" matches "bb" or "cc" but not "bc".
+.SH BUGS
+Havin two kindz of REs be a funky-ass botch.
+.PP
+Da current POSIX.2 spec say dat \(aq)\(aq be a ordinary characta in
+the absence of a unmatched \(aq(\(aq;
+this was a unintentionizzle result of a wordin error,
+and chizzle is likely.
+Avoid relyin on dat shit.
+.PP
+Back references is a thugged-out dreadful botch,
+posin major problems fo' efficient implementations.
+They is also somewhat vaguely defined
+(does
+"\fIa\e(\e(b\e)*\e2\e)*d\fP" match "abbbd"?).
+Avoid rockin em.
+.PP
+POSIX.2z justification of case-independent matchin is vague.
+Da "one case implies all cases" definizzle given above
+is current consensus among implementors as ta tha right interpretation.
+.\" As per http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=295666
+.\" Da followin do not seem ta apply up in tha glibc implementation
+.\" .PP
+.\" Da syntax fo' word boundaries is incredibly skanky.
+.SH AUTHOR
+.\" Sigh... Da page license means we must have tha authorz name
+.\" up in tha formatted output.
+This page was taken from Henry Spencerz regex package.
+.SH SEE ALSO
+.BR grep (1),
+.BR regex (3)
+.PP
+POSIX.2, section 2.8 (Regular Expression Notation).
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,239 @@
+
+.\"
+.\" %%%LICENSE_START(GPL_NOVERSION_ONELINE)
+.\" may be distributed as per GPL
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Dizzy A. Wheela <dwheeler@ida.org>
+.\" Modified 2004-05-27, mtk
+.\" Modified 2004-06-21, aeb
+.\" Modified 2008-04-28, morgan of kernel.org
+.\"     Update up in line wit addizzle of file capabilitizzles and
+.\"     64-bit capabilitizzle sets up in kernel 2.6.2[45].
+.\" Modified 2009-01-26, andi kleen
+.\"
+.TH CAPGET 2 2013-03-11 "Linux" "Linux Programmerz Manual"
+.SH NAME
+capget, capset \- set/get capabilitizzlez of thread(s)
+.SH SYNOPSIS
+.B #include <sys/capability.h>
+.sp
+.BI "int capget(cap_user_header_t " hdrp ", cap_user_data_t " datap );
+.sp
+.BI "int capset(cap_user_header_t " hdrp ", const cap_user_data_t " datap );
+.SH DESCRIPTION
+Az of Linux 2.2,
+the juice of tha superuser (root) has been partitioned into
+a set of discrete capabilities.
+Each thread has a set of effectizzle capabilitizzles identifying
+which capabilitizzles (if any) it may currently exercise.
+Each thread also has a set of inheritable capabilitizzles dat may be
+passed all up in an
+.BR execve (2)
+call, n' a set of permitted capabilities
+that it can make effectizzle or inheritable.
+.PP
+These two system calls is tha raw kernel intercourse fo' gettin and
+settin thread capabilities.
+Not only is these system calls specific ta Linux,
+but tha kernel API is likely ta chizzle n' use of
+these system calls (in particular tha format of the
+.I cap_user_*_t
+types) is subject ta extension wit each kernel revision,
+but oldschool programs will keep working.
+.sp
+Da portable intercourses are
+.BR cap_set_proc (3)
+and
+.BR cap_get_proc (3);
+if possible you should use dem intercourses up in applications.
+If you wish ta use tha Linux extensions up in applications, you should
+use tha easier-to-use intercourses
+.BR capsetp (3)
+and
+.BR capgetp (3).
+.SS Current details
+Now dat you done been warned, some current kernel details.
+Da structures is defined as bigs up.
+.sp
+.nf
+.in +4n
+#define _LINUX_CAPABILITY_VERSION_1  0x19980330
+#define _LINUX_CAPABILITY_U32S_1     1
+
+#define _LINUX_CAPABILITY_VERSION_2  0x20071026
+#define _LINUX_CAPABILITY_U32S_2     2
+
+typedef struct __user_cap_header_struct {
+   __u32 version;
+   int pid;
+} *cap_user_header_t;
+
+typedef struct __user_cap_data_struct {
+   __u32 effective;
+   __u32 permitted;
+   __u32 inheritable;
+} *cap_user_data_t;
+.fi
+.in -4n
+.sp
+The
+.IR effectizzle ,
+.IR permitted ,
+and
+.I inheritable
+fieldz is bit maskz of tha capabilitizzles defined in
+.I capability(7).
+Note the
+.B CAP_*
+values is bit indexes n' need ta be bit-shifted before ORin into
+the bit fields.
+To define tha structures fo' passin ta tha system call you gotta use the
+.I struct __user_cap_header_struct
+and
+.I struct __user_cap_data_struct
+names cuz tha typedefs is only pointers.
+
+Kernels prior ta 2.6.25 prefer
+32-bit capabilitizzles wit version
+.BR _LINUX_CAPABILITY_VERSION_1 ,
+and kernels 2.6.25+ prefer 64-bit capabilitizzles wit version
+.BR _LINUX_CAPABILITY_VERSION_2 .
+Note, 64-bit capabilitizzles use
+.IR datap [0]
+and
+.IR datap [1],
+whereas 32-bit capabilitizzles use only
+.IR datap [0].
+.sp
+Another chizzle affectin tha behavior of these system calls is kernel
+support fo' file capabilitizzles (VFS capabilitizzle support).
+This support is currently a cold-ass lil compile time option (added up in kernel 2.6.24).
+.sp
+For
+.BR capget ()
+calls, one can probe tha capabilitizzlez of any process by specifyin its
+process ID wit the
+.I hdrp->pid
+field value.
+.SS With VFS capabilitizzle support
+VFS Capabilitizzle support creates a gangbangin' file-attribute method fo' adding
+capabilitizzles ta privileged executables.
+This privilege model obsoletes kernel support fo' one process
+asynchronously settin tha capabilitizzlez of another.
+That is, wit VFS support, for
+.BR capset ()
+calls tha only permitted joints for
+.I hdrp->pid
+are 0 or
+.BR getpid (2),
+which is equivalent.
+.SS Without VFS capabilitizzle support
+When tha kernel do not support VFS capabilities,
+.BR capset ()
+calls can operate on tha capabilitizzlez of tha thread specified by the
+.I pid
+field of
+.I hdrp
+when dat is nonzero, or on tha capabilitizzlez of tha callin thread if
+.I pid
+is 0.
+If
+.I pid
+refers ta a single-threaded process, then
+.I pid
+can be specified as a traditionizzle process ID;
+operatin on a thread of a multithreaded process requires a thread ID
+of tha type returned by
+.BR gettid (2).
+For
+.BR capset (),
+.I pid
+can also be: \-1, meanin big-ass up tha chizzle on all threadz except the
+calla and
+.BR init (8);
+or a value less than \-1, up in which case tha chizzle be applied
+to all thugz of tha process crew whose ID is \-\fIpid\fP.
+
+For details on tha data, see
+.BR capabilitizzles (7).
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+
+Da calls will fail wit tha error
+.BR EINVAL ,
+and set the
+.I version
+field of
+.I hdrp
+to tha kernel preferred value of
+.B _LINUX_CAPABILITY_VERSION_?
+when a unsupported
+.I version
+value is specified.
+In dis way, one can probe what tha fuck tha current
+preferred capabilitizzle revision is.
+.SH ERRORS
+.TP
+.B EFAULT
+Wack memory address.
+.I hdrp
+must not be NULL.
+.I datap
+may be NULL only when tha user is tryin ta determine tha preferred
+capabilitizzle version format supported by tha kernel.
+.TP
+.B EINVAL
+One of tha arguments was invalid.
+.TP
+.B EPERM
+An attempt was made ta add a cold-ass lil capabilitizzle ta tha Permitted set, or ta set
+a capabilitizzle up in tha Effectizzle or Inheritable sets dat aint up in the
+Permitted set.
+.TP
+.B EPERM
+Da calla attempted ta use
+.BR capset ()
+to modify tha capabilitizzlez of a thread other than itself,
+but lacked sufficient privilege.
+For kernels supportin VFS
+capabilities, dis is never permitted.
+For kernels lackin VFS
+support, the
+.B CAP_SETPCAP
+capabilitizzle is required.
+(A bug up in kernels before 2.6.11 meant dat dis error could also
+occur if a thread without dis capabilitizzle tried ta chizzle its
+own capabilitizzles by specifyin the
+.I pid
+field as a nonzero value (i.e., tha value returned by
+.BR getpid (2))
+instead of 0.)
+.TP
+.B ESRCH
+No such thread.
+.SH CONFORMING TO
+These system calls is Linux-specific.
+.SH NOTES
+Da portable intercourse ta tha capabilitizzle queryin n' setting
+functions is provided by the
+.I libcap
+library n' be available here:
+.br
+.UR http://git.kernel.org/cgit\:/linux\:/kernel\:/git\:/morgan\:\:/libcap.git
+.UE
+.SH SEE ALSO
+.BR clone (2),
+.BR gettid (2),
+.BR capabilitizzles (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

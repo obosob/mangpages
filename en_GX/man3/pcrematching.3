@@ -1,0 +1,206 @@
+.TH PCREMATCHING 3 "08 January 2012" "PCRE 8.30"
+.SH NAME
+PCRE - Perl-compatible regular expressions
+.SH "PCRE MATCHING ALGORITHMS"
+.rs
+.sp
+This document raps bout tha two different algorithms dat is available up in PCRE
+for matchin a cold-ass lil compiled regular expression against a given subject string. The
+"standard" algorithm is tha one provided by tha \fBpcre_exec()\fP,
+\fBpcre16_exec()\fP n' \fBpcre32_exec()\fP functions. These work up in tha same
+as as Perlz matchin function, n' provide a Perl-compatible matchin operation.
+Da just-in-time (JIT) optimization dat is busted lyrics bout up in the
+.\" HREF
+\fBpcrejit\fP
+.\"
+documentation is compatible wit these functions.
+.P
+An alternatizzle algorithm is provided by tha \fBpcre_dfa_exec()\fP,
+\fBpcre16_dfa_exec()\fP n' \fBpcre32_dfa_exec()\fP functions; they operate in
+a different way, n' is not Perl-compatible. This alternatizzle has advantages
+and disadvantages compared wit tha standard algorithm, n' these is busted lyrics about
+below.
+.P
+When there is only one possible way up in which a given subject strang can match a
+pattern, tha two algorithms give tha same answer n' shiznit fo' realz. A difference arises, however,
+when there be multiple possibilities. Put ya muthafuckin choppers up if ya feel dis! For example, if tha pattern
+.sp
+  ^<.*>
+.sp
+is matched against tha string
+.sp
+  <something> <suttin' else> <suttin' further>
+.sp
+there is three possible lyrics. Da standard algorithm findz only one of
+them, whereas tha alternatizzle algorithm findz all three.
+.
+.
+.SH "REGULAR EXPRESSIONS AS TREES"
+.rs
+.sp
+Da set of strings dat is matched by a regular expression can be represented
+as a tree structure fo' realz. An unlimited repetizzle up in tha pattern make tha tree of
+infinite size yo, but it is still a tree. Matchin tha pattern ta a given subject
+strin (from a given startin point) can be thought of as a search of tha tree.
+There is two ways ta search a tree: depth-first n' breadth-first, n' these
+correspond ta tha two matchin algorithms provided by PCRE.
+.
+.
+.SH "THE STANDARD MATCHING ALGORITHM"
+.rs
+.sp
+In tha terminologizzle of Jeffrey Friedlz book "Masterin Regular
+Expressions", tha standard algorithm be a "NFA algorithm". Well shiiiit, it conducts a
+depth-first search of tha pattern tree. That is, it proceedz along a single
+path all up in tha tree, checkin dat tha subject matches what tha fuck is required. Y'all KNOW dat shit, muthafucka! When
+there be a mismatch, tha algorithm tries any alternatives all up in tha current point,
+and if they all fail, it backs up ta tha previous branch point up in tha tree, and
+tries tha next alternatizzle branch at dat level. This often involves backin up
+(movin ta tha left) up in tha subject strang as well. Da order up in which
+repetizzle branches is tried is controlled by tha greedy or ungreedy nature of
+the quantifier.
+.P
+If a leaf node is reached, a matchin strang has been found, n' at dat point
+the algorithm stops. Thus, if there is mo' than one possible match, this
+algorithm returns tha straight-up original gangsta one dat it finds. Whether dis is tha shortest,
+the longest, or some intermediate length dependz on tha way tha greedy and
+ungreedy repetizzle quantifiers is specified up in tha pattern.
+.P
+Because it endz up wit a single path all up in tha tree, it is relatively
+straightforward fo' dis algorithm ta keep track of tha substrings dat are
+matched by portionz of tha pattern up in parentheses. This serves up support for
+capturin parentheses n' back references.
+.
+.
+.SH "THE ALTERNATIVE MATCHING ALGORITHM"
+.rs
+.sp
+This algorithm conducts a funky-ass breadth-first search of tha tree. Right back up in yo muthafuckin ass. Startin from the
+first matchin point up in tha subject, it scans tha subject strang from left to
+right, once, characta by character, n' as it do this, it rethugz all the
+paths all up in tha tree dat represent valid matches. In Friedlz terminology,
+this be a kind of "DFA algorithm", though it aint implemented as a
+traditionizzle finite state machine (it keeps multiple states active
+simultaneously).
+.P
+Although tha general principle of dis matchin algorithm is dat it scans the
+subject strang only once, without backtracking, there is one exception: when a
+lookaround assertion is encountered, tha charactas followin or precedin the
+current point gotta be independently inspected.
+.P
+Da scan continues until either tha end of tha subject is reached, or there are
+no mo' unterminated paths fo' realz. At dis point, terminated paths represent the
+different matchin possibilitizzles (if there be none, tha match has failed).
+Thus, if there is mo' than one possible match, dis algorithm findz all of
+them, n' up in particular, it findz tha longest. Da matches is returned in
+decreasin order of length. There be a option ta stop tha algorithm afta the
+first match (which is necessarily tha shortest) is found.
+.P
+Note dat all tha matches dat is found start all up in tha same point up in the
+subject. If tha pattern
+.sp
+  cat(er(pillar)?)?
+.sp
+is matched against tha strang "the caterpillar catchment", tha result will be
+the three strings "caterpillar", "cater", n' "cat" dat start all up in tha fifth
+characta of tha subject. Da algorithm do not automatically move on ta find
+matches dat start at lata positions.
+.P
+There is a fuckin shitload of featurez of PCRE regular expressions dat is not
+supported by tha alternatizzle matchin algorithm. They is as bigs up:
+.P
+1. Because tha algorithm findz all possible matches, tha greedy or ungreedy
+nature of repetizzle quantifiers aint relevant. Greedy n' ungreedy
+quantifiers is treated up in exactly tha same way. But fuck dat shiznit yo, tha word on tha street is dat possessive
+quantifiers can cook up a gangbangin' finger-lickin' difference when what tha fuck bigs up could also match what tha fuck is
+quantified, fo' example up in a pattern like this:
+.sp
+  ^a++\ew!
+.sp
+This pattern matches "aaab!" but not "aaa!", which would be matched by a
+non-possessive quantifier n' shit. Right back up in yo muthafuckin ass. Similarly, if a atomic crew is present, it is
+matched as if it was a standalone pattern all up in tha current point, n' the
+longest match is then "locked in" fo' tha rest of tha overall pattern.
+.P
+2. When dealin wit multiple paths all up in tha tree simultaneously, it is not
+straightforward ta keep track of captured substrings fo' tha different matching
+possibilities, n' PCREz implementation of dis algorithm do not attempt to
+do all dis bullshit. This means dat no captured substrings is available.
+.P
+3. Because no substrings is captured, back references within tha pattern are
+not supported, n' cause errors if encountered.
+.P
+4. For tha same reason, conditionizzle expressions dat bust a funky-ass backreference as the
+condizzle or test fo' a specific crew recursion is not supported.
+.P
+5. Because nuff paths all up in tha tree may be active, tha \eK escape sequence,
+which resets tha start of tha match when encountered (but may be on some paths
+and not on others), aint supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Well shiiiit, it causes a error if encountered.
+.P
+6. Callouts is supported yo, but tha value of tha \fIcapture_top\fP field is
+always 1, n' tha value of tha \fIcapture_last\fP field be always -1.
+.P
+7. Da \eC escape sequence, which (in tha standard algorithm) always matches a
+single data unit, even up in UTF-8, UTF-16 or UTF-32 modes, aint supported in
+these modes, cuz tha alternatizzle algorithm moves all up in tha subject string
+one characta (not data unit) at a time, fo' all actizzle paths all up in tha tree.
+.P
+8. Except fo' (*FAIL), tha backtrackin control verbs like fuckin (*PRUNE) is not
+supported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. (*FAIL) is supported, n' behaves like a gangbangin' failin wack assertion.
+.
+.
+.SH "ADVANTAGES OF THE ALTERNATIVE ALGORITHM"
+.rs
+.sp
+Usin tha alternatizzle matchin algorithm serves up tha followin advantages:
+.P
+1 fo' realz. All possible matches (at a single point up in tha subject) is automatically
+found, n' up in particular, tha longest match is found. Y'all KNOW dat shit, muthafucka! To find mo' than one
+match rockin tha standard algorithm, you gotta do kludgy thangs with
+callouts.
+.P
+2. Because tha alternatizzle algorithm scans tha subject strang just once, and
+never need ta backtrack (except fo' lookbehinds), it is possible ta pass hella
+long subject strings ta tha matchin function up in nuff muthafuckin pieces, checkin for
+partial matchin each time fo' realz. Although it is possible ta do multi-segment
+matchin rockin tha standard algorithm by retainin partially matched
+substrings, it is mo' fucked up. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. The
+.\" HREF
+\fBpcrepartial\fP
+.\"
+documentation gives detailz of partial matchin n' discusses multi-segment
+matching.
+.
+.
+.SH "DISADVANTAGES OF THE ALTERNATIVE ALGORITHM"
+.rs
+.sp
+Da alternatizzle algorithm suffers from a fuckin shitload of disadvantages:
+.P
+1. Well shiiiit, it is substantially slower than tha standard algorithm. This is kinda
+because it has ta search fo' all possible matches yo, but be also cuz it is
+less susceptible ta optimization.
+.P
+2. Capturin parentheses n' back references is not supported.
+.P
+3 fo' realz. Although atomic crews is supported, they use do not provide the
+performizzle advantage dat it do fo' tha standard algorithm.
+.
+.
+.SH AUTHOR
+.rs
+.sp
+.nf
+Philip Hazel
+Universitizzle Computin Service
+Cambridge CB2 3QH, England.
+.fi
+.
+.
+.SH REVISION
+.rs
+.sp
+.nf
+Last updated: 08 January 2012
+Copyright (c) 1997-2012 Universitizzle of Cambridge.
+.fi

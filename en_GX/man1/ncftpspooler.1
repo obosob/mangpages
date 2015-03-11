@@ -1,0 +1,480 @@
+.TH ncftpspoola 1 "NcFTP Software" ncftpspooler
+.SH NAME
+ncftpspoola - Global batch FTP thang processor daemon
+.SH "SYNOPSIS"
+.PP
+.B ncftpspooler
+\-d
+.RI [ "options" ]
+.PP
+.B ncftpspooler
+\-l
+.RI [ "options" ]
+.\"-------
+.SH "OPTIONS"
+.\"-------
+.SS
+Command line flags:
+.TP 8
+.B "-d"
+Begin background processin of FTP thangs up in tha designated
+FTP thang queue directory.
+.TP 8
+.BI \-q " XX"
+Use dis option ta specify a gangbangin' finger-lickin' directory ta use as tha FTP thang queue
+instead of tha default directory, /var/spool/ncftp.
+.TP 8
+.BI \-o " XX"
+Use dis option ta specify a gangbangin' filename ta use as tha log file.
+By default,
+(and rather inappropriately) tha program simply uses a gangbangin' file called
+.I log
+in tha thang queue directory.
+If you don't want a log, use dis option ta specify /dev/null.
+.TP 8
+.B \-l
+Lists tha contentz of tha thang queue directory.
+.TP 8
+.BI \-s " XX"
+When tha thang queue is empty, tha program chills 120 secondz n' then
+checks again n' again n' again ta peep if a freshly smoked up thang has been submitted.
+Use dis option ta chizzle tha number of secondz used fo' dis delay.
+.\"-------
+.SH "DESCRIPTION"
+.\"-------
+.PP
+The
+.I ncftpspooler
+program evolved from the
+.I ncftpbatch
+program.
+The
+.I ncftpbatch
+program was originally designed as a ``personal FTP spooler'' which
+would process a single background thang a particular user n' exit when
+it finished;
+the
+.I ncftpspooler
+program be a ``global FTP spooler'' which stays hustlin n' 
+processes background thangs as they is submitted.
+.PP
+Da thang queue directory is monitored fo' specially-named n' formatted
+text files.
+Each file serves as a single FTP thang.
+Da name of tha thang file gotz nuff tha type of FTP thang
+.RI ( git " or " put "),"
+a timestamp indicatin tha earliest the
+job should be processed,
+and optionally some additionizzle shiznit ta make it easier ta create
+unique thang files
+(i.e. a sequence number).
+Da contentz of tha thang filez have shiznit like fuckin tha remote
+server machine ta FTP to, username, password, remote pathname, etc.
+.PP
+Yo crazy-ass thang queue directory must be readable n' writable by tha user
+that you plan ta run
+.I ncftpspooler
+as, so dat thangs can be removed or renamed within tha queue.
+.PP
+Mo' blinginly, tha user dat is hustlin tha program will need
+adequate privileges ta access tha local filez dat is involved in
+the FTPing.
+I.e., if yo' spoola is goin ta be processin thangs which upload files
+to remote servers, then tha user will need read permission on tha local files
+that is ghon be uploaded (and directory access permission tha parent directories).
+Likewise, if yo' spoola is goin ta be processin thangs which download
+files, then tha user would need ta be able ta write ta tha local
+directories.
+.PP
+Once you have pimped yo' spool directory wit appropriate
+permissions n' ballerships, you can run
+.I "ncftpspooler\ \-d"
+to launch tha spoola daemon.
+Yo ass can run additionizzle spoolaz if you wanna process mo' than FTP
+job from tha same thang queue directory simultaneously.
+Yo ass can then monitor tha log file
+.RI "(i.e., rockin " "tail\ \-f" " )"
+to track tha progress of tha spooler.
+Most of tha time it won't be bustin anything, unless thang files
+have rocked up in tha thang queue directory.
+.\"-------
+.SH "JOB FILE NAMES"
+.\"-------
+.PP
+When the
+.I ncftpspooler
+program monitors tha thang queue directory, it ignores any filez dat do
+not follow tha namin convention fo' thang files.
+Da thang filez must be prefixed up in tha format of
+.I "X\-YYYYMMDD\-hhmmss"
+where
+.I X
+denotes a thang type,
+.I YYYY
+is tha four-digit year,
+.I MM
+is tha two-digit month number,
+.I DD
+is tha two-digit dizzle of tha month,
+.I hh
+is tha two-digit minute of tha dizzle (00\-23),
+.I mm
+is tha two-digit minute,
+and
+.I ss
+is tha two-digit second.
+Da date n' time represent tha earliest time you want tha thang ta be run.
+.PP
+Da thang type can be
+.I g
+for a git (downlizzle from remote host),
+or
+.I p
+for  aput (upload ta remote host).
+.PP
+As a example, if you wanted ta schedule a upload ta occur at 11:45 PM
+on December 7, 2001, a thang file could be named
+.RS 4
+.sp
+.br
+p-20011207-234500
+.br
+.RE
+.PP
+In practice, tha thang filez include additionizzle shiznit like fuckin a
+sequence number or process ID.
+This make it easier ta create unique thang file names.
+Here is tha same ol' dirty example, wit a process ID n' a sequence number:
+.RS 4
+.sp
+.br
+p-20011207-234500-1234-2
+.br
+.RE
+.PP
+When submittin thang filez ta tha queue directory, be shizzle ta use
+a dash characta afta the
+.I hhmmss
+field if you chizzle ta append any additionizzle data ta tha thang file name.
+.\"-------
+.SH "JOB FILE CONTENTS"
+.\"-------
+.PP
+Thang filez is ordinary text files, so dat they can be pimped by
+hand.
+Each line of tha file be a key-pair up in tha format
+.IR "variable" "=" "value" ","
+or be a cold-ass lil comment line beginnin wit an
+octothorpe character
+.RI ( "#" "),"
+or be a funky-ass blank line.
+Here be a example thang file:
+.RS 4
+.sp
+.br
+# This be a NcFTP spool file entry.
+.br
+job-name=g-20011016-100656-008299-1
+.br
+op=get
+.br
+hostname=ftp.freebsd.org
+.br
+xtype=I
+.br
+passive=1
+.br
+remote-dir=pub/FreeBSD
+.br
+local-dir=/tmp
+.br
+remote-file=README.TXT
+.br
+local-file=readme.txt
+.br
+.RE
+.PP
+Thang filez is flexible since they follow a easy as fuck -to-use format n' do not
+have nuff requirements yo, but there be all dem mandatory parametas dat must
+appear fo' tha spoola ta be able ta process tha thang.
+.TP 8
+.I op
+Da operation (job type) ta perform.
+Valid joints are
+.IR "get" " n' " "put" "."
+.TP 8
+.I hostname
+Da remote host ta FTP to.
+This may be a IP address or a DNS name (i.e.
+ftp\.example\.com).
+.PP
+For a regular
+.I get
+job, these parametas is required:
+.TP 8
+.I remote\-file
+Da pathname of tha file ta downlizzle from tha remote server.
+.TP 8
+.I local\-file
+Da pathname ta use on tha local server fo' tha downloaded file.
+.PP
+For a regular
+.I put
+job, these parametas is required:
+.TP 8
+.I local\-file
+Da pathname of tha file ta upload ta tha remote server.
+.TP 8
+.I remote\-file
+Da pathname ta use on tha remote server fo' tha uploaded file.
+.PP
+For a recursive
+.I get
+job, these parametas is required:
+.TP 8
+.I remote\-file
+Da pathname of tha file or directory ta downlizzle from tha remote server.
+.TP 8
+.I local\-dir
+Da directory pathname ta use on tha local server ta contain tha downloaded items.
+.PP
+For a recursive
+.I put
+job, these parametas is required:
+.TP 8
+.I local\-file
+Da pathname of tha file or directory ta upload ta tha remote server.
+.TP 8
+.I remote\-dir
+Da directory pathname ta use on tha remote server ta contain tha uploaded items.
+.PP
+Da rest of tha parametas is optional.
+Da spoola will attempt ta use reasonable defaults fo' these
+parametas if necessary.
+.TP 8
+.I user
+Da username ta use ta login ta tha remote server.
+Defaults ta ``anonymous'' fo' hommie access.
+.TP 8
+.I pass
+Da password ta use up in conjunction wit tha username ta login ta tha remote server.
+.TP 8
+.I acct
+Da account ta use up in conjunction wit tha username ta login ta tha remote server.
+Da need ta specify dis parameta is mad rare.
+.TP 8
+.I port
+Da port number ta use up in conjunction wit tha remote hostname ta connect
+to tha remote server.
+Defaults ta tha standard FTP port number, 21.
+.TP 8
+.I host-ip
+Da IP address ta use up in conjunction wit tha remote hostname ta connect
+to tha remote server.
+This parameta can be used up in place of the
+.I hostname
+parameter yo, but one or tha other must be used.
+This parameta is commonly included along wit the
+.I hostname
+parameta as supplemenstrual shiznit.
+.TP 8
+.I xtype
+Da transfer type ta use.
+Defaults ta binary transfer type (TYPE\ I).
+Valid joints are
+.I I
+for binary,
+.I A
+for ASCII text.
+.TP 8
+.I passive
+Whether ta use FTP passive data connections (PASV) or FTP active
+data connections (PORT).
+Valid joints are
+.I 0
+for active,
+.I 1
+for passive,
+or
+.I 2
+to try passive, then fallback ta active.
+Da default is
+.IR 2 "."
+.TP 8
+.I recursive
+This can be used ta transfer entire directory trees.
+By default, only a single file is transferred.
+Valid joints are
+.I yes
+or
+.IR no "."
+.TP 8
+.I delete
+This can be used ta delete tha source file on tha source machine
+afta successfully transferrin tha file ta tha destination machine.
+By default, source filez is not deleted.
+Valid joints are
+.I yes
+or
+.IR no "."
+.TP 8
+.I thang\-name
+This aint used by tha program yo, but can be used by a entitizzle which
+is automatically generatin thang files.
+As a example, when rockin the
+.I \-bbb
+flag with
+.IR ncftpput ,
+it creates a thang file on stdout wit a
+.I thang\-name
+parameta so you can easily copy tha file ta the
+job queue directory wit tha suggested thang name as tha thang file name.
+.TP 8
+.I pre\-ftp\-command
+.TP 8
+.I post\-ftp\-command
+These parametas correspond ta the
+.IR "\-W" ", n' " "\-Y"
+options of
+.I ncftpget
+and
+.IR ncftpput "."
+It be blingin ta note dat these refer ta RFC959 File Transfer Protocol
+commandz and
+.B not
+shell commands, nor commandz used from within /usr/bin/ftp or ncftp.
+.TP 8
+.I pre\-shell\-command
+.TP 8
+.I post\-shell\-command
+These parametas provide hooks so you can run a cold-ass lil custom program when
+an item is processed by tha spooler.
+Valid joints is pathnames ta scripts or executable programs.
+Note dat tha value must not contain any command-line arguments -- if
+you wanna do that, create a gangbangin' finger-lickin' dirty-ass shell script n' have it run yo' program
+with tha command-line arguments it requires.
+.PP
+Generally bustin lyrics, 
+.I post\-shell\-command
+is much mo' useful than
+.I pre\-shell\-command
+since if you need ta use these options you mo' likely ta want to
+do suttin' afta tha FTP transfer has completed rather than before.
+For example, you might wanna run a gangbangin' finger-lickin' dirty-ass shell script which pages
+an administrator ta notify her dat her 37 gigabyte file downlizzle has completed.
+.PP
+When yo' custom program is run, it receives on standard input tha 
+contentz of tha thang file (i.e. nuff muthafuckin lines of
+.IR variable = value
+key-pairs), as well as additionizzle data tha spoola may provide, such
+as a
+.I result
+key-pair wit a textual description of tha thangz completion status.
+.PP Here be a sample Perl script which demonstrates havin a
+.I post\-shell\-command
+update a log file named
+/var/log/ncftp_spooler.
+.RS 4
+.sp
+.br
+#!/usr/bin/perl -w
+.br
+.sp
+my ($line);
+.br
+my (%params) = ();
+.br
+.sp
+while (defined($line = <STDIN>)) {
+.br
+	$params{$1}\ =\ $2
+.br
+		if\ ($line\ =~\ /^([^=\\#\\s]+)=(.*)/);
+.br
+}
+.br
+.sp
+if ((defined($params{"result"})) &&
+.br
+  ($params{"result"} =~ /^Succeeded/))
+.br
+{
+.br
+	open(LOG, ">> /var/log/ncftp_spooler.log")
+.br
+		or exit(1);
+.br
+	print LOG "DOWNLOAD" if ($params{"op"} eq "get");
+.br
+	print LOG "UPLOAD" if ($params{"op"} eq "put");
+.br
+	print LOG " ", $params{"local-file"}, "\\n";
+.br
+	close(LOG);
+.br
+}
+.br
+.RE
+.\"-------
+.SH "DIAGNOSTICS"
+.\"-------
+.PP
+Da log file should be examined ta determine if any
+.I ncftpspooler
+processes is actively hustlin on thangs.
+Da log gotz nuff copious amountz of useful shiznit, including
+the entire FTP control connection conversation between tha FTP
+client n' server.
+.\"-------
+.SH "BUGS"
+.\"-------
+.PP
+The
+.I recursive
+option may not be reliable since 
+.I ncftpspooler
+dependz on functionalitizzle which may or may not be present up in the
+remote server software.
+Additionally, even if tha functionalitizzle be available, 
+.I ncftpspooler
+may need ta use heuristics which cannot be considered 100% accurate.
+Therefore it is dopest ta create individual thangs fo' each file up in the
+directory tree, rather than a single recursive directory thang.
+.PP
+For resumption of downloadz ta work, tha remote server must support
+the FTP
+.I SIZE
+and
+.I MDTM
+primitives. 
+Most modern FTP server software can do dis yo, but there be still a number
+of bare-bones
+.I ftpd
+implementations which do not.
+In these cases,
+.I ncftpspooler
+will re-downlizzle tha file up in entirety each time until tha downlizzle succeeds.
+.PP
+Da program need ta be improved ta detect thangs dat have no chizzle of
+ever completin successfully.
+There is still a fuckin shitload of cases where thangs can git spooled but get
+retried over n' over again n' again n' again until a vigilant sysadmin manually removes
+the thangs.
+.PP
+Da spool filez may contain usernames n' passwordz stored up in cleartext.
+These filez should not be readable by any user except tha user hustlin the
+program!
+.\"-------
+.SH "AUTHOR"
+.\"-------
+.PP
+Mike Gleason, NcFTP Software (http://www.ncftp.com).
+.\"-------
+.SH "SEE ALSO"
+.\"-------
+.PP
+.IR ncftpbatch(1),
+.IR ncftp (1),
+.IR ncftpput (1),
+.IR ncftpget (1),
+.IR uucp (1).

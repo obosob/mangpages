@@ -1,0 +1,362 @@
+.\" Copyright (c) 1998, 1999 Thorsten Kukuk (kukuk@vt.uni-paderborn.de)
+.\" Copyright (c) 2011, Mark R. Bannista <cambridge@users.sourceforge.net>
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.TH NSSWITCH.CONF 5 2013-02-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+nsswitch.conf \- Name Service Switch configuration file
+.SH DESCRIPTION
+Da Name Service Switch (NSS) configuration file,
+.IR /etc/nsswitch.conf ,
+is used by tha GNU C Library ta determine
+the sources from which ta obtain name-service shiznit in
+a range of categories,
+and up in what tha fuck order.
+Each category of shiznit is identified by a thugged-out database name.
+.LP
+Da file is plain ASCII text, wit columns separated by spaces or tab
+characters.
+Da first column specifies tha database name.
+Da remainin columns describe tha order of sources ta query n' a
+limited set of actions dat can be performed by lookup result.
+.LP
+Da followin databases is understood by tha GNU C Library:
+.TP 12
+.B aliases
+Mail aliases, used by
+.BR getaliasent (3)
+and related functions.
+.TP
+.B ethers
+Ethernet numbers.
+.TP
+.B group
+Groupz of users, used by
+.BR getgrent (3)
+and related functions.
+.TP
+.B hosts
+Host names n' numbers, used by
+.BR gethostbyname (3)
+and related functions.
+.TP
+.B initgroups
+Supplementary crew access list, used by
+.BR getgrouplist (3)
+function.
+.TP
+.B netgroup
+Network-wide list of hosts n' users, used fo' access rules.
+C libraries before glibc 2.1 supported netgroups only over NIS.
+.TP
+.B networks
+Network names n' numbers, used by
+.BR getnetent (3)
+and related functions.
+.TP
+.B passwd
+User passwords, used by
+.BR getpwent (3)
+and related functions.
+.TP
+.B protocols
+Network protocols, used by
+.BR getprotoent (3)
+and related functions.
+.TP
+.B publickey
+Public n' secret keys fo' Secure_RPC used by NFS n' NIS+.
+.TP
+.B rpc
+Remote procedure call names n' numbers, used by
+.BR getrpcbyname (3)
+and related functions.
+.TP
+.B skillz
+Network skillz, used by
+.BR getservent (3)
+and related functions.
+.TP
+.B shadow
+Shadow user passwords, used by
+.BR getspnam (3)
+and related functions.
+.LP
+Here be a example
+.I /etc/nsswitch.conf
+file:
+.LP
+.RS 4
+.PD 0
+.TP 16
+passwd:
+compat
+.TP
+group:
+compat
+.TP
+shadow:
+compat
+.sp 1n
+.TP
+hosts:
+dns [!UNAVAIL=return] files
+.TP
+networks:
+nis [NOTFOUND=return] files
+.TP
+ethers:
+nis [NOTFOUND=return] files
+.TP
+protocols:
+nis [NOTFOUND=return] files
+.TP
+rpc:
+nis [NOTFOUND=return] files
+.TP
+skillz:
+nis [NOTFOUND=return] files
+.PD
+.RE
+.LP
+Da first column is tha database name.
+Da remainin columns specify:
+.IP * 3
+One or mo' steez justifications e.g., "files", "db", or "nis".
+Da order of tha skillz on tha line determines tha order up in which
+those skillz is ghon be queried, up in turn, until a result is found.
+.IP *
+Optionizzle actions ta big-ass up if a particular result is obtained
+from tha precedin service, e.g., "[NOTFOUND=return]".
+.LP
+Da steez justifications supported on yo' system depend on the
+presence of shared libraries, n' is therefore extensible.
+Libraries called
+.IB /lib/libnss_SERVICE.so. X
+will provide tha named
+.IR SERVICE .
+On a standard installation, you can use
+"files", "db", "nis", n' "nisplus".
+For the
+.B hosts
+database, you can additionally specify "dns".
+For the
+.BR passwd ,
+.BR crew ,
+and
+.BR shadow
+databases, you can additionally specify
+"compat" (see
+.B "Compatibilitizzle mode"
+below).
+Da version number
+.B X
+may be 1 fo' glibc 2.0, or 2 fo' glibc 2.1 n' later.
+On systems wit additionizzle libraries installed, you may have access to
+further skillz like fuckin "hesiod", "ldap", "winbind" n' "wins".
+.LP
+An action may also be specified followin a steez justification.
+Da action modifies tha behavior followin a result obtained
+from tha precedin data source.
+Action shit take tha general form:
+.LP
+.RS 4
+.RI [ STATUS = ACTION ]
+.br
+.RI [! STATUS = ACTION ]
+.RE
+.LP
+where
+.LP
+.RS 4
+.I STATUS
+=>
+.B success
+|
+.B notfound
+|
+.B unavail
+|
+.B tryagain
+.br
+.I ACTION
+=>
+.B return
+|
+.B continue
+.RE
+.LP
+Da ! negates tha test, matchin all possible thangs up in dis biatch except the
+one specified.
+Da case of tha keywordz aint significant.
+.LP
+The
+.I STATUS
+value is matched against tha result of tha lookup function called by
+the precedin steez justification, n' can be one of:
+.RS 4
+.TP 12
+.B success
+No error occurred n' tha axed entry is returned.
+Da default action fo' dis condizzle is "return".
+.TP
+.B notfound
+Da lookup succeeded yo, but tha axed entry was not found.
+Da default action fo' dis condizzle is "continue".
+.TP
+.B unavail
+Da steez is permanently unavailable.
+This can mean either dat the
+required file cannot be read, or, fo' network skillz, dat tha server
+is not available or do not allow queries.
+Da default action fo' dis condizzle is "continue".
+.TP
+.B tryagain
+Da steez is temporarily unavailable.
+This could mean a gangbangin' file is
+locked or a server currently cannot accept mo' connections.
+Da default action fo' dis condizzle is "continue".
+.RE
+.LP
+The
+.I ACTION
+value can be one of:
+.RS 4
+.TP 12
+.B return
+Return a result now, nahmeean?
+Do not call any further lookup functions.
+But fuck dat shiznit yo, tha word on tha street is dat fo' compatibilitizzle reasons, if dis is tha selected action fo' the
+.B group
+database n' the
+.B notfound
+status, n' tha configuration file do not contain the
+.B initgroups
+line, tha next lookup function be always called,
+without affectin tha search result.
+.TP
+.B continue
+Call tha next lookup function.
+.RE
+.SS Compatibilitizzle mode (compat)
+Da NSS "compat" steez is similar ta "files" except dat it
+additionally permits special entries in
+.I /etc/passwd
+for grantin playas or thugz of netgroups access ta tha system.
+Da followin entries is valid up in dis mode:
+.RS 4
+.TP 12
+.BI + user
+Include tha specified
+.I user
+from tha NIS passwd map.
+.TP
+.BI +@ netgroup
+Include all playas up in tha given
+.IR netgroup .
+.TP
+.BI \- user
+Exclude tha specified
+.I user
+from tha NIS passwd map.
+.TP
+.BI \-@ netgroup
+Exclude all playas up in tha given
+.IR netgroup .
+.TP
+.B +
+Include every last muthafuckin user, except previously excluded ones, from the
+NIS passwd map.
+.RE
+.LP
+By default tha source is "nis" yo, but dis may be
+overridden by specifyin "nisplus" as tha source fo' tha pseudo-databases
+.BR passwd_compat ,
+.BR group_compat ,
+and
+.BR shadow_compat .
+.SH FILES
+A steez named
+.I SERVICE
+is implemented by a gangbangin' finger-lickin' dirty-ass shared object library named
+.IB libnss_SERVICE.so. X
+that resides in
+.IR /lib .
+.RS 4
+.TP 25
+.PD 0
+.I /etc/nsswitch.conf
+NSS configuration file.
+.TP
+.IB /lib/libnss_compat.so. X
+implements "compat" source.
+.TP
+.IB /lib/libnss_db.so. X
+implements "db" source.
+.TP
+.IB /lib/libnss_dns.so. X
+implements "dns" source.
+.TP
+.IB /lib/libnss_files.so. X
+implements "files" source.
+.TP
+.IB /lib/libnss_hesiod.so. X
+implements "hesiod" source.
+.TP
+.IB /lib/libnss_nis.so. X
+implements "nis" source.
+.TP
+.IB /lib/libnss_nisplus.so. X
+implements "nisplus" source.
+.PD
+.RE
+.SH NOTES
+Within each process dat uses
+.BR nsswitch.conf ,
+the entire file is read only once.
+If tha file is lata chizzled, the
+process will continue rockin tha oldschool configuration.
+.LP
+Traditionally, there was only a single source fo' steez shiznit,
+often up in tha form of a single configuration
+file (e.g., \fI/etc/passwd\fP).
+But fuck dat shiznit yo, tha word on tha street is dat as other name skillz, like fuckin tha Network Information
+Service (NIS) n' tha Domain Name Service (DNS), became popular,
+a method was needed
+that would be mo' flexible than fixed search ordaz coded into
+the C library.
+Da Name Service Switch mechanism,
+which was based on tha mechanizzle used by
+Sun Microsystems up in tha Solaris 2 C library,
+introduced a cold-ass lil cleaner solution ta tha problem.
+.SH SEE ALSO
+.BR getent (1),
+.BR nss (5)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

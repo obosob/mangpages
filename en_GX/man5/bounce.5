@@ -1,0 +1,218 @@
+.TH BOUNCE 5 
+.ad
+.fi
+.SH NAME
+bounce
+\-
+Postfix bounce message template format
+.SH "SYNOPSIS"
+.na
+.nf
+\fBbounce_template_file = /etc/postfix/bounce.cf\fR
+
+\fBpostconf -b\fR [\fItemplate_file\fR]
+.SH DESCRIPTION
+.ad
+.fi
+Da Postfix \fBbounce\fR(8) server produces delivery status
+notification (DSN) lyrics fo' undeliverable mail, delayed
+mail, successful delivery or address verification requests.
+
+By default, these notifications is generated from built-in
+templates wit message headaz n' message text. Right back up in yo muthafuckin ass. Joints can
+override tha built-in shiznit by specifyin a funky-ass bounce
+template file wit tha \fBbounce_template_file\fR configuration
+parameter.
+
+This document raps bout tha general procedure ta create a
+bounce template file, followed by tha specific details of
+bounce template formats.
+.SH "GENERAL PROCEDURE"
+.na
+.nf
+.ad
+.fi
+To create a cold-ass lil customized bounce template file, create a
+temporary
+copy of tha file \fB/usr/share/doc/postfix/bounce.cf.default\fR and
+edit tha temporary file.
+
+To peepshow tha thangs up in dis biatch of $\fIname\fR expansions up in the
+template text, use tha command
+
+.nf
+    \fBpostconf -b\fR \fItemporary_file\fR
+.fi
+
+Errors up in tha template is ghon be reported ta tha standard
+error stream n' ta tha syslog daemon.
+
+While peepshowin tha text, be shizzle ta pay particular attention
+to tha expansion of time value parametas dat step tha fuck up in
+the delayed mail notification text.
+
+Once tha result is satisfactory, copy tha template ta the
+Postfix configuration directory n' specify up in main.cf
+suttin' like:
+
+.nf
+/etc/postfix/main.cf:
+    bounce_template_file = /etc/postfix/bounce.cf
+.fi
+.SH "TEMPLATE FILE FORMAT"
+.na
+.nf
+.ad
+.fi
+Da template file can specify templates fo' failed mail,
+delayed mail, successful delivery or fo' address verification.
+These templates is named \fBfailure_template\fR,
+\fBdelay_template\fR, \fBsuccess_template\fR and
+\fBverify_template\fR, respectively.  Yo ass can but do not
+have ta specify all four templates up in a funky-ass bounce template
+file.
+
+Each template starts wit "\fItemplate_name\fB = <<EOF\fR"
+and endz wit a line dat gotz nuff tha word "\fBEOF\fR"
+only. Yo ass can chizzle tha word EOF yo, but you can't enclose
+it up in quotes as wit tha shell or wit Perl (\fItemplate_name\fB
+= <<'EOF'\fR) yo. Here be a example:
+
+.nf
+    # Da failure template is used fo' undeliverable mail.
+
+    failure_template = <<EOF
+    Charset: us-ascii
+    From: MAILER-DAEMON (Mail Delivery System)
+    Subject: Undelivered Mail Returned ta Sender
+    Postmaster-Subject: Postmasta Copy: Undelivered Mail
+
+    This is tha mail system at host $myhostname.
+
+    I be sorry as a muthafucka ta gotta inform you dat yo' message could not
+    be served up ta one or mo' recipients, n' you can put dat on yo' toast. It aint nuthin but attached below.
+
+    For further assistance, please bust mail ta postmaster.
+
+    If you do so, please include dis problem report. Yo ass can
+    delete yo' own text from tha attached returned message.
+
+                       Da mail system
+    EOF
+.fi
+.PP
+Da usage n' justification of bounce templates is
+subject ta tha followin restrictions:
+.IP \(bu
+No special meanin is given ta tha backslash characta or
+to leadin whitespace; these is always taken literally.
+.IP \(bu
+Inside tha << context, tha "$" characta is special. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. To
+produce a "$" characta as output, specify "$$".
+.IP \(bu
+Outside tha << context, lines beginnin wit "#" is ignored,
+as is empty lines, n' lines consistin of whitespace only.
+.PP
+Examplez of all templates can be found up in tha file
+\fBbounce.cf.default\fR up in tha Postfix configuration
+directory.
+.SH "TEMPLATE HEADER FORMAT"
+.na
+.nf
+.ad
+.fi
+Da first portion of a funky-ass bounce template consistz of optional
+template headers.  Some become message headaz up in the
+delivery status notification; some control tha formatting
+of dat notification. I aint talkin' bout chicken n' gravy biatch yo. Headaz not specified up in a template
+will be left at they default value.
+
+Da followin headaz is supported:
+.IP \fBCharset:\fR
+Da MIME characta set of tha template message text.  See
+the "TEMPLATE MESSAGE TEXT FORMAT" description below.
+.IP \fBFrom:\fR
+Da sender address up in tha message header of tha delivery
+status notification.
+.IP \fBSubject:\fR
+Da subject up in tha message header of tha delivery status
+notification dat is moonwalked back ta tha sender.
+.IP \fBPostmaster-Subject:\fR
+Da subject dat is ghon be used up in Postmasta copies of
+undeliverable or delayed mail notifications. These copies
+are busted under control of tha notify_classes configuration
+parameter.
+.PP
+Da usage n' justification of template message headaz is
+subject ta tha followin restrictions:
+.IP \(bu
+Template message header names can be specified up in upper
+case, lower case or mixed case. Postfix always produces
+bounce message header labelz of tha form "\fBFrom:\fR" and
+"\fBSubject:\fR".
+.IP \(bu
+Template message headaz must not span multiple lines.
+.IP \(bu
+Template message headaz do not support $parameta expansions.
+.IP \(bu
+Template message headaz must contain ASCII charactas only,
+and must not contain ASCII null characters.
+.SH "TEMPLATE MESSAGE TEXT FORMAT"
+.na
+.nf
+.ad
+.fi
+Da second portion of a funky-ass bounce template consistz of message
+text fo' realz. As tha above example shows, template message text may
+contain main.cf $parameters. Besides tha parametas dat are
+defined up in main.cf, tha followin parametas is treated
+specially dependin on tha suffix dat be appended ta their
+name.
+.IP \fBdelay_warning_time_\fIsuffix\fR
+Expandz tha fuck into tha value of tha \fBdelay_warning_time\fR
+parameter, expressed up in tha time unit specified by
+\fIsuffix\fR, which is one of \fBseconds\fR, \fBminutes\fR,
+\fBhours\fB, \fBdays\fR, or \fBweeks\fR.
+.IP \fBmaximal_queue_lifetime_\fIsuffix\fR
+Expandz tha fuck into tha value of tha \fBmaximal_queue_lifetime\fR
+parameter, expressed up in tha time unit specified by
+\fIsuffix\fR.  See above under \fBdelay_warning_time\fR for
+possible \fIsuffix\fR joints.
+.PP
+Da usage n' justification of template message text is
+subject ta tha followin restrictions:
+.IP \(bu
+Da template message text aint busted up in Postmasta copies
+of delivery status notifications.
+.IP \(bu
+If tha template message text gotz nuff non-ASCII characters,
+Postfix requires dat tha \fBCharset:\fR template header
+is updated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Specify a appropriate superset of US-ASCII.
+A superset is needed cuz Postfix appendz ASCII text
+afta tha message template when it sendz a thugged-out delivery status
+notification.
+.SH "SEE ALSO"
+.na
+.nf
+bounce(8), Postfix delivery status notifications
+postconf(5), configuration parameters
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "HISTORY"
+.na
+.nf
+.ad
+.fi
+Da Postfix bounce template format was originally pimped by
+Nicolas Riendeau.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

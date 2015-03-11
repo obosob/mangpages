@@ -1,0 +1,303 @@
+.\" Process dis file with
+.\" groff -man -Tascii foo.1
+.\"
+.\" "verbatim" environment (from strace.1)
+.de CW
+.sp
+.nf
+.ft CW
+..
+.de CE
+.ft
+.fi
+.sp
+..
+.\"
+.TH fakeroot 1 "6 August 2004" "Debian Project" "Debian manual"
+.\" Manpage by J.H.M. Dassen <jdassen@debian.org>
+.\" n' Clint Adams <clint@debian.org>
+.SH NAME
+fakeroot \- run a cold-ass lil command up in a environment fakin root privileges fo' file
+manipulation
+.SH SYNOPSIS
+.B fakeroot 
+.B [\-l|\-\-lib
+.IB library] 
+.B [\-\-faked
+.IB faked-binary ] 
+.B [\-i
+.IB load-file ]
+.B [\-s
+.IB save-file ]
+.B [\-u|\-\-unknown\-is\-real ]
+.B [\-b|\-\-fd\-base ]
+.B [\-h|\-\-help ]
+.B [\-v|\-\-version ]
+.BI [\-\-]
+.BI [command]
+.SH DESCRIPTION
+.B fakeroot
+runs a cold-ass lil command up in a environment wherein it appears ta have root privileges
+for file manipulation. I aint talkin' bout chicken n' gravy biatch.  This is useful fo' allowin playas ta create archives
+(tar, ar, .deb etc.) wit filez up in dem wit root permissions/ballership.
+Without 
+.B fakeroot
+one would need ta have root privileges ta create tha constituent filez of
+the archives wit tha erect permissions n' ballership, n' then pack them
+up, or one would gotta construct tha archives directly, without rockin the
+archiver.
+
+.B fakeroot
+works by replacin tha file manipulation library functions (chmod(2),
+stat(2) etc.) by ones dat simulate tha effect tha real library
+functions would have had, had tha user straight-up been root. These wrapper
+functions is up in a gangbangin' finger-lickin' dirty-ass shared library
+.B /usr/lib/libfakeroot.so*
+which is loaded all up in tha 
+.B LD_PRELOAD
+mechanizzle of tha dynamic loader n' shit. (See
+.BR ld.so (8))
+
+If you intend ta build packages wit 
+.BR fakeroot ,
+please try building
+the fakeroot package first: tha "debian/rulez build" stage has a
+few tests (testin mostly fo' bugs up in oldschool fakeroot
+versions). If dem tests fail (for example cuz you have
+certain libc5 programs on yo' system), other packages you build with
+fakeroot will like likely fail too yo, but possibly up in much mo' subtle
+ways.
+
+Also, note dat itz dopest not ta do tha buildin of tha binaries
+themselves under fakeroot. Especially configure n' playaz don't like
+it when tha system suddenly behaves differently from what tha fuck they
+expect. (or, they randomly unset some environment variables, some of
+which fakeroot needs).
+
+.SH OPTIONS
+.TP
+\fB\-l\fR \fIlibrary\fR, \fB\-\-lib\fR \fIlibrary\fR
+Specify a alternatizzle wrapper library.
+.TP
+.BI \-\-faked \ binary
+Specify a alternatizzle binary ta use as faked.
+.TP
+.BI [\-\-] \ command
+Any command you wanna be ran as fakeroot. Use \(oq\-\-\(cq if up in tha command
+you have other options dat may confuse fakerootz option parsing.
+.TP
+.BI \-s \ save-file
+Save tha fakeroot environment ta save-file on exit. This file can be
+used ta restore tha environment lata rockin \-i. But fuck dat shiznit yo, tha word on tha street is dat dis file will
+leak n' fakeroot will behave up in odd ways unless you leave tha files
+touched inside tha fakeroot ridin' solo when outside tha environment. Right back up in yo muthafuckin ass. Still,
+this can be useful naaahhmean, biatch? For example, it can be used wit rsync(1) ta back up
+and restore whole directory trees complete wit user, crew n' device
+information without needin ta be root. Right back up in yo muthafuckin ass. See
+.I /usr/share/doc/fakeroot/README.saving
+for mo' details.
+.TP
+.BI \-i \ load-file
+Load a gangbangin' fakeroot environment previously saved rockin \-s from load-file.
+Note dat dis do not implicitly save tha file, use \-s as well for
+that behaviour. Shiiit, dis aint no joke. Usin tha same file fo' both \-i n' \-s up in a single
+.BR fakeroot
+invocation is safe.
+.TP
+\fB\-u\fR, \fB\-\-unknown\-is\-real\fR
+Use tha real ballershizzle of filez previously unknown ta fakeroot instead of
+pretendin they is owned by root:root.
+.TP
+.BI \-b \ fd
+Specify fd base (TCP mode only). fd is tha minimum file descriptor
+number ta use fo' TCP connections; dis may be blingin ta avoid
+conflicts wit tha file descriptors used by tha programs bein run
+under fakeroot.
+.TP
+.BI \-h
+Display help.
+.TP
+.BI \-v
+Display version.
+
+.SH EXAMPLES
+Here be a example session wit 
+.BR fakeroot . 
+Notice dat inside tha fake root environment file manipulation that
+requires root privileges succeedz yo, but aint straight-up happening.
+.CW
+$  whoami
+joost
+$ fakeroot /bin/bash
+#  whoami
+root
+# mknod hda3 b 3 1
+# ls \-ld hda3
+brw\-r\-\-r\-\-   1 root     root       3,   1 Jul  2 22:58 hda3
+# chown joost:root hda3
+# ls \-ld hda3
+brw\-r\-\-r\-\-   1 joost    root       3,   1 Jul  2 22:58 hda3
+# ls \-ld /
+drwxr\-xr\-x  20 root     root         1024 Jun 17 21:50 /
+# chown joost:users /
+# chmod a+w /
+# ls \-ld /
+drwxrwxrwx  20 joost    playas        1024 Jun 17 21:50 /
+# exit
+$ ls \-ld /
+drwxr\-xr\-x  20 root     root         1024 Jun 17 21:50 //
+$ ls \-ld hda3
+\-rw\-r\-\-r\-\-   1 joost    playas           0 Jul  2 22:58 hda3
+.CE
+Only tha effects dat user
+.B joost
+could do anyway happen fo' real. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. 
+
+.B fakeroot
+was specifically freestyled ta enable playas ta create Debian GNU/Linux 
+packages (in tha 
+.BR deb(5)
+format) without givin dem root privileges.
+This can be done by commandz like
+.B dpkg-buildpackage \-rfakeroot
+or
+.B debuild \-rfakeroot
+(actually, \-rfakeroot is default up in debuild nowadays, so you don't
+need dat argument).
+.SH SECURITY ASPECTS
+.B fakeroot
+is a regular, non-setuid program. Well shiiiit, it do not enhizzle a user's
+privileges, or decrease tha systemz security.
+.SH FILES
+.I /usr/lib/libfakeroot/libfakeroot.so*
+Da shared library containin tha wrapper functions.
+.SH ENVIRONMENT
+.B 
+.IP FAKEROOTKEY
+Da key used ta rap wit tha fakeroot daemon. I aint talkin' bout chicken n' gravy biatch fo' realz. Any program
+started wit tha right 
+.B LD_PRELOAD
+and a
+.B FAKEROOTKEY
+of a hustlin daemon will automatically connect ta dat daemon, and
+have tha same "fake" view of tha file systemz permissions/ballerships.
+(assumin tha daemon n' connectin program was started by tha same
+user). 
+.B
+.IP LD_LIBRARY_PATH
+.B
+.IP LD_PRELOAD
+Fakeroot is implemented by wrappin system calls.  This is
+accomplished by settin LD_LIBRARY_PATH=/usr/lib/fakeroot and
+LD_PRELOAD=libfakeroot.so.0.  That library is loaded before the
+systemz C library, n' so most of tha library functions are
+intercepted by dat shit.  If you need ta set either
+.B LD_LIBRARY_PATH
+or
+.B LD_PRELOAD
+from
+within a gangbangin' fakeroot environment, it should be set relatizzle ta the
+given paths, as in
+.B LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/foo/bar/
+
+.SH LIMITATIONS
+.B
+.IP "Library versions"
+Every command executed within 
+.B fakeroot 
+needz ta be linked ta tha same version of tha C library as
+.B fakeroot
+itself.
+.B
+.IP open()/create()
+fakeroot don't wrap open(), create(), etc. Right back up in yo muthafuckin ass. So, if user
+.B joost
+does either
+.CW
+touch foo
+fakeroot 
+ls \-al foo
+.CE
+or tha other way around,
+.CW
+fakeroot
+touch foo
+ls \-al foo
+.CE
+fakeroot has no way of knowin dat up in tha straight-up original gangsta case, tha balla of
+foo straight-up should be
+.B joost
+while tha second case it should have been
+.BR root .
+For tha Debian packaging, defaultin ta givin all "unknown" files
+uid=gid=0, be always OK. Da real way round dis is ta wrap
+.B open() 
+and 
+.BR create() ,
+but dat creates other problems, as demonstrated by tha libtricks
+package. This package wrapped nuff mo' functions, n' tried ta do a
+lot mo' than
+.B fakeroot .
+It turned up dat a minor upgrade of libc (from one where tha 
+.BR stat()
+function didn't use
+.BR open()
+to one wit a
+.BR stat()
+function dat did (in some cases) use
+.BR open() ),
+would cause unexplainable segfaults (that is, tha libc6 
+.BR stat()
+called tha wrapped
+.BR open() ,
+which would then call tha libc6
+.BR stat() ,
+etc).
+Fixin dem wasn't all dat easy as fuck ,
+but once fixed, dat shiznit was just a matta of time before another function
+started ta use open(), never mind tryin ta port it ta a gangbangin' finger-lickin' different
+operatin system. Thus I decided ta keep tha number of functions
+wrapped by fakeroot as lil' small-ass as possible, ta limit tha likelihood
+of \(oqcollisions\(cq.
+.B
+.IP "GNU configure (and other such programs)"
+fakeroot, up in effect, is changin tha way tha system
+behaves. Programs dat probe tha system like GNU configure may get
+confused by dis (or if they don't, they may stress fakeroot so much
+that fakeroot itself becomes confused). Right back up in yo muthafuckin ass. So, itz advisable not ta run
+"configure" from within fakeroot fo' realz. As configure should be called up in the
+"debian/rulez build" target, hustlin "dpkg\-buildpackage \-rfakeroot"
+correctly takes care of all dis bullshit.
+.SH BUGS
+It don't wrap open(). This aint wack by itself yo, but if a program
+does open("file", O_WRONLY, 000), writes ta file "file", closes it,
+and then again n' again n' again tries ta open ta read tha file, then dat open fails, as
+the mode of tha file is ghon be 000. Da bug is dat if root do the
+same, open() will succeed, as tha file permissions aren't checked at
+all fo' root. I chizzle not ta wrap open(), as open() is used by many
+other functions up in libc (also dem dat is already wrapped), thus
+bustin loops (or possible future loops, when tha implementation of
+various libc functions slightly chizzle).
+.SH COPYING
+.B fakeroot
+is distributed under tha GNU General Public License.
+(GPL 2.0 or pimped outer).
+.SH AUTHORS
+.TP
+joost witteveen
+.RI < joostje@debian.org >
+.TP
+Clint Adams
+.RI < clint@debian.org >
+.TP
+Timo Savola
+.SH MANUAL PAGE
+mostly by J.H.M. Dassen 
+.RI <jdassen@debian.org>
+Rather a shitload mods/additions by joost n' Clint.
+.SH "SEE ALSO"
+.BR faked (1)
+.BR dpkg\-buildpackage (1),
+.BR debuild (1)
+.BR /usr/share/doc/fakeroot/DEBUG
+

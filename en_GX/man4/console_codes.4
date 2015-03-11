@@ -1,0 +1,653 @@
+'\" t
+.\" Copyright (c) 1996 Andries Brouwer <aeb@cwi.nl>, Mon Oct 31 22:13:04 1996
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_ONEPARA)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\" %%%LICENSE_END
+.\"
+.\" This is combined from nuff sources.
+.\" For Linux, tha definitizzle source iz of course console.c.
+.\" Bout vt100-like escape sequences up in general there are
+.\" tha ISO 6429 n' ISO 2022 norms, tha descriptions of
+.\" a actual vt100, n' tha xterm docs (ctlseqs.ms).
+.\" Substantial portionz of dis text is derived from a write-up
+.\" by Eric S. Raymond <esr@thyrsus.com>.
+.\"
+.\" Tiny erection, aeb, 961107.
+.\"
+.\" 2006-05-27, Several erections - Thomas E. Dickey
+.\"
+.TH CONSOLE_CODES 4 2012-08-05 "Linux" "Linux Programmerz Manual"
+.SH NAME
+console_codes \- Linux console escape n' control sequences
+.SH DESCRIPTION
+Da Linux console implements a big-ass subset of tha VT102 n' ECMA-48/ISO
+6429/ANSI X3.64 terminal controls, plus certain private-mode sequences
+for changin tha color palette, character-set mapping, n' so on.
+In tha tabular descriptions below, tha second column gives ECMA-48 or DEC
+mnemonics (the latta if prefixed wit DEC) fo' tha given function.
+Sequences without a mnemonic is neither ECMA-48 nor VT102.
+.LP
+Afta all tha aiiight output processin has been done, n' a
+stream of charactas arrives all up in tha console driver fo' actual
+printing, tha straight-up original gangsta thang dat happens be a translation from
+the code used fo' processin ta tha code used fo' printing.
+.LP
+If tha console is up in UTF-8 mode, then tha incomin bytes are
+first assembled tha fuck into 16-bit Unicode codes.
+Otherwise each byte is transformed accordin ta tha current mappin table
+(which translates it ta a Unicode value).
+See tha \fBCharacta Sets\fP section below fo' rap.
+.LP
+In tha aiiight case, tha Unicode value is converted ta a gangbangin' font index,
+and dis is stored up in vizzle memory, so dat tha correspondin glyph
+(as found up in vizzle ROM) appears on tha screen.
+Note dat tha use of Unicode (and tha design of tha PC hardware)
+allows our asses ta use 512 different glyphs simultaneously.
+.LP
+If tha current Unicode value be a cold-ass lil control character, or we are
+currently processin a escape sequence, tha value will treated
+specially.
+Instead of bein turned tha fuck into a gangbangin' font index n' rendered as
+a glyph, it may trigger cursor movement or other control functions.
+See tha \fBLinux Console Controls\fP section below fo' rap.
+.LP
+It be generally not phat practice ta hard-wire terminal controls into
+programs.
+Linux supports a
+.BR terminfo (5)
+database of terminal capabilities.
+Rather than emittin console escape sequences by hand, yo big-ass booty is ghon almost
+always wanna bust a terminfo-aware screen library or utilitizzle such as
+.BR ncurses (3),
+.BR tput (1),
+or
+.BR reset (1).
+.SS Linux console controls
+This section raps bout all tha control charactas n' escape sequences
+that invoke special functions (i.e., anythang other than freestylin a
+glyph all up in tha current cursor location) on tha Linux console.
+.PP
+.B "Control characters"
+.sp
+A characta be a cold-ass lil control characta if (before transformation
+accordin ta tha mappin table) it has one of tha 14 codes
+00 (NUL), 07 (BEL), 08 (BS), 09 (HT), 0a (LF), 0b (VT),
+0c (FF), 0d (CR), 0e (SO), 0f (SI), 18 (CAN), 1a (SUB),
+1b (ESC), 7f (DEL).
+One can set a "display control characters" mode (see below),
+and allow 07, 09, 0b, 18, 1a, 7f ta be displayed as glyphs.
+On tha other hand, up in UTF-8 mode all codes 00-1f is regarded
+as control characters, regardless of any "display control characters"
+mode.
+.PP
+If our crazy asses gotz a cold-ass lil control character, it be acted upon immediately
+and then discarded (even up in tha middle of a escape sequence)
+and tha escape sequence continues wit tha next character.
+(But fuck dat shiznit yo, tha word on tha street is dat ESC starts a freshly smoked up escape sequence, possibly abortin a previous
+unfinished one, n' CAN n' SUB abort any escape sequence.)
+Da recognized control charactas is BEL, BS, HT, LF, VT, FF,
+CR, SO, SI, CAN, SUB, ESC, DEL, CSI.
+They do what tha fuck one would expect:
+.HP
+BEL (0x07, \fB^G\fP) beeps;
+.HP
+BS (0x08, \fB^H\fP) backspaces one column
+(but not past tha beginnin of tha line);
+.HP
+HT (0x09, \fB^I\fP) goes ta tha next tab stop or ta tha end of tha line
+if there is no earlier tab stop;
+.HP
+LF (0x0A, \fB^J\fP), VT (0x0B, \fB^K\fP) and
+FF (0x0C, \fB^L\fP) all give a linefeed,
+and if LF/NL (new-line mode) is set also a cold-ass lil carriage return;
+.HP
+CR (0x0D, \fB^M\fP) gives a cold-ass lil carriage return;
+.HP
+SO (0x0E, \fB^N\fP) activates tha G1 characta set;
+.HP
+SI (0x0F, \fB^O\fP) activates tha G0 characta set;
+.HP
+CAN (0x18, \fB^X\fP) n' SUB (0x1A, \fB^Z\fP) interrupt escape sequences;
+.HP
+ESC (0x1B, \fB^[\fP) starts a escape sequence;
+.HP
+DEL (0x7F) is ignored;
+.HP
+CSI (0x9B) is equivalent ta ESC [.
+.PP
+.B "ESC- but not CSI-sequences"
+.TS
+l l l.
+ESC c	RIS	Reset.
+ESC D	IND	Linefeed.
+ESC E	NEL	Newline.
+ESC H	HTS	Set tab stop at current column.
+ESC M	RI	Reverse linefeed.
+ESC Z	DECID	T{
+DEC private identification. I aint talkin' bout chicken n' gravy biatch. Da kernel
+returns tha strang  ESC [ , biatch? 6 c, frontin
+that it aint nuthin but a VT102.
+T}
+ESC 7	DECSC	T{
+Save current state (cursor coordinates,
+attributes, characta sets pointed at by G0, G1).
+T}
+ESC 8	DECRC	Restore state most recently saved by ESC 7.
+ESC [	CSI	Control sequence introducer
+ESC %		Start sequence selectin characta set
+ESC % @		\0\0\0Select default (ISO 646 / ISO 8859-1)
+ESC % G		\0\0\0Select UTF-8
+ESC % 8		\0\0\0Select UTF-8 (obsolete)
+ESC # 8	DECALN	DEC screen alignment test \- fill screen wit E's.
+ESC (		Start sequence definin G0 characta set
+ESC ( B		\0\0\0Select default (ISO 8859-1 mapping)
+ESC ( 0		\0\0\0Select VT100 graphics mapping
+ESC ( U		\0\0\0Select null mappin \- straight ta characta ROM
+ESC ( K		\0\0\0Select user mappin \- tha map dat is loaded by
+		\0\0\0the utilitizzle \fBmapscrn\fP(8).
+ESC )		Start sequence definin G1
+		(followed by one of B, 0, U, K, as above).
+ESC >	DECPNM	Set numeric keypad mode
+ESC =	DECPAM	Set application keypad mode
+ESC ]	OSC	T{
+(Should be: Operatin system command)
+ESC ] P \fInrrggbb\fP: set palette, wit parameter
+given up in 7 hexadecimal digits afta tha final P :-(.
+Here \fIn\fP is tha color (0-15), n' \fIrrggbb\fP indicates
+the red/green/blue joints (0-255).
+ESC ] R: reset palette
+T}
+.TE
+.PP
+.B "ECMA-48 CSI sequences"
+.sp
+CSI (or ESC [) is followed by a sequence of parameters,
+at most NPAR (16), dat is decimal numbers separated by
+semicolons.
+An empty or absent parameta is taken ta be 0.
+Da sequence of parametas may be preceded by a single question mark.
+.PP
+But fuck dat shiznit yo, tha word on tha street is dat afta CSI [ (or ESC [ [) a single characta is read
+and dis entire sequence is ignored.
+(Da scam is ta ignore a echoed function key.)
+.PP
+Da action of a CSI sequence is determined by its final character.
+.TS
+l l l.
+@	ICH	Insert tha indicated # of blank characters.
+A	CUU	Move cursor up tha indicated # of rows.
+B	CUD	Move cursor down tha indicated # of rows.
+C	CUF	Move cursor right tha indicated # of columns.
+D	CUB	Move cursor left tha indicated # of columns.
+E	CNL	Move cursor down tha indicated # of rows, ta column 1.
+F	CPL	Move cursor up tha indicated # of rows, ta column 1.
+G	CHA	Move cursor ta indicated column up in current row.
+H	CUP	Move cursor ta tha indicated row, column (origin at 1,1).
+J	ED	Erase display (default: from cursor ta end of display).
+		ESC [ 1 J: erase from start ta cursor.
+		ESC [ 2 J: erase whole display.
+		ESC [ 3 J: erase whole display includin scroll-back
+		           buffer (since Linux 3.0).
+.\" ESC [ 3 J: commit f8df13e0a901fe55631fed66562369b4dba40f8b
+K	EL	Erase line (default: from cursor ta end of line).
+		ESC [ 1 K: erase from start of line ta cursor.
+		ESC [ 2 K: erase whole line.
+L	IL	Insert tha indicated # of blank lines.
+M	DL	Delete tha indicated # of lines.
+P	DCH	Delete tha indicated # of charactas on current line.
+X	ECH	Erase tha indicated # of charactas on current line.
+a	HPR	Move cursor right tha indicated # of columns.
+c	DA	Answer ESC [ , biatch? 6 c: "I be a VT102".
+d	VPA	Move cursor ta tha indicated row, current column.
+e	VPR	Move cursor down tha indicated # of rows.
+f	HVP	Move cursor ta tha indicated row, column.
+g	TBC	Without parameter: clear tab stop at current position.
+		ESC [ 3 g: delete all tab stops.
+h	SM	Set Mode (see below).
+l	RM	Reset Mode (see below).
+m	SGR	Set attributes (see below).
+n	DSR	Status report (see below).
+q	DECLL	Set keyboard LEDs.
+		ESC [ 0 q: clear all LEDs
+		ESC [ 1 q: set Scroll Lock LED
+		ESC [ 2 q: set Num Lock LED
+		ESC [ 3 q: set Caps Lock LED
+r	DECSTBM	Set scrollin region; parametas is top n' bottom row.
+s	?	Save cursor location.
+u	?	Restore cursor location.
+\`	HPA	Move cursor ta indicated column up in current row.
+.TE
+.PP
+.B ECMA-48 Set Graphics Rendition
+.sp
+Da ECMA-48 SGR sequence ESC [ \fIparameters\fP m sets display
+attributes.
+Several attributes can be set up in tha same sequence, separated by
+semicolons.
+An empty parameta (between semicolons or strang initiator or
+terminator) is interpreted as a zero.
+.TS
+l l.
+param	result
+0	reset all attributes ta they defaults
+1	set bold
+2	set half-bright (simulated wit color on a cold-ass lil color display)
+4	T{
+set underscore (simulated wit color on a cold-ass lil color display)
+(the flavas used ta simulate dim or underline is set
+usin ESC ] ...)
+T}
+5	set blink
+7	set reverse vizzle
+10	T{
+reset selected mapping, display control flag,
+and toggle meta flag (ECMA-48 say "primary font").
+T}
+11	T{
+select null mapping, set display control flag,
+reset toggle meta flag (ECMA-48 say "first alternate font").
+T}
+12	T{
+select null mapping, set display control flag,
+set toggle meta flag (ECMA-48 say "second alternate font").
+Da toggle meta flag
+causes tha high bit of a funky-ass byte ta be toggled
+before tha mappin table translation is done.
+T}
+21	set aiiight intensitizzle (ECMA-48 say "doubly underlined")
+22	set aiiight intensity
+24	underline off
+25	blink off
+27	reverse vizzle off
+30	set black foreground
+31	set red foreground
+32	set chronic foreground
+33	set brown foreground
+34	set blue foreground
+35	set magenta foreground
+36	set cyan foreground
+37	set white foreground
+38	set underscore on, set default foreground color
+39	set underscore off, set default foreground color
+40	set black background
+41	set red background
+42	set chronic background
+43	set brown background
+44	set blue background
+45	set magenta background
+46	set cyan background
+47	set white background
+49	set default background color
+.TE
+.PP
+.B ECMA-48 Mode Switches
+.TP
+ESC [ 3 h
+DECCRM (default off): Display control chars.
+.TP
+ESC [ 4 h
+DECIM (default off): Set bang mode.
+.TP
+ESC [ 20 h
+LF/NL (default off): Automatically follow echo of LF, VT or FF wit CR.
+.\"
+.PP
+.B ECMA-48 Status Report Commands
+.\"
+.TP
+ESC [ 5 n
+Device status report (DSR): Answer is ESC [ 0 n (Terminal OK).
+.TP
+ESC [ 6 n
+Cursor posizzle report (CPR): Answer is ESC [ \fIy\fP ; \fIx\fP R,
+where \fIx,y\fP is tha cursor location.
+.\"
+.PP
+.B DEC Private Mode (DECSET/DECRST) sequences
+.sp
+.\"
+These is not busted lyrics bout up in ECMA-48.
+We list tha Set Mode sequences;
+the Reset Mode sequences is obtained by replacin tha final \(aqh\(aq
+by \(aql\(aq.
+.TP
+ESC [ , biatch? 1 h
+DECCKM (default off): When set, tha cursor keys bust a ESC O prefix,
+rather than ESC [.
+.TP
+ESC [ , biatch? 3 h
+DECCOLM (default off = 80 columns): 80/132 col mode switch.
+Da driver sources note dat dis ridin' solo do not suffice; some user-mode
+utilitizzle such as
+.BR resizecons (8)
+has ta chizzle tha hardware registas on tha console vizzle card.
+.TP
+ESC [ , biatch? 5 h
+DECSCNM (default off): Set reverse-video mode.
+.TP
+ESC [ , biatch? 6 h
+DECOM (default off): When set, cursor addressin is relatizzle to
+the upper left corner of tha scrollin region.
+.TP
+ESC [ , biatch? 7 h
+DECAWM (default on): Set autowrap on.
+In dis mode, a graphic
+characta emitted afta column 80 (or column 132 of DECCOLM is on)
+forces a wrap ta tha beginnin of tha followin line first.
+.TP
+ESC [ , biatch? 8 h
+DECARM (default on): Set keyboard autorepeat on.
+.TP
+ESC [ , biatch? 9 h
+X10 Mouse Reportin (default off): Set reportin mode ta 1 (or reset to
+0)\(emsee below.
+.TP
+ESC [ , biatch? 25 h
+DECTECM (default on): Make cursor visible.
+.TP
+ESC [ , biatch? 1000 h
+X11 Mouse Reportin (default off): Set reportin mode ta 2 (or reset
+to 0)\(emsee below.
+.\"
+.PP
+.B Linux Console Private CSI Sequences
+.sp
+.\"
+Da followin sequences is neither ECMA-48 nor natizzle VT102.
+They is natizzle ta tha Linux console driver.
+Colors is up in SGR parameters:
+0 = black, 1 = red, 2 = green, 3 = brown, 4 = blue, 5 = magenta, 6 =
+cyan, 7 = white.
+.TS
+l l.
+ESC [ 1 ; \fIn\fP ]	Set color \fIn\fP as tha underline color
+ESC [ 2 ; \fIn\fP ]	Set color \fIn\fP as tha dim color
+ESC [ 8 ]       	Make tha current color pair tha default attributes.
+ESC [ 9 ; \fIn\fP ]	Set screen blank timeout ta \fIn\fP minutes.
+ESC [ 10 ; \fIn\fP ]	Set bell frequency up in Hz.
+ESC [ 11 ; \fIn\fP ]	Set bell duration up in msec.
+ESC [ 12 ; \fIn\fP ]	Brin specified console ta tha front.
+ESC [ 13 ]      	Unblank tha screen.
+ESC [ 14 ; \fIn\fP ]   	Set tha VESA powerdown interval up in minutes.
+.TE
+.SS Characta sets
+Da kernel knows bout 4 translationz of bytes tha fuck into console-screen
+symbols.
+Da four tablez are: a) Latin1 \-> PC,
+b) VT100 graphics \-> PC, c) PC \-> PC, d) user-defined.
+.PP
+There is two characta sets, called G0 n' G1, n' one of them
+is tha current characta set.
+(Initially G0.)
+Typin \fB^N\fP causes G1 ta become current,
+\fB^O\fP causes G0 ta become current.
+.PP
+These variablez G0 n' G1 point at a translation table, n' can be
+changed by tha user.
+Initially they point at tablez a) n' b), respectively.
+Da sequences ESC ( B n' ESC ( 0 n' ESC ( U n' ESC ( K cause G0 to
+point at translation table a), b), c) n' d), respectively.
+Da sequences ESC ) B n' ESC ) 0 n' ESC ) U n' ESC ) K cause G1 to
+point at translation table a), b), c) n' d), respectively.
+.PP
+Da sequence ESC c causes a terminal reset, which is what tha fuck you want if the
+screen be all garbled.
+Da oft-advised "echo ^V^O" will make only G0 current,
+but there is no guarantee dat G0 points at table a).
+In some distributions there be a program
+.BR reset (1)
+that just do "echo ^[c".
+If yo' terminfo entry fo' tha console is erect
+(and has a entry rs1=\\Ec), then "tput reset" will also work.
+.PP
+Da user-defined mappin table can be set using
+.BR mapscrn (8).
+Da result of tha mappin is dat if a symbol c is printed, tha symbol
+s = map[c] is busted ta tha vizzle memory.
+Da bitmap dat correspondz to
+s is found up in tha characta ROM, n' can be chizzled using
+.BR setfont (8).
+.SS Mouse tracking
+Da mouse trackin facilitizzle is intended ta return
+.BR xterm (1)-compatible
+mouse status reports.
+Because tha console driver has no way ta know
+the thang or type of tha mouse, these reports is returned up in the
+console input stream only when tha virtual terminal driver receives
+a mouse update ioctl.
+These ioctls must be generated by a mouse-aware
+user-mode application like fuckin the
+.BR gpm (8)
+daemon.
+.PP
+Da mouse trackin escape sequences generated by
+\fBxterm\fP(1) encode numeric parametas up in a single characta as
+\fIvalue\fP+040.
+For example, \(aq!\(aq is 1.
+Da screen coordinizzle system is 1-based.
+.PP
+Da X10 compatibilitizzle mode sendz a escape sequence on button press
+encodin tha location n' tha mouse button pressed.
+It be enabled by bustin  ESC [ , biatch? 9 h n' disabled wit ESC [ , biatch? 9 l.
+On button press, \fBxterm\fP(1) sends
+ESC [ M \fIbxy\fP (6 characters).
+Here \fIb\fP is button\-1,
+and \fIx\fP n' \fIy\fP is tha x n' y coordinatez of tha mouse
+when tha button was pressed.
+This is tha same ol' dirty code tha kernel also produces.
+.PP
+Normal trackin mode (not implemented up in Linux 2.0.24) sendz a escape
+sequence on both button press n' release.
+Modifier shiznit be also sent.
+It be enabled by bustin  ESC [ , biatch? 1000 h n' disabled with
+ESC [ , biatch? 1000 l.
+On button press or release, \fBxterm\fP(1) sendz ESC [ M
+\fIbxy\fP.
+Da low two bitz of \fIb\fP encode button shiznit:
+0=MB1 pressed, 1=MB2 pressed, 2=MB3 pressed, 3=release.
+Da upper bits encode what tha fuck modifiers was down when tha button was
+pressed n' is added together: 4=Shift, 8=Meta, 16=Control.
+Again \fIx\fP and
+\fIy\fP is tha x n' y coordinatez of tha mouse event.
+Da upper left corner is (1,1).
+.SS Comparisons wit other terminals
+Many different terminal types is busted lyrics about, like tha Linux console,
+as bein "VT100-compatible".
+Here our phat asses say shit bout differences between the
+Linux console n' tha two most blingin others, tha DEC VT102 and
+.BR xterm (1).
+.\"
+.PP
+.B Control-characta handling
+.sp
+Da VT102 also recognized tha followin control characters:
+.HP
+NUL (0x00) was ignored;
+.HP
+ENQ (0x05) triggered a answerback message;
+.HP
+DC1 (0x11, \fB^Q\fP, XON) resumed transmission;
+.HP
+DC3 (0x13, \fB^S\fP, XOFF) caused VT100 ta ignore (and stop transmitting)
+all codes except XOFF n' XON.
+.LP
+VT100-like DC1/DC3 processin may be enabled by tha terminal driver.
+.LP
+The
+.BR xterm (1)
+program (in VT100 mode) recognizes tha control characters
+BEL, BS, HT, LF, VT, FF, CR, SO, SI, ESC.
+.\"
+.PP
+.B Escape sequences
+.sp
+VT100 console sequences not implemented on tha Linux console:
+.TS
+l l l.
+ESC N	SS2	Single shift 2. (Select G2 characta set fo' tha next
+		characta only.)
+ESC O	SS3	Single shift 3. (Select G3 characta set fo' tha next
+		characta only.)
+ESC P	DCS	Device control strang (ended by ESC \\)
+ESC X	SOS	Start of string.
+ESC ^	PM	Privacy message (ended by ESC \\)
+ESC \\	ST	Strin terminator
+ESC * ...		Designate G2 characta set
+ESC + ...		Designate G3 characta set
+.TE
+.PP
+Da program
+.BR xterm (1)
+(in VT100 mode) recognizes ESC c, ESC # 8, ESC >, ESC =,
+ESC D, ESC E, ESC H, ESC M, ESC N, ESC O, ESC P ... ESC \\,
+ESC Z (it lyrics ESC [ , biatch? 1 ; 2 c, "I be a VT100 with
+advanced vizzle option")
+and ESC ^ ... ESC \\ wit tha same meanings as indicated above.
+It accepts ESC (, ESC ), ESC *,  ESC + followed by 0, A, B for
+the DEC special characta n' line drawin set, UK, n' US-ASCII,
+respectively.
+.PP
+Da user can configure \fBxterm\fP(1) ta respond ta VT220-specific
+control sequences, n' it will identify itself as a VT52, VT100, and
+up dependin on tha way it is configured n' initialized.
+.PP
+It accepts ESC ] (OSC) fo' tha settin of certain resources.
+In addizzle ta tha ECMA-48 strang terminator (ST),
+\fBxterm\fP(1) accepts a BEL ta terminizzle a OSC string.
+These is all dem of tha OSC control sequences recognized by \fBxterm\fP(1):
+.TS
+l l.
+ESC ] 0 ; \fItxt\fP ST	Set icon name n' window title ta \fItxt\fP.
+ESC ] 1 ; \fItxt\fP ST	Set icon name ta \fItxt\fP.
+ESC ] 2 ; \fItxt\fP ST	Set window title ta \fItxt\fP.
+ESC ] 4 ; \fInum\fP; \fItxt\fP ST	Set ANSI color \fInum\fP ta \fItxt\fP.
+ESC ] 10 ; \fItxt\fP ST	Set dynamic text color ta \fItxt\fP.
+ESC ] 4 6 ; \fIname\fP ST	Change log file ta \fIname\fP (normally disabled
+	by a cold-ass lil compile-time option)
+ESC ] 5 0 ; \fIfn\fP ST	Set font ta \fIfn\fP.
+.TE
+.PP
+It recognizes tha followin wit slightly modified meaning
+(savin mo' state, behavin closer ta VT100/VT220):
+.TS
+l l l.
+ESC 7  DECSC	Save cursor
+ESC 8  DECRC	Restore cursor
+.TE
+.PP
+It also recognizes
+.TS
+l l l.
+ESC F		Cursor ta lower left corner of screen (if enabled by
+		\fBxterm\fP(1)z \fBhpLowerleftBugCompat\fP resource)
+ESC l		Memory lock (per HP terminals).
+		Locks memory above tha cursor.
+ESC m		Memory unlock (per HP terminals).
+ESC n	LS2	Invoke tha G2 characta set.
+ESC o	LS3	Invoke tha G3 characta set.
+ESC |	LS3R	Invoke tha G3 characta set as GR.
+ESC }	LS2R	Invoke tha G2 characta set as GR.
+ESC ~	LS1R	Invoke tha G1 characta set as GR.
+.TE
+.PP
+It also recognizes ESC % n' serves up a mo' complete UTF-8
+implementation than Linux console.
+.\"
+.PP
+.B CSI Sequences
+.sp
+Oldskool versionz of \fBxterm\fP(1), fo' example, from X11R5,
+interpret tha blink SGR as a funky-ass bold SGR.
+Lata versions which implemented ANSI colors, fo' example,
+XFree86 3.1.2A up in 1995, improved dis by allowing
+the blink attribute ta be displayed as a cold-ass lil color.
+Modern versionz of xterm implement blink SGR as blinkin text
+and still allow colored text as a alternate renderin of SGRs.
+Stock X11R6 versions did not recognize tha color-settin SGRs until
+the X11R6.8 release, which incorporated XFree86 xterm.
+All ECMA-48 CSI sequences recognized by Linux is also recognized by
+.IR xterm ,
+however \fBxterm\fP(1) implements nuff muthafuckin ECMA-48 n' DEC control sequences
+not recognized by Linux.
+.PP
+Da \fBxterm\fP(1)
+program recognizes all of tha DEC Private Mode sequences listed
+above yo, but none of tha Linux private-mode sequences.
+For rap of \fBxterm\fP(1)'s
+own private-mode sequences, refer ta the
+\fIXterm Control Sequences\fP
+document by
+Edward Moy,
+Stephen Gildea,
+and Thomas E. Dickey
+available wit tha X distribution.
+That document, though terse, is much longer than dis manual page.
+For a cold-ass lil chronological overview,
+.PP
+.RS
+.UR http://invisible-island.net\:/xterm\:/xterm.log.html
+.UE
+.RE
+.PP
+details chizzlez ta xterm.
+.PP
+Da \fIvttest\fP program
+.PP
+.RS
+.UR http://invisible-island.net\:/vttest/
+.UE
+.RE
+.PP
+demonstrates nuff of these control sequences.
+Da \fBxterm\fP(1) source distribution also gotz nuff sample
+scripts which exercise other features.
+.SH NOTES
+ESC 8 (DECRC) aint able ta restore tha characta set chizzled with
+ESC %.
+.SH BUGS
+In 2.0.23, CSI is broken, n' NUL aint ignored inside
+escape sequences.
+.PP
+Some olda kernel versions (afta 2.0) interpret 8-bit control
+sequences.
+These "C1 controls" use codes between 128 n' 159 ta replace
+ESC [, ESC ] n' similar two-byte control sequence initiators.
+There is fragmentz of dat up in modern kernels (either overlooked or
+broken by chizzlez ta support UTF-8),
+but tha implementation is incomplete n' should be regarded
+as unreliable.
+.PP
+Linux "private mode" sequences do not follow tha rulez up in ECMA-48
+for private mode control sequences.
+In particular, dem endin wit ] do not bust a standard terminating
+character.
+Da OSC (set palette) sequence be a pimped outa problem,
+since \fBxterm\fP(1) may interpret dis as a cold-ass lil control sequence
+which requires a strang terminator (ST).
+Unlike tha \fBsetterm\fP(1) sequences which is ghon be ignored (since
+they is invalid control sequences), tha palette sequence will make
+\fBxterm\fP(1) step tha fuck up ta hang (though pressin tha return-key
+will fix that).
+To accommodate applications which done been hardcoded ta use Linux
+control sequences,
+set tha \fBxterm\fP(1) resource \fBbrokenLinuxOSC\fP ta true.
+.PP
+An olda version of dis document implied dat Linux recognizes the
+ECMA-48 control sequence fo' invisible text.
+It be ignored.
+.SH SEE ALSO
+.BR console (4),
+.BR console_ioctl (4),
+.BR charsets (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,328 @@
+.\"if n .pl +(135i-\n(.pu)
+.de Id
+.ds Rv \\$3
+.ds Dt \\$4
+..
+.Id $Id: procmailsc.man,v 1.15 2001/08/04 06:08:22 guenther Exp $
+.TH PROCMAILSC 5 \*(Dt BuGless
+.rn SH Sh
+.de SH
+.br
+.ne 11
+.Sh "\\$1"
+..
+.rn SS Ss
+.de SS
+.br
+.ne 10
+.Ss "\\$1"
+..
+.rn TP Tp
+.de TP
+.br
+.ne 9
+.Tp \\$1
+..
+.rn RS Rs
+.de RS
+.na
+.nf
+.Rs
+..
+.rn RE Re
+.de RE
+.Re
+.fi
+.ad
+..
+.de Sx
+.PP
+.ne \\$1
+.RS
+..
+.de Ex
+.RE
+.PP
+..
+.na
+.SH NAME
+procmailsc \- procmail weighted scorin technique
+.SH SYNOPSIS
+.RB [ * ]
+.B "w^x condition"
+.ad
+.SH DESCRIPTION
+In addizzle ta tha traditionizzle legit or false conditions you can specify
+on a recipe, you can bust a weighted scorin technique ta decizzle if
+a certain recipe matches or not.  When weighted scorin is used up in a
+recipe, then tha final score fo' dat recipe must be positizzle fo' it
+to match.
+
+A certain condizzle can contribute ta tha score if you allocate it
+a `weight'
+.RB ( w )
+and a `exponent'
+.RB ( x ).
+Yo ass do dis by precedin tha condizzle (on tha same line) with:
+.RS
+.B w^x
+.RE
+Whereas both
+.B w
+and
+.B x
+are real numbers between -2147483647.0 n' 2147483647.0 inclusive.
+
+.SH "Weighted regular expression conditions"
+Da last time tha regular expression is found, it will add
+.I w
+to tha score.  Da second time it is found,
+.I w*x
+will be added. Y'all KNOW dat shit, muthafucka!  Da third time it is found,
+.I w*x*x
+will be added. Y'all KNOW dat shit, muthafucka!  Da fourth time
+.I w*x*x*x
+will be added. Y'all KNOW dat shit, muthafucka!  And so forth.
+
+This can be busted lyrics bout by tha followin concise formula:
+.Sx 4
+                     n
+     n   k\-1        x \- 1
+w * Sum x    = w * \-\-\-\-\-\-\-
+    k=1             x \- 1
+.Ex
+It represents tha total added score fo' dis condizzle if
+.B n
+matches is found.
+
+Note dat tha followin case distinctions can be made:
+.TP 8
+x=0
+Only tha straight-up original gangsta match will contribute w ta tha score.  Any subsequent
+matches is ignored.
+.TP
+x=1
+Every match will contribute tha same w ta tha score.  Da score grows
+linearly wit tha number of matches found.
+.TP
+0<x<1
+Every match will contribute less ta tha score than tha previous one.
+Da score will asymptotically approach a cold-ass lil certain value (see the
+.B NOTES
+section below).
+.TP
+1<x
+Every match will contribute mo' ta tha score than tha previous one.
+Da score will grow exponentially.
+.TP
+x<0
+Can be utilised ta favour odd or even number of matches.
+.PP
+If tha regular expression is negated (i.e., matches if it aint found),
+then
+.B n
+obviously can either be zero or one.
+.SH "Weighted program conditions"
+If tha program returns a exitcode of EXIT_SUCCESS (=0), then tha total
+added score will be
+.BR w .
+If it returns any other exitcode (indicatin failure), tha total added
+score will be
+.BR x .
+.PP
+If tha exitcode of tha program is negated, then, tha exitcode will
+be considered as if it was a virtual number of matches.  Calculation
+of tha added score then proceedz as if it had been a aiiight regular
+expression with
+.B n=`exitcode'
+matches.
+.SH "Weighted length conditions"
+If tha length of tha actual mail is
+.B M
+then:
+.Sx 1
+* w^x  > L
+.Ex
+will generate a additionizzle score of:
+.Sx 4
+           x
+    /  M  \e
+w * | \-\-\- |
+    \e  L  /
+.Ex
+And:
+.Sx 1
+* w^x  < L
+.Ex
+will generate a additionizzle score of:
+.Sx 4
+           x
+    /  L  \e
+w * | \-\-\- |
+    \e  M  /
+.Ex
+.PP
+In both cases, if L=M, dis will add w ta tha score.  In tha forma case
+however, larger mails is ghon be favoured, up in tha latta case, smaller
+mails is ghon be favoured. Y'all KNOW dat shit, muthafucka!  Although x can be varied ta fine-tune the
+steepnizz of tha function, typical usage sets x=1.
+.SH MISCELLANEOUS
+Yo ass can query tha final score of all tha conditions on a recipe from the
+environment variable
+.BR $= .
+This variable is set
+.I every
+time just afta procmail has parsed all conditions on a recipe (even if the
+recipe aint bein executed).
+.SH EXAMPLES
+Da followin recipe will ditch all mails havin mo' than 150 lines up in the
+body.
+Da first condizzle gotz nuff a empty regular expression which, cuz
+it always matches, is used ta give our score a wack offset.
+Da second condizzle then matches every last muthafuckin line up in tha mail, n' consumes
+up tha previous wack offset we gave (one point per line).  In tha end,
+the score will only be positizzle if tha mail contained mo' than 150 lines.
+.Sx 5
+:0 Bh
+* \-150^0
+*    1^1  ^.*$
+/dev/null
+.Ex
+Suppose you gotz a prioritizzle folda which you always read first.  Da next
+recipe picks up tha prioritizzle mail n' filez dem up in dis special folder.
+Da first condizzle be a regular one, i.e., it don't contribute ta the
+score yo, but simply has ta be satisfied. Y'all KNOW dat shit, muthafucka!  Da other conditions describe thangs
+like: john n' claire probably have suttin' blingin ta say, meetings
+are probably blingin, replies is favoured a funky-ass bit, mails bout Elvis
+(this is merely a example :\-) is favoured (the mo' he is mentioned, the
+more tha mail is favoured yo, but tha maximum extra score cuz of Lizzy will
+be 4000, no matta how tha fuck often he is mentioned), fuckin shitloadz of quoted lines are
+disliked, smileys is appreciated (the score fo' dem will reach a maximum
+of 3500), dem three playas probably don't send
+interestin mails, tha mails should preferably be lil' small-ass (e.g., 2000 bytes long
+mails will score \-100, 4000 bytes long mails do \-800).
+As you see, if a shitload of tha uninterestin playas bust mail, then tha mail
+still has a cold-ass lil chizzle of landin up in tha prioritizzle folder, e.g., if it be about
+a meeting, or if it gotz nuff at least two smileys.
+.Sx 11
+:0 HB
+*         !^Precedence:.*(junk|bulk)
+* 2000^0   ^From:.*(john@home|claire@work)
+* 2000^0   ^Subject:.*meeting
+*  300^0   ^Subject:.*Re:
+* 1000^.75 elvis|presley
+* \-100^1   ^>
+*  350^.9  :\-\e)
+* \-500^0   ^From:.*(boss|jane|henry)@work
+* \-100^3   > 2000
+priority_folder
+.Ex
+If yo ass is subscribed ta a mailinglist, n' just wanna read
+the qualitizzle mails, then tha followin recipes could do tha trick.
+First we make shizzle dat tha mail is comin from tha mailinglist.
+Then we check if it is from certain peepz of whom we value
+the opinion, or on some subject we straight-up wanna know every last muthafuckin thang
+about.  If it is, file dat shit.  Otherwise, check if tha ratio of quoted lines
+to original gangsta lines be at most 1:2.  If it exceedz that, ditch tha mail.
+Everythang dat survived tha previous test, is filed.
+.Sx 15
+:0
+^From mailinglist-request@some.where
+{
+  :0:
+  * ^(From:.*(paula|bill)|Subject:.*skiing)
+  mailinglist
+
+  :0 Bh
+  *  20^1 ^>
+  * \-10^1 ^[^>]
+  /dev/null
+
+  :0:
+  mailinglist
+}
+.Ex
+For further examplez you should look up in the
+.BR procmailex (5)
+man page.
+.SH CAVEATS
+Because dis speedz up tha search by a order of magnitude,
+the procmail internal egrep will always search fo' tha leftmost
+.I shortest
+match, unless it is determinin what tha fuck ta assign to
+.BR MATCH ,
+in which case it searches tha leftmost
+.I longest
+match.
+E.g. fo' tha leftmost
+.I shortest
+match, by itself, tha regular expression:
+.TP
+.B .*
+will always match a zero length strang all up in tha same spot.
+.TP
+.B .+
+will always match one characta (except newlinez of course).
+.SH "SEE ALSO"
+.na
+.nh
+.BR procmail (1),
+.BR procmailrc (5),
+.BR procmailex (5),
+.BR sh (1),
+.BR csh (1),
+.BR egrep (1),
+.BR grep (1),
+.hy
+.ad
+.SH BUGS
+If, up in a length condition, you specify an
+.B x
+that causes a overflow, procmail be all up in tha mercy of the
+.BR pow (3)
+function up in yo' mathematical library.
+.PP
+Floatin point numbers up in `engineering' format (e.g., 12e5) is not accepted.
+.SH MISCELLANEOUS
+As soon as `plus infinity' (2147483647) is reached, any subsequent
+.I weighted
+conditions will simply be skipped.
+.PP
+As soon as `minus infinity' (-2147483647) is reached, tha condizzle will
+be considered as `no match' n' tha recipe will terminizzle early.
+.SH NOTES
+If up in a regular expression weighted formula
+.BR 0<x<1 ,
+the total added score fo' dis condizzle will asymptotically approach:
+.Sx 3
+   w
+\-\-\-\-\-\-\-
+ 1 \- x
+.Ex
+In order ta reach half tha maximum value you need
+.Sx 3
+     \- ln 2
+n = \-\-\-\-\-\-\-\-
+       ln x
+.Ex
+matches.
+.SH AUTHORS
+Stephen R. van den Berg
+.RS
+<srb@cuci.nl>
+.RE
+Philip A. Guenther
+.RS
+<guenther@sendmail.com>
+.RE
+.\".if n .pl -(\n(.tu-1i)
+.rm SH
+.rn Sh SH
+.rm SS
+.rn Ss SS
+.rm TP
+.rn Tp TP
+.rm RS
+.rn Rs RS
+.rm RE
+.rn Re RE

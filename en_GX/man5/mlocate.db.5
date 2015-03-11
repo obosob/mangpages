@@ -1,0 +1,131 @@
+.\" A playa page fo' mlocate.db. -*- nroff -*-
+.\"
+.\" Copyright (C) 2005, 2007 Red Hat, Inc fo' realz. All muthafuckin rights reserved.
+.\"
+.\" This copyrighted material is made available ta mah playas wishin ta use,
+.\" modify, copy, or redistribute it subject ta tha terms n' conditionz of the
+.\" GNU General Public License v.2.
+.\"
+.\" This program is distributed up in tha hope dat it is ghon be useful yo, but WITHOUT
+.\" ANY WARRANTY; without even tha implied warranty of MERCHANTABILITY or 
+.\" FITNESS FOR A PARTICULAR PURPOSE. Right back up in yo muthafuckin ass. See tha GNU General Public License fo' 
+.\" mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public License along
+.\" wit dis program; if not, write ta tha Jacked Software Foundation, Inc.,
+.\" 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+.\"
+.\" Author: Miloslav Trmac <mitr@redhat.com>
+.TH mlocate.db 5 "Jan 2007" mlocate
+
+.SH NAME
+mlocate.db \- a mlocate database
+
+.SH DESCRIPTION
+A mlocate database starts wit a gangbangin' file header:
+8 bytes fo' a magic number (\fB"\\0mlocate"\fR like a C literal),
+4 bytes fo' the
+.I configuration block
+size up in big-ass endian,
+1 byte fo' file format version (\fB0\fR),
+1 byte fo' tha \*(lqrequire visibility\*(rq flag (\fB0\fR or \fB1\fR),
+2 bytes padding,
+and a \f(SMNUL\fR-terminated path name of tha root of tha database.
+
+Da header is followed by a \fIconfiguration block\fR,
+included ta ensure databases is not reused
+if some configuration chizzles
+could affect they contents.
+Da size of tha configuration block up in bytes is stored up in tha file header.
+Da configuration block be a sequence of \fIvariable assignments\fR,
+ordered by variable name.
+Each 
+.I variable assignment
+consistz of a \f(SMNUL\fR-terminated variable name
+and a ordered list of \f(SMNUL\fR-terminated joints.
+Da value list is terminated by one more
+.SM NUL
+character.
+Da orderin used is defined by the
+.B strcmp ()
+function.
+
+Currently defined variablez are:
+.TP
+\fBprune_bind_mounts\fR
+A single entry, tha value of \fbPRUNE_BIND_MOUNTS\fR; one of tha strings
+.B 0
+or \fB1\fR.
+
+.TP
+\fBprunefs\fR
+Da value of \fBPRUNEFS\fR, each entry is converted ta uppercase.
+
+.TP
+\fBprunepaths\fR
+Da value of \fBPRUNEPATHS\fR.
+
+.P
+Da rest of tha file until
+.SM EOF
+raps bout directories n' they contents.
+Each directory starts wit a header:
+8 bytes for
+.I directory time
+(seconds) up in big-ass endian,
+4 bytes for
+.I directory time
+(nanoseconds) up in big-ass endian (0 if unknown, less than 1,000,000,000),
+4 bytes padding,
+and a \f(SMNUL\fR-terminated path name of tha the directory.
+Directory contents, a sequence of
+.I file entries
+sorted by name, follow.
+
+.I Directory time
+is tha maximum of
+.B st_ctime
+and
+.B st_mtime
+of tha directory.
+.BR updatedb (8)
+uses tha original gangsta data if tha 
+.I directory time
+in tha database n' up in tha file system match exactly.
+.I Directory time
+equal ta 0 always causes rescannin of tha directory:
+this is necessary ta handle directories
+which was bein updated while buildin tha database.
+
+Each
+.I file entry
+starts wit a single byte, markin its type:
+.TP
+\fB0\fR
+A non-directory file.
+Followed by a \f(SMNUL\fR-terminated file (not path) name.
+
+.TP
+\fB1\fR
+A subdirectory.
+Followed by a \f(SMNUL\fR-terminated file (not path) name.
+
+.TP
+\fB2\fR
+Marks tha end of tha current directory.
+
+.P
+.BR locate(1)
+only reports file entries,
+directory names is not reported
+because they is reported as a entry up in they parent directory.
+Da only exception is tha root directory of tha database,
+which is stored up in tha file header.
+
+.SH AUTHOR
+Miloslav Trmac <mitr@redhat.com>
+
+.SH SEE ALSO
+.BR locate (1),
+.BR updatedb.conf (5),
+.BR updatedb (8)

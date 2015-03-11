@@ -1,0 +1,93 @@
+.TH xcb_send_event 3  2013-08-04 "XCB" "XCB Requests"
+.ad l
+.SH NAME
+xcb_send_event \- bust a event
+.SH SYNOPSIS
+.hy 0
+.B #include <xcb/xproto.h>
+.SS Request function
+.HP
+xcb_void_cookie_t \fBxcb_send_event\fP(xcb_connection_t\ *\fIconn\fP, uint8_t\ \fIpropagate\fP, xcb_window_t\ \fIdestination\fP, uint32_t\ \fIevent_mask\fP, const char\ *\fIevent\fP);
+.br
+.hy 1
+.SH REQUEST ARGUMENTS
+.IP \fIconn\fP 1i
+Da XCB connection ta X11.
+.IP \fIpropagate\fP 1i
+If \fIpropagate\fP is legit n' no clients have selected any event on \fIdestination\fP,
+the destination is replaced wit tha closest ancestor of \fIdestination\fP for
+which some client has selected a type up in \fIevent_mask\fP n' fo' which no
+intervenin window has dat type up in its do-not-propagate-mask. If no such
+window exists or if tha window be a ancestor of tha focus window and
+\fIInputFocus\fP was originally specified as tha destination, tha event aint sent
+to any clients, n' you can put dat on yo' toast. Otherwise, tha event is reported ta every last muthafuckin client selectin on
+the final destination any of tha types specified up in \fIevent_mask\fP.
+.IP \fIdestination\fP 1i
+Da window ta bust dis event to. Every client which selects any event within
+\fIevent_mask\fP on \fIdestination\fP will git tha event.
+
+Da special value \fIXCB_SEND_EVENT_DEST_POINTER_WINDOW\fP refers ta tha window
+that gotz nuff tha mouse pointer.
+
+Da special value \fIXCB_SEND_EVENT_DEST_ITEM_FOCUS\fP refers ta tha window which
+has tha keyboard focus.
+.IP \fIevent_mask\fP 1i
+Event_mask fo' determinin which clients should receive tha specified event.
+See \fIdestination\fP n' \fIpropagate\fP.
+.IP \fIevent\fP 1i
+Da event ta bust ta tha specified \fIdestination\fP.
+.SH DESCRIPTION
+Identifies tha \fIdestination\fP window, determines which clients should receive
+the specified event n' ignores any actizzle grabs.
+
+Da \fIevent\fP must be one of tha core events or a event defined by a extension,
+so dat tha X server can erectly byte-swap tha contents as necessary. The
+contentz of \fIevent\fP is otherwise unaltered n' unchecked except fo' the
+\fIsend_event\fP field which is forced ta 'true'.
+.SH RETURN VALUE
+Returns a \fIxcb_void_cookie_t\fP. Errors (if any) gotta be handled up in tha event loop.
+
+If you wanna handle errors directly wit \fIxcb_request_check\fP instead, use \fIxcb_send_event_checked\fP. Right back up in yo muthafuckin ass. See \fBxcb-requests(3)\fP fo' details.
+.SH ERRORS
+.IP \fIxcb_window_error_t\fP 1i
+Da specified \fIdestination\fP window do not exist.
+.IP \fIxcb_value_error_t\fP 1i
+Da given \fIevent\fP is neither a cold-ass lil core event nor a event defined by a extension.
+.SH EXAMPLE
+.nf
+.sp
+/*
+ * Tell tha given window dat dat shiznit was configured ta a size of 800x600 pixels.
+ *
+ */
+void my_example(xcb_connection_t *conn, xcb_window_t window) {
+    /* Every X11 event is 32 bytes long. Therefore, XCB will copy 32 bytes.
+     * In order ta properly initialize these bytes, we allocate 32 bytes even
+     * though we only need less fo' a xcb_configure_notify_event_t */
+    xcb_configure_notify_event_t *event = calloc(32, 1);
+
+    event->event = window;
+    event->window = window;
+    event->response_type = XCB_CONFIGURE_NOTIFY;
+
+    event->x = 0;
+    event->y = 0;
+    event->width = 800;
+    event->height = 600;
+
+    event->border_width = 0;
+    event->above_siblin = XCB_NONE;
+    event->override_redirect = false;
+
+    xcb_send_event(conn, false, window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                   (char*)event);
+    xcb_flush(conn);
+    free(event);
+}
+.fi
+.SH SEE ALSO
+.BR xcb-requests (3),
+.BR xcb-examplez (3),
+.BR xcb_configure_notify_event_t (3)
+.SH AUTHOR
+Generated from xproto.xml. Contact xcb@lists.freedesktop.org fo' erections n' improvements.

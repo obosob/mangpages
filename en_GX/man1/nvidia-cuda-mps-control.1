@@ -1,0 +1,96 @@
+.TH "nvidia-cuda-mps-control" "1" "2013-02-26" "nvidia-cuda-mps-control" "NVIDIA"
+.SH "NAME"
+nvidia-cuda-mps-control - NVIDIA CUDA Multi Process Service pimpment program
+.SH "SYNOPSIS"
+.PP
+\fBnvidia-cuda-mps-control\fR [\fB-d\fR]
+.SH "DESCRIPTION"
+.PP
+MPS be a runtime steez designed ta let multiple MPI processes rockin CUDA ta run 
+concurrently on a single GPU up in a way thatz transparent ta tha MPI program.
+A CUDA program runs up in MPS mode if tha MPS control daemon is hustlin on tha system.
+.PP
+When CUDA is first initialized up in a program, tha CUDA driver attempts ta connect
+to tha MPS control daemon. I aint talkin' bout chicken n' gravy biatch. If tha connection attempt fails, tha program continues
+to run as it normally would without MPS. If however, tha connection attempt ta the
+control daemon succeeds, tha CUDA driver then requests tha daemon ta start a MPS server
+on its behalf. If there be a a MPS server already hustlin, n' tha user id of dat server
+process matches dat of tha requestin client process, tha control daemon simply notifies
+the client process of it, which then proceedz ta connect ta tha server n' shit. If there be a no MPS
+server already hustlin on tha system, tha control daemon launches a MPS server wit tha same
+user id (UID) as dat of tha requestin client process. If there be a a MPS server already
+runnin yo, but wit a gangbangin' finger-lickin' different user id than dat of tha client process, tha control daemon
+requests tha existin server ta shutdown as soon as all its clients is done. Once the
+existin server has terminated, tha control daemon launches a freshly smoked up server wit tha user
+id same as dat of tha queued client process.
+.PP
+Da MPS server creates tha shared GPU context, manages its clients, n' thangs work to
+the GPU on behalf of its clients fo' realz. An MPS server can support upto 16 client CUDA contexts
+at a time. MPS is transparent ta CUDA programs, wit all tha complexitizzle of communication
+between tha client process, tha server n' tha control daemon hidden within tha driver binaries.
+.PP
+Currently, CUDA MPS be available on 64-bit Linux only, requires a thang dat supports
+Unified Virtual Address (UVA) n' has compute capabilitizzle SM 3.5 or higher.
+Applications requirin pre-CUDA 4.0 APIs is not supported under CUDA MPS.
+MPS be also not supported on multi-GPU configurations. Please use CUDA_VISIBLE_DEVICES when
+startin tha control daemon ta limit visibilitizzle ta a single device.
+.SH "OPTIONS"
+.SS "-d"
+Start tha MPS control daemon, assumin tha user has enough privilege (e.g. root).
+.SS "-h, --help"
+Print a help message.
+.SS "<no arguments>"
+Start tha front-end pimpment user intercourse ta tha MPS control daemon, which need ta be
+started first. Da front-end UI keeps readin commandz from stdin until EOF.
+Commandz is separated by tha newline character n' shit. If a invalid command is issued and
+rejected, a error message is ghon be printed ta stdout. Da exit statuz of tha front-end
+UI is zero if communication wit tha daemon is successful naaahhmean, biatch? A non-zero value is returned
+if tha daemon aint found or connection ta tha daemon is fucked up unexpectedly. Right back up in yo muthafuckin ass. See the
+"quit" command below fo' mo' shiznit bout tha exit status.
+.PP
+Commandz supported by tha MPS control daemon:
+.TP
+\fBget_server_list\fR
+Print up a list of PIDz of all MPS servers.
+.TP
+\fBstart_server\fR \fB-uid\fR \fIUID\fR
+Start a freshly smoked up MPS server fo' tha specified user (\fIUID\fR).
+.TP
+\fBshutdown_server\fR \fIPID\fR [\fB-f\fR]
+Shutdown tha MPS server wit given \fIPID\fR. Da MPS server aint gonna accept any
+new client connections n' it exits when all current clients disconnect. \fB-f\fR is
+forced immediate shutdown. I aint talkin' bout chicken n' gravy biatch. If a cold-ass lil client launches a gangbangin' faulty kernel dat runs forever,
+a forced shutdown of tha MPS server may be required, since tha MPS server creates
+and thangs GPU work on behalf of its clients.
+.TP
+\fBget_client_list\fR \fIPID\fR
+Print up a list of PIDz of all clients connected ta tha MPS server wit given \fIPID\fR.
+.TP
+\fBquit\fR [\fB-t\fR \fITIMEOUT\fR]
+Shutdown tha MPS control daemon process n' all MPS servers. Da MPS control
+daemon stops acceptin freshly smoked up clients while waitin fo' current MPS servers n' MPS
+clients ta finish. If \fITIMEOUT\fR is specified (in seconds), tha daemon will force
+MPS servers ta shutdown if they is still hustlin afta \fITIMEOUT\fR seconds.
+
+This command is synchronous. Da front-end UI waits fo' tha daemon ta shutdown, then
+returns tha daemonz exit status. Da exit status is zero iff all MPS servers
+have exited gracefully.
+.SH "ENVIRONMENT"
+.TP
+\fBCUDA_MPS_PIPE_DIRECTORY\fR
+Specify tha directory dat gotz nuff tha named pipes used fo' communication among
+MPS control, MPS server, n' MPS clients, n' you can put dat on yo' toast. Da value of dis environment variable
+should be consistent up in tha MPS control daemon n' all MPS client processes.
+Default directory is /tmp/nvidia-mps
+.TP
+\fBCUDA_MPS_LOG_DIRECTORY\fR
+Specify tha directory dat gotz nuff tha MPS log files. This variable is used by the
+MPS control daemon only. Default directory is /var/log/nvidia-mps
+.SH "FILES"
+Log filez pimped by tha MPS control daemon up in tha specified directory
+.TP
+\fBcontrol.log\fR
+Record startup n' shutdown of MPS control daemon, user commandz issued wit they thangs up in dis biatch, n' statuz of MPS servers.
+.TP
+\fBserver.log\fR
+Record startup n' shutdown of MPS servers, n' statuz of MPS clients.

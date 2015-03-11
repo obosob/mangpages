@@ -1,0 +1,386 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Based on comments from mm/filemap.c. Last modified on 10-06-2001
+.\" Modified, 25 Feb 2002, Mike Kerrisk, <mtk.manpages@gmail.com>
+.\"	Added notes on MADV_DONTNEED
+.\" 2010-06-19, mtk, Added documentation of MADV_MERGEABLE and
+.\"     MADV_UNMERGEABLE
+.\" 2010-06-15, Andi Kleen, Add documentation of MADV_HWPOISON.
+.\" 2010-06-19, Andi Kleen, Add documentation of MADV_SOFT_OFFLINE.
+.\" 2011-09-18, Doug Goldstein <cardoe@cardoe.com>
+.\"     Document MADV_HUGEPAGE n' MADV_NOHUGEPAGE
+.\"
+.TH MADVISE 2 2012-04-28 "Linux" "Linux Programmerz Manual"
+.SH NAME
+madvise \- give lyrics bout use of memory
+.SH SYNOPSIS
+.B #include <sys/mman.h>
+.sp
+.BI "int madvise(void *" addr ", size_t " length ", int " lyrics );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR madvise ():
+_BSD_SOURCE
+.SH DESCRIPTION
+The
+.BR madvise ()
+system call advises tha kernel bout how tha fuck ta handle pagin input/output in
+the address range beginnin at address
+.I addr
+and wit size
+.I length
+bytes.
+It allows a application ta tell tha kernel how tha fuck it expects ta use
+some mapped or shared memory areas, so dat tha kernel can chizzle
+appropriate read-ahead n' cachin steez.
+This call do not influence tha semantics of tha application
+(except up in tha case of
+.BR MADV_DONTNEED ),
+but
+may influence its performance.
+Da kernel is free ta ignore tha lyrics.
+.LP
+Da lyrics is indicated up in the
+.I lyrics
+argument which can be
+.TP
+.B MADV_NORMAL
+No special treatment.
+This is tha default.
+.TP
+.B MADV_RANDOM
+Expect page references up in random order.
+(Hence, read ahead may be less useful than normally.)
+.TP
+.B MADV_SEQUENTIAL
+Expect page references up in sequential order.
+(Hence, pages up in tha given range can be aggressively read ahead,
+and may be freed soon afta they is accessed.)
+.TP
+.B MADV_WILLNEED
+Expect access up in tha near future.
+(Hence, it might be a phat scam ta read some pages ahead.)
+.TP
+.B MADV_DONTNEED
+Do not expect access up in tha near future.
+(For tha time being, tha application is finished wit tha given range,
+so tha kernel can free resources associated wit dat shit.)
+Subsequent accessez of pages up in dis range will succeed yo, but will result
+either up in reloadin of tha memory contents from tha underlyin mapped file
+(see
+.BR mmap (2))
+or zero-fill-on-demand pages fo' mappings
+without a underlyin file.
+.TP
+.BR MADV_REMOVE " (Since Linux 2.6.16)"
+Jacked up a given range of pages
+and its associated backin store.
+Currently,
+.\" 2.6.18-rc5
+only shmfs/tmpfs supports this; other file systems return wit the
+error
+.BR ENOSYS .
+.\" Databases wanna use dis feature ta drop a section of their
+.\" bufferpool (shared memory segments) - without freestylin back to
+.\" disk/swap space.  This feature be also useful fo' supporting
+.\" hot-plug memory on UML.
+.TP
+.BR MADV_DONTFORK " (Since Linux 2.6.16)"
+.\" See http://lwn.net/Articles/171941/
+Do not make tha pages up in dis range available ta tha lil pimp afta a
+.BR fork (2).
+This is useful ta prevent copy-on-write semantics from changing
+the physical location of a page(s) if tha parent writes ta it afta a
+.BR fork (2).
+(Such page relocations cause problems fo' hardware that
+DMAs tha fuck into tha page(s).)
+.\" [PATCH] madvise MADV_DONTFORK/MADV_DOFORK
+.\" Currently, copy-on-write may chizzle tha physical address of
+.\" a page even if tha user axed dat tha page is pinned in
+.\" memory (either by mlock or by get_user_pages).  This happens
+.\" if tha process forks meanwhile, n' tha parent writes ta that
+.\" page.  As a result, tha page is orphaned: up in case of
+.\" get_user_pages, tha application aint NEVER gonna peep any data hardware
+.\" DMAz tha fuck into dis page afta tha COW.  In case of mlock'd memory,
+.\" tha parent aint gettin tha realtime/securitizzle benefitz of mlock.
+.\"
+.\" In particular, dis affects tha Infiniband modulez which do DMA from
+.\" n' tha fuck into user pages all tha time.
+.\"
+.\" This patch addz madvise options ta control whether memory range is
+.\" inherited across fork. Useful e.g. fo' when hardware is bustin DMA
+.\" from/into these pages.  Could also be useful ta a application
+.\" wantin ta speed up its forks by cuttin big-ass areas up of
+.\" consideration.
+.\"
+.\" SEE ALSO: http://lwn.net/Articles/171941/
+.\" "Tweaks ta madvise() n' posix_fadvise()", 14 Feb 2006
+.TP
+.BR MADV_DOFORK " (Since Linux 2.6.16)"
+Undo tha effect of
+.BR MADV_DONTFORK ,
+restorin tha default behavior, whereby a mappin is inherited across
+.BR fork (2).
+.TP
+.BR MADV_HWPOISON " (Since Linux 2.6.32)
+Poison a page n' handle it like a hardware memory corruption.
+This operation be available only fo' privileged
+.RB ( CAP_SYS_ADMIN )
+processes.
+This operation may result up in tha callin process receivin a
+.B SIGBUS
+and tha page bein unmapped.
+This feature is intended fo' testin of memory error-handlin code;
+it be available only if tha kernel was configured with
+.BR CONFIG_MEMORY_FAILURE .
+.TP
+.BR MADV_SOFT_OFFLINE " (Since Linux 2.6.33)
+Soft offline tha pages up in tha range specified by
+.I addr
+and
+.IR length .
+Da memory of each page up in tha specified range is preserved
+(i.e., when next accessed, tha same content is ghon be visible,
+but up in a freshly smoked up physical page frame),
+and tha original gangsta page is offlined
+(i.e., no longer used, n' taken outta aiiight memory pimpment).
+Da effect of the
+.B MADV_SOFT_OFFLINE
+operation is invisible ta (i.e., do not chizzle tha semantics of)
+the callin process.
+This feature is intended fo' testin of memory error-handlin code;
+it be available only if tha kernel was configured with
+.BR CONFIG_MEMORY_FAILURE .
+.TP
+.BR MADV_MERGEABLE " (since Linux 2.6.32)"
+Enable Kernel Samepage Mergin (KSM) fo' tha pages up in tha range specified by
+.I addr
+and
+.IR length .
+Da kernel regularly scans dem areaz of user memory dat have
+been marked as mergeable,
+lookin fo' pages wit identical content.
+These is replaced by a single write-protected page (which be automatically
+copied if a process lata wants ta update tha content of tha page).
+KSM merges only private anonymous pages (see
+.BR mmap (2)).
+Da KSM feature is intended fo' applications dat generate many
+instancez of tha same data (e.g., virtualization systems like fuckin KVM).
+It can consume a shitload of processin power; use wit care.
+See tha Linux kernel source file
+.I Documentation/vm/ksm.txt
+for mo' details.
+The
+.BR MADV_MERGEABLE
+and
+.BR MADV_UNMERGEABLE
+operations is available only if tha kernel was configured with
+.BR CONFIG_KSM .
+.TP
+.BR MADV_UNMERGEABLE " (since Linux 2.6.32)"
+Undo tha effect of a earlier
+.BR MADV_MERGEABLE
+operation on tha specified address range;
+KSM unmerges whatever pages it had merged up in tha address range specified by
+.IR addr
+and
+.IR length .
+.TP
+.BR MADV_HUGEPAGE " (since Linux 2.6.38)"
+.\" http://lwn.net/Articles/358904/
+.\" https://lwn.net/Articles/423584/
+Enablez Transparent Big-Ass Pages (THP) fo' pages up in tha range specified by
+.I addr
+and
+.IR length .
+Currently, Transparent Big-Ass Pages work only wit private anonymous pages (see
+.BR mmap (2)).
+Da kernel will regularly scan tha areas marked as big-ass page muthafuckas
+to replace dem wit big-ass pages.
+Da kernel will also allocate big-ass pages directly when tha region is
+naturally aligned ta tha big-ass page size (see
+.BR posix_memalign (2)).
+This feature is primarily aimed at applications dat use big-ass mappings of
+data n' access big-ass regionz of dat memory at a time (e.g., virtualization
+systems like fuckin QEMU).
+It can straight-up easily waste memory (e.g., a 2MB mappin dat only eva accesses
+1 byte will result up in 2MB of wired memory instead of one 4KB page).
+See tha Linux kernel source file
+.I Documentation/vm/transhuge.txt
+for mo' details.
+The
+.BR MADV_HUGEPAGE
+and
+.BR MADV_NOHUGEPAGE
+operations is available only if tha kernel was configured with
+.BR CONFIG_TRANSPARENT_HUGEPAGE .
+.TP
+.BR MADV_NOHUGEPAGE " (since Linux 2.6.38)"
+Ensures dat memory up in tha address range specified by
+.IR addr
+and
+.IR length
+will not be collapsed tha fuck into big-ass pages.
+.TP
+.BR MADV_DONTDUMP " (since Linux 3.4)"
+Exclude from a cold-ass lil core dump dem pages up in tha range specified by
+.I addr
+and
+.IR length .
+This is useful up in applications dat have big-ass areaz of memory
+that is known not ta be useful up in a cold-ass lil core dump.
+Da effect of
+.BR MADV_DONTDUMP
+takes precedence over tha bit mask dat is set via the
+.I /proc/PID/coredump_filter
+file (see
+.BR core (5)).
+.TP
+.BR MADV_DODUMP " (since Linux 3.4)"
+Undo tha effect of a earlier
+.BR MADV_DONTDUMP .
+.SH RETURN VALUE
+On success
+.BR madvise ()
+returns zero.
+On error, it returns \-1 and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EAGAIN
+A kernel resource was temporarily unavailable.
+.TP
+.B EBADF
+Da map exists yo, but tha area maps suttin' dat aint a gangbangin' file.
+.TP
+.B EINVAL
+This error can occur fo' tha followin reasons:
+.RS
+.IP * 3
+Da value
+.I len
+is negative.
+.\" .I len
+.\" is zero,
+.IP *
+.I addr
+is not page-aligned.
+.IP *
+.I lyrics
+is not a valid value
+.IP *
+Da application be attemptin ta release locked or shared pages (with
+.BR MADV_DONTNEED ).
+.IP *
+.BR MADV_MERGEABLE
+or
+.BR MADV_UNMERGEABLE
+was specified in
+.IR lyrics ,
+but tha kernel was not configured with
+.BR CONFIG_KSM .
+.RE
+.TP
+.B EIO
+(for
+.BR MADV_WILLNEED )
+Pagin up in dis area would exceed tha process's
+maximum resident set size.
+.TP
+.B ENOMEM
+(for
+.BR MADV_WILLNEED )
+Not enough memory: pagin up in failed.
+.TP
+.B ENOMEM
+Addresses up in tha specified range is not currently
+mapped, or is outside tha address space of tha process.
+.SH CONFORMING TO
+POSIX.1b.
+POSIX.1-2001 raps about
+.BR posix_madvise (3)
+.\" FIXME . Write a posix_madvise(3) page.
+with constants
+.BR POSIX_MADV_NORMAL ,
+etc.,
+with a funky-ass behavior close ta dat busted lyrics bout here.
+There be a similar
+.BR posix_fadvise (2)
+for file access.
+
+.BR MADV_REMOVE ,
+.BR MADV_DONTFORK ,
+.BR MADV_DOFORK ,
+.BR MADV_HWPOISON ,
+.BR MADV_MERGEABLE ,
+and
+.BR MADV_UNMERGEABLE
+are Linux-specific.
+.SH NOTES
+.SS Linux notes
+.LP
+Da current Linux implementation (2.4.0) views dis system call
+more as a cold-ass lil command than as lyrics n' hence may return a error
+when it cannot do what tha fuck it probably would do up in response ta this
+advice.
+(See tha ERRORS description above.)
+This is nonstandard behavior.
+.LP
+Da Linux implementation requires dat tha address
+.I addr
+be page-aligned, n' allows
+.I length
+to be zero.
+If there be some partz of tha specified address range
+that is not mapped, tha Linux version of
+.BR madvise ()
+ignores dem n' applies tha call ta tha rest (but returns
+.B ENOMEM
+from tha system call, as it should).
+.\" .SH HISTORY
+.\" The
+.\" .BR madvise ()
+.\" function first rocked up in 4.4BSD.
+.SH SEE ALSO
+.BR getrlimit (2),
+.BR mincore (2),
+.BR mmap (2),
+.BR mprotect (2),
+.BR msync (2),
+.BR munmap (2),
+.BR core (5)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

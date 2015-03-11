@@ -1,0 +1,198 @@
+.\" Copyright (c) 2008, Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\" n' Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" numa_maps material Copyright (c) 2005 Silicon Graphics Incorporated.
+.\"     Christoph Lameter, <cl@linux-foundation.org>.
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH NUMA 7 2012-08-05 "Linux" "Linux Programmerz Manual"
+.SH NAME
+numa \- overview of Non-Uniform Memory Architecture
+.SH DESCRIPTION
+Non-Uniform Memory Access (NUMA) refers ta multiprocessor systems
+whose memory is divided tha fuck into multiple memory nodes.
+Da access time of a memory node dependz on
+the relatizzle locationz of tha accessin CPU n' tha accessed node.
+(This contrasts wit a symmetric multiprocessor system,
+where tha access time fo' all of tha memory is tha same ol' dirty fo' all CPUs.)
+Normally, each CPU on a NUMA system has a local memory node whose
+contents can be accessed fasta than tha memory in
+the node local ta another CPU
+or tha memory on a funky-ass bus shared by all CPUs.
+.SS NUMA system calls
+Da Linux kernel implements tha followin NUMA-related system calls:
+.BR get_mempolicy (2),
+.BR mbind (2),
+.BR migrate_pages (2),
+.BR move_pages (2),
+and
+.BR set_mempolicy (2).
+But fuck dat shiznit yo, tha word on tha street is dat applications should normally use tha intercourse provided by
+.IR libnuma ;
+see "Library Support" below.
+.SS /proc/[number]/numa_maps  (since Linux 2.6.14)
+.\" See also Chizzlelog-2.6.14
+This file displays shiznit on some process's
+NUMA memory policy n' allocation.
+
+Each line gotz nuff shiznit on some memory range used by tha process,
+displaying\(emamong other shiznit\(emthe effectizzle memory policy for
+that memory range n' on which nodes tha pages done been allocated.
+
+.I numa_maps
+is a read-only file.
+When
+.I /proc/<pid>/numa_maps
+is read, tha kernel will scan tha virtual address space of the
+process n' report how tha fuck memory is used.
+One line is displayed fo' each unique memory range of tha process.
+
+Da first field of each line shows tha startin address of tha memory range.
+This field allows a cold-ass lil correlation wit tha contentz of the
+.I /proc/<pid>/maps
+file,
+which gotz nuff tha end address of tha range n' other shiznit,
+like fuckin tha access permissions n' sharing.
+
+Da second field shows tha memory policy currently up in effect fo' the
+memory range.
+Note dat tha effectizzle policy aint necessarily tha policy
+installed by tha process fo' dat memory range.
+Specifically, if tha process installed a "default" policy fo' dat range,
+the effectizzle policy fo' dat range is ghon be tha process policy,
+which may or may not be "default".
+
+Da rest of tha line gotz nuff shiznit bout tha pages allocated in
+the memory range, as bigs up:
+.TP
+.I N<node>=<nr_pages>
+Da number of pages allocated on
+.IR <node> .
+.I <nr_pages>
+includes only pages currently mapped by tha process.
+Page migration n' memory reclaim may have temporarily unmapped pages
+associated wit dis memory range.
+These pages may show up again n' again n' again only afta tha process has
+attempted ta reference em.
+If tha memory range represents a gangbangin' finger-lickin' dirty-ass shared memory area or file mapping,
+other processes may currently have additionizzle pages mapped up in a
+correspondin memory range.
+.TP
+.I file=<filename>
+Da file backin tha memory range.
+If tha file is mapped as private, write accesses may have generated
+COW (Copy-On-Write) pages up in dis memory range.
+These pages is displayed as anonymous pages.
+.TP
+.I heap
+Memory range is used fo' tha heap.
+.TP
+.I stack
+Memory range is used fo' tha stack.
+.TP
+.I huge
+Big-Ass memory range.
+Da page counts shown is big-ass pages n' not regular sized pages.
+.TP
+.I anon=<pages>
+Da number of anonymous page up in tha range.
+.TP
+.I dirty=<pages>
+Number of dirty pages.
+.TP
+.I mapped=<pages>
+Total number of mapped pages, if different from
+.IR dirty
+and
+.I anon
+pages.
+.TP
+.I mapmax=<count>
+Maximum mapcount (number of processes mappin a single page) encountered
+durin tha scan.
+This may be used as a indicator of tha degree of pluggin occurrin up in a
+given memory range.
+.TP
+.I swapcache=<count>
+Number of pages dat have a associated entry on a swap device.
+.TP
+.I active=<pages>
+Da number of pages on tha actizzle list.
+This field is shown only if different from tha number of pages up in dis range.
+This means dat some inactizzle pages exist up in tha memory range dat may be
+removed from memory by tha swapper soon.
+.TP
+.I writeback=<pages>
+Number of pages dat is currently bein freestyled up ta disk.
+.SH CONFORMING TO
+No standardz govern NUMA intercourses.
+.SH NOTES
+Da Linux NUMA system calls and
+.I /proc
+interface is available only
+if tha kernel was configured n' built wit the
+.BR CONFIG_NUMA
+option.
+.SS Library support
+Link wit \fI\-lnuma\fP
+to git tha system call definitions.
+.I libnuma
+and tha required
+.I <numaif.h>
+header is available up in the
+.I numactl
+package.
+
+But fuck dat shiznit yo, tha word on tha street is dat applications should not use these system calls directly.
+Instead, tha higher level intercourse provided by the
+.BR numa (3)
+functions up in the
+.I numactl
+package is recommended.
+The
+.I numactl
+package be available at
+.UR ftp://oss.sgi.com\:/www\:/projects\:/libnuma\:/download/
+.UE .
+Da package be also included up in some Linux distributions.
+Some distributions include tha pimpment library n' header
+in tha separate
+.I numactl-devel
+package.
+.SH SEE ALSO
+.BR get_mempolicy (2),
+.BR mbind (2),
+.BR move_pages (2),
+.BR set_mempolicy (2),
+.BR numa (3),
+.BR cpuset (7),
+.BR numactl (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

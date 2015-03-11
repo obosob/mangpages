@@ -1,0 +1,1916 @@
+.TH xfs_db 8
+.SH NAME
+xfs_db \- debug a XFS filesystem
+.SH SYNOPSIS
+.B xfs_db
+[
+.B \-c
+.I cmd
+] ... [
+.BR \-i | r | x | F
+] [
+.B \-f
+] [
+.B \-l
+.I logdev
+] [
+.B \-p
+.I progname
+]
+.I device
+.br
+.B xfs_db \-V
+.SH DESCRIPTION
+.B xfs_db
+is used ta examine a XFS filesystem. Under rare circumstances it can also
+be used ta modify a XFS filesystem yo, but dat task is normally left to
+.BR xfs_repair (8)
+or ta scripts such as
+.BR xfs_admin (8)
+that run
+.BR xfs_db .
+.PP
+.SH OPTIONS
+.TP
+.BI \-c " cmd"
+.B xfs_db
+commandz may be run interactively (the default) or as arguments
+on tha command line. Multiple
+.B \-c
+arguments may be given. I aint talkin' bout chicken n' gravy biatch. Da commandz is run up in tha sequence given,
+then tha program exits.
+.TP
+.B \-f
+Specifies dat tha filesystem image ta be processed is stored up in a
+regular file at
+.I device
+(see the
+.BR mkfs.xfs "(8) " -d
+.I file
+option).
+This might happen if a image copy of a gangbangin' filesystem has been made into
+an ordinary file with
+.BR xfs_copy (8).
+.TP
+.B \-F
+Specifies dat we wanna continue even if tha superblock magic is not
+correct.  For use in
+.BR xfs_metadump .
+.TP
+.B \-i
+Allows execution on a mounted filesystem, provided it is mounted read-only.
+Useful fo' shell scripts
+which must only operate on filesystems up in a guaranteed consistent state
+(either unmounted or mounted read-only). These semantics is slightly
+different ta dat of the
+.B -r
+option.
+.TP
+.BI \-l " logdev"
+Specifies tha thang where tha filesystems external log resides.
+Only fo' dem filesystems which use a external log. Right back up in yo muthafuckin ass. See the
+.BR mkfs.xfs "(8) " \-l
+option, n' refer to
+.BR xfs (5)
+for a thugged-out detailed description of tha XFS log.
+.TP
+.BI \-p " progname"
+Set tha program name to
+.I progname
+for prompts n' some error lyrics, tha default value is
+.BR xfs_db .
+.TP
+.B -r
+Open
+.I device
+or
+.I filename
+read-only. This option is required if tha filesystem is mounted.
+It be only necessary ta omit dis flag if a cold-ass lil command dat chizzlez data
+.RB ( write ", " blocktrash )
+is ta be used.
+.TP
+.B \-x
+Specifies expert mode.
+This enablez the
+.B write
+and
+.B blocktrash
+commands.
+.TP
+.B \-V
+Prints tha version number n' exits.
+.SH CONCEPTS
+.B xfs_db
+commandz can be fucked up tha fuck into two classes. Most commandz is for
+the mastabation n' display of data structures up in tha filesystem.
+Other commandz is fo' scannin tha filesystem up in some way.
+.PP
+Commandz which is used ta navigate tha filesystem structure take arguments
+which reflect tha namez of filesystem structure fields.
+There can be multiple field names separated by dots when tha underlying
+structures is nested, as up in C.
+Da field names can be indexed (as a array index)
+if tha underlyin field be a array.
+Da array indices can be specified as a range, two numbers separated by a thugged-out dash.
+.PP
+.B xfs_db
+maintains a cold-ass lil current address up in tha filesystem.
+Da granularitizzle of tha address be a gangbangin' filesystem structure.
+This can be a gangbangin' filesystem block,
+an inode or quota (smalla than a gangbangin' filesystem block),
+or a gangbangin' finger-lickin' directory block (could be larger than a gangbangin' filesystem block).
+There is a variety of commandz ta set tha current address.
+Associated wit tha current address is tha current data type,
+which is tha structural type of dis data.
+Commandz which follow tha structure of tha filesystem always set tha type
+as well as tha address.
+Commandz which examine piecez of a individual file (inode) need tha current
+inode ta be set, dis is done wit the
+.B inode
+command.
+.PP
+Da current address/type shiznit is straight-up maintained up in a
+stack dat can be explicitly manipulated wit the
+.BR push ", " pop ", n' " stack
+commands.
+This allows fo' easy as fuck  examination of a nested filesystem structure.
+Also, tha last nuff muthafuckin locations hit up is stored up in a rang buffer
+which can be manipulated wit the
+.BR forward ", " back ", n' " ring
+commands.
+.PP
+XFS filesystems is divided tha fuck into a lil' small-ass number of allocation groups.
+.B xfs_db
+maintains a notion of tha current allocation crew which is
+manipulated by some commands. Da initial allocation crew is 0.
+.SH COMMANDS
+.PP
+Many commandz have extensive online help. Use the
+.B help
+command fo' mo' details on any command.
+.TP
+.B a
+See the
+.B addr
+command.
+.TP
+.BI ablock " filoff"
+Set current address ta tha offset
+.I filoff
+(a filesystem block number) up in tha attribute area of tha current inode.
+.TP
+.BI "addr [" field-expression ]
+Set current address ta tha value of the
+.IR field-expression .
+This is used ta "follow" a reference up in one structure ta tha object
+bein referred to. If no argument is given, tha current address is printed.
+.TP
+.BI "agf [" agno ]
+Set current address ta tha AGF block fo' allocation group
+.IR agno .
+If no argument is given, use tha current allocation group.
+.TP
+.BI "agfl [" agno ]
+Set current address ta tha AGFL block fo' allocation group
+.IR agno .
+If no argument is given, use tha current allocation group.
+.TP
+.BI "agi [" agno ]
+Set current address ta tha AGI block fo' allocation group
+.IR agno .
+If no argument is given, use tha current allocation group.
+.TP
+.B b
+See the
+.B back
+command.
+.TP
+.B back
+Move ta tha previous location up in tha posizzle ring.
+.TP
+.B blockfree
+Jacked block usage shiznit collected by tha last execution of the
+.B blockget
+command. Y'all KNOW dat shit, muthafucka! This must be done before another
+.B blockget
+command can be given, presumably wit different arguments than tha previous one.
+.TP
+.BI "blockget [\-npvs] [\-b " bno "] ... [\-i " ino "] ..."
+Git block usage n' check filesystem consistency.
+Da shiznit is saved fo' use by a subsequent
+.BR blockuse ", " ncheck ", or " blocktrash
+command.
+.RS 1.0i
+.TP 0.4i
+.B \-b
+is used ta specify filesystem block numbers bout which verbose
+information should be printed.
+.TP
+.B \-i
+is used ta specify inode numbers bout which verbose shiznit
+should be printed.
+.TP
+.B \-n
+is used ta save pathnames fo' inodes hit up, dis is used ta support the
+.BR xfs_ncheck (8)
+command. Y'all KNOW dat shit, muthafucka! Well shiiiit, it also means dat pathnames is ghon be printed fo' inodes dat have
+problems. This option uses a shitload of memory so aint enabled by default.
+.TP
+.B \-p
+causes error lyrics ta be prefixed wit tha filesystem name being
+processed. Y'all KNOW dat shit, muthafucka! This is useful if nuff muthafuckin copies of
+.B xfs_db
+are run up in parallel.
+.TP
+.B \-s
+restricts output ta severe errors only. This is useful if tha output is
+too long otherwise.
+.TP
+.B \-v
+enablez verbose output. Lyrics is ghon be printed fo' every last muthafuckin block and
+inode processed.
+.RE
+.TP
+.BI "blocktrash [\-n " count "] [\-x " min "] [\-y " max "] [\-s " seed "] [\-0|1|2|3] [\-t " type "] ..."
+Trash randomly selected filesystem metadata blocks.
+Trashin occurs ta randomly selected bits up in tha chosen blocks.
+This command be available only up in debuggin versions of
+.BR xfs_db .
+It be useful fo' testing
+.BR xfs_repair "(8).
+.RS 1.0i
+.TP 0.4i
+.BR \-0 " | " -1 " | " -2 " | " -3
+These is used ta set tha operatin mode for
+.BR blocktrash .
+Only one can be used:
+.B \-0
+changed bits is cleared;
+.B \-1
+changed bits is set;
+.B -2
+changed bits is inverted;
+.B -3
+changed bits is randomized.
+.TP
+.B \-n
+supplies the
+.I count
+of block-trashings ta big-ass up (default 1).
+.TP
+.B \-s
+supplies a
+.I seed
+to tha random processing.
+.TP
+.B \-t
+gives a
+.I type
+of blocks ta be selected fo' trashing. Multiple
+.B \-t
+options may be given. I aint talkin' bout chicken n' gravy biatch. If no
+.B \-t
+options is given then all metadata types can be trashed.
+.TP
+.B \-x
+sets the
+.I minimum
+size of bit range ta be trashed. Y'all KNOW dat shit, muthafucka! Da default value is 1.
+.TP
+.B \-y
+sets the
+.I maximum
+size of bit range ta be trashed. Y'all KNOW dat shit, muthafucka! Da default value is 1024.
+.RE
+.TP
+.BI "blockuse [\-n] [\-c " count ]
+Print usage fo' current filesystem block(s).
+For each block, tha type n' (if any) inode is printed.
+.RS 1.0i
+.TP 0.4i
+.B \-c
+specifies a
+.I count
+of blocks ta process. Da default value is 1 (the current block only).
+.TP
+.B \-n
+specifies dat file names should be printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da prior
+.B blockget
+command must have also specified the
+.B \-n
+option.
+.RE
+.TP
+.BI "bmap [\-a\] [\-d] [" block " [" len ]]
+Show tha block map fo' tha current inode.
+Da map display can be restricted ta a area of tha file wit the
+.I block
+and
+.I len
+arguments, n' you can put dat on yo' toast. If
+.I block
+is given and
+.I len
+is omitted then 1 be assumed fo' len.
+.IP
+The
+.B \-a
+and
+.B \-d
+options is used ta select tha attribute or data
+area of tha inode, if neither option is given then both areas is shown.
+.TP
+.B check
+See the
+.B blockget
+command.
+.TP
+.BI "convert " "type number" " [" "type number" "] ... " type
+Convert from one address form ta another.
+Da known
+.IR type s,
+with alternate names, are:
+.RS 1.0i
+.PD 0
+.HP
+.B agblock
+or
+.B agbno
+(filesystem block within a allocation group)
+.HP
+.B agino
+or
+.B aginode
+(inode number within a allocation group)
+.HP
+.B agnumber
+or
+.B agno
+(allocation crew number)
+.HP
+.B bboff
+or
+.B daddroff
+(byte offset up in a
+.BR daddr )
+.HP
+.B blkoff
+or
+.B fsboff or
+.B agboff
+(byte offset up in a
+.B agblock
+or
+.BR fsblock )
+.HP
+.B byte
+or
+.B fsbyte
+(byte address up in filesystem)
+.HP
+.B daddr
+or
+.B bb
+(disk address, 512-byte blocks)
+.HP
+.B fsblock
+or
+.B fsb
+or
+.B fsbno
+(filesystem block, peep the
+.B fsblock
+command)
+.HP
+.B ino
+or
+.B inode
+(inode number)
+.HP
+.B inoidx
+or
+.B offset
+(index of inode up in filesystem block)
+.HP
+.B inooff
+or
+.B inodeoff
+(byte offset up in inode)
+.PD
+.RE
+.IP
+Only conversions dat "make sense" is allowed.
+Da compound form (with mo' than three arguments) is useful for
+conversions such as
+.B convert agno
+.I ag
+.B agbno
+.I agb
+.BR fsblock .
+.TP
+.BI "daddr [" d ]
+Set current address ta tha daddr (512 byte block) given by
+.IR d .
+If no value for
+.I d
+is given, tha current address is printed, expressed as a thugged-out daddr.
+Da type is set to
+.B data
+(uninterpreted).
+.TP
+.BI dblock " filoff"
+Set current address ta tha offset
+.I filoff
+(a filesystem block number) up in tha data area of tha current inode.
+.TP
+.BI "debug [" flagbits ]
+Set debug option bits, n' you can put dat on yo' toast. These is used fo' debugging
+.BR xfs_db .
+If no value is given for
+.IR flagbits ,
+print tha current debug option bits, n' you can put dat on yo' toast. These is fo' tha use of tha implementor.
+.TP
+.BI "dquot [" projectid_or_userid ]
+Set current address ta a project or user quota block.
+.TP
+.BI "echo [" arg "] ..."
+Echo tha arguments ta tha output.
+.TP
+.B f
+See the
+.B forward
+command.
+.TP
+.B forward
+Move forward ta tha next entry up in tha posizzle ring.
+.TP
+.B frag [\-adflqRrv]
+Git file fragmentation data. This prints shiznit bout fragmentation
+of file data up in tha filesystem (as opposed ta fragmentation of freespace,
+for which peep the
+.B freesp
+command). Every file up in tha filesystem is examined ta peep how tha fuck far from ideal
+its extent mappings is fo' realz. A summary is printed givin tha totals.
+.RS 1.0i
+.TP 0.4i
+.B \-v
+sets verbosity, every last muthafuckin inode has shiznit printed fo' dat shit.
+Da remainin options select which inodes n' extents is examined.
+If no options is given then all is assumed set,
+otherwise just dem given is enabled.
+.TP
+.B \-a
+enablez processin of attribute data.
+.TP
+.B \-d
+enablez processin of directory data.
+.TP
+.B \-f
+enablez processin of regular file data.
+.TP
+.B \-l
+enablez processin of symbolic link data.
+.TP
+.B \-q
+enablez processin of quota file data.
+.TP
+.B \-R
+enablez processin of realtime control file data.
+.TP
+.B \-r
+enablez processin of realtime file data.
+.RE
+.TP
+.BI "freesp [\-bcds] [\-a " ag "] ... [\-e " i "] [\-h " h1 "] ... [\-m " m ]
+Summarize free space fo' tha filesystem. Da free blocks is examined
+and totalled, n' displayed up in tha form of a histogram, wit a cold-ass lil count
+of extents up in each range of free extent sizes.
+.RS 1.0i
+.TP 0.4i
+.B \-a
+adds
+.I ag
+to tha list of allocation crews ta be processed. Y'all KNOW dat shit, muthafucka! If no
+.B \-a
+options is given then all allocation crews is processed.
+.TP
+.B \-b
+specifies dat tha histogram buckets is binary-sized, wit tha starting
+sizes bein tha powerz of 2.
+.TP
+.B \-c
+specifies that
+.B freesp
+will search tha by-size (cnt) space Btree instead of tha default
+by-block (bno) space Btree.
+.TP
+.B \-d
+specifies dat every last muthafuckin free extent is ghon be displayed.
+.TP
+.B \-e
+specifies dat tha histogram buckets are
+equal-sized, wit tha size specified as
+.IR i .
+.TP
+.B \-h
+specifies a startin block number fo' a histogram bucket as
+.IR h1 .
+Multiple
+.BR \-h 's
+are given ta specify tha complete set of buckets.
+.TP
+.B \-m
+specifies dat tha histogram startin block numbers is powers of
+.IR m .
+This is tha general case of
+.BR \-b .
+.TP
+.B \-s
+specifies dat a gangbangin' final summary of total free extents,
+free blocks, n' tha average free extent size is printed.
+.RE
+.TP
+.B fsb
+See the
+.B fsblock
+command.
+.TP
+.BI "fsblock [" fsb ]
+Set current address ta tha fsblock value given by
+.IR fsb .
+If no value for
+.I fsb
+is given tha current address is printed, expressed as a fsb.
+Da type is set to
+.B data
+(uninterpreted). XFS filesystem block numbers is computed
+.RI (( agno " << " agshift ") | " agblock )
+where
+.I agshift
+dependz on tha size of a allocation group. Use the
+.B convert
+command ta convert ta n' from dis form. Block numbers given fo' file blocks
+(for instizzle from the
+.B bmap
+command) is up in dis form.
+.TP
+.BI hash " string
+Prints tha hash value of
+.I string
+usin tha hash function of tha XFS directory n' attribute implementation.
+.TP
+.BI "help [" command ]
+Print help fo' one or all commands.
+.TP
+.BI "inode [" inode# ]
+Set tha current inode number n' shit. If no
+.I inode#
+is given, print tha current inode number.
+.TP
+.BI "label [" label ]
+Set tha filesystem label. Da filesystem label can be used by
+.BR mount (8)
+instead of rockin a thang special file.
+Da maximum length of a XFS label is 12 charactas \- use of a longer
+.I label
+will result up in truncation n' a warnin is ghon be issued. Y'all KNOW dat shit, muthafucka! If no
+.I label
+is given, tha current filesystem label is printed.
+.TP
+.BI "log [stop | start " filename ]
+Start loggin output to
+.IR filename ,
+stop logging, or print tha current loggin status.
+.TP
+.BI "metadump [\-egow] " filename
+Dumps metadata ta a gangbangin' file. Right back up in yo muthafuckin ass. See
+.BR xfs_metadump (8)
+for mo' shiznit.
+.TP
+.BI "ncheck [\-s] [\-i " ino "] ..."
+Print name-inode pairs fo' realz. A
+.B blockget \-n
+command must be run first ta gather tha shiznit.
+.RS 1.0i
+.TP 0.4i
+.B \-i
+specifies a inode number ta be printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. If no
+.B \-i
+options is given then all inodes is printed.
+.TP
+.B \-s
+specifies dat only setuid n' setgid filez is printed.
+.RE
+.TP
+.B p
+See the
+.B print
+command.
+.TP
+.B pop
+Pop location from tha stack.
+.TP
+.BI "print [" field-expression "] ..."
+Print field joints.
+If no argument is given, print all fieldz up in tha current structure.
+.TP
+.BI "push [" command ]
+Push location ta tha stack. If
+.I command
+is supplied, set tha current location ta tha thangs up in dis biatch of
+.I command
+afta pushin tha oldschool location.
+.TP
+.B q
+See the
+.B quit
+command.
+.TP
+.B quit
+Exit
+.BR xfs_db .
+.TP
+.BI "rin [" index ]
+Show posizzle rang (if no
+.I index
+argument is given), or move ta a specific entry up in tha posizzle rang given by
+.IR index .
+.TP
+.BI "sb [" agno ]
+Set current address ta SB header up in allocation group
+.IR agno .
+If no
+.I agno
+is given, use tha current allocation crew number.
+.TP
+.BI "source " source-file
+Process commandz from
+.IR source-file .
+.B source
+commandz can be nested.
+.TP
+.B stack
+View tha location stack.
+.TP
+.BI "type [" type ]
+Set tha current data type to
+.IR type .
+If no argument is given, show tha current data type.
+Da possible data types are:
+.BR agf ", " agfl ", " agi ", " attr ", " bmapbta ", " bmapbtd ,
+.BR bnobt ", " cntbt ", " data ", " dir ", " dir2 ", " dqblk ,
+.BR inobt ", " inode ", " log ", " rtbitmap ", " rtsummary ,
+.BR sb ", " symlink " n' " text .
+See tha TYPES section below fo' mo' shiznit on these data types.
+.TP
+.BI "uuid [" uuid " | " generate " | " rewrite ]
+Set tha filesystem universally unique identifier (UUID).
+Da filesystem UUID can be used by
+.BR mount (8)
+instead of rockin a thang special file.
+The
+.I uuid
+can be set directly ta tha desired UUID, or it can
+be automatically generated rockin the
+.B generate
+option. I aint talkin' bout chicken n' gravy biatch. These options will both write tha UUID tha fuck into every last muthafuckin copy of the
+superblock up in tha filesystem.
+.B rewrite
+copies tha current UUID from tha primary superblock
+to all secondary copiez of tha superblock.
+If no argument is given, tha current filesystem UUID is printed.
+.TP
+.BI "version [" feature " | " "versionnum features2" ]
+Enable selected features fo' a gangbangin' filesystem (certain features can
+be enabled on a unmounted filesystem, after
+.BR mkfs.xfs (8)
+has pimped tha filesystem).
+Support fo' unwritten extents can be enabled rockin the
+.B extflg
+option. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Support fo' version 2 log format can be enabled rockin the
+.B log2
+option. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Support fo' extended attributes can be enabled rockin the
+.B attr1
+or
+.B attr2
+option. I aint talkin' bout chicken n' gravy biatch. Once enabled, extended attributes cannot be disabled yo, but tha user
+may toggle between
+.B attr1
+and
+.B attr2
+at will (olda kernels may not support tha newer version).
+.IP
+If no argument is given, tha current version n' feature bits is printed.
+With one argument, dis command will write tha updated version number
+into every last muthafuckin copy of tha superblock up in tha filesystem.
+If two arguments is given, they is ghon be used as numeric joints fo' the
+.I versionnum
+and
+.I features2
+bits respectively, n' they strang equivalent reported
+(but no modifications is made).
+.TP
+.BI "write [" "field value" "] ..."
+Write a value ta disk.
+Specific fieldz can be set up in structures (struct mode),
+or a funky-ass block can be set ta data joints (data mode),
+or a funky-ass block can be set ta strang joints (strin mode, fo' symlink blocks).
+Da operation happens immediately: there is no buffering.
+.IP
+Struct mode is up in effect when tha current type is structural,
+i.e. not data. For struct mode, tha syntax is "\c
+.B write
+.I field value\c
+".
+.IP
+Data mode is up in effect when tha current type is data. In dis case the
+contentz of tha block can be shifted or rotated left or right, or filled
+with a sequence, a cold-ass lil constant value, or a random value. In dis mode
+.B write
+with no arguments gives mo' shiznit on tha allowed commands.
+.SH TYPES
+This section gives tha fieldz up in each structure type n' they meanings.
+Note dat some typez of block cover multiple actual structures,
+for instizzle directory blocks.
+.TP 1.0i
+.B agf
+Da AGF block is tha header fo' block allocation shiznit;
+it is up in tha second 512-byte block of each allocation group.
+Da followin fieldz is defined:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magicnum
+AGF block magic number, 0x58414746 ('XAGF').
+.TP
+.B versionnum
+version number, currently 1.
+.TP
+.B seqno
+sequence number startin from 0.
+.TP
+.B length
+size up in filesystem blockz of tha allocation crew fo' realz. All allocation
+groups except tha last one of tha filesystem have tha superblock's
+.B agblocks
+value here.
+.TP
+.B bnoroot
+block number of tha root of tha Btree holdin free space
+information sorted by block number.
+.TP
+.B cntroot
+block number of tha root of tha Btree holdin free space
+information sorted by block count.
+.TP
+.B bnolevel
+number of levels up in tha by-block-number Btree.
+.TP
+.B cntlevel
+number of levels up in tha by-block-count Btree.
+.TP
+.B flfirst
+index tha fuck into tha AGFL block of tha straight-up original gangsta actizzle entry.
+.TP
+.B fllast
+index tha fuck into tha AGFL block of tha last actizzle entry.
+.TP
+.B flcount
+count of actizzle entries up in tha AGFL block.
+.TP
+.B freeblks
+count of blocks represented up in tha freespace Btrees.
+.TP
+.B longest
+longest free space represented up in tha freespace Btrees.
+.TP
+.B btreeblks
+number of blocks held up in tha AGF Btrees.
+.PD
+.RE
+.TP
+.B agfl
+Da AGFL block gotz nuff block numbers fo' use of tha block allocator;
+it is up in tha fourth 512-byte block of each allocation group.
+Each entry up in tha actizzle list be a funky-ass block number within tha allocation group
+that can be used fo' any purpose if space runs low.
+Da AGF block fields
+.BR flfirst ", " fllast ", n' " flcount
+designate which entries is currently active.
+Entry space be allocated up in a cold-ass lil circular manner within tha AGFL block.
+Fieldz defined:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B bno
+array of all block numbers. Even dem which is not actizzle is printed.
+.PD
+.RE
+.TP
+.B agi
+Da AGI block is tha header fo' inode allocation shiznit;
+it is up in tha third 512-byte block of each allocation group.
+Fieldz defined:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magicnum
+AGI block magic number, 0x58414749 ('XAGI').
+.TP
+.B versionnum
+version number, currently 1.
+.TP
+.B seqno
+sequence number startin from 0.
+.TP
+.B length
+size up in filesystem blockz of tha allocation group.
+.TP
+.B count
+count of inodes allocated.
+.TP
+.B root
+block number of tha root of tha Btree holdin inode allocation shiznit.
+.TP
+.B level
+number of levels up in tha inode allocation Btree.
+.TP
+.B freecount
+count of allocated inodes dat is not up in use.
+.TP
+.B newino
+last inode number allocated.
+.TP
+.B dirino
+unused.
+.TP
+.B unlinked
+an array of inode numbers within tha allocation group. Da entries
+in tha AGI block is tha headz of lists which run all up in tha inode
+.B next_unlinked
+field. Y'all KNOW dat shit, muthafucka! These inodes is ta be unlinked tha next time tha filesystem is mounted.
+.PD
+.RE
+.TP
+.B attr
+An attribute fork is organized as a Btree wit tha actual data embedded
+in tha leaf blocks. Da root of tha Btree is found up in block 0 of tha fork.
+Da index (sort order) of tha Btree is tha hash value of tha attribute name.
+All tha blocks contain a
+.B blkinfo
+structure all up in tha beginning, peep type
+.B dir
+for a thugged-out description. I aint talkin' bout chicken n' gravy biatch. Nonleaf blocks is identical up in format ta dem for
+version 1 n' version 2 directories, peep type
+.B dir
+for a thugged-out description. I aint talkin' bout chicken n' gravy biatch. Leaf blocks can refer ta "local" or "remote" attribute
+values. Local joints is stored directly up in tha leaf block.
+Remote joints is stored up in a independent block up in tha attribute fork
+(with no structure). Leaf blocks contain tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B hdr
+header containin a
+.B blkinfo
+structure
+.B info
+(magic number 0xfbee), a
+.B count
+of actizzle entries,
+.B usedbytes
+total bytez of names n' joints, the
+.B firstused
+byte up in tha name area,
+.B holes
+set if tha block needz compaction, n' array
+.B freemap
+as for
+.B dir
+leaf blocks.
+.TP
+.B entries
+array of structures containin a
+.BR hashval ,
+.B nameidx
+(index tha fuck into tha block of tha name), n' flags
+.BR incomplete ,
+.BR root ,
+and
+.BR local .
+.TP
+.B nvlist
+array of structures describin tha attribute names n' joints, n' you can put dat on yo' toast. Fields
+always present:
+.B valuelen
+(length of value up in bytes),
+.BR namelen ,
+and
+.BR name .
+Fieldz present fo' local joints:
+.B value
+(value string). Fieldz present fo' remote joints:
+.B valueblk
+(fork block number of containin tha value).
+.PD
+.RE
+.TP
+.B bmapbt
+Filez wit nuff extents up in they data or attribute fork gonna git the
+extents busted lyrics bout by tha contentz of a Btree fo' dat fork,
+instead of bein stored directly up in tha inode.
+Each bmap Btree starts wit a root block contained within tha inode.
+Da other levelz of tha Btree is stored up in filesystem blocks.
+Da blocks is linked ta siblin left n' right blocks at each level,
+as well as by pointas from parent ta lil pimp blocks.
+Each block gotz nuff tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magic
+bmap Btree block magic number, 0x424d4150 ('BMAP').
+.TP
+.B level
+level of dis block above tha leaf level.
+.TP
+.B numrecs
+number of recordz or keys up in tha block.
+.TP
+.B leftsib
+left (logically lower) siblin block, 0 if none.
+.TP
+.B rightsib
+right (logically higher) siblin block, 0 if none.
+.TP
+.B recs
+[leaf blocks only] array of extent records.
+Each record gotz nuff
+.BR startoff ,
+.BR startblock ,
+.BR blockcount ,
+and
+.B extentflag
+(1 if tha extent is unwritten).
+.TP
+.B keys
+[non-leaf blocks only] array of key records. These is tha straight-up original gangsta key
+value of each block up in tha level below dis one. Each record gotz nuff
+.BR startoff .
+.TP
+.B ptrs
+[non-leaf blocks only] array of lil pimp block pointers.
+Each pointa be a gangbangin' filesystem block number ta tha next level up in tha Btree.
+.PD
+.RE
+.TP
+.B bnobt
+There is one set of filesystem blocks formin tha by-block-number
+allocation Btree fo' each allocation group. Da root block of this
+Btree is designated by the
+.B bnoroot
+field up in tha correspondin AGF block.
+Da blocks is linked ta siblin left n' right blocks at each level,
+as well as by pointas from parent ta lil pimp blocks.
+Each block has tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magic
+BNOBT block magic number, 0x41425442 ('ABTB').
+.TP
+.B level
+level number of dis block, 0 be a leaf.
+.TP
+.B numrecs
+number of data entries up in tha block.
+.TP
+.B leftsib
+left (logically lower) siblin block, 0 if none.
+.TP
+.B rightsib
+right (logically higher) siblin block, 0 if none.
+.TP
+.B recs
+[leaf blocks only] array of freespace records. Each record gotz nuff
+.B startblock
+and
+.BR blockcount .
+.TP
+.B keys
+[non-leaf blocks only] array of key records. These is tha straight-up original gangsta value
+of each block up in tha level below dis one. Each record gotz nuff
+.B startblock
+and
+.BR blockcount .
+.TP
+.B ptrs
+[non-leaf blocks only] array of lil pimp block pointers. Each pointa be a
+block number within tha allocation crew ta tha next level up in tha Btree.
+.PD
+.RE
+.TP
+.B cntbt
+There is one set of filesystem blocks formin tha by-block-count
+allocation Btree fo' each allocation group. Da root block of this
+Btree is designated by the
+.B cntroot
+field up in tha correspondin AGF block. Da blocks is linked ta sibling
+left n' right blocks at each level, as well as by pointas from parent
+to lil pimp blocks. Each block has tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magic
+CNTBT block magic number, 0x41425443 ('ABTC').
+.TP
+.B level
+level number of dis block, 0 be a leaf.
+.TP
+.B numrecs
+number of data entries up in tha block.
+.TP
+.B leftsib
+left (logically lower) siblin block, 0 if none.
+.TP
+.B rightsib
+right (logically higher) siblin block, 0 if none.
+.TP
+.B recs
+[leaf blocks only] array of freespace records. Each record gotz nuff
+.B startblock
+and
+.BR blockcount .
+.TP
+.B keys
+[non-leaf blocks only] array of key records. These is tha straight-up original gangsta value
+of each block up in tha level below dis one. Each record gotz nuff
+.B blockcount
+and
+.BR startblock .
+.TP
+.B ptrs
+[non-leaf blocks only] array of lil pimp block pointers. Each pointa be a
+block number within tha allocation crew ta tha next level up in tha Btree.
+.PD
+.RE
+.TP
+.B data
+User file blocks, n' other blocks whose type is unknown, have this
+type fo' display purposes in
+.BR xfs_db .
+Da block data is displayed up in hexadecimal format.
+.TP
+.B dir
+A version 1 directory is organized as a Btree wit tha directory data
+embedded up in tha leaf blocks. Da root of tha Btree is found up in block 0
+of tha file. Da index (sort order) of tha Btree is tha hash value of
+the entry name fo' realz. All tha blocks contain a
+.B blkinfo
+structure all up in tha beginnin wit tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B forw
+next siblin block.
+.TP
+.B back
+previous siblin block.
+.TP
+.B magic
+magic number fo' dis block type.
+.RE
+.IP
+
+Da non-leaf (node) blocks have tha followin fields:
+.RS 1.4i
+.TP 1.2i
+.B hdr
+header containin a
+.B blkinfo
+structure
+.B info
+(magic number 0xfebe), the
+.B count
+of actizzle entries, n' the
+.B level
+of dis block above tha leaves.
+.TP
+.B btree
+array of entries containing
+.B hashval
+and
+.B before
+fields. The
+.B before
+value be a funky-ass block number within tha directory file ta tha lil pimp block, the
+.B hashval
+is tha last hash value up in dat block.
+.RE
+.IP
+
+Da leaf blocks have tha followin fields:
+.RS 1.4i
+.TP 1.2i
+.B hdr
+header containin a
+.B blkinfo
+structure
+.B info
+(magic number 0xfeeb), the
+.B count
+of actizzle entries,
+.B namebytes
+(total name strang bytes),
+.B holes
+flag (block needz compaction), and
+.B freemap
+(array of
+.BR base ", " size
+entries fo' free regions).
+.TP
+.B entries
+array of structures containing
+.BR hashval ,
+.B nameidx
+(byte index tha fuck into tha block of tha name string), and
+.BR namelen .
+.TP
+.B namelist
+array of structures containing
+.B inumber
+and
+.BR name .
+.RE
+.PD
+.TP
+.B dir2
+A version 2 directory has four kindz of blocks.
+Data blocks start at offset 0 up in tha file.
+There is two kindz of data blocks: single-block directories have
+the leaf shiznit embedded all up in tha end of tha block, data blocks
+in multi-block directories do not.
+Node n' leaf blocks start at offset 32GiB (with either a single
+leaf block or tha root node block).
+Freespace blocks start at offset 64GiB.
+Da node n' leaf blocks form a Btree, wit references ta tha data
+in tha data blocks.
+Da freespace blocks form a index of longest free spaces within the
+data blocks.
+.IP
+A single-block directory block gotz nuff tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B bhdr
+header containing
+.B magic
+number 0x58443242 ('XD2B') n' a array
+.B bestfree
+of tha longest 3 free spaces up in tha block
+.RB ( offset ", " length ).
+.TP
+.B bu
+array of union structures. Each element is either a entry or a gangbangin' freespace.
+For entries, there be tha followin fields:
+.BR inumber ,
+.BR namelen ,
+.BR name ,
+and
+.BR tag .
+For freespace, there be tha followin fields:
+.B freetag
+(0xffff),
+.BR length ,
+and
+.BR tag .
+The
+.B tag
+value is tha byte offset up in tha block of tha start of tha entry it
+is contained in.
+.TP
+.B bleaf
+array of leaf entries containing
+.B hashval
+and
+.BR address .
+The
+.B address
+is a 64-bit word offset tha fuck into tha file.
+.TP
+.B btail
+tail structure containin tha total
+.B count
+of leaf entries and
+.B stale
+count of unused leaf entries.
+.RE
+.IP
+
+A data block gotz nuff tha followin fields:
+.RS 1.4i
+.TP 1.2i
+.B dhdr
+header containing
+.B magic
+number 0x58443244 ('XD2D') n' a array
+.B bestfree
+of tha longest 3 free spaces up in tha block
+.RB ( offset ", " length ).
+.TP
+.B du
+array of union structures as for
+.BR bu .
+.RE
+.IP
+
+Leaf blocks have two possible forms. If tha Btree consistz of a single
+leaf then tha freespace shiznit is up in tha leaf block,
+otherwise it is up in separate blocks n' tha root of tha Btree is
+a node block fo' realz. A leaf block gotz nuff tha followin fields:
+.RS 1.4i
+.TP 1.2i
+.B lhdr
+header containin a
+.B blkinfo
+structure
+.B info
+(magic number 0xd2f1 fo' tha single leaf case, 0xd2ff fo' tha true
+Btree case), tha total
+.B count
+of leaf entries, and
+.B stale
+count of unused leaf entries.
+.TP
+.B lents
+leaf entries, as for
+.BR bleaf .
+.TP
+.B lbests
+[single leaf only] array of joints which represent tha longest freespace
+in each data block up in tha directory.
+.TP
+.B ltail
+[single leaf only] tail structure containing
+.B bestcount
+count of
+.BR lbests .
+.RE
+.IP
+
+A node block is identical ta dat fo' types
+.B attr
+and
+.BR dir .
+
+A freespace block gotz nuff tha followin fields:
+.RS 1.4i
+.TP 1.2i
+.B fhdr
+header containing
+.B magic
+number 0x58443246 ('XD2F'),
+.B firstdb
+first data block number covered by dis freespace block,
+.B nvalid
+number of valid entries, and
+.B nused
+number of entries representin real data blocks.
+.TP
+.B fbests
+array of joints as for
+.BR lbests .
+.PD
+.RE
+.TP
+.B dqblk
+Da quota shiznit is stored up in filez referred ta by tha superblock
+.B uquotino
+and
+.B pquotino
+fields. Each filesystem block up in a quota file gotz nuff a cold-ass lil constant number of
+quota entries. Put ya muthafuckin choppers up if ya feel dis! Da quota entry size is currently 136 bytes, so wit a 4KiB
+filesystem block size there be 30 quota entries per block. The
+.B dquot
+command is used ta locate these entries up in tha filesystem.
+Da file entries is indexed by tha user or project identifier
+to determine tha block n' offset.
+Each quota entry has tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.5i
+.B magic
+magic number, 0x4451 ('DQ').
+.TP
+.B version
+version number, currently 1.
+.TP
+.B flags
+flags, joints include 0x01 fo' user quota, 0x02 fo' project quota.
+.TP
+.B id
+user or project identifier.
+.TP
+.B blk_hardlimit
+absolute limit on blocks up in use.
+.TP
+.B blk_softlimit
+preferred limit on blocks up in use.
+.TP
+.B ino_hardlimit
+absolute limit on inodes up in use.
+.TP
+.B ino_softlimit
+preferred limit on inodes up in use.
+.TP
+.B bcount
+blocks straight-up up in use.
+.TP
+.B icount
+inodes straight-up up in use.
+.TP
+.B itimer
+time when steez is ghon be refused if soft limit is violated fo' inodes.
+.TP
+.B btimer
+time when steez is ghon be refused if soft limit is violated fo' blocks.
+.TP
+.B iwarns
+number of warnings issued bout inode limit violations.
+.TP
+.B bwarns
+number of warnings issued bout block limit violations.
+.TP
+.B rtb_hardlimit
+absolute limit on realtime blocks up in use.
+.TP
+.B rtb_softlimit
+preferred limit on realtime blocks up in use.
+.TP
+.B rtbcount
+realtime blocks straight-up up in use.
+.TP
+.B rtbtimer
+time when steez is ghon be refused if soft limit is violated fo' realtime blocks.
+.TP
+.B rtbwarns
+number of warnings issued bout realtime block limit violations.
+.PD
+.RE
+.TP
+.B inobt
+There is one set of filesystem blocks formin tha inode allocation Btree for
+each allocation group. Da root block of dis Btree is designated by the
+.B root
+field up in tha correspondin AGI block.
+Da blocks is linked ta siblin left n' right blocks at each level,
+as well as by pointas from parent ta lil pimp blocks.
+Each block has tha followin fields:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magic
+INOBT block magic number, 0x49414254 ('IABT').
+.TP
+.B level
+level number of dis block, 0 be a leaf.
+.TP
+.B numrecs
+number of data entries up in tha block.
+.TP
+.B leftsib
+left (logically lower) siblin block, 0 if none.
+.TP
+.B rightsib
+right (logically higher) siblin block, 0 if none.
+.TP
+.B recs
+[leaf blocks only] array of inode records. Each record gotz nuff
+.B startino
+allocation-group relatizzle inode number,
+.B freecount
+count of free inodes up in dis chunk, and
+.B free
+bitmap, LSB correspondz ta inode 0.
+.TP
+.B keys
+[non-leaf blocks only] array of key records. These is tha straight-up original gangsta value of each
+block up in tha level below dis one. Each record gotz nuff
+.BR startino .
+.TP
+.B ptrs
+[non-leaf blocks only] array of lil pimp block pointers. Each pointa be a
+block number within tha allocation crew ta tha next level up in tha Btree.
+.PD
+.RE
+.TP
+.B inode
+Inodes is allocated up in "chunks" of 64 inodes each. Usually a cold-ass lil chunk is
+multiple filesystem blocks, although there be cases wit big-ass filesystem
+blocks where a cold-ass lil chunk is less than one block. Da inode Btree (see
+.B inobt
+above) refers ta tha inode numbers per allocation group. Da inode numbers
+directly reflect tha location of tha inode block on disk. Use the
+.B inode
+command ta point
+.B xfs_db
+to a specific inode. Each inode gotz nuff four regions:
+.BR core ,
+.BR next_unlinked ,
+.BR u ", n' "
+.BR a .
+.B core
+gotz nuff tha fixed shiznit.
+.B next_unlinked
+is separated from tha core cuz of journalin considerations, peep type
+.B agi
+field
+.BR unlinked .
+.B u
+is a union structure dat is different up in size n' format depending
+on tha type n' representation of tha file data ("data fork").
+.B a
+is a optionizzle union structure ta describe attribute data,
+that is different up in size, format, n' location dependin on tha presence
+and representation of attribute data, n' tha size of the
+.B u
+data ("attribute fork").
+.B xfs_db
+automatically selects tha proper union thugz based on shiznit
+in tha inode.
+.IP
+Da followin is fieldz up in tha inode core:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magic
+inode magic number, 0x494e ('IN').
+.TP
+.B mode
+mode n' type of file, as busted lyrics bout in
+.BR chmod (2),
+.BR mknod (2),
+and
+.BR stat (2).
+.TP
+.B version
+inode version, 1 or 2.
+.TP
+.B format
+format of
+.B u
+union data (0: xfs_dev_t, 1: local file \- in-inode directory or symlink,
+2: extent list, 3: Btree root, 4: unique id [unused]).
+.TP
+.B nlinkv1
+number of links ta tha file up in a version 1 inode.
+.TP
+.B nlinkv2
+number of links ta tha file up in a version 2 inode.
+.TP
+.B projid_lo
+ballerz project id (low word; version 2 inode only).
+.B projid_hi
+ballerz project id (high word; version 2 inode only).
+.TP
+.B uid
+ballerz user id.
+.TP
+.B gid
+ballerz crew id.
+.TP
+.B atime
+time last accessed (secondz n' nanoseconds).
+.TP
+.B mtime
+time last modified.
+.TP
+.B ctime
+time pimped or inode last modified.
+.TP
+.B size
+number of bytes up in tha file.
+.TP
+.B nblocks
+total number of blocks up in tha file includin indirect n' attribute.
+.TP
+.B extsize
+basic/minimum extent size fo' tha file.
+.TP
+.B nextents
+number of extents up in tha data fork.
+.TP
+.B naextents
+number of extents up in tha attribute fork.
+.TP
+.B forkoff
+attribute fork offset up in tha inode, up in 64-bit lyrics from tha start of
+.BR u .
+.TP
+.B aformat
+format of
+.B a
+data (1: local attribute data, 2: extent list, 3: Btree root).
+.TP
+.B dmevmask
+DMAPI event mask.
+.TP
+.B dmstate
+DMAPI state shiznit.
+.TP
+.B newrtbm
+file is tha realtime bitmap n' is "new" format.
+.TP
+.B prealloc
+file has preallocated data space afta EOF.
+.TP
+.B realtime
+file data is up in tha realtime subvolume.
+.TP
+.B gen
+inode generation number.
+.RE
+.IP
+
+Da followin fieldz is up in the
+.B u
+data fork union:
+.RS 1.4i
+.TP 1.2i
+.B bmbt
+bmap Btree root. This be lookin like a
+.B bmapbtd
+block wit redundant shiznit removed.
+.TP
+.B bmx
+array of extent descriptors.
+.TP
+.B dev
+dev_t fo' tha block or characta device.
+.TP
+.B sfdir
+shortform (in-inode) version 1 directory. This consistz of a
+.B hdr
+containin the
+.B parent
+inode number n' a
+.B count
+of actizzle entries up in tha directory, followed by a array
+.B list
+of
+.B hdr.count
+entries. Put ya muthafuckin choppers up if ya feel dis! Each such entry gotz nuff
+.BR inumber ,
+.BR namelen ,
+and
+.B name
+string.
+.TP
+.B sfdir2
+shortform (in-inode) version 2 directory. This consistz of a
+.B hdr
+containin a
+.B count
+of actizzle entries up in tha directory, an
+.B i8count
+of entries wit inumbers dat don't fit up in a 32-bit value, n' the
+.B parent
+inode number, followed by a array
+.B list
+of
+.B hdr.count
+entries. Put ya muthafuckin choppers up if ya feel dis! Each such entry gotz nuff
+.BR namelen ,
+a saved
+.B offset
+used when tha directory is converted ta a larger form, a
+.B name
+string, n' the
+.BR inumber .
+.TP
+.B symlink
+symbolic link strang value.
+.RE
+.IP
+
+Da followin fieldz is up in the
+.B a
+attribute fork union if it exists:
+.RS 1.4i
+.TP 1.2i
+.B bmbt
+bmap Btree root, as above.
+.TP
+.B bmx
+array of extent descriptors.
+.TP
+.B sfattr
+shortform (in-inode) attribute joints, n' you can put dat on yo' toast. This consistz of a
+.B hdr
+containin a
+.B totsize
+(total size up in bytes) n' a
+.B count
+of actizzle entries, followed by a array
+.B list
+of
+.B hdr.count
+entries. Put ya muthafuckin choppers up if ya feel dis! Each such entry gotz nuff
+.BR namelen ,
+.BR valuelen ,
+.BR root
+flag,
+.BR name ,
+and
+.BR value .
+.PD
+.RE
+.TP
+.B log
+Log blocks contain tha journal entries fo' XFS.
+It aint nuthin but not useful ta examine these with
+.BR xfs_db ,
+use
+.BR xfs_logprint (8)
+instead.
+.TP
+.B rtbitmap
+If tha filesystem has a realtime subvolume, then the
+.B rbmino
+field up in tha superblock refers ta a gangbangin' file dat gotz nuff tha realtime bitmap.
+Each bit up in tha bitmap file controls tha allocation of a single realtime extent
+(set == free). Da bitmap is processed up in 32-bit lyrics, tha LSB of a word is
+used fo' tha straight-up original gangsta extent controlled by dat bitmap word. Y'all KNOW dat shit, muthafucka! The
+.B atime
+field of tha realtime bitmap inode gotz nuff a cold-ass lil counter
+that is used ta control where tha next freshly smoked up realtime file will start.
+.TP
+.B rtsummary
+If tha filesystem has a realtime subvolume, then the
+.B rsumino
+field up in tha superblock refers ta a gangbangin' file dat gotz nuff tha realtime summary
+data. Da summary file gotz nuff a two-dimensionizzle array of 16-bit joints.
+Each value counts tha number of free extent runs
+(consecutizzle free realtime extents)
+of a given range of sizes dat starts up in a given bitmap block.
+Da size ranges is binary buckets (low size up in tha bucket be a juice of 2).
+There is as nuff size ranges as is necessary given tha size of the
+realtime subvolume.
+Da first dimension is tha size range,
+the second dimension is tha startin bitmap block number
+(adjacent entries is fo' tha same size, adjacent bitmap blocks).
+.TP
+.B sb
+There is one sb (superblock) structure per allocation group.
+It be tha straight-up original gangsta disk block up in tha allocation group.
+Only tha straight-up original gangsta one (block 0 of tha filesystem) is straight-up used;
+the other blocks is redundant shiznit for
+.BR xfs_repair (8)
+to use if tha straight-up original gangsta superblock is damaged. Y'all KNOW dat shit, muthafucka! Fieldz defined:
+.RS 1.4i
+.PD 0
+.TP 1.2i
+.B magicnum
+superblock magic number, 0x58465342 ('XFSB').
+.TP
+.B blocksize
+filesystem block size up in bytes.
+.TP
+.B dblocks
+number of filesystem blocks present up in tha data subvolume.
+.TP
+.B rblocks
+number of filesystem blocks present up in tha realtime subvolume.
+.TP
+.B rextents
+number of realtime extents that
+.B rblocks
+contain.
+.TP
+.B uuid
+unique identifier of tha filesystem.
+.TP
+.B logstart
+startin filesystem block number of tha log (journal).
+If dis value is 0 tha log is "external".
+.TP
+.B rootino
+root inode number.
+.TP
+.B rbmino
+realtime bitmap inode number.
+.TP
+.B rsumino
+realtime summary data inode number.
+.TP
+.B rextsize
+realtime extent size up in filesystem blocks.
+.TP
+.B agblocks
+size of a allocation crew up in filesystem blocks.
+.TP
+.B agcount
+number of allocation groups.
+.TP
+.B rbmblocks
+number of realtime bitmap blocks.
+.TP
+.B logblocks
+number of log blocks (filesystem blocks).
+.TP
+.B versionnum
+filesystem version shiznit.
+This value is currently 1, 2, 3, or 4 up in tha low 4 bits.
+If tha low bits is 4 then tha other bits have additionizzle meanings.
+1 is tha original gangsta value.
+2 means dat attributes was used.
+3 means dat version 2 inodes (pimpin' link counts) was used.
+4 is tha bitmask version of tha version number.
+In dis case, tha other bits is used as flags
+(0x0010: attributes was used,
+0x0020: version 2 inodes was used,
+0x0040: quotas was used,
+0x0080: inode clusta alignment is up in force,
+0x0100: data stripe alignment is up in force,
+0x0200: the
+.B shared_vn
+field is used,
+0x1000: unwritten extent trackin is on,
+0x2000: version 2 directories is up in use).
+.TP
+.B sectsize
+sector size up in bytes, currently always 512.
+This is tha size of tha superblock n' tha other header blocks.
+.TP
+.B inodesize
+inode size up in bytes.
+.TP
+.B inopblock
+number of inodes per filesystem block.
+.TP
+.B fname
+obsolete, filesystem name.
+.TP
+.B fpack
+obsolete, filesystem pack name.
+.TP
+.B blocklog
+log2 of
+.BR blocksize .
+.TP
+.B sectlog
+log2 of
+.BR sectsize .
+.TP
+.B inodelog
+log2 of
+.BR inodesize .
+.TP
+.B inopblog
+log2 of
+.BR inopblock .
+.TP
+.B agblklog
+log2 of
+.B agblocks
+(rounded up).
+.TP
+.B rextslog
+log2 of
+.BR rextents .
+.TP
+.B inprogress
+.BR mkfs.xfs (8)
+or
+.BR xfs_copy (8)
+aborted before completin dis filesystem.
+.TP
+.B imax_pct
+maximum cementage of filesystem space used fo' inode blocks.
+.TP
+.B icount
+number of allocated inodes.
+.TP
+.B ifree
+number of allocated inodes dat is not up in use.
+.TP
+.B fdblocks
+number of free data blocks.
+.TP
+.B frextents
+number of free realtime extents.
+.TP
+.B uquotino
+user quota inode number.
+.TP
+.B pquotino
+project quota inode number; dis is currently unused.
+.TP
+.B qflags
+quota status flags
+(0x01: user quota accountin is on,
+0x02: user quota limits is enforced,
+0x04: quotacheck has been run on user quotas,
+0x08: project quota accountin is on,
+0x10: project quota limits is enforced,
+0x20: quotacheck has been run on project quotas).
+.TP
+.B flags
+random flags. 0x01: only read-only mounts is allowed.
+.TP
+.B shared_vn
+shared version number (shared readonly filesystems).
+.TP
+.B inoalignmt
+inode chunk alignment up in filesystem blocks.
+.TP
+.B unit
+stripe or RAID unit.
+.TP
+.B width
+stripe or RAID width.
+.TP
+.B dirblklog
+log2 of directory block size (filesystem blocks).
+.PD
+.RE
+.TP
+.B symlink
+Symbolic link blocks is used only when tha symbolic link value do
+not fit inside tha inode. Da block content is just tha strang value.
+Bytes past tha logical end of tha symbolic link value have arbitrary joints.
+.TP
+.B text
+User file blocks, n' other blocks whose type is unknown,
+have dis type fo' display purposes in
+.BR xfs_db .
+Da block data is displayed up in two columns: Hexadecimal format
+and printable ASCII chars.
+.SH DIAGNOSTICS
+Many lyrics can come from the
+.B check
+.RB ( blockget )
+command.
+If tha filesystem is straight-up corrupt, a cold-ass lil core dump might
+be produced instead of tha message
+.RS
+.I device
+.B aint a valid filesystem
+.RE
+.PP
+If tha filesystem is straight-up big-ass (has nuff files) then
+.B check
+might run outta memory. In dis case tha message
+.RS
+.B outta memory
+.RE
+is printed.
+.PP
+Da followin be a thugged-out description of da most thugged-out likely problems n' tha associated
+lyrics.
+Most of tha diagnostics produced is only meaningful wit a understanding
+of tha structure of tha filesystem.
+.TP
+.BI "agf_freeblks " n ", counted " m " up in ag " a
+Da freeblocks count up in tha allocation crew header fo' allocation group
+.I a
+doesn't match tha number of blocks counted free.
+.TP
+.BI "agf_longest " n ", counted " m " up in ag " a
+Da longest free extent up in tha allocation crew header fo' allocation group
+.I a
+doesn't match tha longest free extent found up in tha allocation group.
+.TP
+.BI "agi_count " n ", counted " m " up in ag " a
+Da allocated inode count up in tha allocation crew header fo' allocation group
+.I a
+doesn't match tha number of inodes counted up in tha allocation group.
+.TP
+.BI "agi_freecount " n ", counted " m " up in ag " a
+Da free inode count up in tha allocation crew header fo' allocation group
+.I a
+doesn't match tha number of inodes counted free up in tha allocation group.
+.TP
+.BI "block " a/b " expected inum 0 gots " i
+Da block number is specified as a pair
+(allocation crew number, block up in tha allocation group).
+Da block is used multiple times (shared), between multiple inodes.
+This message probably bigs up a message of tha next type.
+.TP
+.BI "block " a/b " expected type unknown gots " y
+Da block is used multiple times (shared).
+.TP
+.BI "block " a/b " type unknown not expected
+.SH SEE ALSO
+.BR mkfs.xfs (8),
+.BR xfs_admin (8),
+.BR xfs_copy (8),
+.BR xfs_logprint (8),
+.BR xfs_metadump (8),
+.BR xfs_ncheck (8),
+.BR xfs_repair (8),
+.BR mount (8),
+.BR chmod (2),
+.BR mknod (2),
+.BR stat (2),
+.BR xfs (5).

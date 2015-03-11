@@ -1,0 +1,587 @@
+'\" t
+.\" Copyright (c) 2012 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH MALLOPT 3  2012-04-30 "Linux" "Linux Programmerz Manual"
+.SH NAME
+mallopt \- set memory allocation parameters
+.SH SYNOPSIS
+.B #include <malloc.h>
+
+.BI "int mallopt(int " param ", int " value );
+.SH DESCRIPTION
+The
+.BR mallopt ()
+function adjusts parametas dat control tha behavior of the
+memory-allocation functions (see
+.BR malloc (3)).
+The
+.IR param
+argument specifies tha parameta ta be modified, and
+.I value
+specifies tha freshly smoked up value fo' dat parameter.
+
+Da followin joints can be specified for
+.IR param :
+.TP
+.BR M_CHECK_ACTION
+Settin dis parameta controls how tha fuck glibc respondz when various kinds
+of programmin errors is detected (e.g., freein tha same pointa twice).
+Da 3 least dope bits (2, 1, n' 0) of tha value assigned
+to dis parameta determine tha glibc behavior, as bigs up:
+.RS
+.TP
+Bit 0
+If dis bit is set, then print a one-line message on
+.I stderr
+that serves up details bout tha error.
+Da message starts wit tha strang "***\ glibc detected\ ***",
+followed by tha program name,
+the name of tha memory-allocation function up in which tha error was detected,
+a brief description of tha error,
+and tha memory address where tha error was detected.
+.TP
+Bit 1
+If dis bit is set, then,
+afta printin any error message specified by bit 0,
+the program is terminated by calling
+.BR abort (3).
+In glibc versions since 2.4,
+if bit 0 be also set,
+then, between printin tha error message n' aborting,
+the program also prints a stack trace up in tha manner of
+.BR backtrace (3),
+and prints tha processs memory mappin up in tha steez of
+.IR /proc/[pid]/maps
+(see
+.BR proc (5)).
+.TP
+Bit 2 (since glibc 2.4)
+This bit has a effect only if bit 0 be also set.
+If dis bit is set,
+then tha one-line message describin tha error is simplified
+to contain just tha name of tha function where tha error
+was detected n' tha brief description of tha error.
+.RE
+.IP
+Da remainin bits in
+.I value
+are ignored.
+.IP
+Combinin tha above details,
+the followin numeric joints is meaningful for
+.BR M_CHECK_ACTION :
+.RS 12
+.IP 0 3
+Ignore error conditions; continue execution (with undefined thangs up in dis biatch).
+.IP 1
+Print a thugged-out detailed error message n' continue execution.
+.IP 2
+Abort tha program.
+.IP 3
+Print detailed error message, stack trace, n' memory mappings,
+and abort tha program.
+.IP 5
+Print a simple error message n' continue execution.
+.IP 7
+Print simple error message, stack trace, n' memory mappings,
+and abort tha program.
+.RE
+.IP
+Since glibc 2.3.4, tha default value fo' the
+.BR M_CHECK_ACTION
+parameta is 3.
+In glibc version 2.3.3 n' earlier, tha default value is 1.
+.IP
+Usin a nonzero
+.B M_CHECK_ACTION
+value can be useful cuz otherwise a cold-ass lil crash may happen much later,
+and tha legit cause of tha problem is then straight-up hard ta track down.
+.TP
+.BR M_MMAP_MAX
+.\" Da followin text adapted from comments up in tha glibc source:
+This parameta specifies tha maximum number of allocation requests that
+may be simultaneously serviced using
+.BR mmap (2).
+This parameta exists cuz some systems gotz a limited number
+of internal tablez fo' use by
+.BR mmap (2),
+and rockin mo' than all dem of dem may degrade performance.
+.IP
+Da default value is 65,536,
+a value which has no special significizzle and
+which servers only as a safeguard.
+Settin dis parameta ta 0 disablez tha use of
+.BR mmap (2)
+for servicin big-ass allocation requests.
+.TP
+.BR M_MMAP_THRESHOLD
+For allocations pimped outa than or equal ta tha limit specified (in bytes) by
+.BR M_MMAP_THRESHOLD
+that can't be satisfied from tha free list,
+the memory-allocation functions employ
+.BR mmap (2)
+instead of increasin tha program break using
+.BR sbrk (2).
+.IP
+Allocatin memory using
+.BR mmap (2)
+has tha dope advantage dat tha allocated memory blocks
+can always be independently busted out back ta tha system.
+(By contrast,
+the heap can be trimmed only if memory is freed all up in tha top end.)
+On tha other hand, there be some disadvantages ta tha use of
+.BR mmap (2):
+deallocated space aint placed on tha free list
+for reuse by lata allocations;
+memory may be wasted cuz
+.BR mmap (2)
+allocations must be page-aligned;
+and tha kernel must big-ass up tha high-rollin' task of zeroin out
+memory allocated via
+.BR mmap (2).
+Balancin these factors leadz ta a thugged-out default settin of 128*1024 fo' the
+.BR M_MMAP_THRESHOLD
+parameter.
+.IP
+Da lower limit fo' dis parameta is 0.
+Da upper limit is
+.BR DEFAULT_MMAP_THRESHOLD_MAX :
+512*1024 on 32-bit systems or
+.IR 4*1024*1024*sizeof(long)
+on 64-bit systems.
+.IP
+.IR Note:
+Nowadays, glibc uses a thugged-out dynamic mmap threshold by default.
+Da initial value of tha threshold is 128*1024,
+but when blocks larger than tha current threshold n' less than or equal to
+.BR DEFAULT_MMAP_THRESHOLD_MAX
+are freed,
+the threshold be adjusted upwardz ta tha size of tha freed block.
+When dynamic mmap thresholdin is up in effect,
+the threshold fo' trimmin tha heap be also dynamically adjusted
+to be twice tha dynamic mmap threshold.
+Dynamic adjustment of tha mmap threshold is disabled if any of the
+.BR M_TRIM_THRESHOLD ,
+.BR M_TOP_PAD ,
+.BR M_MMAP_THRESHOLD ,
+or
+.BR M_MMAP_MAX
+parametas is set.
+.TP
+.BR M_MXFAST " (since glibc 2.3)"
+.\" Da followin text adapted from comments up in tha glibc sources:
+Set tha upper limit fo' memory allocation requests dat is satisfied
+usin "fastbins".
+(Da measurement unit fo' dis parameta is bytes.)
+Fastbins is storage areas dat hold deallocated blockz of memory
+of tha same size without mergin adjacent free blocks.
+Subsequent reallocation of blockz of tha same size can be handled
+very quickly by allocatin from tha fastbin,
+although memory fragmentation n' tha overall memory footprint
+of tha program can increase.
+Da default value fo' dis parameta is
+.IR "64*sizeof(size_t)/4"
+(i.e., 64 on 32-bit architectures).
+Da range fo' dis parameta is 0 to
+.IR "80*sizeof(size_t)/4" .
+Setting
+.B M_MXFAST
+to 0 disablez tha use of fastbins.
+.TP
+.BR M_PERTURB " (since glibc 2.4)"
+If dis parameta is set ta a nonzero value,
+then bytez of allocated memory (other than allocations via
+.BR calloc (3))
+are initialized ta tha complement of tha value
+in tha least dope byte of
+.IR value ,
+and when allocated memory is busted out using
+.BR free (3),
+the freed bytes is set ta tha least dope byte of
+.IR value .
+This can be useful fo' detectin errors where programs
+incorrectly rely on allocated memory bein initialized ta zero,
+or reuse joints up in memory dat has already been freed.
+.TP
+.BR M_TOP_PAD
+This parameta defines tha amount of paddin ta employ when calling
+.BR sbrk (2)
+to modify tha program break.
+(Da measurement unit fo' dis parameta is bytes.)
+This parameta has a effect up in tha followin circumstances:
+.RS
+.IP * 3
+When tha program break is increased, then
+.BR M_TOP_PAD
+bytes is added ta the
+.BR sbrk (2)
+request.
+.IP *
+When tha heap is trimmed as a cold-ass lil consequence of calling
+.BR free (3)
+(see tha rap of
+.BR M_TRIM_THRESHOLD )
+this much free space is preserved all up in tha top of tha heap.
+.RE
+.IP
+In either case,
+the amount of paddin be always rounded ta a system page boundary.
+.IP
+Modifying
+.BR M_TOP_PAD
+is a trade-off between increasin tha number of system calls
+(when tha parameta is set low)
+and wastin unused memory all up in tha top of tha heap
+(when tha parameta is set high).
+.IP
+Da default value fo' dis parameta is 128*1024.
+.\" DEFAULT_TOP_PAD up in glibc source
+.TP
+.BR M_TRIM_THRESHOLD
+When tha amount of contiguous free memory all up in tha top of tha heap
+grows sufficiently large,
+.BR free (3)
+employs
+.BR sbrk (2)
+to release dis memory back ta tha system.
+(This can be useful up in programs dat continue ta execute for
+a long period afta freein a thugged-out dope amount of memory.)
+The
+.BR M_TRIM_THRESHOLD
+parameta specifies tha minimum size (in bytes) that
+this block of memory must reach before
+.BR sbrk (2)
+is used ta trim tha heap.
+.IP
+Da default value fo' dis parameta is 128*1024.
+Setting
+.BR M_TRIM_THRESHOLD
+to \-1 disablez trimmin straight-up.
+.IP
+Modifying
+.BR M_TRIM_THRESHOLD
+is a trade-off between increasin tha number of system calls
+(when tha parameta is set low)
+and wastin unused memory all up in tha top of tha heap
+(when tha parameta is set high).
+.\" FIXME Do tha arena parametas need ta be documented?
+.\" .TP
+.\" .BR M_ARENA_TEST " (since glibc 2.10)"
+.\" .TP
+.\" .BR M_ARENA_MAX " (since glibc 2.10)"
+.\"
+.\" Environment variables
+.\"     MALLOC_ARENA_MAX_
+.\"     MALLOC_ARENA_TEST_
+.\"
+.\" http://udrepper.livejournal.com/20948.html raps bout some details
+.\"	of tha MALLOC_ARENA_* environment variables.
+.\"
+.\" These macros aren't enabled up in thang releases until 2.15?
+.\" (see glibc malloc/Makefile)
+.\"
+.SS Environment variables
+A number of environment variablez can be defined
+to modify a shitload of tha same parametas as is controlled by
+.BR mallopt ().
+Usin these variablez has tha advantage dat tha source code
+of tha program need not be chizzled.
+To be effective, these variablez must be defined before the
+first call ta a memory-allocation function.
+(If tha same parametas is adjusted via
+.BR mallopt ()
+then the
+.BR mallopt ()
+settings take precedence.)
+For securitizzle reasons,
+these variablez is ignored up in set-user-ID n' set-group-ID programs.
+
+Da environment variablez is as bigs up
+(note tha trailin underscore all up in tha end of tha name of each variable):
+.TP
+.BR MALLOC_CHECK_
+This environment variable controls tha same ol' dirty parameta as
+.BR mallopt ()
+.BR M_CHECK_ACTION .
+If dis variable is set ta a nonzero value,
+then a special implementation of tha memory-allocation functions is used.
+(This be accomplished rockin the
+.BR malloc_hook (3)
+feature.)
+This implementation performs additionizzle error checking,
+but is slower
+.\" On glibc 2.12/x86, a simple malloc()+free() loop be bout 70% slower
+.\" when MALLOC_CHECK_ was set.
+than tha standard set of memory-allocation functions.
+(This implementation do not detect all possible errors;
+memory leaks can still occur.)
+.IP
+Da value assigned ta dis environment variable should be a single digit,
+whose meanin be as busted lyrics bout for
+.BR M_CHECK_ACTION .
+Any charactas beyond tha initial digit is ignored.
+.IP
+For securitizzle reasons, tha effect of
+.BR MALLOC_CHECK_
+is disabled by default fo' set-user-ID n' set-group-ID programs.
+But fuck dat shiznit yo, tha word on tha street is dat if tha file
+.IR /etc/suid\-debug
+exists (the content of tha file is irrelevant), then
+.BR MALLOC_CHECK_
+also has a effect fo' set-user-ID n' set-group-ID programs.
+.TP
+.BR MALLOC_MMAP_MAX_
+Controls tha same ol' dirty parameta as
+.BR mallopt ()
+.BR M_MMAP_MAX .
+.TP
+.BR MALLOC_MMAP_THRESHOLD_
+Controls tha same ol' dirty parameta as
+.BR mallopt ()
+.BR M_MMAP_THRESHOLD .
+.TP
+.BR MALLOC_PERTURB_
+Controls tha same ol' dirty parameta as
+.BR mallopt ()
+.BR M_PERTURB .
+.TP
+.BR MALLOC_TRIM_THRESHOLD_
+Controls tha same ol' dirty parameta as
+.BR mallopt ()
+.BR M_TRIM_THRESHOLD .
+.TP
+.BR MALLOC_TOP_PAD_
+Controls tha same ol' dirty parameta as
+.BR mallopt ()
+.BR M_TOP_PAD .
+.SH RETURN VALUE
+On success,
+.BR mallopt ()
+returns 1.
+On error, it returns 0.
+.SH ERRORS
+On error,
+.I errno
+is
+.I not
+set.
+.\" .SH VERSIONS
+.\" Available already up in glibc 2.0, possibly earlier
+.SH CONFORMING TO
+This function aint specified by POSIX or tha C standards.
+A similar function exists on nuff System V derivatives,
+but tha range of joints for
+.IR param
+varies across systems.
+Da SVID defined options
+.BR M_MXFAST ,
+.BR M_NLBLKS ,
+.BR M_GRAIN ,
+and
+.BR M_KEEP ,
+but only tha straight-up original gangsta of these is implemented up in glibc.
+.\" .SH NOTES
+.SH BUGS
+Specifyin a invalid value for
+.I param
+does not generate a error.
+
+A calculation error within tha glibc implementation means that
+a call of tha form:
+.\" FIXME This looks buggy:
+.\" settin tha M_MXFAST limit roundz up:    (s + SIZE_SZ) & ~MALLOC_ALIGN_MASK)
+.\" malloc requests is rounded up:
+.\"    (req) + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=12129
+.nf
+
+    mallopt(M_MXFAST, n)
+
+.fi
+does not result up in fastbins bein employed fo' all allocationz of size up to
+.IR n .
+To ensure desired thangs up in dis biatch,
+.I n
+should be rounded up ta tha next multiple pimped outa than or equal to
+.IR (2k+1)*sizeof(size_t) ,
+where
+.I k
+is a integer.
+.\" Bins is multiplez of 2 * sizeof(size_t) + sizeof(size_t)
+
+The
+.BR MALLOC_MMAP_THRESHOLD_
+and
+.BR MALLOC_MMAP_MAX_
+variablez are
+.I not
+ignored up in set-group-ID programs.
+.\" FIXME MALLOC_MMAP_THRESHOLD_ n' MALLOC_MMAP_MAX_
+.\" do have a effect fo' set-user-ID programs (but not
+.\" set-group-ID programs).
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=12155
+
+If
+.BR mallopt ()
+is used ta set
+.BR M_PERTURB ,
+then, as expected, tha bytez of allocated memory is initialized
+to tha complement of tha byte in
+.IR value ,
+and when dat memory is freed,
+the bytez of tha region is initialized ta tha byte specified in
+.IR value .
+But fuck dat shiznit yo, tha word on tha street is dat there be an
+.RI off-by- sizeof(size_t)
+error up in tha implementation:
+.\" FIXME http://sources.redhat.com/bugzilla/show_bug.cgi?id=12140
+instead of initializin precisely tha block of memory
+bein freed by tha call
+.IR free(p) ,
+the block startin at
+.I p+sizeof(size_t)
+is initialized.
+.SH EXAMPLE
+Da program below demonstrates tha use of
+.BR M_CHECK_ACTION .
+If tha program is supplied wit a (integer) command-line argument,
+then dat argument is used ta set the
+.BR M_CHECK_ACTION
+parameter.
+Da program then allocates a funky-ass block of memory,
+and frees it twice (an error).
+
+Da followin shell session shows what tha fuck happens when we run dis program
+under glibc, wit tha default value for
+.BR M_CHECK_ACTION :
+.in +4n
+.nf
+
+$ \fB./a.out\fP
+main(): returned from first free() call
+*** glibc detected *** ./a.out: double free or corruption (top): 0x09d30008 ***
+======= Backtrace: =========
+/lib/libc.so.6(+0x6c501)[0x523501]
+/lib/libc.so.6(+0x6dd70)[0x524d70]
+/lib/libc.so.6(cfree+0x6d)[0x527e5d]
+\&./a.out[0x80485db]
+/lib/libc.so.6(__libc_start_main+0xe7)[0x4cdce7]
+\&./a.out[0x8048471]
+======= Memory map: ========
+001e4000\-001fe000 r\-xp 00000000 08:06 1083555    /lib/libgcc_s.so.1
+001fe000\-001ff000 r\-\-p 00019000 08:06 1083555    /lib/libgcc_s.so.1
+[some lines omitted]
+b7814000\-b7817000 rw\-p 00000000 00:00 0
+bff53000\-bff74000 rw\-p 00000000 00:00 0          [stack]
+Aborted (core dumped)
+.fi
+.in
+.PP
+Da followin runs show tha thangs up in dis biatch when employin other joints for
+.BR M_CHECK_ACTION :
+.PP
+.in +4n
+.nf
+$ \fB./a.out 1\fP             # Diagnose error n' continue
+main(): returned from first free() call
+*** glibc detected *** ./a.out: double free or corruption (top): 0x09cbe008 ***
+main(): returned from second free() call
+$ \fB./a.out 2\fP             # Abort without error message
+main(): returned from first free() call
+Aborted (core dumped)
+$ \fB./a.out 0\fP             # Ignore error n' continue
+main(): returned from first free() call
+main(): returned from second free() call
+.fi
+.in
+.PP
+Da next run shows how tha fuck ta set tha same parameta rockin the
+.B MALLOC_CHECK_
+environment variable:
+.PP
+.in +4n
+.nf
+$ \fBMALLOC_CHECK_=1 ./a.out\fP
+main(): returned from first free() call
+*** glibc detected *** ./a.out: free(): invalid pointer: 0x092c2008 ***
+main(): returned from second free() call
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    char *p;
+
+    if (argc > 1) {
+        if (mallopt(M_CHECK_ACTION, atoi(argv[1])) != 1) {
+            fprintf(stderr, "mallopt() failed");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    p = malloc(1000);
+    if (p == NULL) {
+        fprintf(stderr, "malloc() failed");
+        exit(EXIT_FAILURE);
+    }
+
+    free(p);
+    printf("main(): returned from first free() call\\n");
+
+    free(p);
+    printf("main(): returned from second free() call\\n");
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.ad l
+.nh
+.BR mmap (2),
+.BR sbrk (2),
+.BR mallinfo (3),
+.BR malloc (3),
+.BR malloc_hook (3),
+.BR malloc_info (3),
+.BR malloc_stats (3),
+.BR malloc_trim (3),
+.BR mcheck (3),
+.BR mtrace (3),
+.BR posix_memalign (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

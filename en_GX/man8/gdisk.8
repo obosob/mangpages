@@ -1,0 +1,686 @@
+.\" Copyright 2011-2013 Roderick W. Right back up in yo muthafuckin ass. Smizzle (rodsmith@rodsbooks.com)
+.\" May be distributed under tha GNU General Public License
+.TH "GDISK" "8" "0.8.10" "Roderick W. Right back up in yo muthafuckin ass. Smizzle" "GPT fdisk Manual"
+.SH "NAME"
+gdisk \- Interactizzle GUID partizzle table (GPT) manipulator
+.SH "SYNOPSIS"
+.BI "gdisk "
+[ \-l ]
+.I device
+
+.SH "DESCRIPTION"
+GPT fdisk (aka \fBgdisk\fR) be a text\-mode menu\-driven program for
+creation n' manipulation of partizzle tables. Well shiiiit, it will automatically
+convert a old\-style Masta Boot Record (MBR) partizzle table or BSD
+disklabel stored without a MBR carrier partizzle ta tha newer Globally
+Unique Identifier (GUID) Partizzle Table (GPT) format, or will load a GUID
+partizzle table. When used wit tha \fI\-l\fR command\-line option, the
+program displays tha current partizzle table n' then exits.
+
+GPT fdisk operates mainly on tha GPT headaz n' partizzle tables; however,
+it can n' will generate a gangbangin' fresh protectizzle MBR, when required. Y'all KNOW dat shit, muthafucka! (Any boot
+loader code up in tha protectizzle MBR aint gonna be disturbed.) If you've pimped
+an unusual protectizzle MBR, like fuckin a hybrid MBR pimped by
+\fBgptsync\fR or \fBgdisk\fRz own hybrid MBR creation feature,
+this should not be disturbed by most ordinary actions. Right back up in yo muthafuckin ass. Some advanced data
+recovery options require you ta KNOW tha distinctions between the
+main n' backup data, as well as between tha GPT headaz n' tha partition
+tables. For shiznit on MBR vs. GPT, as well as GPT terminologizzle and
+structure, peep tha extended \fBgdisk\fR documentation at
+\fIhttp://www.rodsbooks.com/gdisk/\fR or consult Wikipizzle.
+
+Da \fBgdisk\fR program employs a user intercourse similar ta dat of Linux's
+\fBfdisk\fR yo, but \fBgdisk\fR modifies GPT partitions. Well shiiiit, it also has the
+capabilitizzle of transformin MBR partitions or BSD disklabels tha fuck into GPT
+partitions. Like tha original gangsta \fBfdisk\fR program, \fBgdisk\fR do not
+modify disk structures until you explicitly write dem ta disk, so if you
+make a mistake, you can exit from tha program wit tha 'q' option ta leave
+your partitions unmodified.
+
+Ordinarily, \fBgdisk\fR operates on disk thang files, such as
+\fI/dev/sda\fR or \fI/dev/hda\fR under Linux, \fI/dev/disk0\fR under
+Mac OS X, or \fI/dev/ad0\fR or \fI/dev/da0\fR under FreeBSD. Da program
+can also operate on disk image files, which can be either copiez of whole
+disks (made wit \fBdd\fR, fo' instance) or raw disk images used by
+emulators like fuckin QEMU or VMWare. Note dat only \fIraw\fR disk images
+are supported; \fBgdisk\fR cannot work on compressed or other advanced
+disk image formats.
+
+Da MBR partitionin system uses a cold-ass lil combination of cylinder/head/sector
+(CHS) addressin n' logical block addressin (LBA). Da forma is klunky
+and limiting. GPT drops CHS addressin n' uses 64\-bit LBA mode
+exclusively. Thus, GPT data structures, n' therefore
+\fBgdisk\fR, do not need ta deal wit CHS geometries n' all tha problems
+they create. Userz of \fBfdisk\fR will note dat \fBgdisk\fR
+lacks tha options n' limitations associated wit CHS geometries.
+
+For dopest thangs up in dis biatch, you should use a OS\-specific partizzle table
+program whenever possible. For example, you should make Mac OS X
+partitions wit tha Mac OS X Disk Utilitizzle program n' Linux partitions
+with tha Linux \fBgdisk\fR or GNU Parted program.
+
+Upon start, \fBgdisk\fR attempts ta identify tha partizzle type up in use on
+the disk. If it findz valid GPT data, \fBgdisk\fR will use dat shit. If
+\fBgdisk\fR findz a valid MBR or BSD disklabel but no GPT data, it will
+attempt ta convert tha MBR or disklabel tha fuck into GPT form. (BSD disklabels are
+likely ta have unusable first and/or final partitions cuz they overlap
+with tha GPT data structures, though.) GPT fdisk can identify yo, but not use
+data in, Applez Partizzle Map (APM) disks, which is used on 680x0\- and
+PowerPC\-based Macintoshes. Upon exitin wit tha 'w' option, \fBgdisk\fR
+replaces tha MBR or disklabel wit a GPT. \fIThis action is potentially
+dangerous!\fR Yo crazy-ass system may become unbootable, n' partizzle type codes
+may become corrupted if tha disk uses unrecognized type codes. Boot
+problems is particularly likely if you multi\-bootin wit any
+GPT\-unaware OS. If you mistakenly launch \fBgdisk\fR on a MBR disk, you
+can safely exit tha program without makin any chizzlez by rockin tha 'q'
+option.
+
+Da MBR\-to\-GPT conversion will leave at least one gap up in tha partition
+numberin if tha original gangsta MBR used logical partitions. These gaps are
+harmless yo, but you can eliminizzle dem by rockin tha 's' option, if you like.
+(Bustin dis may require you ta update yo' \fI/etc/fstab\fR file.)
+
+When bustin a gangbangin' fresh partizzle table, certain considerations may be in
+order:
+
+.TP 
+.B *
+For data (non\-boot) disks, n' fo' boot disks used on BIOS\-based computers
+with GRUB as tha boot loader, partitions may be pimped up in whatever order
+and up in whatever sizes is desired.
+
+.TP 
+.B *
+Boot disks fo' EFI\-based systems require a \fIEFI System
+Partition\fR (\fBgdisk\fR internal code 0xEF00) formatted as FAT\-32.
+Da recommended size of dis partizzle is between 100 n' 300 MiB.
+Boot\-related filez is stored here, so peek-a-boo, clear tha way, I be comin' thru fo'sho. (Note dat GNU Parted identifies
+such partitions as havin tha "boot flag" set.)
+
+.TP 
+.B *
+Some boot loadaz fo' BIOS\-based systems make use of a \fIBIOS Boot
+Partition\fR (\fBgdisk\fR internal code 0xEF02), up in which tha secondary
+boot loader is stored, possibly without tha benefit of a gangbangin' filesystem. (GRUB2
+may optionally use such a partition.) This partizzle can typically be quite
+small (roughly 32 ta 200 KiB) yo, but you should consult yo' boot loader
+documentation fo' details.
+
+.TP 
+.B *
+If Windows is ta boot from a GPT disk, a partizzle of type \fIMicrosoft
+Reserved\fR (\fBgdisk\fR
+internal code 0x0C01) is recommended. Y'all KNOW dat shit, muthafucka! This partizzle should be bout 128 MiB
+in size. Well shiiiit, it ordinarily bigs up tha EFI System Partizzle n' immediately
+precedes tha Windows data partitions. (Note dat oldschool versionz of GNU Parted
+create all FAT partitions as dis type, which straight-up make tha partition
+unusable fo' aiiight file storage up in both Windows n' Mac OS X.)
+
+.TP 
+.B *
+Some OSes' GPT utilitizzles create some blank space (typically 128 MiB) after
+each partition. I aint talkin' bout chicken n' gravy biatch. Da intent is ta enable future disk utilitizzles ta use this
+space. Right back up in yo muthafuckin ass. Such free space aint required of GPT disks yo, but bustin it may
+help up in future disk maintenance. Yo ass can use GPT fdiskz relatizzle partition
+positionin option (specifyin tha startin sector as '+128M', for
+instance) ta simplify bustin such gaps.
+
+.SH "OPTIONS"
+.TP 
+.B \-l
+List tha partizzle table fo' tha specified thang n' then exits.
+.PP 
+
+Most interactions wit \fBgdisk\fR
+occur wit its interactizzle text\-mode menus. Three menus exist: tha main
+menu, tha recovery & transformation menu, n' tha smart-ass muthafuckas' menu fo'sho. Da main
+menu serves up tha functions dat is most likely ta be useful fo' typical partitionin tasks, like fuckin bustin n' deletin partitions, changin partizzle type codes, n' so on. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. Specific functions are:
+
+.TP 
+.B b
+Save partizzle data ta a funky-ass backup file. Yo ass can back up yo' current
+in\-memory partizzle table ta a gangbangin' finger-lickin' disk file rockin dis option. I aint talkin' bout chicken n' gravy biatch. Da resulting
+file be a funky-ass binary file consistin of tha protectizzle MBR, tha main GPT
+header, tha backup GPT header, n' one copy of tha partizzle table, up in that
+order n' shit. Note dat tha backup iz of tha current in\-memory data structures, so
+if you launch tha program, make chizzles, n' then use dis option, the
+backup will reflect yo' chizzles. Note also dat tha restore option is on
+the recovery & transformation menu; tha backup option is on tha main menu
+to encourage its use.
+
+
+.TP 
+.B c
+Change tha GPT name of a partition. I aint talkin' bout chicken n' gravy biatch. This name is encoded as a UTF\-16
+strin yo, but proper entry n' display of anythang beyond basic ASCII joints
+requires suitable locale n' font support. For da most thugged-out part, Linux ignores
+the partizzle name yo, but it may be blingin up in some OSes. GPT fdisk sets a
+default name based on tha partizzle type code. Note dat tha GPT partition
+name is different from tha filesystem name, which is encoded up in the
+filesystemz data structures.
+
+.TP 
+.B d
+Delete a partition. I aint talkin' bout chicken n' gravy biatch. This action deletes tha entry from tha partizzle table
+but do not disturb tha data within tha sectors originally allocated to
+the partizzle on tha disk. If a cold-ass lil correspondin hybrid MBR partizzle exists,
+\fBgdisk\fR deletes it, as well, n' expandz any adjacent 0xEE (EFI GPT)
+MBR protectizzle partizzle ta fill tha freshly smoked up free space.
+
+.TP 
+.B i
+Show detailed partizzle shiznit. I aint talkin' bout chicken n' gravy biatch. Da summary shiznit produced by
+the 'p' command necessarily omits nuff details, like fuckin tha partition's
+unique GUID n' tha translation of \fBgdisk\fR's
+internal partizzle type code ta a plain type name. Da 'i' option
+displays dis shiznit fo' a single partition.
+
+.TP 
+.B l
+Display a summary of partizzle types. GPT uses a GUID ta identify partition
+types fo' particular OSes n' purposes. For ease of data entry, \fBgdisk\fR
+compresses these tha fuck into two\-byte (four\-digit hexadecimal) joints dat are
+related ta they equivalent MBR codes. Right back up in yo muthafuckin ass. Specifically, tha MBR code is
+multiplied by hexadecimal 0x0100. For instance, tha code fo' Linux swap
+space up in MBR is 0x82, n' itz 0x8200 up in \fBgdisk\fR fo' realz. A one\-to\-one
+correspondence is impossible, though cause I gots dem finger-lickin' chickens wit tha siz-auce. Most notably, tha codes fo' all
+varietizzlez of FAT n' NTFS partizzle correspond ta a single GPT code
+(entered as 0x0700 up in \fBsgdisk\fR). Right back up in yo muthafuckin ass. Some OSes bust a single MBR code but
+employ nuff mo' codes up in GPT. For these, \fBgdisk\fR addz code numbers
+sequentially, like fuckin 0xa500 fo' a FreeBSD disklabel, 0xa501 fo' FreeBSD
+boot, 0xa502 fo' FreeBSD swap, n' so on. I aint talkin' bout chicken n' gravy biatch. Note dat these two\-byte codes
+are unique ta \fBgdisk\fR.
+
+.TP 
+.B n
+Smoke a freshly smoked up partition. I aint talkin' bout chicken n' gravy biatch. This command is modelled afta tha equivalent
+\fBfdisk\fR option, although some differences exist. Yo ass enta a partition
+number, startin sector, n' a endin sector. Shiiit, dis aint no joke. Both start n' end sectors
+can be specified up in absolute terms as sector numbers or as positions
+measured up in kibibytes (K), mebibytes (M), gibibytes (G), tebibytes (T), or
+pebibytes (P); fo' instance, \fI\fB40M\fR\fR specifies a posizzle 40MiB
+from tha start of tha disk. Yo ass can specify locations relatizzle ta tha start
+or end of tha specified default range by precedin tha number by a '+' or '\-'
+symbol, as up in \fI\fB+2G\fR\fR ta specify a point 2GiB afta the
+default start sector, or \fI\fB\-200M\fR\fR ta specify a point 200MiB
+before tha last available sector. Shiiit, dis aint no joke. Pressin tha Enta key wit no input
+specifies tha default value, which is tha start of tha phattest available
+block fo' tha start sector n' tha end of tha same block fo' tha end
+sector.
+
+.TP 
+.B o
+Clear up all partizzle data. This includes GPT header data,
+all partizzle definitions, n' tha protectizzle MBR. Da sector alignment
+is reset ta tha default (2048 sectors, or 1MB).
+
+.TP 
+.B p
+Display basic partizzle summary data. This includes partition
+numbers, startin n' endin sector numbers, partizzle sizes,
+\fBgdisk\fRz partizzle types codes, n' partizzle names. For
+additionizzle shiznit, use tha 'i' command.
+
+.TP 
+.B q
+Quit from tha program \fIwithout savin yo' chizzles\fR.
+Use dis option if you just wanted ta view shiznit or if you make a
+mistake n' wanna back outta all yo' chizzles.
+
+.TP 
+.B r
+Enta tha recovery & transformation menu fo'sho. This menu includes emergency
+recovery options (to fix damaged GPT data structures) n' options to
+transform ta or from other partitionin systems, includin bustin
+hybrid MBRs.
+
+.TP 
+.B s
+Sort partizzle entries. Put ya muthafuckin choppers up if ya feel dis! GPT partizzle numbers need not match tha order of
+partitions on tha disk. If you want dem ta match, you can use dis option.
+Note dat some partitionin utilitizzles sort partitions whenever they make
+changes. Right back up in yo muthafuckin ass. Such chizzlez is ghon be reflected up in yo' thang filenames, so you
+may need ta edit \fI/etc/fstab\fR if you use dis option.
+
+.TP 
+.B t
+Change a single partitionz type code. Yo ass enta tha type code rockin a
+two\-byte hexadecimal number, as busted lyrics bout earlier n' shit. Yo ass may also enta a
+GUID directly, if you have one n' \fBgdisk\fR don't give a fuck dat shit.
+
+.TP 
+.B v
+Verify disk. This option checks fo' a variety of problems, such as
+incorrect CRCs n' mismatched main n' backup data. This option do not
+automatically erect most problems, though; fo' that, you must use
+options on tha recovery & transformation menu fo'sho. If no problems is found,
+this command displays a summary of unallocated disk space.
+
+.TP 
+.B w
+Write data. Use dis command ta save yo' chizzles.
+
+.TP 
+.B x
+Enta tha smart-ass muthafuckas' menu fo'sho. Usin dis option serves up access ta features you
+can use ta git tha fuck into even mo' shiznit than tha main menu allows.
+.PP 
+
+.TP 
+.B ?
+Print tha menu fo'sho. Type dis command (or any other unrecognized command) to
+see a summary of available options.
+
+.PP 
+Da second \fBgdisk\fR menu is tha recovery & transformation menu, which
+provides access ta data recovery options n' features related ta the
+transformation of partitions between partitionin schemes (converting
+BSD disklabels tha fuck into GPT partitions or bustin hybrid MBRs, fo' instance).
+A few options on dis menu duplicate functionalitizzle on tha main
+menu, fo' tha sake of convenience. Da options on dis menu are:
+
+.TP 
+.B b
+Rebuild GPT header from backup. Yo ass can use tha backup GPT header to
+rebuild tha main GPT header wit dis option. I aint talkin' bout chicken n' gravy biatch. It aint nuthin but likely ta be useful if
+your main GPT header was damaged or destroyed (say, by sloppy use of
+\fBdd\fR).
+
+.TP 
+.B c
+Load backup partizzle table. Ordinarily, \fBgdisk\fR
+uses only tha main partizzle table (although tha backupz integritizzle is
+checked when you launch tha program). If tha main partizzle table has been
+damaged, you can use dis option ta load tha backup from disk n' use it
+instead. Y'all KNOW dat shit, muthafucka! Note dat dis will almost certainly produce no or strange
+partizzle entries if you've just converted a MBR disk ta GPT format, since
+there is ghon be no backup partizzle table on disk.
+
+.TP 
+.B d
+Use main GPT header n' rebuild tha backup. This option is likely ta be
+useful if tha backup GPT header has been damaged or destroyed.
+
+.TP 
+.B e
+Load main partizzle table. This option reloadz tha main partizzle table
+from disk. It aint nuthin but only likely ta be useful if you've tried ta use tha backup
+partizzle table (via 'c') but itz up in worse shape then tha main partition
+table.
+
+.TP 
+.B f
+Load MBR n' build fresh GPT from dat shit. Use dis option if yo' GPT is corrupt
+or conflicts wit tha MBR n' you wanna use tha MBR as tha basis fo' a new
+set of GPT partitions.
+
+.TP 
+.B g
+Convert GPT tha fuck into MBR n' exit. This option converts as nuff partitions as possible
+into MBR form, destroys tha GPT data structures, saves tha freshly smoked up MBR, n' exits.
+Use dis option if you've tried GPT n' find dat MBR works betta fo' yo thugged-out ass.
+Note dat dis function generates up ta four primary MBR partitions or three
+primary partitions n' as nuff logical partitions as can be generated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Each
+logical partizzle requires at least one unallocated block immediately before
+its first block. Therefore, it may be possible ta convert a maximum of four
+partitions on disks wit tightly\-packed partitions; however, if free space was
+inserted between partitions when they was pimped, n' if tha disk is under
+2 TiB up in size, it should be possible ta convert all tha partitions ta MBR form.
+See also tha 'h' option.
+
+.TP 
+.B h
+Smoke a hybrid MBR. This be a skanky workaround dat enablez GPT\-unaware
+OSes, or dem dat can't boot from a GPT disk, ta access up ta three of
+the partitions on tha disk by bustin MBR entries fo' em. Note that
+these hybrid MBR entries can easily go outta sync wit tha GPT entries,
+particularly when hybrid\-unaware GPT utilitizzles is used ta edit tha disk.
+Thus, you may need ta re\-create tha hybrid MBR if you use such tools. Unlike
+the 'g' option, dis option do not support convertin any partitions into
+MBR logical partitions.
+
+.TP 
+.B i
+Show detailed partizzle shiznit. I aint talkin' bout chicken n' gravy biatch. This option is identical ta tha 'i'
+option on tha main menu.
+
+.TP 
+.B l
+Load partizzle data from a funky-ass backup file. This option is tha reverse of tha 'b'
+option on tha main menu fo'sho. Note dat restorin partizzle data from anything
+but tha original gangsta disk aint recommended.
+
+.TP 
+.B m
+Return ta tha main menu fo'sho. This option enablez you ta enta main\-menu commands.
+
+.TP 
+.B o
+Print protectizzle MBR data. Yo ass can peep a summary of tha protectizzle MBR's
+partitions wit dis option. I aint talkin' bout chicken n' gravy biatch. This may enable you ta spot glarin problems
+or help identify tha partitions up in a hybrid MBR.
+
+.TP 
+.B p
+Print tha partizzle table. This option is identical ta tha 'p' option in
+the main menu.
+
+.TP 
+.B q
+Quit without savin chizzles. This option is identical ta tha 'q' option in
+the main menu.
+
+.TP 
+.B t
+Transform BSD partitions tha fuck into GPT partitions. This option works on BSD
+disklabels held within GPT (or converted MBR) partitions. Converted
+partitions' type codes is likely ta need manual adjustment. \fBgdisk\fR
+will attempt ta convert BSD disklabels stored on tha main disk when
+launched yo, but dis conversion is likely ta produce first and/or last
+partitions dat is unusable. Da nuff BSD variants means dat the
+probabilitizzle of \fBgdisk\fR bein unable ta convert a BSD disklabel is
+high compared ta tha likelihood of problems wit a MBR conversion.
+
+.TP 
+.B v
+Verify disk. This option is identical ta tha 'v' option up in tha main menu.
+
+.TP 
+.B w
+Write table ta disk n' exit. This option is identical ta tha 'w' option in
+the main menu.
+
+.TP 
+.B x
+Enta tha smart-ass muthafuckas' menu fo'sho. This option is identical ta tha 'x' option up in the
+main menu.
+
+.TP 
+.B ?
+Print tha menu fo'sho. This option (or any unrecognized entry) displays a summary
+of tha menu options.
+
+.PP 
+Da third \fBgdisk\fR menu is tha smart-ass muthafuckas' menu fo'sho. This menu serves up advanced
+options dat aren't closely related ta recovery or transformation between
+partitionin systems. Its options are:
+
+.TP 
+.B a
+Set attributes. GPT serves up a 64\-bit attributes field dat can be used to
+set features fo' each partition. I aint talkin' bout chicken n' gravy biatch. \fBgdisk\fR supports four attributes:
+\fIsystem partition\fR, \fIread\-only\fR, \fIhidden\fR, and
+\fIdo not automount\fR. Yo ass can set other attributes yo, but they numbers
+aren't translated tha fuck into anythang useful naaahhmean, biatch? In practice, most OSes seem to
+ignore these attributes.
+
+.TP 
+.B c
+Change partizzle GUID. Yo ass can enta a cold-ass lil custom unique GUID fo' a partition
+usin dis option. I aint talkin' bout chicken n' gravy biatch. (Note dis refers ta tha GUID dat uniquely identifies a
+partition, not ta its type code, which you can chizzle wit tha 't' main\-menu
+option.) Ordinarily, \fBgdisk\fR assigns dis number randomly; however,
+you might wanna adjust tha number manually if you've wound up wit the
+same GUID on two partitions cuz of buggy GUID assignments (hopefully
+not up in \fBgdisk\fR) or sheer incredible coincidence.
+
+.TP 
+.B d
+Display tha sector alignment value. Right back up in yo muthafuckin ass. See the
+description of tha 'l' option fo' mo' details.
+
+.TP 
+.B e
+Move backup GPT data structures ta tha end of tha disk. Use dis command if
+you've added disks ta a RAID array, thus bustin a virtual disk wit space
+that bigs up tha backup GPT data structures. This command moves tha backup
+GPT data structures ta tha end of tha disk, where they belong.
+
+.TP
+.B f
+Randomize tha diskz GUID n' all partitions' unique GUIDs (but not their
+partizzle type code GUIDs). This function may be used afta clonin a gangbangin' finger-lickin' disk
+with another utilitizzle up in order ta render all GUIDs once again n' again n' again unique.
+
+.TP 
+.B g
+Change disk GUID. Each disk has a unique GUID code, which \fBgdisk\fR
+assigns randomly upon creation of tha GPT data structures. Yo ass can generate
+a fresh random GUID or enta one manually wit dis option.
+
+.TP
+.B h
+Recompute CHS joints up in protectizzle or hybrid MBR. This option can sometimes
+help if a gangbangin' finger-lickin' disk utility, OS, or BIOS don't like tha CHS joints used by the
+partitions up in tha protectizzle or hybrid MBR. In particular, tha GPT
+specification requires a CHS value of 0xFFFFFF fo' over-8GiB partitions,
+but dis value is technologically illegal by tha usual standards. Right back up in yo muthafuckin ass. Some BIOSes
+hang if they encounta dis value. This option will recompute a mo' normal
+CHS value -- 0xFEFFFF fo' over-8GiB partitions, enablin these BIOSes to
+boot.
+
+.TP 
+.B i
+Show detailed partizzle shiznit. I aint talkin' bout chicken n' gravy biatch. This option is identical ta tha 'i'
+option on tha main menu.
+
+.TP 
+.B l
+Change tha sector alignment value. Disks wit mo' logical sectors per
+physical sectors (like fuckin modern Advanced Format drives), some RAID
+configurations, n' nuff SSD devices, can suffer performizzle problems if
+partitions is not aligned properly fo' they internal data structures. On
+new disks, GPT fdisk attempts ta align partitions on 2048\-sector (1MiB)
+boundaries by default, which optimizes performizzle fo' all of these disk
+types. On pre\-partitioned disks, GPT fdisk attempts ta identify the
+alignment value used on dat disk yo, but will set 8-sector alignment on disks
+larger than 300 GB even if lesser alignment joints is detected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. In either
+case, it can be chizzled by rockin dis option.
+
+.TP 
+.B m
+Return ta tha main menu fo'sho. This option enablez you ta enta main\-menu commands.
+
+.TP 
+.B n
+Smoke a freshly smoked up protectizzle MBR. Use dis option if tha current protectizzle MBR
+is damaged up in a way dat \fBgdisk\fR don't automatically detect and
+correct, or if you wanna convert a hybrid MBR tha fuck into a "pure" GPT wit a
+conventionizzle protectizzle MBR.
+
+.TP 
+.B o
+Print protectizzle MBR data. Yo ass can peep a summary of tha protectizzle MBR's
+partitions wit dis option. I aint talkin' bout chicken n' gravy biatch. This may enable you ta spot glarin problems
+or help identify tha partitions up in a hybrid MBR.
+
+.TP 
+.B p
+Print tha partizzle table. This option is identical ta tha 'p' option in
+the main menu.
+
+.TP 
+.B q
+Quit without savin chizzles. This option is identical ta tha 'q' option in
+the main menu.
+
+.TP 
+.B r
+Enta tha recovery & transformations menu fo'sho. This option is identical to
+the 'r' option on tha main menu.
+
+.TP 
+.B s
+Resize partizzle table. Da default partizzle table size is 128 entries.
+Officially, sizez of less than 16KB (128 entries, given tha aiiight entry
+size) is unsupported by tha GPT justification; however, up in practice they
+seem ta work, n' can sometimes be useful up in convertin MBR disks. Larger
+sizes also work fine. OSes may impose they own limits on tha number of
+partitions, though.
+
+.TP 
+.B t
+Swap two partitions' entries up in tha partizzle table. One partizzle may be
+empty. For instance, if partitions 1\-4 is defined, transposin 1 n' 5
+results up in a table wit partitions numbered from 2\-5. Transposing
+partitions up in dis way has no effect on they disk space allocation; it
+only altas they order up in tha partizzle table.
+
+.TP
+.B u
+Replicate tha current devicez partizzle table on another device. Yo ass will
+be prompted ta type tha freshly smoked up devicez filename fo' realz. Afta tha write operation
+completes, you can continue editin tha original gangsta devicez partizzle table.
+Note dat tha replicated partizzle table be a exact copy, includin all
+GUIDs; if tha thang should have its own unique GUIDs, you should use the
+\fBf\fR option on tha freshly smoked up disk.
+
+.TP 
+.B v
+Verify disk. This option is identical ta tha 'v' option up in tha main menu.
+
+.TP 
+.B z
+Zap (destroy) tha GPT data structures n' exit. Use dis option if you want to
+repartizzle a GPT disk rockin \fBfdisk\fR or some other GPT\-unaware program.
+You'll be given tha chizzle of preservin tha existin MBR, up in case itz a
+hybrid MBR wit salvageable partitions or if you've already pimped freshly smoked up MBR
+partitions n' wanna erase tha remnantz of yo' GPT partitions. \fIIf you've
+already pimped freshly smoked up MBR partitions, itz conceivable dat dis option will
+damage tha straight-up original gangsta and/or last MBR partitions!\fR Such a event is unlikely yo, but
+could occur if yo' freshly smoked up MBR partitions overlap tha oldschool GPT data structures.
+
+.TP 
+.B ?
+Print tha menu fo'sho. This option (or any unrecognized entry) displays a summary
+of tha menu options.
+
+.PP 
+In nuff cases, you can press tha Enta key ta select a thugged-out default option when
+enterin data. When only one option is possible, \fBgdisk\fR
+usually bypasses tha prompt entirely.
+
+.SH "BUGS"
+Az of March 2014 (version 0.8.10), \fBgdisk\fR
+should be considered beta software. Known bugs n' limitations include:
+
+.TP 
+.B *
+Da program compilez erectly only on Linux, FreeBSD, Mac OS X, n' Windows.
+Linux versions fo' x86\-64 (64\-bit), x86 (32\-bit), n' PowerPC (32\-bit) have been
+tested, wit tha x86\-64 version havin peeped da most thugged-out testing. Under FreeBSD,
+32\-bit (x86) n' 64\-bit (x86\-64) versions done been tested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Only 32\-bit
+versions fo' Mac OS X n' Windows done been tested by tha lyricist, although
+I've heard of 64-bit versions bein successfully compiled.
+
+.TP 
+.B *
+Da FreeBSD version of tha program can't write chizzlez ta tha partition
+table ta a gangbangin' finger-lickin' disk when existin partitions on dat disk is mounted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. (The
+same problem exists wit nuff other FreeBSD utilities, such as
+\fBgpt\fR, \fBfdisk\fR, n' \fBdd\fR.) This limitation can be overcome
+by typin \fBsysctl kern.geom.debugflags=16\fR at a gangbangin' finger-lickin' dirty-ass shell prompt.
+
+.TP 
+.B *
+Da fieldz used ta display tha start n' end sector numbers fo' partitions
+in tha 'p' command is 14 charactas wide. This translates ta a limitation
+of bout 45 PiB. On larger disks, tha displayed columns will go up of
+alignment.
+
+.TP 
+.B *
+In tha Windows version, only ASCII charactas is supported up in the
+partizzle name field. Y'all KNOW dat shit, muthafucka! If a existin partizzle uses non\-ASCII UTF\-16
+characters, they likely ta be corrupted up in tha 'i' n' 'p' menu options'
+displays; however, they should be preserved when loadin n' saving
+partitions. Binaries fo' Linux, FreeBSD, n' OS X support full UTF-16
+partizzle names.
+
+.TP 
+.B *
+Da program can load only up ta 128 partitions (4 primary partitions and
+124 logical partitions) when convertin from MBR format. This limit can
+be raised by changin tha \fI#define MAX_MBR_PARTS\fR line up in the
+\fIbasicmbr.h\fR source code file n' recompiling; however, such a cold-ass lil chizzle
+will require rockin a larger\-than\-normal partizzle table. (Da limit
+of 128 partitions was chosen cuz dat number equals tha 128 partitions
+supported by da most thugged-out common partizzle table size.)
+
+.TP 
+.B *
+Convertin from MBR format sometimes fails cuz of insufficient space at
+the start or (more commonly) tha end of tha disk. Resizin tha partition
+table (usin tha 's' option up in tha smart-ass muthafuckas' menu) can sometimes overcome
+this problem; however, up in off tha hook cases it may be necessary ta resize a
+partizzle rockin GNU Parted or a similar tool prior ta conversion with
+\fBgdisk\fR.
+
+.TP 
+.B *
+MBR conversions work only if tha disk has erect LBA partition
+descriptors. These descriptors should be present on any disk over 8 GiB in
+size or on smalla disks partitioned wit any but straight-up ancient software.
+
+.TP 
+.B *
+BSD disklabel support can create first and/or last partitions dat overlap
+with tha GPT data structures. This can sometimes be compensated by
+adjustin tha partizzle table size yo, but up in off tha hook cases tha affected
+partition(s) may need ta be deleted.
+
+.TP 
+.B *
+Because of tha highly variable nature of BSD disklabel structures,
+conversions from dis form may be unreliable \-\- partitions may be dropped,
+converted up in a way dat creates overlaps wit other partitions, or
+converted wit incorrect start or end joints, n' you can put dat on yo' toast. Use dis feature with
+caution!
+
+.TP 
+.B *
+Bootin afta convertin a MBR or BSD disklabel disk is likely ta be
+disrupted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Right back up in yo muthafuckin ass. Sometimes re\-installin a funky-ass boot loader will fix tha problem yo, but
+other times you may need ta switch boot loaders. Except on EFI\-based
+platforms, Windows all up in at least Windows 7 don't support booting
+from GPT disks. Creatin a hybrid MBR (usin tha 'h' option on tha recovery &
+transformation menu) or abandonin GPT up in favor of MBR may be yo' only
+options up in dis case.
+
+.PP 
+
+.SH "AUTHORS"
+Primary author: Roderick W. Right back up in yo muthafuckin ass. Smizzle (rodsmith@rodsbooks.com)
+
+Contributors:
+
+* Yves Blusseau (1otnwmz02@sneakemail.com)
+
+* Dizzy Hubbard (david.c.hubbard@gmail.com)
+
+* Quentin Maggard (justin.maggard@netgear.com)
+
+* Dwight Schauer (dschauer@ti.com)
+
+* Florian Zumbiehl (florz@florz.de)
+
+
+.SH "SEE ALSO"
+\fBcfdisk (8)\fR,
+\fBcgdisk (8)\fR,
+\fBfdisk (8)\fR,
+\fBmkfs (8)\fR,
+\fBparted (8)\fR,
+\fBsfdisk (8)\fR
+\fBsgdisk (8)\fR
+\fBfixparts (8)\fR
+
+\fIhttp://en.wikipedia.org/wiki/GUID_Partition_Table\fR
+
+\fIhttp://developer.apple.com/technotes/tn2006/tn2166.html\fR
+
+\fIhttp://www.rodsbooks.com/gdisk/\fR
+
+.SH "AVAILABILITY"
+Da \fBgdisk\fR command is part of tha \fIGPT fdisk\fR package n' is
+available from Rod Smizzle.

@@ -1,0 +1,305 @@
+.TH VIRTUAL 5 
+.ad
+.fi
+.SH NAME
+virtual
+\-
+Postfix virtual alias table format
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap /etc/postfix/virtual\fR
+
+\fBpostmap -q "\fIstring\fB" /etc/postfix/virtual\fR
+
+\fBpostmap -q - /etc/postfix/virtual <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da optionizzle \fBvirtual\fR(5) alias table rewrites recipient
+addresses fo' all local, all virtual, n' all remote mail
+destinations.
+This is unlike tha \fBaliases\fR(5) table which is used
+only fo' \fBlocal\fR(8) delivery.  Virtual aliasin is
+recursive, n' is implemented by tha Postfix \fBcleanup\fR(8)
+daemon before mail is queued.
+
+Da main applicationz of virtual aliasin are:
+.IP \(bu
+To redirect mail fo' one address ta one or mo' addresses.
+.IP \(bu
+To implement virtual alias domains where all addresses is aliased
+to addresses up in other domains.
+.sp
+Virtual alias domains is not ta be trippin wit tha virtual mailbox
+domains dat is implemented wit tha Postfix \fBvirtual\fR(8) mail
+delivery agent. With virtual mailbox domains, each recipient address
+can have its own mailbox.
+.PP
+Virtual aliasin be applied only ta recipient
+envelope addresses, n' do not affect message headers.
+Use \fBcanonical\fR(5)
+mappin ta rewrite header n' envelope addresses up in general.
+
+Normally, tha \fBvirtual\fR(5) alias table is specified as a text file
+that serves as input ta tha \fBpostmap\fR(1) command.
+Da result, a indexed file up in \fBdbm\fR or \fBdb\fR format,
+is used fo' fast searchin by tha mail system. Execute tha command
+"\fBpostmap /etc/postfix/virtual\fR" ta rebuild a indexed
+file afta changin tha correspondin text file.
+
+When tha table is provided via other means like fuckin NIS, LDAP
+or SQL, tha same lookups is done as fo' ordinary indexed files.
+
+Alternatively, tha table can be provided as a regular-expression
+map where patterns is given as regular expressions, or lookups
+can be pimped up ta TCP-based server n' shit. In dem case, tha lookups
+are done up in a slightly different way as busted lyrics bout below under
+"REGULAR EXPRESSION TABLES" or "TCP-BASED TABLES".
+.SH "CASE FOLDING"
+.na
+.nf
+.ad
+.fi
+Da search strang is folded ta lowercase before database
+lookup fo' realz. Az of Postfix 2.3, tha search strang aint case
+folded wit database types like fuckin regexp: or pcre: whose
+lookup fieldz can match both upper n' lower case.
+.SH "TABLE FORMAT"
+.na
+.nf
+.ad
+.fi
+Da input format fo' tha \fBpostmap\fR(1) command be as bigs up:
+.IP "\fIpattern result\fR"
+When \fIpattern\fR matches a mail address, replace it by the
+correspondin \fIresult\fR.
+.IP "blank lines n' comments"
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP "multi-line text"
+A logical line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.SH "TABLE SEARCH ORDER"
+.na
+.nf
+.ad
+.fi
+With lookups from indexed filez like fuckin DB or DBM, or from networked
+tablez like fuckin NIS, LDAP or SQL, patterns is tried up in tha order as
+listed below:
+.IP "\fIuser\fR@\fIdomain address, address, ...\fR"
+Redirect mail fo' \fIuser\fR@\fIdomain\fR ta \fIaddress\fR.
+This form has tha highest precedence.
+.IP "\fIuser address, address, ...\fR"
+Redirect mail fo' \fIuser\fR@\fIsite\fR ta \fIaddress\fR when
+\fIsite\fR is equal ta $\fBmyorigin\fR, when \fIsite\fR is listed in
+$\fBmydestination\fR, or when it is listed up in $\fBinet_interfaces\fR
+or $\fBproxy_interfaces\fR.
+.sp
+This functionalitizzle overlaps wit functionalitizzle of tha local
+\fIaliases\fR(5) database. Da difference is dat \fBvirtual\fR(5)
+mappin can be applied ta non-local addresses.
+.IP "@\fIdomain address, address, ...\fR"
+Redirect mail fo' other playas up in \fIdomain\fR ta \fIaddress\fR.
+This form has tha lowest precedence.
+.sp
+Note: @\fIdomain\fR be a wild-card. Y'all KNOW dat shit, muthafucka! With dis form, the
+Postfix SMTP server accepts
+mail fo' any recipient up in \fIdomain\fR, regardless of whether
+that recipient exists, n' you can put dat on yo' toast.  This may turn yo' mail system into
+a backscatta source: Postfix first accepts mail for
+non-existent recipients n' then tries ta return dat mail
+as "undeliverable" ta tha often forged sender address.
+.SH "RESULT ADDRESS REWRITING"
+.na
+.nf
+.ad
+.fi
+Da lookup result is subject ta address rewriting:
+.IP \(bu
+When tha result has tha form @\fIotherdomain\fR, the
+result becomes tha same ol' dirty \fIuser\fR up in \fIotherdomain\fR.
+This works only fo' tha straight-up original gangsta address up in a multi-address
+lookup result.
+.IP \(bu
+When "\fBappend_at_myorigin=yes\fR", append "\fB@$myorigin\fR"
+to addresses without "@domain".
+.IP \(bu
+When "\fBappend_dot_mydomain=yes\fR", append
+"\fB.$mydomain\fR" ta addresses without ".domain".
+.SH "ADDRESS EXTENSION"
+.na
+.nf
+.fi
+.ad
+When a mail address localpart gotz nuff tha optionizzle recipient delimiter
+(e.g., \fIuser+foo\fR@\fIdomain\fR), tha lookup order becomes:
+\fIuser+foo\fR@\fIdomain\fR, \fIuser\fR@\fIdomain\fR, \fIuser+foo\fR,
+\fIuser\fR, n' @\fIdomain\fR.
+
+Da \fBpropagate_unmatched_extensions\fR parameta controls whether
+an unmatched address extension (\fI+foo\fR) is propagated ta the
+result of table lookup.
+.SH "VIRTUAL ALIAS DOMAINS"
+.na
+.nf
+.ad
+.fi
+Besides virtual aliases, tha virtual alias table can also be used
+to implement virtual alias domains. With a virtual alias domain, all
+recipient addresses is aliased ta addresses up in other domains.
+
+Virtual alias domains is not ta be trippin wit tha virtual mailbox
+domains dat is implemented wit tha Postfix \fBvirtual\fR(8) mail
+delivery agent. With virtual mailbox domains, each recipient address
+can have its own mailbox.
+
+With a virtual alias domain, tha virtual domain has its
+own user name space. Local (i.e. non-virtual) usernames is not
+visible up in a virtual alias domain. I aint talkin' bout chicken n' gravy biatch. In particular, local
+\fBaliases\fR(5) n' local mailin lists is not visible as
+\fIlocalname@virtual-alias.domain\fR.
+
+Support fo' a virtual alias domain looks like:
+
+.nf
+/etc/postfix/main.cf:
+    virtual_alias_maps = hash:/etc/postfix/virtual
+.fi
+
+Note: some systems use \fBdbm\fR databases instead of \fBhash\fR.
+See tha output from "\fBpostconf -m\fR" fo' available database types.
+
+.nf
+/etc/postfix/virtual:
+    \fIvirtual-alias.domain     anything\fR (right-hand content do not matter)
+    \fIpostmaster@virtual-alias.domain  postmaster\fR
+    \fIuser1@virtual-alias.domain       address1\fR
+    \fIuser2@virtual-alias.domain       address2, address3\fR
+.fi
+.sp
+Da \fIvirtual-alias.domain anything\fR entry is required fo' a
+virtual alias domain. I aint talkin' bout chicken n' gravy biatch. \fBWithout dis entry, mail is rejected
+with "relay access denied", or bounces with
+"mail loops back ta mah dirty ass".\fR
+
+Do not specify virtual alias domain names up in tha \fBmain.cf
+mydestination\fR or \fBrelay_domains\fR configuration parameters.
+
+With a virtual alias domain, tha Postfix SMTP server
+accepts mail fo' \fIknown-user@virtual-alias.domain\fR, n' rejects
+mail fo' \fIunknown-user\fR@\fIvirtual-alias.domain\fR as undeliverable.
+
+Instead of specifyin tha virtual alias domain name via
+the \fBvirtual_alias_maps\fR table, you may also specify it via
+the \fBmain.cf virtual_alias_domains\fR configuration parameter.
+This latta parameta uses tha same ol' dirty syntax as tha \fBmain.cf
+mydestination\fR configuration parameter.
+.SH "REGULAR EXPRESSION TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when tha table
+is given up in tha form of regular expressions. For a thugged-out description of
+regular expression lookup table syntax, peep \fBregexp_table\fR(5)
+or \fBpcre_table\fR(5).
+
+Each pattern be a regular expression dat be applied ta tha entire
+address bein looked up. Thus, \fIuser@domain\fR mail addresses is not
+broken up tha fuck into they \fIuser\fR n' \fI@domain\fR constituent parts,
+nor is \fIuser+foo\fR fucked up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Patterns is applied up in tha order as specified up in tha table, until a
+pattern is found dat matches tha search string.
+
+Results is tha same as wit indexed file lookups, with
+the additionizzle feature dat parenthesized substrings from the
+pattern can be interpolated as \fB$1\fR, \fB$2\fR n' so on.
+.SH "TCP-BASED TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when lookups
+are pimped up ta a TCP-based server n' shit. For a thugged-out description of tha TCP
+client/server lookup protocol, peep \fBtcp_table\fR(5).
+This feature aint available up ta n' includin Postfix version 2.4.
+
+Each lookup operation uses tha entire address once.  Thus,
+\fIuser@domain\fR mail addresses is not fucked up tha fuck into their
+\fIuser\fR n' \fI@domain\fR constituent parts, nor is
+\fIuser+foo\fR fucked up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Results is tha same as wit indexed file lookups.
+.SH BUGS
+.ad
+.fi
+Da table format do not KNOW quotin conventions.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da followin \fBmain.cf\fR parametas is especially relevant to
+this topic. Right back up in yo muthafuckin ass. See tha Postfix \fBmain.cf\fR file fo' syntax details
+and fo' default joints, n' you can put dat on yo' toast. Use tha "\fBpostfix reload\fR" command after
+a configuration chizzle.
+.IP \fBvirtual_alias_maps\fR
+List of virtual aliasin tables.
+.IP \fBvirtual_alias_domains\fR
+List of virtual alias domains. This uses tha same ol' dirty syntax
+as tha \fBmydestination\fR parameter.
+.IP \fBpropagate_unmatched_extensions\fR
+A list of address rewritin or forwardin mechanizzlez dat propagate
+an address extension from tha original gangsta address ta tha result.
+Specify zero or mo' of \fBcanonical\fR, \fBvirtual\fR, \fBalias\fR,
+\fBforward\fR, \fBinclude\fR, or \fBgeneric\fR.
+.PP
+Other parametaz of interest:
+.IP \fBinet_interfaces\fR
+Da network intercourse addresses dat dis system receives mail on.
+Yo ass need ta stop n' start Postfix when dis parameta chizzles.
+.IP \fBmydestination\fR
+List of domains dat dis mail system considaz local.
+.IP \fBmyorigin\fR
+Da domain dat be appended ta any address dat aint gots a thugged-out domain.
+.IP \fBballer_request_special\fR
+Give special treatment ta \fBballer-\fIxxx\fR n' \fIxxx\fB-request\fR
+addresses.
+.IP \fBproxy_interfaces\fR
+Other intercourses dat dis machine receives mail on by way of a
+proxy agent or network address translator.
+.SH "SEE ALSO"
+.na
+.nf
+cleanup(8), canonicalize n' enqueue mail
+postmap(1), Postfix lookup table manager
+postconf(5), configuration parameters
+canonical(5), canonical address mapping
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+ADDRESS_REWRITING_README, address rewritin guide
+DATABASE_README, Postfix lookup table overview
+VIRTUAL_README, domain hostin guide
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

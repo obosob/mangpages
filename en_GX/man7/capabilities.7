@@ -1,0 +1,1168 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 6 Aug 2002 - Initial Creation
+.\" Modified 2003-05-23, Mike Kerrisk, <mtk.manpages@gmail.com>
+.\" Modified 2004-05-27, Mike Kerrisk, <mtk.manpages@gmail.com>
+.\" 2004-12-08, mtk Added O_NOATIME fo' CAP_FOWNER
+.\" 2005-08-16, mtk, Added CAP_AUDIT_CONTROL n' CAP_AUDIT_WRITE
+.\" 2008-07-15, Serge Hallyn <serue@us.bbm.com>
+.\"     Document file capabilities, per-process capability
+.\"     boundin set, chizzled semantics fo' CAP_SETPCAP,
+.\"     n' other chizzlez up in 2.6.2[45].
+.\"     Add CAP_MAC_ADMIN, CAP_MAC_OVERRIDE, CAP_SETFCAP.
+.\" 2008-07-15, mtk
+.\"     Add text describin circumstances up in which CAP_SETPCAP
+.\"     (theoretically) permits a thread ta chizzle the
+.\"     capabilitizzle setz of another thread.
+.\"     Add section describin rulez fo' programmatically
+.\"     adjustin thread capabilitizzle sets.
+.\"     Describe rationale fo' capabilitizzle boundin set.
+.\"     Document "securebits" flags.
+.\"     Add text notin dat if we set tha effectizzle flag fo' one file
+.\"     capability, then we must also set tha effectizzle flag fo' all
+.\"     other capabilitizzles where tha permitted or inheritable bit is set.
+.\" 2011-09-07, mtk/Serge hallyn: Add CAP_SYSLOG
+.\"
+.TH CAPABILITIES 7 2013-07-21 "Linux" "Linux Programmerz Manual"
+.SH NAME
+capabilitizzles \- overview of Linux capabilities
+.SH DESCRIPTION
+For tha purpose of struttin permission checks,
+traditionizzle UNIX implementations distinguish two categoriez of processes:
+.I privileged
+processes (whose effectizzle user ID is 0, referred ta as superuser or root),
+and
+.I unprivileged
+processes (whose effectizzle UID is nonzero).
+Privileged processes bypass all kernel permission checks,
+while unprivileged processes is subject ta full permission
+checkin based on tha processs credentials
+(usually: effectizzle UID, effectizzle GID, n' supplementary crew list).
+
+Startin wit kernel 2.2, Linux divides tha privileges traditionally
+associated wit superuser tha fuck into distinct units, known as
+.IR capabilitizzles ,
+which can be independently enabled n' disabled.
+Capabilitizzles is a per-thread attribute.
+.\"
+.SS Capabilitizzles list
+Da followin list shows tha capabilitizzles implemented on Linux,
+and tha operations or behaviors dat each capabilitizzle permits:
+.TP
+.BR CAP_AUDIT_CONTROL " (since Linux 2.6.11)"
+Enable n' disable kernel auditing; chizzle auditin filta rules;
+retrieve auditin status n' filterin rules.
+.TP
+.BR CAP_AUDIT_WRITE " (since Linux 2.6.11)"
+Write recordz ta kernel auditin log.
+.TP
+.BR CAP_BLOCK_SUSPEND " (since Linux 3.5)"
+Employ features dat can block system suspend
+.RB ( epoll (7)
+.BR EPOLLWAKEUP ,
+.IR /proc/sys/wake_lock ).
+.TP
+.B CAP_CHOWN
+Make arbitrary chizzlez ta file UIDs n' GIDs (see
+.BR chown (2)).
+.TP
+.B CAP_DAC_OVERRIDE
+Bypass file read, write, n' execute permission checks.
+(DAC be a abbreviation of "discretionary access control".)
+.TP
+.B CAP_DAC_READ_SEARCH
+.PD 0
+.RS
+.IP * 2
+Bypass file read permission checks and
+directory read n' execute permission checks;
+.IP *
+Invoke
+.BR open_by_handle_at (2).
+.RE
+.PD
+
+.TP
+.B CAP_FOWNER
+.PD 0
+.RS
+.IP * 2
+Bypass permission checks on operations dat normally
+require tha file system UID of tha process ta match tha UID of
+the file (e.g.,
+.BR chmod (2),
+.BR utime (2)),
+excludin dem operations covered by
+.B CAP_DAC_OVERRIDE
+and
+.BR CAP_DAC_READ_SEARCH ;
+.IP *
+set extended file attributes (see
+.BR chattr (1))
+on arbitrary files;
+.IP *
+set Access Control Lists (ACLs) on arbitrary files;
+.IP *
+ignore directory sticky bit on file deletion;
+.IP *
+specify
+.B O_NOATIME
+for arbitrary filez in
+.BR open (2)
+and
+.BR fcntl (2).
+.RE
+.PD
+.TP
+.B CAP_FSETID
+Don't clear set-user-ID n' set-group-ID permission
+bits when a gangbangin' file is modified;
+set tha set-group-ID bit fo' a gangbangin' file whose GID do not match
+the file system or any of tha supplementary GIDz of tha callin process.
+.TP
+.B CAP_IPC_LOCK
+.\" FIXME As at Linux 3.2, there be some strange usez of dis capability
+.\" up in other places; they probably should be replaced wit suttin' else.
+Lock memory
+.RB ( mlock (2),
+.BR mlockall (2),
+.BR mmap (2),
+.BR shmctl (2)).
+.TP
+.B CAP_IPC_OWNER
+Bypass permission checks fo' operations on System V IPC objects.
+.TP
+.B CAP_KILL
+Bypass permission checks fo' bustin  signals (see
+.BR bust a cap up in (2)).
+This includes use of the
+.BR ioctl (2)
+.B KDSIGACCEPT
+operation.
+.\" FIXME CAP_KILL also has a effect fo' threadz + settin child
+.\"       termination signal ta other than SIGCHLD: without this
+.\"       capability, tha termination signal reverts ta SIGCHLD
+.\"       if tha lil pimp do a exec().  What tha fuck iz tha rationale
+.\"       fo' this?
+.TP
+.BR CAP_LEASE " (since Linux 2.4)"
+Establish leases on arbitrary filez (see
+.BR fcntl (2)).
+.TP
+.B CAP_LINUX_IMMUTABLE
+Set the
+.B FS_APPEND_FL
+and
+.B FS_IMMUTABLE_FL
+.\" These attributes is now available on ext2, ext3, Reiserfs, XFS, JFS
+i-node flags (see
+.BR chattr (1)).
+.TP
+.BR CAP_MAC_ADMIN " (since Linux 2.6.25)"
+Override Mandatory Access Control (MAC).
+Implemented fo' tha Smack Linux Securitizzle Module (LSM).
+.TP
+.BR CAP_MAC_OVERRIDE " (since Linux 2.6.25)"
+Allow MAC configuration or state chizzles.
+Implemented fo' tha Smack LSM.
+.TP
+.BR CAP_MKNOD " (since Linux 2.4)"
+Smoke special filez using
+.BR mknod (2).
+.TP
+.B CAP_NET_ADMIN
+Perform various network-related operations:
+.PD 0
+.RS
+.IP * 2
+interface configuration;
+.IP *
+administration of IP firewall, masquerading, n' accounting;
+.IP *
+modify routin tables;
+.IP *
+bind ta any address fo' transparent proxying;
+.IP *
+set type-of-service (TOS)
+.IP *
+clear driver statistics;
+.IP *
+set promiscuous mode;
+.IP *
+enablin multicasting;
+.IP *
+use
+.BR setsockopt (2)
+to set tha followin socket options:
+.BR SO_DEBUG ,
+.BR SO_MARK ,
+.BR SO_PRIORITY
+(for a prioritizzle outside tha range 0 ta 6),
+.BR SO_RCVBUFFORCE ,
+and
+.BR SO_SNDBUFFORCE .
+.RE
+.PD
+.TP
+.B CAP_NET_BIND_SERVICE
+Bind a socket ta Internizzle domain privileged ports
+(port numbers less than 1024).
+.TP
+.B CAP_NET_BROADCAST
+(Unused)  Make socket broadcasts, n' dig multicasts.
+.TP
+.B CAP_NET_RAW
+.PD 0
+.RS
+.IP * 2
+use RAW n' PACKET sockets;
+.IP *
+bind ta any address fo' transparent proxying.
+.RE
+.PD
+.\" Also various IP options n' setsockopt(SO_BINDTODEVICE)
+.TP
+.B CAP_SETGID
+Make arbitrary manipulationz of process GIDs n' supplementary GID list;
+forge GID when passin socket credentials via UNIX domain sockets.
+.TP
+.BR CAP_SETFCAP " (since Linux 2.6.24)"
+Set file capabilities.
+.TP
+.B CAP_SETPCAP
+If file capabilitizzles is not supported:
+grant or remove any capabilitizzle up in the
+callerz permitted capabilitizzle set ta or from any other process.
+(This property of
+.B CAP_SETPCAP
+is not available when tha kernel is configured ta support
+file capabilities, since
+.B CAP_SETPCAP
+has entirely different semantics fo' such kernels.)
+
+If file capabilitizzles is supported:
+add any capabilitizzle from tha callin threadz boundin set
+to its inheritable set;
+drop capabilitizzles from tha boundin set (via
+.BR prctl (2)
+.BR PR_CAPBSET_DROP );
+make chizzlez ta the
+.I securebits
+flags.
+.TP
+.B CAP_SETUID
+Make arbitrary manipulationz of process UIDs
+.RB ( setuid (2),
+.BR setreuid (2),
+.BR setresuid (2),
+.BR setfsuid (2));
+make forged UID when passin socket credentials via UNIX domain sockets.
+.\" FIXME CAP_SETUID also a effect up in exec(); document all dis bullshit.
+.TP
+.B CAP_SYS_ADMIN
+.PD 0
+.RS
+.IP * 2
+Perform a range of system administration operations including:
+.BR quotactl (2),
+.BR mount (2),
+.BR umount (2),
+.BR swapon (2),
+.BR swapoff (2),
+.BR sethostname (2),
+and
+.BR setdomainname (2);
+.IP *
+perform privileged
+.BR syslog (2)
+operations (since Linux 2.6.37,
+.BR CAP_SYSLOG
+should be used ta permit such operations);
+.IP *
+perform
+.B VM86_REQUEST_IRQ
+.BR vm86 (2)
+command;
+.IP *
+perform
+.B IPC_SET
+and
+.B IPC_RMID
+operations on arbitrary System V IPC objects;
+.IP *
+perform operations on
+.I trusted
+and
+.I security
+Extended Attributes (see
+.BR attr (5));
+.IP *
+use
+.BR lookup_dcookie (2);
+.IP *
+use
+.BR ioprio_set (2)
+to assign
+.B IOPRIO_CLASS_RT
+and (before Linux 2.6.25)
+.B IOPRIO_CLASS_IDLE
+I/O schedulin classes;
+.IP *
+forge UID when passin socket credentials;
+.IP *
+exceed
+.IR /proc/sys/fs/file-max ,
+the system-wide limit on tha number of open files,
+in system calls dat open filez (e.g.,
+.BR accept (2),
+.BR execve (2),
+.BR open (2),
+.BR pipe (2));
+.IP *
+employ
+.B CLONE_*
+flags dat create freshly smoked up namespaces with
+.BR clone (2)
+and
+.BR unshare (2);
+.IP *
+call
+.BR perf_event_open (2);
+.IP *
+access privileged
+.I perf
+event shiznit;
+.IP *
+call
+.BR setns (2);
+.IP *
+call
+.BR fanotify_init (2);
+.IP *
+perform
+.B KEYCTL_CHOWN
+and
+.B KEYCTL_SETPERM
+.BR keyctl (2)
+operations;
+.IP *
+perform
+.BR madvise (2)
+.B MADV_HWPOISON
+operation;
+.IP *
+employ the
+.B TIOCSTI
+.BR ioctl (2)
+to bang charactas tha fuck into tha input queue of a terminal other than
+the callerz controllin terminal.
+.IP *
+employ tha obsolete
+.BR nfsservctl (2)
+system call;
+.IP *
+employ tha obsolete
+.BR bdflush (2)
+system call;
+.IP *
+perform various privileged block-device
+.BR ioctl (2)
+operations;
+.IP *
+perform various privileged file-system
+.BR ioctl (2)
+operations;
+.IP *
+perform administratizzle operations on nuff thang drivers.
+.RE
+.PD
+.TP
+.B CAP_SYS_BOOT
+Use
+.BR reboot (2)
+and
+.BR kexec_load (2).
+.TP
+.B CAP_SYS_CHROOT
+Use
+.BR chroot (2).
+.TP
+.B CAP_SYS_MODULE
+Load n' unload kernel modules
+(see
+.BR init_module (2)
+and
+.BR delete_module (2));
+in kernels before 2.6.25:
+drop capabilitizzles from tha system-wide capabilitizzle boundin set.
+.TP
+.B CAP_SYS_NICE
+.PD 0
+.RS
+.IP * 2
+Raise process sick value
+.RB ( sick (2),
+.BR setprioritizzle (2))
+and chizzle tha sick value fo' arbitrary processes;
+.IP *
+set real-time schedulin policies fo' callin process,
+and set schedulin policies n' prioritizzles fo' arbitrary processes
+.RB ( sched_setschedula (2),
+.BR sched_setparam (2));
+.IP *
+set CPU affinitizzle fo' arbitrary processes
+.RB ( sched_setaffinitizzle (2));
+.IP *
+set I/O schedulin class n' prioritizzle fo' arbitrary processes
+.RB ( ioprio_set (2));
+.IP *
+apply
+.BR migrate_pages (2)
+to arbitrary processes n' allow processes
+to be migrated ta arbitrary nodes;
+.\" FIXME CAP_SYS_NICE also has tha followin effect for
+.\" migrate_pages(2):
+.\"     do_migrate_pages(mm, &old, &new,
+.\"         capable(CAP_SYS_NICE) , biatch? MPOL_MF_MOVE_ALL : MPOL_MF_MOVE);
+.IP *
+apply
+.BR move_pages (2)
+to arbitrary processes;
+.IP *
+use the
+.B MPOL_MF_MOVE_ALL
+flag with
+.BR mbind (2)
+and
+.BR move_pages (2).
+.RE
+.PD
+.TP
+.B CAP_SYS_PACCT
+Use
+.BR acct (2).
+.TP
+.B CAP_SYS_PTRACE
+Trace arbitrary processes using
+.BR ptrace (2);
+apply
+.BR get_robust_list (2)
+to arbitrary processes;
+inspect processes using
+.BR kcmp (2).
+.TP
+.B CAP_SYS_RAWIO
+.PD 0
+.RS
+.IP * 2
+Perform I/O port operations
+.RB ( iopl (2)
+and
+.BR ioperm (2));
+.IP *
+access
+.IR /proc/kcore ;
+.IP *
+employ the
+.B FIBMAP
+.BR ioctl (2)
+operation;
+.IP *
+open devices fo' accessin x86 model-specific registas (MSRs, see
+.BR msr (4))
+.IP *
+update
+.IR /proc/sys/vm/mmap_min_addr ;
+.IP *
+create memory mappings at addresses below tha value specified by
+.IR /proc/sys/vm/mmap_min_addr ;
+.IP *
+map filez in
+.IR /proc/bus/pci ;
+.IP *
+open
+.IR /dev/mem
+and
+.IR /dev/kmem ;
+.IP *
+perform various SCSI thang commands;
+.IP *
+perform certain operations on
+.BR hpsa (4)
+and
+.BR cciss (4)
+devices;
+.IP *
+perform a range of device-specific operations on other devices.
+.RE
+.PD
+.TP
+.B CAP_SYS_RESOURCE
+.PD 0
+.RS
+.IP * 2
+Use reserved space on ext2 file systems;
+.IP *
+make
+.BR ioctl (2)
+calls controllin ext3 journaling;
+.IP *
+override disk quota limits;
+.IP *
+increase resource limits (see
+.BR setrlimit (2));
+.IP *
+override
+.B RLIMIT_NPROC
+resource limit;
+.IP *
+override maximum number of consolez on console allocation;
+.IP *
+override maximum number of keymaps;
+.IP *
+allow mo' than 64hz interrupts from tha real-time clock;
+.IP *
+raise
+.I msg_qbytes
+limit fo' a System V message queue above tha limit in
+.I /proc/sys/kernel/msgmnb
+(see
+.BR msgop (2)
+and
+.BR msgctl (2));
+.IP *
+override the
+.I /proc/sys/fs/pipe-size-max
+limit when settin tha capacitizzle of a pipe rockin the
+.B F_SETPIPE_SZ
+.BR fcntl (2)
+command.
+.IP *
+use
+.BR F_SETPIPE_SZ
+to increase tha capacitizzle of a pipe above tha limit specified by
+.IR /proc/sys/fs/pipe-max-size ;
+.IP *
+override
+.I /proc/sys/fs/mqueue/queues_max
+limit when bustin POSIX message queues (see
+.BR mq_overview (7));
+.IP *
+employ
+.BR prctl (2)
+.B PR_SET_MM
+operation;
+.IP *
+set
+.IR /proc/PID/oom_score_adj
+to a value lower than tha value last set by a process with
+.BR CAP_SYS_RESOURCE .
+.RE
+.PD
+.TP
+.B CAP_SYS_TIME
+Set system clock
+.RB ( settimeofdizzle (2),
+.BR stime (2),
+.BR adjtimex (2));
+set real-time (hardware) clock.
+.TP
+.B CAP_SYS_TTY_CONFIG
+Use
+.BR vhangup (2);
+employ various privileged
+.BR ioctl (2)
+operations on virtual terminals.
+.TP
+.BR CAP_SYSLOG " (since Linux 2.6.37)"
+.IP * 3
+Perform privileged
+.BR syslog (2)
+operations.
+See
+.BR syslog (2)
+for shiznit on which operations require privilege.
+.IP *
+View kernel addresses exposed via
+.I /proc
+and other intercourses when
+.IR /proc/sys/kernel/kptr_restrict
+has tha value 1.
+(See tha rap of the
+.I kptr_restrict
+in
+.BR proc (5).)
+.TP
+.BR CAP_WAKE_ALARM " (since Linux 3.0)"
+Trigger suttin' dat will raise up tha system (set
+.B CLOCK_REALTIME_ALARM
+and
+.B CLOCK_BOOTTIME_ALARM
+timers).
+.\"
+.SS Past n' current implementation
+A full implementation of capabilitizzles requires that:
+.IP 1. 3
+For all privileged operations,
+the kernel must check whether tha thread has tha required
+capabilitizzle up in its effectizzle set.
+.IP 2.
+Da kernel must provide system calls allowin a threadz capabilitizzle sets to
+be chizzled n' retrieved.
+.IP 3.
+Da file system must support attachin capabilitizzles ta a executable file,
+so dat a process gains dem capabilitizzles when tha file is executed.
+.PP
+Before kernel 2.6.24, only tha straight-up original gangsta two of these requirements is met;
+since kernel 2.6.24, all three requirements is met.
+.\"
+.SS Thread capabilitizzle sets
+Each thread has three capabilitizzle sets containin zero or more
+of tha above capabilities:
+.TP
+.IR Permitted :
+This be a limitin superset fo' tha effective
+capabilitizzles dat tha thread may assume.
+It be also a limitin superset fo' tha capabilitizzles that
+may be added ta tha inheritable set by a thread dat aint gots the
+.B CAP_SETPCAP
+capabilitizzle up in its effectizzle set.
+
+If a thread drops a cold-ass lil capabilitizzle from its permitted set,
+it can never reacquire dat capabilitizzle (unless it
+.BR execve (2)s
+either a set-user-ID-root program, or
+a program whose associated file capabilitizzles grant dat capability).
+.TP
+.IR Inheritable :
+This be a set of capabilitizzles preserved across an
+.BR execve (2).
+It serves up a mechanizzle fo' a process ta assign capabilities
+to tha permitted set of tha freshly smoked up program durin an
+.BR execve (2).
+.TP
+.IR Effectizzle :
+This is tha set of capabilitizzles used by tha kernel to
+perform permission checks fo' tha thread.
+.PP
+A lil pimp pimped via
+.BR fork (2)
+inherits copiez of its parentz capabilitizzle sets.
+See below fo' a gangbangin' finger-lickin' rap of tha treatment of capabilitizzles during
+.BR execve (2).
+.PP
+Using
+.BR capset (2),
+a thread may manipulate its own capabilitizzle sets (see below).
+.PP
+Since Linux 3.2, tha file
+.I /proc/sys/kernel/cap_last_cap
+.\" commit 73efc0394e148d0e15583e13712637831f926720
+exposes tha numerical value of tha highest capability
+supported by tha hustlin kernel;
+this can be used ta determine tha highest bit
+that may be set up in a cold-ass lil capabilitizzle set.
+.\"
+.SS File capabilities
+Since kernel 2.6.24, tha kernel supports
+associatin capabilitizzle sets wit a executable file using
+.BR setcap (8).
+Da file capabilitizzle sets is stored up in a extended attribute (see
+.BR setxattr (2))
+named
+.IR "security.capability" .
+Freestylin ta dis extended attribute requires the
+.BR CAP_SETFCAP
+capability.
+Da file capabilitizzle sets,
+in conjunction wit tha capabilitizzle setz of tha thread,
+determine tha capabilitizzlez of a thread afta an
+.BR execve (2).
+
+Da three file capabilitizzle sets are:
+.TP
+.IR Permitted " (formerly known as " forced ):
+These capabilitizzles is automatically permitted ta tha thread,
+regardless of tha threadz inheritable capabilities.
+.TP
+.IR Inheritable " (formerly known as " allowed ):
+This set is ANDed wit tha threadz inheritable set ta determine which
+inheritable capabilitizzles is enabled up in tha permitted set of
+the thread afta the
+.BR execve (2).
+.TP
+.IR Effectizzle :
+This aint a set yo, but rather just a single bit.
+If dis bit is set, then durin an
+.BR execve (2)
+all of tha freshly smoked up permitted capabilitizzles fo' tha thread are
+also raised up in tha effectizzle set.
+If dis bit aint set, then afta an
+.BR execve (2),
+none of tha freshly smoked up permitted capabilitizzles is up in tha freshly smoked up effectizzle set.
+
+Enablin tha file effectizzle capabilitizzle bit implies
+that any file permitted or inheritable capabilitizzle dat causes a
+thread ta acquire tha correspondin permitted capabilitizzle durin an
+.BR execve (2)
+(see tha transformation rulez busted lyrics bout below) will also acquire that
+capabilitizzle up in its effectizzle set.
+Therefore, when assignin capabilitizzles ta a gangbangin' file
+.RB ( setcap (8),
+.BR cap_set_file (3),
+.BR cap_set_fd (3)),
+if we specify tha effectizzle flag as bein enabled fo' any capability,
+then tha effectizzle flag must also be specified as enabled
+for all other capabilitizzles fo' which tha correspondin permitted or
+inheritable flags is enabled.
+.\"
+.SS Transformation of capabilitizzles durin execve()
+.PP
+Durin an
+.BR execve (2),
+the kernel calculates tha freshly smoked up capabilitizzles of
+the process rockin tha followin algorithm:
+.in +4n
+.nf
+
+P'(permitted) = (P(inheritable) & F(inheritable)) |
+                (F(permitted) & cap_bset)
+
+P'(effective) = F(effective) , biatch? P'(permitted) : 0
+
+P'(inheritable) = P(inheritable)    [i.e., unchanged]
+
+.fi
+.in
+where:
+.RS 4
+.IP P 10
+denotes tha value of a thread capabilitizzle set before the
+.BR execve (2)
+.IP P'
+denotes tha value of a cold-ass lil capabilitizzle set afta the
+.BR execve (2)
+.IP F
+denotes a gangbangin' file capabilitizzle set
+.IP cap_bset
+is tha value of tha capabilitizzle boundin set (busted lyrics bout below).
+.RE
+.\"
+.SS Capabilitizzles n' execution of programs by root
+In order ta provide a all-powerful
+.I root
+usin capabilitizzle sets, durin an
+.BR execve (2):
+.IP 1. 3
+If a set-user-ID-root program is bein executed,
+or tha real user ID of tha process is 0 (root)
+then tha file inheritable n' permitted sets is defined ta be all ones
+(i.e., all capabilitizzles enabled).
+.IP 2.
+If a set-user-ID-root program is bein executed,
+then tha file effectizzle bit is defined ta be one (enabled).
+.PP
+Da upshot of tha above rules,
+combined wit tha capabilitizzles transformations busted lyrics bout above,
+is dat when a process
+.BR execve (2)s
+a set-user-ID-root program, or when a process wit a effectizzle UID of 0
+.BR execve (2)s
+a program,
+it gains all capabilitizzles up in its permitted n' effectizzle capabilitizzle sets,
+except dem maxed up by tha capabilitizzle boundin set.
+.\" If a process wit real UID 0, n' nonzero effectizzle UID do an
+.\" exec(), then it gets all capabilitizzles up in its
+.\" permitted set, n' no effectizzle capabilities
+This serves up semantics dat is tha same as dem provided by
+traditionizzle UNIX systems.
+.SS Capabilitizzle boundin set
+Da capabilitizzle boundin set be a securitizzle mechanizzle dat can be used
+to limit tha capabilitizzles dat can be gained durin an
+.BR execve (2).
+Da boundin set is used up in tha followin ways:
+.IP * 2
+Durin an
+.BR execve (2),
+the capabilitizzle boundin set is ANDed wit tha file permitted
+capabilitizzle set, n' tha result of dis operation be assigned ta the
+threadz permitted capabilitizzle set.
+Da capabilitizzle boundin set thus places a limit on tha permitted
+capabilitizzles dat may be granted by a executable file.
+.IP *
+(Since Linux 2.6.25)
+Da capabilitizzle boundin set acts as a limitin superset for
+the capabilitizzles dat a thread can add ta its inheritable set using
+.BR capset (2).
+This means dat if a cold-ass lil capabilitizzle aint up in tha boundin set,
+then a thread can't add dis capabilitizzle ta its
+inheritable set, even if dat shiznit was up in its permitted capabilities,
+and thereby cannot have dis capabilitizzle preserved up in its
+permitted set when it
+.BR execve (2)s
+a file dat has tha capabilitizzle up in its inheritable set.
+.PP
+Note dat tha boundin set masks tha file permitted capabilities,
+but not tha inherited capabilities.
+If a thread maintains a cold-ass lil capabilitizzle up in its inherited set
+that aint up in its boundin set,
+then it can still bust dat capabilitizzle up in its permitted set
+by executin a gangbangin' file dat has tha capabilitizzle up in its inherited set.
+.PP
+Dependin on tha kernel version, tha capabilitizzle boundin set is either
+a system-wide attribute, or a per-process attribute.
+.PP
+.B "Capabilitizzle boundin set prior ta Linux 2.6.25"
+.PP
+In kernels before 2.6.25, tha capabilitizzle boundin set be a system-wide
+attribute dat affects all threadz on tha system.
+Da boundin set be accessible via tha file
+.IR /proc/sys/kernel/cap-bound .
+(Confusingly, dis bit mask parameta is expressed as a
+signed decimal number in
+.IR /proc/sys/kernel/cap-bound .)
+
+Only the
+.B init
+process may set capabilitizzles up in tha capabilitizzle boundin set;
+other than that, tha superuser (more precisely: programs wit the
+.B CAP_SYS_MODULE
+capability) may only clear capabilitizzles from dis set.
+
+On a standard system tha capabilitizzle boundin set always masks up the
+.B CAP_SETPCAP
+capability.
+To remove dis restriction (dangerous!), modify tha definizzle of
+.B CAP_INIT_EFF_SET
+in
+.I include/linux/capability.h
+and rebuild tha kernel.
+
+Da system-wide capabilitizzle boundin set feature was added
+to Linux startin wit kernel version 2.2.11.
+.\"
+.PP
+.B "Capabilitizzle boundin set from Linux 2.6.25 onward"
+.PP
+From Linux 2.6.25, the
+.I "capabilitizzle boundin set"
+is a per-thread attribute.
+(There is no longer a system-wide capabilitizzle boundin set.)
+
+Da boundin set is inherited at
+.BR fork (2)
+from tha threadz parent, n' is preserved across an
+.BR execve (2).
+
+A thread may remove capabilitizzles from its capabilitizzle boundin set rockin the
+.BR prctl (2)
+.B PR_CAPBSET_DROP
+operation, provided it has the
+.B CAP_SETPCAP
+capability.
+Once a cold-ass lil capabilitizzle has been dropped from tha boundin set,
+it cannot be restored ta dat set.
+A thread can determine if a cold-ass lil capabilitizzle is up in its boundin set rockin the
+.BR prctl (2)
+.B PR_CAPBSET_READ
+operation.
+
+Removin capabilitizzles from tha boundin set is supported only if file
+capabilitizzles is compiled tha fuck into tha kernel.
+In kernels before Linux 2.6.33,
+file capabilitizzles was a optionizzle feature configurable via the
+CONFIG_SECURITY_FILE_CAPABILITIES
+option.
+Since Linux 2.6.33, tha configuration option has been removed
+and file capabilitizzles is always part of tha kernel.
+When file capabilitizzles is compiled tha fuck into tha kernel, the
+.B init
+process (the ancestor of all processes) begins wit a gangbangin' full boundin set.
+If file capabilitizzles is not compiled tha fuck into tha kernel, then
+.B init
+begins wit a gangbangin' full boundin set minus
+.BR CAP_SETPCAP ,
+because dis capabilitizzle has a gangbangin' finger-lickin' different meanin when there are
+no file capabilities.
+
+Removin a cold-ass lil capabilitizzle from tha boundin set do not remove it
+from tha threadz inherited set.
+However it do prevent tha capabilitizzle from bein added
+back tha fuck into tha threadz inherited set up in tha future.
+.\"
+.\"
+.SS Effect of user ID chizzlez on capabilities
+To preserve tha traditionizzle semantics fo' transitions between
+0 n' nonzero user IDs,
+the kernel make tha followin chizzlez ta a threadz capability
+sets on chizzlez ta tha threadz real, effective, saved set,
+and file system user IDs (using
+.BR setuid (2),
+.BR setresuid (2),
+or similar):
+.IP 1. 3
+If one or mo' of tha real, effectizzle or saved set user IDs
+was previously 0, n' as a result of tha UID chizzlez all of these IDs
+have a nonzero value,
+then all capabilitizzles is cleared from tha permitted n' effective
+capabilitizzle sets.
+.IP 2.
+If tha effectizzle user ID is chizzled from 0 ta nonzero,
+then all capabilitizzles is cleared from tha effectizzle set.
+.IP 3.
+If tha effectizzle user ID is chizzled from nonzero ta 0,
+then tha permitted set is copied ta tha effectizzle set.
+.IP 4.
+If tha file system user ID is chizzled from 0 ta nonzero (see
+.BR setfsuid (2))
+then tha followin capabilitizzles is cleared from tha effectizzle set:
+.BR CAP_CHOWN ,
+.BR CAP_DAC_OVERRIDE ,
+.BR CAP_DAC_READ_SEARCH ,
+.BR CAP_FOWNER ,
+.BR CAP_FSETID ,
+.B CAP_LINUX_IMMUTABLE
+(since Linux 2.2.30),
+.BR CAP_MAC_OVERRIDE ,
+and
+.B CAP_MKNOD
+(since Linux 2.2.30).
+If tha file system UID is chizzled from nonzero ta 0,
+then any of these capabilitizzles dat is enabled up in tha permitted set
+are enabled up in tha effectizzle set.
+.PP
+If a thread dat has a 0 value fo' one or mo' of its user IDs wants
+to prevent its permitted capabilitizzle set bein cleared when it resets
+all of its user IDs ta nonzero joints, it can do so rockin the
+.BR prctl (2)
+.B PR_SET_KEEPCAPS
+operation.
+.\"
+.SS Programmatically adjustin capabilitizzle sets
+A thread can retrieve n' chizzle its capabilitizzle sets rockin the
+.BR capget (2)
+and
+.BR capset (2)
+system calls.
+But fuck dat shiznit yo, tha word on tha street is dat tha use of
+.BR cap_get_proc (3)
+and
+.BR cap_set_proc (3),
+both provided up in the
+.I libcap
+package,
+is preferred fo' dis purpose.
+Da followin rulez govern chizzlez ta tha thread capabilitizzle sets:
+.IP 1. 3
+If tha calla aint gots the
+.B CAP_SETPCAP
+capability,
+the freshly smoked up inheritable set must be a subset of tha combination
+of tha existin inheritable n' permitted sets.
+.IP 2.
+(Since Linux 2.6.25)
+Da freshly smoked up inheritable set must be a subset of tha combination of the
+existin inheritable set n' tha capabilitizzle boundin set.
+.IP 3.
+Da freshly smoked up permitted set must be a subset of tha existin permitted set
+(i.e., it aint possible ta acquire permitted capabilities
+that tha thread do not currently have).
+.IP 4.
+Da freshly smoked up effectizzle set must be a subset of tha freshly smoked up permitted set.
+.SS Da securebits flags: establishin a cold-ass lil capabilities-only environment
+.\" For some background:
+.\"       peep http://lwn.net/Articles/280279/ and
+.\"       http://article.gmane.org/gmane.linux.kernel.lsm/5476/
+Startin wit kernel 2.6.26,
+and wit a kernel up in which file capabilitizzles is enabled,
+Linux implements a set of per-thread
+.I securebits
+flags dat can be used ta disable special handlin of capabilitizzles fo' UID 0
+.RI ( root ).
+These flags is as bigs up:
+.TP
+.B SECBIT_KEEP_CAPS
+Settin dis flag allows a thread dat has one or mo' 0 UIDs ta retain
+its capabilitizzles when it switches all of its UIDs ta a nonzero value.
+If dis flag aint set,
+then such a UID switch causes tha thread ta lose all capabilities.
+This flag be always cleared on an
+.BR execve (2).
+(This flag serves up tha same functionalitizzle as tha older
+.BR prctl (2)
+.B PR_SET_KEEPCAPS
+operation.)
+.TP
+.B SECBIT_NO_SETUID_FIXUP
+Settin dis flag stops tha kernel from adjustin capabilitizzle sets when
+the threadss effectizzle n' file system UIDs is switched between
+zero n' nonzero joints.
+(See tha subsection
+.IR "Effect of User ID Chizzlez on Capabilities" .)
+.TP
+.B SECBIT_NOROOT
+If dis bit is set, then tha kernel do not grant capabilities
+when a set-user-ID-root program is executed, or when a process with
+an effectizzle or real UID of 0 calls
+.BR execve (2).
+(See tha subsection
+.IR "Capabilitizzles n' execution of programs by root" .)
+.PP
+Each of tha above "base" flags has a cold-ass lil companion "locked" flag.
+Settin any of tha "locked" flags is irreversible,
+and has tha effect of preventin further chizzlez ta the
+correspondin "base" flag.
+Da locked flags are:
+.BR SECBIT_KEEP_CAPS_LOCKED ,
+.BR SECBIT_NO_SETUID_FIXUP_LOCKED ,
+and
+.BR SECBIT_NOROOT_LOCKED .
+.PP
+The
+.I securebits
+flags can be modified n' retrieved rockin the
+.BR prctl (2)
+.B PR_SET_SECUREBITS
+and
+.B PR_GET_SECUREBITS
+operations.
+The
+.B CAP_SETPCAP
+capabilitizzle is required ta modify tha flags.
+
+The
+.I securebits
+flags is inherited by lil pimp processes.
+Durin an
+.BR execve (2),
+all of tha flags is preserved, except
+.B SECBIT_KEEP_CAPS
+which be always cleared.
+
+An application can use tha followin call ta lock itself,
+and all of its descendants,
+into a environment where tha only way of bustin capabilities
+is by executin a program wit associated file capabilities:
+.in +4n
+.nf
+
+prctl(PR_SET_SECUREBITS,
+        SECBIT_KEEP_CAPS_LOCKED |
+        SECBIT_NO_SETUID_FIXUP |
+        SECBIT_NO_SETUID_FIXUP_LOCKED |
+        SECBIT_NOROOT |
+        SECBIT_NOROOT_LOCKED);
+.fi
+.in
+.SH CONFORMING TO
+.PP
+No standardz govern capabilitizzles yo, but tha Linux capabilitizzle implementation
+is based on tha withdrawn POSIX.1e draft standard; see
+.UR http://wt.tuxomania.net\:/publications\:/posix.1e/
+.UE .
+.SH NOTES
+Since kernel 2.5.27, capabilitizzles is a optionizzle kernel component,
+and can be enabled/disabled via tha CONFIG_SECURITY_CAPABILITIES
+kernel configuration option.
+
+The
+.I /proc/PID/task/TID/status
+file can be used ta view tha capabilitizzle setz of a thread.
+The
+.I /proc/PID/status
+file shows tha capabilitizzle setz of a processs main thread.
+Before Linux 3.8, nonexistent capabilitizzles was shown as being
+enabled (1) up in these sets.
+Since Linux 3.8,
+.\" 7b9a7ec565505699f503b4fcf61500dceb36e744
+all non-existent capabilitizzles (above
+.BR CAP_LAST_CAP )
+are shown as disabled (0).
+
+The
+.I libcap
+package serves up a suite of routines fo' settin and
+gettin capabilitizzles dat is mo' laid back n' less likely
+to chizzle than tha intercourse provided by
+.BR capset (2)
+and
+.BR capget (2).
+This package also serves up the
+.BR setcap (8)
+and
+.BR getcap (8)
+programs.
+It can be found at
+.br
+.UR http://www.kernel.org\:/pub\:/linux\:/libs\:/security\:/linux-privs
+.UE .
+
+Before kernel 2.6.24, n' since kernel 2.6.24 if
+file capabilitizzles is not enabled, a thread wit the
+.B CAP_SETPCAP
+capabilitizzle can manipulate tha capabilitizzlez of threadz other than itself.
+But fuck dat shiznit yo, tha word on tha street is dat dis is only theoretically possible,
+since no thread eva has
+.BR CAP_SETPCAP
+in either of these cases:
+.IP * 2
+In tha pre-2.6.25 implementation tha system-wide capabilitizzle boundin set,
+.IR /proc/sys/kernel/cap-bound ,
+always masks up dis capability, n' dis can not be chizzled
+without modifyin tha kernel source n' rebuilding.
+.IP *
+If file capabilitizzles is disabled up in tha current implementation, then
+.B init
+starts up wit dis capabilitizzle removed from its per-process bounding
+set, n' dat boundin set is inherited by all other processes
+created on tha system.
+.SH SEE ALSO
+.BR capget (2),
+.BR prctl (2),
+.BR setfsuid (2),
+.BR cap_clear (3),
+.BR cap_copy_ext (3),
+.BR cap_from_text (3),
+.BR cap_get_file (3),
+.BR cap_get_proc (3),
+.BR cap_init (3),
+.BR capgetp (3),
+.BR capsetp (3),
+.BR libcap (3),
+.BR credentials (7),
+.BR pthreadz (7),
+.BR getcap (8),
+.BR setcap (8)
+.PP
+.I include/linux/capability.h
+in tha Linux kernel source tree
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

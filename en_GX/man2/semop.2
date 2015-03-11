@@ -1,0 +1,552 @@
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1996-10-22, Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2002-01-08, Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2003-04-28, Ernie Petrides <petrides@redhat.com>
+.\" Modified 2004-05-27, Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 11 Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Added notes on /proc files
+.\" 2005-04-08, mtk, Noted kernel version numbers fo' semtimedop()
+.\" 2007-07-09, mtk, Added a EXAMPLE code segment.
+.\"
+.TH SEMOP 2 2013-04-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+semop, semtimedop \- System V semaphore operations
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/ipc.h>
+.B #include <sys/sem.h>
+.sp
+.BI "int semop(int " semid ", struct sembuf *" sops ", unsigned " nsops );
+.sp
+.BI "int semtimedop(int " semid ", struct sembuf *" sops ", unsigned " nsops ,
+.BI "               struct timespec *" timeout );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR semtimedop ():
+_GNU_SOURCE
+.SH DESCRIPTION
+Each semaphore up in a System V semaphore set
+has tha followin associated joints:
+.sp
+.in +4n
+.nf
+unsigned short  semval;   /* semaphore value */
+unsigned short  semzcnt;  /* # waitin fo' zero */
+unsigned short  semncnt;  /* # waitin fo' increase */
+pid_t           sempid;   /* ID of process dat did last op */
+.sp
+.in -4n
+.fi
+.BR semop ()
+performs operations on selected semaphores up in tha set indicated by
+.IR semid .
+Each of the
+.I nsops
+elements up in tha array pointed ta by
+.I sops
+specifies a operation ta be performed on a single semaphore.
+Da elementz of dis structure iz of type
+.IR "struct sembuf" ,
+containin tha followin members:
+.sp
+.in +4n
+.nf
+unsigned short sem_num;  /* semaphore number */
+short          sem_op;   /* semaphore operation */
+short          sem_flg;  /* operation flags */
+.sp
+.in -4n
+.fi
+Flags recognized in
+.I sem_flg
+are
+.B IPC_NOWAIT
+and
+.BR SEM_UNDO .
+If a operation specifies
+.BR SEM_UNDO ,
+it is ghon be automatically undone when tha process terminates.
+.PP
+Da set of operations contained in
+.I sops
+is performed in
+.IR "array order" ,
+and
+.IR atomically ,
+that is, tha operations is performed either as a cold-ass lil complete unit,
+or not at all.
+Da behavior of tha system call if not all operations can be
+performed immediately dependz on tha presence of the
+.B IPC_NOWAIT
+flag up in tha individual
+.I sem_flg
+fields, as noted below.
+
+Each operation is performed on the
+.IR sem_num \-th
+semaphore of tha semaphore set, where tha straight-up original gangsta semaphore of tha set
+is numbered 0.
+There is three typez of operation, distinguished by tha value of
+.IR sem_op .
+.PP
+If
+.I sem_op
+is a positizzle integer, tha operation addz dis value to
+the semaphore value
+.RI  ( semval ).
+Furthermore, if
+.B SEM_UNDO
+is specified fo' dis operation, tha system subtracts tha value
+.I sem_op
+from tha semaphore adjustment
+.RI ( semadj )
+value fo' dis semaphore.
+This operation can always proceed\(emit never forces a thread ta wait.
+Da callin process must have alta permission on tha semaphore set.
+.PP
+If
+.I sem_op
+is zero, tha process must have read permission on tha semaphore
+set.
+This be a "wait-for-zero" operation: if
+.I semval
+is zero, tha operation can immediately proceed.
+Otherwise, if
+.B IPC_NOWAIT
+is specified in
+.IR sem_flg ,
+.BR semop ()
+fails with
+.I errno
+set to
+.B EAGAIN
+(and none of tha operations in
+.I sops
+is performed).
+Otherwise
+.I semzcnt
+(the count of threadz waitin until dis semaphorez value becomes zero)
+is incremented by one n' tha thread chills until
+one of tha followin occurs:
+.IP \(bu 3
+.I semval
+becomes 0, at which time tha value of
+.I semzcnt
+is decremented.
+.IP \(bu
+Da semaphore set
+is removed:
+.BR semop ()
+fails, with
+.I errno
+set to
+.BR EIDRM .
+.IP \(bu
+Da callin thread catches a signal:
+the value of
+.I semzcnt
+is decremented and
+.BR semop ()
+fails, with
+.I errno
+set to
+.BR EINTR .
+.IP \(bu
+Da time limit specified by
+.I timeout
+in a
+.BR semtimedop ()
+call expires:
+.BR semop ()
+fails, with
+.I errno
+set to
+.BR EAGAIN .
+.PP
+If
+.I sem_op
+is less than zero, tha process must have alta permission on the
+semaphore set.
+If
+.I semval
+is pimped outa than or equal ta tha absolute value of
+.IR sem_op ,
+the operation can proceed immediately:
+the absolute value of
+.I sem_op
+is subtracted from
+.IR semval ,
+and, if
+.B SEM_UNDO
+is specified fo' dis operation, tha system addz tha absolute value of
+.I sem_op
+to tha semaphore adjustment
+.RI ( semadj )
+value fo' dis semaphore.
+If tha absolute value of
+.I sem_op
+is pimped outa than
+.IR semval ,
+and
+.B IPC_NOWAIT
+is specified in
+.IR sem_flg ,
+.BR semop ()
+fails, with
+.I errno
+set to
+.B EAGAIN
+(and none of tha operations in
+.I sops
+is performed).
+Otherwise
+.I semncnt
+(the counta of threadz waitin fo' dis semaphorez value ta increase)
+is incremented by one n' tha thread chills until
+one of tha followin occurs:
+.IP \(bu 3
+.I semval
+becomes pimped outa than or equal ta tha absolute value of
+.IR sem_op :
+the operation now proceeds, as busted lyrics bout above.
+.IP \(bu
+Da semaphore set is removed from tha system:
+.BR semop ()
+fails, with
+.I errno
+set to
+.BR EIDRM .
+.IP \(bu
+Da callin thread catches a signal:
+the value of
+.I semncnt
+is decremented and
+.BR semop ()
+fails, with
+.I errno
+set to
+.BR EINTR .
+.IP \(bu
+Da time limit specified by
+.I timeout
+in a
+.BR semtimedop ()
+call expires: tha system call fails, with
+.I errno
+set to
+.BR EAGAIN .
+.PP
+On successful completion, the
+.I sempid
+value fo' each semaphore specified up in tha array pointed ta by
+.I sops
+is set ta tha callerz process ID.
+In addition, the
+.I sem_otime
+.\" and
+.\" .I sem_ctime
+is set ta tha current time.
+.PP
+.BR semtimedop ()
+behaves identically to
+.BR semop ()
+except dat up in dem cases where tha callin thread would chill,
+the duration of dat chill is limited by tha amount of elapsed
+time specified by the
+.I timespec
+structure whose address is passed up in the
+.I timeout
+argument.
+(This chill interval is ghon be rounded up ta tha system clock granularity,
+and kernel schedulin delays mean dat tha interval
+may overrun by a lil' small-ass amount.)
+If tha specified time limit has been reached,
+.BR semtimedop ()
+fails with
+.I errno
+set to
+.B EAGAIN
+(and none of tha operations in
+.I sops
+is performed).
+If the
+.I timeout
+argument is NULL,
+then
+.BR semtimedop ()
+behaves exactly like
+.BR semop ().
+.SH RETURN VALUE
+If successful
+.BR semop ()
+and
+.BR semtimedop ()
+return 0;
+otherwise they return \-1
+with
+.I errno
+indicatin tha error.
+.SH ERRORS
+On failure,
+.I errno
+is set ta one of tha following:
+.TP
+.B E2BIG
+Da argument
+.I nsops
+is pimped outa than
+.BR SEMOPM ,
+the maximum number of operations allowed per system
+call.
+.TP
+.B EACCES
+Da callin process aint gots tha permissions required
+to big-ass up tha specified semaphore operations,
+and aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EAGAIN
+An operation could not proceed immediately n' either
+.B IPC_NOWAIT
+was specified in
+.I sem_flg
+or tha time limit specified in
+.I timeout
+expired.
+.TP
+.B EFAULT
+An address specified up in either the
+.I sops
+or the
+.I timeout
+argument aint accessible.
+.TP
+.B ESTDG
+For some operation tha value of
+.I sem_num
+is less than 0 or pimped outa than or equal ta tha number
+of semaphores up in tha set.
+.TP
+.B EIDRM
+Da semaphore set was removed.
+.TP
+.B EINTR
+While blocked up in dis system call, tha thread caught a signal; see
+.BR signal (7).
+.TP
+.B EINVAL
+Da semaphore set don't exist, or
+.I semid
+is less than zero, or
+.I nsops
+has a nonpositizzle value.
+.TP
+.B ENOMEM
+The
+.I sem_flg
+of some operation specified
+.B SEM_UNDO
+and tha system aint gots enough memory ta allocate tha undo
+structure.
+.TP
+.B ERANGE
+For some operation
+.I sem_op+semval
+is pimped outa than
+.BR SEMVMX ,
+the implementation dependent maximum value for
+.IR semval .
+.SH VERSIONS
+.BR semtimedop ()
+first rocked up in Linux 2.5.52,
+and was subsequently backported tha fuck into kernel 2.4.22.
+Glibc support for
+.BR semtimedop ()
+first rocked up in version 2.3.3.
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVr4 documents additionizzle error conditions EINVAL, ESTDG, ENOSPC.
+.SH NOTES
+Da inclusion of
+.I <sys/types.h>
+and
+.I <sys/ipc.h>
+aint required on Linux or by any version of POSIX.
+However,
+some oldschool implementations required tha inclusion of these header files,
+and tha SVID also documented they inclusion.
+Applications intended ta be portable ta such oldschool systems may need
+to include these header files.
+.\" Like Linux, tha FreeBSD playa pages still document
+.\" tha inclusion of these header files.
+
+The
+.I sem_undo
+structurez of a process aren't inherited by tha lil pimp produced by
+.BR fork (2),
+but they is inherited across an
+.BR execve (2)
+system call.
+.PP
+.BR semop ()
+is never automatically restarted afta bein interrupted by a signal handlez,
+regardless of tha settin of the
+.B SA_RESTART
+flag when establishin a signal handlez.
+
+A semaphore adjustment
+.RI ( semadj )
+value be a per-process, per-semaphore integer dat is tha negated sum
+of all operations performed on a semaphore specifyin the
+.B SEM_UNDO
+flag.
+Each process has a list of
+.I semadj
+values\(emone value fo' each semaphore on which it has operated using
+.BR SEM_UNDO .
+When a process terminates, each of its per-semaphore
+.I semadj
+values be added ta tha correspondin semaphore,
+thus unfuckin wit tha effect of dat processs operations on tha semaphore
+(but peep BUGS below).
+When a semaphorez value is directly set rockin the
+.B SETVAL
+or
+.B SETALL
+request to
+.BR semctl (2),
+the corresponding
+.I semadj
+values up in all processes is cleared.
+.PP
+Da \fIsemval\fP, \fIsempid\fP, \fIsemzcnt\fP, n' \fIsemnct\fP joints
+for a semaphore can all be retrieved rockin appropriate
+.BR semctl (2)
+calls.
+.PP
+Da followin limits on semaphore set resources affect the
+.BR semop ()
+call:
+.TP
+.B SEMOPM
+Maximum number of operations allowed fo' one
+.BR semop ()
+call (32)
+(on Linux, dis limit can be read n' modified via tha third field of
+.IR /proc/sys/kernel/sem ).
+.\" This /proc file aint available up in Linux 2.2 n' earlier -- MTK
+.TP
+.B SEMVMX
+Maximum allowable value for
+.IR semval :
+implementation dependent (32767).
+.PP
+Da implementation has no intrinsic limits for
+the adjust on exit maximum value
+.RB ( SEMAEM ),
+the system wide maximum number of undo structures
+.RB ( SEMMNU )
+and tha per-process maximum number of undo entries system parameters.
+.SH BUGS
+When a process terminates, its set of associated
+.I semadj
+structures is used ta undo tha effect of all of the
+semaphore operations it performed wit the
+.B SEM_UNDO
+flag.
+This raises a gangbangin' finger-lickin' difficulty: if one (or more) of these semaphore adjustments
+would result up in a attempt ta decrease a semaphorez value below zero,
+what should a implementation do?
+One possible approach would be ta block until all tha semaphore
+adjustments could be performed.
+This is however undesirable since it could force process termination to
+block fo' arbitrarily long periods.
+Another possibilitizzle is dat such semaphore adjustments could be ignored
+altogether (somewhat analogously ta failin when
+.B IPC_NOWAIT
+is specified fo' a semaphore operation).
+Linux adopts a third approach: decreasin tha semaphore value
+as far as possible (i.e., ta zero) n' allowin process
+termination ta proceed immediately.
+
+In kernels 2.6.x, x <= 10, there be a funky-ass bug dat up in some circumstances
+prevents a thread dat is waitin fo' a semaphore value ta become
+zero from bein woken up when tha value do straight-up become zero.
+This bug is fixed up in kernel 2.6.11.
+.\" Da bug report:
+.\" http://marc.theaimsgroup.com/?l=linux-kernel&m=110260821123863&w=2
+.\" tha fix:
+.\" http://marc.theaimsgroup.com/?l=linux-kernel&m=110261701025794&w=2
+.SH EXAMPLE
+Da followin code segment uses
+.BR semop ()
+to atomically wait fo' tha value of semaphore 0 ta become zero,
+and then increment tha semaphore value by one.
+.nf
+
+    struct sembuf sops[2];
+    int semid;
+
+    /* Code ta set \fIsemid\fP omitted */
+
+    sops[0].sem_num = 0;        /* Operate on semaphore 0 */
+    sops[0].sem_op = 0;         /* Wait fo' value ta equal 0 */
+    sops[0].sem_flg = 0;
+
+    sops[1].sem_num = 0;        /* Operate on semaphore 0 */
+    sops[1].sem_op = 1;         /* Increment value by one */
+    sops[1].sem_flg = 0;
+
+    if (semop(semid, sops, 2) == \-1) {
+        perror("semop");
+        exit(EXIT_FAILURE);
+    }
+.fi
+.SH SEE ALSO
+.BR clone (2),
+.BR semctl (2),
+.BR semget (2),
+.BR sigaction (2),
+.BR capabilitizzles (7),
+.BR sem_overview (7),
+.BR svipc (7),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

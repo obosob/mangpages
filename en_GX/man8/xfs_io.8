@@ -1,0 +1,735 @@
+.TH xfs_io 8
+.SH NAME
+xfs_io \- debug tha I/O path of a XFS filesystem
+.SH SYNOPSIS
+.B xfs_io
+[
+.B \-adfmrRstxT
+] [
+.B \-c
+.I cmd
+] ... [
+.B \-p
+.I prog
+]
+.I file
+.br
+.B xfs_io \-V
+.SH DESCRIPTION
+.B xfs_io
+is a thugged-out debuggin tool like
+.BR xfs_db (8),
+but be aimed at examinin tha regular file I/O paths rather than the
+raw XFS volume itself.
+These code paths include not only tha obvious read/write/mmap intercourses
+for manipulatin filez yo, but also cover all of tha XFS extensions (such
+as space preallocation, additionizzle inode flags, etc).
+.SH OPTIONS
+.TP 1.0i
+.BI \-c " cmd"
+.B xfs_io
+commandz may be run interactively (the default) or as arguments on
+the command line. Multiple
+.B \-c
+arguments may be given. I aint talkin' bout chicken n' gravy biatch. Da commandz is run up in tha sequence given,
+then tha program exits.
+.TP
+.BI \-p " prog"
+Set tha program name fo' prompts n' some error lyrics,
+the default value is
+.BR xfs_io .
+.TP
+.B \-f
+Create
+.I file
+if it do not already exist.
+.TP
+.B \-r
+Open
+.I file
+read-only, initially. This is required if
+.I file
+is immutable or append-only.
+.TP
+.B \-x
+Expert mode. Dangerous commandz is only available up in dis mode.
+These commandz also tend ta require additionizzle privileges.
+.TP
+.B \-V
+Prints tha version number n' exits.
+.PP
+Da other
+.BR open (2)
+options busted lyrics bout below is also available from tha command line.
+.SH CONCEPTS
+.B xfs_io
+maintains a fuckin shitload of open filez n' memory mappings.
+Filez can be initially opened on tha command line (optionally),
+and additionizzle filez can also be opened later.
+.PP
+.B xfs_io
+commandz can be fucked up tha fuck into three groups.
+Some commandz is aimed at bustin regular file I/O - read, write,
+sync, space preallocation, etc.
+.PP
+Da second set of commandz exist fo' manipulatin memory mapped regions
+of a gangbangin' file - mapping, accessing, storing, unmapping, flushing, etc.
+.PP
+Da remainin commandz is fo' tha mastabation n' display of data
+structures relatin ta tha open files, mappings, n' tha filesystems
+where they reside.
+.PP
+Many commandz have extensive online help. Use the
+.B help
+command fo' mo' details on any command.
+.SH FILE I/O COMMANDS
+.TP
+.BI "file [ " N " ]"
+Display a list of all open filez n' (optionally) switch ta a alternate
+current open file.
+.TP
+.BI "open [[ \-acdfrstRT ] " path " ]"
+Closes tha current file, n' opens tha file specified by
+.I path
+instead. Y'all KNOW dat shit, muthafucka! Without any arguments, displays statistics bout tha current
+file \- peep the
+.B stat
+command.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-a
+opens append-only (O_APPEND).
+.TP
+.B \-d
+opens fo' direct I/O (O_DIRECT).
+.TP
+.B \-f
+creates tha file if it don't already exist (O_CREAT).
+.TP
+.B \-r
+opens read-only (O_RDONLY).
+.TP
+.B \-s
+opens fo' synchronous I/O (O_SYNC).
+.TP
+.B \-t
+truncates on open (O_TRUNC).
+.TP
+.B \-n
+opens up in non-blockin mode if possible (O_NONBLOCK).
+.TP
+.B \-T
+create a temporary file not linked tha fuck into tha filesystem namespace
+(O_TMPFILE).  Da pathname passed must refer ta a gangbangin' finger-lickin' directory which
+is treated as virtual parent fo' tha newly pimped invisible file.
+Can not be used together wit the
+.B \-r
+option.
+.TP
+.B \-R
+marks tha file as a realtime XFS file after
+openin it, if it aint already marked as such.
+.PD
+.RE
+.TP
+.B o
+See the
+.B open
+command.
+.TP
+.B close
+Closes tha current open file, markin tha next open file as current
+(if one exists).
+.TP
+.B c
+See the
+.B close
+command.
+.TP
+.BI "pread [ \-b " bsize " ] [ \-v ] [ \-FBR [ \-Z " seed " ] ] [ \-V " vectors " ] " "offset length"
+Readz a range of bytes up in a specified blocksize from tha given
+.IR offset .
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-b
+can be used ta set tha blocksize tha fuck into which the
+.BR read (2)
+requests is ghon be split. Da default blocksize is 4096 bytes.
+.TP
+.B \-v
+dump tha contentz of tha buffer afta reading,
+by default only tha count of bytes straight-up read is dumped.
+.TP
+.B \-F
+read tha buffers up in a gangbangin' forwardz sequential direction.
+.TP
+.B \-B
+read tha buffers up in a reserve sequential direction.
+.TP
+.B \-R
+read tha buffers up in tha give range up in a random order.
+.TP
+.B \-Z seed
+specify tha random number seed used fo' random reads.
+.TP
+.B \-V vectors
+Use tha vectored IO read syscall
+.BR preadv (2)
+with a fuckin shitload of blocksize length iovecs. Da number of iovecs is set by the
+.I vectors
+parameter.
+.PD
+.RE
+.TP
+.B r
+See the
+.B pread
+command.
+.TP
+.BI "pwrite [ \-i " file " ] [ \-d ] [ \-s " skip " ] [ \-b " size " ] [ \-S " seed " ] [ \-FBR [ \-Z " zeed " ] ] [ \-wW ] [ \-V " vectors " ] " "offset length"
+Writes a range of bytes up in a specified blocksize from tha given
+.IR offset .
+Da bytes freestyled can be either a set pattern or read up in from another
+file before writing.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-i
+allows a input
+.I file
+to be specified as tha source of tha data ta be written.
+.TP
+.B \-d
+causes direct I/O, rather than tha usual buffered
+I/O, ta be used when readin tha input file.
+.TP
+.B \-s
+specifies tha number of bytes to
+.I skip
+from tha start of tha input file before startin ta read.
+.TP
+.B \-b
+used ta set tha blocksize tha fuck into which the
+.BR write (2)
+requests is ghon be split. Da default blocksize is 4096 bytes.
+.TP
+.B \-S
+used ta set tha (repeated) fill pattern which
+is used when tha data ta write aint comin from a gangbangin' file.
+Da default buffer fill pattern value is 0xcdcdcdcd.
+.TP
+.B \-F
+write tha buffers up in a gangbangin' forwardz sequential direction.
+.TP
+.B \-B
+write tha buffers up in a reserve sequential direction.
+.TP
+.B \-R
+write tha buffers up in tha give range up in a random order.
+.TP
+.B \-Z seed
+specify tha random number seed used fo' random write
+.TP
+.B \-w
+call
+.BR fdatasync (2)
+once all writes is complete (included up in timin thangs up in dis biatch)
+.TP
+.B \-W
+call
+.BR fsync (2)
+once all writes is complete (included up in timin thangs up in dis biatch)
+.TP
+.B \-V vectors
+Use tha vectored IO write syscall
+.BR pwritev (2)
+with a fuckin shitload of blocksize length iovecs. Da number of iovecs is set by the
+.I vectors
+parameter.
+.RE
+.PD
+.TP
+.B w
+See the
+.B pwrite
+command.
+.TP
+.BI "bmap [ \-adlpv ] [ \-n " nx " ]"
+Prints tha block mappin fo' tha current open file. Refer ta the
+.BR xfs_bmap (8)
+manual page fo' complete documentation.
+.TP
+.BI "fiemap [ \-alv ] [ \-n " nx " ]"
+Prints tha block mappin fo' tha current open file rockin tha fiemap
+ioctl.  Options behave as busted lyrics bout up in the
+.BR xfs_bmap (8)
+manual page.
+.TP
+.BI "extsize [ \-R | \-D ] [ " value " ]"
+Display and/or modify tha preferred extent size used when allocating
+space fo' tha currently open file. If the
+.B \-R
+option is specified, a recursive descent is performed
+for all directory entries below tha currently open file
+.RB ( \-D
+can be used ta restrict tha output ta directories only).
+If tha target file be a gangbangin' finger-lickin' directory, then tha inherited extent size
+is set fo' dat directory (new filez pimped up in dat directory
+inherit dat extent size).
+The
+.I value
+should be specified up in bytes, or rockin one of tha usual units suffixes
+(k, m, g, b, etc). Da extent size be always reported up in unitz of bytes.
+.TP
+.BI "allocsp " size " 0"
+Sets tha size of tha file to
+.I size
+and zeroes any additionizzle space allocated rockin the
+XFS_IOC_ALLOCSP/XFS_IOC_FREESP system call busted lyrics bout up in the
+.BR xfsctl (3)
+manual page.
+.B allocsp
+and
+.B freesp
+do exactly tha same thang.
+.TP
+.BI "freesp " size " 0"
+See the
+.B allocsp
+command.
+.TP
+.BI "fadvise [ \-r | \-s | [[ \-d | \-n | \-w ] " "offset length " ]]
+On platforms which support it, allows hints be given ta tha system
+regardin tha expected I/O patterns on tha file.
+Da range arguments is required by some advise commandz ([*] below), and
+the others must have no range arguments.
+With no arguments, tha POSIX_FADV_NORMAL lyrics is implied (default readahead).
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-d
+the data aint gonna be accessed again n' again n' again up in tha near future (POSIX_FADV_DONTNEED[*]).
+.TP
+.B \-n
+data is ghon be accessed once n' not be reused (POSIX_FADV_NOREUSE[*]).
+.TP
+.B \-r
+expect access ta data up in random order (POSIX_FADV_RANDOM), which sets readahead ta zero.
+.TP
+.B \-s
+expect access ta data up in sequential order (POSIX_FADV_SEQUENTIAL),
+which doublez tha default readahead on tha file.
+.TP
+.B \-w
+advises tha specified data is ghon be needed again n' again n' again (POSIX_FADV_WILLNEED[*])
+which forces tha maximum readahead.
+.RE
+.PD
+.TP
+.B fdatasync
+Calls
+.BR fdatasync (2)
+to flush tha filez in-core data ta disk.
+.TP
+.B fsync
+Calls
+.BR fsync (2)
+to flush all in-core file state ta disk.
+.TP
+.B s
+See the
+.B fsync
+command.
+.TP
+.BI "sync_range [ \-a | \-b | \-w ] offset length "
+On platforms which support it, allows control of syncin a range of tha file to
+disk. With no options, SYNC_FILE_RANGE_WRITE is implied on tha range supplied.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-a
+wait fo' IO up in tha given range ta finish afta writing
+(SYNC_FILE_RANGE_WAIT_AFTER).
+.TP
+.B \-b
+wait fo' IO up in tha given range ta finish before writing
+(SYNC_FILE_RANGE_WAIT_BEFORE).
+.TP
+.B \-w
+start writeback of dirty data up in tha given range (SYNC_FILE_RANGE_WRITE).
+.RE
+.PD
+.TP
+.BI resvsp " offset length"
+Allocates reserved, unwritten space fo' part of a gangbangin' file rockin the
+XFS_IOC_RESVSP system call busted lyrics bout up in the
+.BR xfsctl (3)
+manual page.
+.TP
+.BI unresvsp " offset length"
+Frees reserved space fo' part of a gangbangin' file rockin tha XFS_IOC_UNRESVSP
+system call busted lyrics bout up in the
+.BR xfsctl (3)
+manual page.
+.TP
+.BI "falloc [ \-k ]" " offset length"
+Allocates reserved, unwritten space fo' part of a gangbangin' file rockin the
+fallocate routine as busted lyrics bout up in the
+.BR fallocate (2)
+manual page.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-k
+will set tha FALLOC_FL_KEEP_SIZE flag as busted lyrics bout in
+.BR fallocate (2).
+.PD
+.RE
+.TP
+.BI fcollapse " offset length"
+Call fallocate wit FALLOC_FL_COLLAPSE_RANGE flag as busted lyrics bout up in the
+.BR fallocate (2)
+manual page ta de-allocates blocks n' eliminates tha hole pimped up in dis process
+by shiftin data blocks tha fuck into tha hole.
+.TP
+.BI fpunch " offset length"
+Punches (de-allocates) blocks up in tha file by callin fallocate wit 
+the FALLOC_FL_PUNCH_HOLE flag as busted lyrics bout up in the
+.BR fallocate (2)
+manual page.
+.TP
+.BI fzero " offset length"
+Call fallocate wit FALLOC_FL_ZERO_RANGE flag as busted lyrics bout up in the
+.BR fallocate (2)
+manual page ta allocate n' zero blocks within tha range.
+.TP
+.BI truncate " offset"
+Truncates tha current file all up in tha given offset using
+.BR ftruncate (2).
+.TP
+.BI "sendfile \-i " srcfile " | \-f " N " [ " "offset length " ]
+On platforms which support it, allows a gangbangin' finger-lickin' direct in-kernel copy between
+two file descriptors. Da current open file is tha target, tha source
+must be specified as another open file
+.RB ( \-f )
+or by path
+.RB ( \-i ).
+.TP
+.BI "readdir [ -v ] [ -o " offset " ] [ -l " length " ] "
+Read a range of directory entries from a given offset of a gangbangin' finger-lickin' directory.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-v
+verbose mode - dump dirent content as defined in
+.BR readdir (3)
+.TP
+.B \-o
+specify starting
+.I offset
+.TP
+.B \-l
+specify total
+.I length
+to read (in bytes)
+.RE
+.PD
+.TP
+.TP
+.BI "seek  \-a | \-d | \-h [ \-r ] [ \-s ] offset"
+On platforms dat support the
+.BR lseek (2)
+.B SEEK_DATA
+and
+.B SEEK_HOLE
+options, display tha offsetz of tha specified segments.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-a
+Display both
+.B data
+and
+.B hole
+segments startin all up in tha specified
+.B offset.
+.TP
+.B \-d
+Display the
+.B data
+segment startin all up in tha specified
+.B offset.
+.TP
+.B \-h
+Display the
+.B hole
+segment startin all up in tha specified
+.B offset.
+.TP
+.B \-r
+Recursively display all tha specified segments startin all up in tha specified
+.B offset.
+.TP
+.B \-s
+Display tha startin lseek(2) offset. This offset is ghon be a cold-ass lil calculated value when
+both data n' holez is displayed together or struttin a recusively display.
+.TP
+
+.SH MEMORY MAPPED I/O COMMANDS
+.TP
+.BI "mmap [ " N " | [[ \-rwx ] " "offset length " ]]
+With no arguments,
+.B mmap
+shows tha current mappings. Right back up in yo muthafuckin ass. Specifyin a single numeric argument
+.I N
+sets tha current mapping. If two arguments is specified (a range specified by
+.I offset
+and
+.IR length ),
+a freshly smoked up mappin is pimped spannin tha range, n' tha protection mode can
+be given as a cold-ass lil combination of PROT_READ
+.RB ( \-r ),
+PROT_WRITE
+.RB ( \-w ),
+and PROT_EXEC
+.RB ( \-x ).
+.TP
+.B mm
+See the
+.B mmap
+command.
+.TP
+.B munmap
+Unmaps tha current memory mapping.
+.TP
+.B mu
+See the
+.B munmap
+command.
+.TP
+.BI "mread [ \-f | \-v ] [ \-r ] [" " offset length " ]
+Accesses a segment of tha current memory mapping, optionally dumpin it to
+the standard output stream (with
+.B \-v
+or
+.B \-f
+option) fo' inspection. I aint talkin' bout chicken n' gravy biatch. Da accesses is performed sequentially from tha start
+.I offset
+by default yo, but can also be done from tha end backwardz all up in the
+mappin if the
+.B \-r
+option up in specified.
+Da two verbose modes differ only up in tha relatizzle offsets they display, the
+.B \-f
+option is relatizzle ta file start, whereas
+.B \-v
+shows offsets relatizzle ta tha start of tha mapping.
+.TP
+.B mr
+See the
+.B mread
+command.
+.TP
+.BI "mwrite [ \-r ] [ \-S " seed " ] [ " "offset length " ]
+Stores a funky-ass byte tha fuck into memory fo' a range within a mapping.
+Da default stored value is 'X', repeated ta fill tha range specified,
+but dis can be chizzled rockin the
+.B \-S
+option.
+Da memory stores is performed sequentially from tha start offset by default,
+but can also be done from tha end backwardz all up in tha mappin if the
+.B \-r
+option up in specified.
+.TP
+.B mw
+See the
+.B mwrite
+command.
+.TP
+.BI "msync [ \-i ] [ \-a | \-s ] [ " "offset length " ]
+Writes all modified copiez of pages over tha specified range (or entire
+mappin if no range specified) ta they backin storage locations.
+Also, optionally invalidates
+.RB ( \-i )
+so dat subsequent references ta tha pages is ghon be obtained from their
+backin storage locations (instead of cached copies).
+Da flush can be done synchronously
+.RB ( \-s)
+or asynchronously
+.RB ( \-a ).
+.TP
+.B ms
+See the
+.B msync
+command.
+.TP
+.BI "madvise [ \-d | \-r | \-s | \-w ] [ " "offset length " ]
+Modifies page cache behavior when operatin on tha current mapping.
+Da range arguments is required by some advise commandz ([*] below).
+With no arguments, tha POSIX_MADV_NORMAL lyrics is implied (default readahead).
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-d
+the pages aint gonna be needed (POSIX_MADV_DONTNEED[*]).
+.TP
+.B \-r
+expect random page references (POSIX_MADV_RANDOM), which sets readahead ta zero.
+.TP
+.B \-s
+expect sequential page references (POSIX_MADV_SEQUENTIAL),
+which doublez tha default readahead on tha file.
+.TP
+.B \-w
+advises tha specified pages is ghon be needed again n' again n' again (POSIX_MADV_WILLNEED[*])
+which forces tha maximum readahead.
+.RE
+.PD
+.TP
+.B mincore
+Dumps a list of pages or rangez of pages dat is currently up in core,
+for tha current memory mapping.
+
+.SH OTHER COMMANDS
+.TP
+.B print
+Display a list of all open filez n' memory mapped regions.
+Da current file n' current mappin is distinguishable from
+any others.
+.TP
+.B p
+See the
+.B print
+command.
+.TP
+.B quit
+Exit
+.BR xfs_io .
+.TP
+.B q
+See the
+.B quit
+command.
+.TP
+.BR lsattr " [ " \-R " | " \-D " | " \-a " | " \-v " ]"
+List extended inode flags on tha currently open file. If the
+.B \-R
+option is specified, a recursive descent is performed
+for all directory entries below tha currently open file
+.RB ( \-D
+can be used ta restrict tha output ta directories only).
+This be a thugged-out depth first descent, it do not follow symlinks and
+it also do not cross mount points.
+.TP
+.BR chattr " [ " \-R " | " \-D " ] [ " + / \-riasAdtPneEfS " ]"
+Change extended inode flags on tha currently open file. The
+.B \-R
+and
+.B \-D
+options have tha same meanin as above. Da mappin between each
+letta n' tha inode flags (refer to
+.BR xfsctl (3)
+for tha full list) be available via the
+.B help
+command.
+.TP
+.B freeze
+Suspend all write I/O requests ta tha filesystem of tha current file.
+Only available up in expert mode n' requires privileges.
+.TP
+.B thaw
+Undo tha effectz of a gangbangin' filesystem freeze operation.
+Only available up in expert mode n' requires privileges.
+.TP
+.BI "flink " path
+Link tha currently open file descriptor tha fuck into tha filesystem namespace.
+.TP
+.BI "inject [ " tag " ]"
+Inject errors tha fuck into a gangbangin' filesystem ta observe filesystem behavior at
+specific points under adverse conditions. Without the
+.I tag
+argument, displays tha list of error tags available.
+Only available up in expert mode n' requires privileges.
+.TP
+.BI "resblks [ " blocks " ]"
+Git and/or set count of reserved filesystem blocks rockin the
+XFS_IOC_GET_RESBLKS or XFS_IOC_SET_RESBLKS system calls.
+Note \-\- dis can be useful fo' exercisin outta space behavior.
+Only available up in expert mode n' requires privileges.
+.TP
+.BR shutdown " [ " \-f " ]"
+Force tha filesystem ta shutdown (with or without flushin tha log).
+Only available up in expert mode n' requires privileges.
+.TP
+.BR stat " [ " \-v " ]"
+Selected statistics from
+.BR stat (2)
+and tha XFS_IOC_GETXATTR system call on tha current file. If the
+.B \-v
+option is specified, tha atime (last access), mtime
+(last modify), n' ctime (last chizzle) timestamps is also displayed.
+.TP
+.B statfs
+Selected statistics from
+.BR statfs (2)
+and tha XFS_IOC_FSGEOMETRY
+system call on tha filesystem where tha current file resides.
+.TP
+.BR chproj " [ " \-R | \-D " ]"
+Modifies tha project identifier associated wit tha current path. Da 
+.B \-R
+option will recursively descend if tha current path be a gangbangin' finger-lickin' directory. Da 
+.B \-D
+option will also recursively descend, only settin modifyin projects 
+on subdirectories. Put ya muthafuckin choppers up if ya feel dis!  See the
+.BR xfs_quota (8)
+manual page fo' mo' shiznit bout project identifiers.
+.TP
+.BR lsproj " [ " \-R | \-D " ]"
+Displays tha project identifier associated wit tha current path. Da 
+.B \-R
+and
+.B \-D
+options behave as busted lyrics bout above, in
+.B chproj.
+.TP
+.BR parent " [ " \-cpv " ]"
+By default dis command prints up tha parent inode numbers,
+inode generation numbers n' basenamez of all tha hardlinks which
+point ta tha inode of tha current file.
+.RS 1.0i
+.PD 0
+.TP 0.4i
+.B \-p
+the output is similar ta tha default output except pathnames up to
+the mount-point is printed up instead of tha component name.
+.TP
+.B \-c
+the filez filesystem will check all tha parent attributes fo' consistency.
+.TP
+.B \-v
+verbose output is ghon be printed.
+.RE
+.IP
+.B [NOTE: Not currently operationizzle on Linux.]
+.PD
+
+.SH SEE ALSO
+.BR mkfs.xfs (8),
+.BR xfsctl (3),
+.BR xfs_bmap (8),
+.BR xfs_db (8),
+.BR xfs (5),
+.BR fdatasync (2),
+.BR fstat (2),
+.BR fstatfs (2),
+.BR fsync (2),
+.BR ftruncate (2),
+.BR mmap (2),
+.BR msync (2),
+.BR open (2),
+.BR pread (2),
+.BR pwrite (2),
+.BR readdir (3).

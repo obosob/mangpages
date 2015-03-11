@@ -1,0 +1,483 @@
+.TH HEADER_CHECKS 5 
+.ad
+.fi
+.SH NAME
+header_checks
+\-
+Postfix built-in content inspection
+.SH "SYNOPSIS"
+.na
+.nf
+.nf
+\fBheader_checks = pcre:/etc/postfix/header_checks\fR
+\fBmime_header_checks = pcre:/etc/postfix/mime_header_checks\fR
+\fBnested_header_checks = pcre:/etc/postfix/nested_header_checks\fR
+\fBbody_checks = pcre:/etc/postfix/body_checks\fR
+.sp
+\fBmilter_header_checks = pcre:/etc/postfix/milter_header_checks\fR
+.sp
+\fBsmtp_header_checks = pcre:/etc/postfix/smtp_header_checks\fR
+\fBsmtp_mime_header_checks = pcre:/etc/postfix/smtp_mime_header_checks\fR
+\fBsmtp_nested_header_checks = pcre:/etc/postfix/smtp_nested_header_checks\fR
+\fBsmtp_body_checks = pcre:/etc/postfix/smtp_body_checks\fR
+.sp
+\fBpostmap -q "\fIstring\fB" pcre:/etc/postfix/\fIfilename\fR
+\fBpostmap -q - pcre:/etc/postfix/\fIfilename\fR <\fIinputfile\fR
+.fi
+.SH DESCRIPTION
+.ad
+.fi
+This document raps bout access control on tha content of
+message headaz n' message body lines; it is implemented
+by tha Postfix \fBcleanup\fR(8) server before mail is queued.
+See \fBaccess\fR(5) fo' access control on remote SMTP client
+information.
+
+Each message header or message body line is compared against
+a list of patterns.
+When a match is found tha correspondin action is executed, and
+the matchin process is repeated fo' tha next message header or
+message body line.
+
+Note: message headaz is examined one logical header at a time,
+even when a message header spans multiple lines. Body lines are
+always examined one line at a time.
+
+For examples, peep tha EXAMPLES section all up in tha end of this
+manual page.
+
+Postfix header or body_checks is designed ta stop a gangbangin' flood of mail
+from worms or viruses; they do not decode attachments, n' they do
+not unzip archives. Right back up in yo muthafuckin ass. See tha documents referenced below up in tha README
+FILES section if you need mo' sophisticated content analysis.
+.SH "FILTERS WHILE RECEIVING MAIL"
+.na
+.nf
+.ad
+.fi
+Postfix implements tha followin four built-in content
+inspection classes while receivin mail:
+.IP "\fBheader_checks\fR (default: empty)"
+These is applied ta initial message headaz (except for
+the headaz dat is processed wit \fBmime_header_checks\fR).
+.IP "\fBmime_header_checks\fR (default: \fB$header_checks\fR)"
+These is applied ta MIME related message headaz only.
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.IP "\fBnested_header_checks\fR (default: \fB$header_checks\fR)"
+These is applied ta message headaz of attached email
+lyrics (except fo' tha headaz dat is processed with
+\fBmime_header_checks\fR).
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.IP \fBbody_checks\fR
+These is applied ta all other content, includin multi-part
+message boundaries.
+.sp
+With Postfix versions before 2.0, all content afta tha initial
+message headaz is treated as body content.
+.SH "FILTERS AFTER RECEIVING MAIL"
+.na
+.nf
+.ad
+.fi
+Postfix supports a subset of tha built-in content inspection
+classes afta tha message is received:
+.IP "\fBmilter_header_checks\fR (default: empty)"
+These is applied ta headaz dat is added wit Milter
+applications.
+.sp
+This feature be available up in Postfix 2.7 n' later.
+.SH "FILTERS WHILE DELIVERING MAIL"
+.na
+.nf
+.ad
+.fi
+Postfix supports all four content inspection classes while
+deliverin mail via SMTP.
+.IP "\fBsmtp_header_checks\fR (default: empty)"
+.IP "\fBsmtp_mime_header_checks\fR (default: empty)"
+.IP "\fBsmtp_nested_header_checks\fR (default: empty)"
+.IP "\fBsmtp_body_checks\fR (default: empty)"
+These features is available up in Postfix 2.5 n' later.
+.SH "COMPATIBILITY"
+.na
+.nf
+.ad
+.fi
+With Postfix version 2.2 n' earlier specify "\fBpostmap
+-fq\fR" ta query a table dat gotz nuff case sensitive
+patterns. By default, regexp: n' pcre: patterns is case
+insensitive.
+.SH "TABLE FORMAT"
+.na
+.nf
+.ad
+.fi
+This document assumes dat header n' body_checks rulez is specified
+in tha form of Postfix regular expression lookup tables. Usually the
+best performizzle is obtained wit \fBpcre\fR (Perl Compatible Regular
+Expression) tables. Da \fBregexp\fR (POSIX regular
+expressions) tablez is probably slower yo, but mo' widely
+available.
+Use tha command "\fBpostconf -m\fR" ta smoke up what tha fuck lookup table
+types yo' Postfix system supports.
+
+Da general format of Postfix regular expression tablez is
+given below.
+For a gangbangin' finger-lickin' rap of specific pattern or flags syntax,
+see \fBpcre_table\fR(5) or \fBregexp_table\fR(5), respectively.
+.IP "\fB/\fIpattern\fB/\fIflags action\fR"
+When /\fIpattern\fR/ matches tha input string, execute
+the correspondin \fIaction\fR. Right back up in yo muthafuckin ass. See below fo' a list
+of possible actions.
+.IP "\fB!/\fIpattern\fB/\fIflags action\fR"
+When /\fIpattern\fR/ do \fBnot\fR match tha input string,
+execute tha correspondin \fIaction\fR.
+.IP "\fBif /\fIpattern\fB/\fIflags\fR"
+.IP "\fBendif\fR"
+Match tha input strang against tha patterns between \fBif\fR
+and \fBendif\fR, if n' only if tha same input strang also
+matches /\fIpattern\fR/. Da \fBif\fR..\fBendif\fR can nest.
+.sp
+Note: do not prepend whitespace ta patterns inside
+\fBif\fR..\fBendif\fR.
+.IP "\fBif !/\fIpattern\fB/\fIflags\fR"
+.IP "\fBendif\fR"
+Match tha input strang against tha patterns between \fBif\fR
+and \fBendif\fR, if n' only if tha same input strang do
+\fBnot\fR match /\fIpattern\fR/. Da \fBif\fR..\fBendif\fR
+can nest.
+.IP "blank lines n' comments"
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP "multi-line text"
+A pattern/action line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.SH "TABLE SEARCH ORDER"
+.na
+.nf
+.ad
+.fi
+For each line of message input, tha patterns is applied up in the
+order as specified up in tha table. When a pattern is found dat matches
+the input line, tha correspondin action is executed n' then the
+next input line is inspected.
+.SH "TEXT SUBSTITUTION"
+.na
+.nf
+.ad
+.fi
+Substitution of substrings from tha matched expression tha fuck into the
+\fIaction\fR
+strin is possible rockin tha conventionizzle Perl syntax
+(\fB$1\fR, \fB$2\fR, etc.).
+Da macros up in tha result strang may need ta be freestyled as \fB${n}\fR
+or \fB$(n)\fR if they aren't followed by whitespace.
+
+Note: since negated patterns (those preceded by \fB!\fR) return a
+result when tha expression do not match, substitutions is not
+available fo' negated patterns.
+.SH "ACTIONS"
+.na
+.nf
+.ad
+.fi
+Action names is case insensitive. They is shown up in upper case
+for consistency wit other Postfix documentation.
+.IP "\fBDISCARD \fIoptionizzle text...\fR"
+Claim successful delivery n' silently discard tha message.
+Log tha optionizzle text if specified, otherwise log a generic
+message.
+.sp
+Note: dis action disablez further header or body_checks inspection
+of tha current message n' affects all recipients.
+To discard only one recipient without discardin tha entire message,
+use tha transport(5) table ta direct mail ta tha discard(8) service.
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.sp
+This feature aint supported wit smtp header/body checks.
+.IP \fBDUNNO\fR
+Pretend dat tha input line did not match any pattern, n' inspect the
+next input line. This action can be used ta shorten tha table search.
+.sp
+For backwardz compatibilitizzle reasons, Postfix also accepts
+\fBOK\fR but it is (and always has been) treated as \fBDUNNO\fR.
+.sp
+This feature be available up in Postfix 2.1 n' later.
+.IP "\fBFILTER \fItransport:destination\fR"
+Afta tha message is queued, bust tha entire message through
+the specified external content filter n' shit. Da \fItransport\fR
+name specifies tha straight-up original gangsta field of a mail delivery agent
+definizzle up in master.cf; tha syntax of tha next-hop
+\fIdestination\fR is busted lyrics bout up in tha manual page of the
+correspondin delivery agent.  Mo' shiznit about
+external content filtas is up in tha Postfix FILTER_README
+file.
+.sp
+Note 1: do not use $\fInumber\fR regular expression
+substitutions fo' \fItransport\fR or \fIdestination\fR
+unless you know dat tha shiznit has a trusted origin.
+.sp
+Note 2: dis action overrides tha main.cf \fBcontent_filter\fR
+setting, n' affects all recipientz of tha message. In the
+case dat multiple \fBFILTER\fR actions fire, only tha last
+one is executed.
+.sp
+Note 3: tha purpose of tha FILTER command is ta override
+message routing.  To override tha recipientz \fItransport\fR
+but not tha next-hop \fIdestination\fR, specify a empty
+filta \fIdestination\fR (Postfix 2.7 n' later), or specify
+a \fItransport:destination\fR dat delivers all up in a
+different Postfix instizzle (Postfix 2.6 n' earlier). Other
+options is rockin tha recipient-dependent \fBtrans\%port\%_maps\fR
+or tha sen\%der-dependent
+\fBsender\%_de\%pen\%dent\%_de\%fault\%_trans\%port\%_maps\fR
+features.
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.sp
+This feature aint supported wit smtp header/body checks.
+.IP "\fBHOLD \fIoptionizzle text...\fR"
+Arrange fo' tha message ta be placed on tha \fBhold\fR queue,
+and inspect tha next input line.  Da message remains on \fBhold\fR
+until one of mah thugs either deletes it or releases it fo' delivery.
+Log tha optionizzle text if specified, otherwise log a generic
+message.
+
+Mail dat is placed on hold can be examined wit the
+\fBpostcat\fR(1) command, n' can be destroyed or busted out with
+the \fBpostsuper\fR(1) command.
+.sp
+Note: use "\fBpostsupa -r\fR" ta release mail dat was kept on
+hold fo' a thugged-out dope fraction of \fB$maximal_queue_lifetime\fR
+or \fB$bounce_queue_lifetime\fR, or longer n' shit. Use "\fBpostsupa -H\fR"
+only fo' mail dat aint gonna expire within all dem delivery attempts.
+.sp
+Note: dis action affects all recipientz of tha message.
+.sp
+This feature be available up in Postfix 2.0 n' later.
+.sp
+This feature aint supported wit smtp header/body checks.
+.IP \fBIGNORE\fR
+Delete tha current line from tha input, n' inspect
+the next input line.
+.IP "\fBINFO \fIoptionizzle text...\fR
+Log a "info:" record wit tha \fIoptionizzle text...\fR (or
+log a generic text), n' inspect tha next input line. This
+action is useful fo' routine loggin or fo' debugging.
+.sp
+This feature be available up in Postfix 2.8 n' later.
+.IP "\fBPREPEND \fItext...\fR"
+Prepend one line wit tha specified text, n' inspect tha next
+input line.
+.sp
+Notes:
+.RS
+.IP \(bu
+Da prepended text is output on a separate line, immediately
+before tha input dat triggered tha \fBPREPEND\fR action.
+.IP \(bu
+Da prepended text aint considered part of tha input
+stream: it aint subject ta header/body checks or address
+rewriting, n' it do not affect tha way dat Postfix adds
+missin message headers.
+.IP \(bu
+When prependin text before a message header line, tha prepended
+text must begin wit a valid message header label.
+.IP \(bu
+This action cannot be used ta prepend multi-line text.
+.RE
+.IP
+This feature be available up in Postfix 2.1 n' later.
+.sp
+This feature aint supported wit milter_header_checks.
+.IP "\fBREDIRECT \fIuser@domain\fR"
+Write a message redirection request ta tha queue file, and
+inspect tha next input line fo' realz. Afta tha message is queued,
+it is ghon be busted ta tha specified address instead of the
+intended recipient(s).
+.sp
+Note: dis action overrides tha \fBFILTER\fR action, n' affects
+all recipientz of tha message. If multiple \fBREDIRECT\fR actions
+fire, only tha last one is executed.
+.sp
+This feature be available up in Postfix 2.1 n' later.
+.sp
+This feature aint supported wit smtp header/body checks.
+.IP "\fBREPLACE \fItext...\fR"
+Replace tha current line wit tha specified text, n' inspect tha next
+input line.
+.sp
+This feature be available up in Postfix 2.2 n' later n' shit. The
+description below applies ta Postfix 2.2.2 n' later.
+.sp
+Notes:
+.RS
+.IP \(bu
+When replacin a message header line, tha replacement text
+must begin wit a valid header label.
+.IP \(bu
+Da replaced text remains part of tha input stream. Unlike
+the result from tha \fBPREPEND\fR action, a replaced message
+header may be subject ta address rewritin n' may affect
+the way dat Postfix addz missin message headers.
+.RE
+.IP "\fBREJECT \fIoptionizzle text...\fR
+Reject tha entire message. Reply wit \fIoptionizzle text...\fR when
+the optionizzle text is specified, otherwise reply wit a generic error
+message.
+.sp
+Note: dis action disablez further header or body_checks inspection
+of tha current message n' affects all recipients.
+.sp
+Postfix version 2.3 n' lata support enhanced status codes.
+When no code is specified all up in tha beginnin of \fIoptional
+text...\fR, Postfix bangs a thugged-out default enhanced status code of
+"5.7.1".
+.sp
+This feature aint supported wit smtp header/body checks.
+.IP "\fBWARN \fIoptionizzle text...\fR
+Log a "warning:" record wit tha \fIoptionizzle text...\fR (or
+log a generic text), n' inspect tha next input line. This
+action is useful fo' debuggin n' fo' testin a pattern
+before applyin mo' drastic actions.
+.SH BUGS
+.ad
+.fi
+Empty lines never match, cuz some map types mis-behave
+when given a zero-length search string.  This limitation may
+be removed fo' regular expression tablez up in a gangbangin' future release.
+
+Many playas overlook tha main limitationz of header n' body_checks
+rules.
+.IP \(bu
+These rulez operate on one logical message header or one body
+line at a time fo' realz. A decision made fo' one line aint carried over
+to tha next line.
+.IP \(bu
+If text up in tha message body is encoded
+(RFC 2045) then tha rulez need ta be specified fo' tha encoded
+form.
+.IP \(bu
+Likewise, when message headaz is encoded (RFC
+2047) then tha rulez need ta be specified fo' tha encoded
+form.
+.PP
+Message headaz added by tha \fBcleanup\fR(8) daemon itself
+are excluded from inspection. I aint talkin' bout chicken n' gravy biatch. Examplez of such message headers
+are \fBFrom:\fR, \fBTo:\fR, \fBMessage-ID:\fR, \fBDate:\fR.
+
+Message headaz deleted by tha \fBcleanup\fR(8) daemon will
+be examined before they is deleted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Examplez are: \fBBcc:\fr,
+\fBContent-Length:\fR, \fBReturn-Path:\fR.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+.IP \fBbody_checks\fR
+Lookup tablez wit content filta rulez fo' message body lines.
+These filtas peep one physical line at a time, up in chunks of
+at most \fB$line_length_limit\fR bytes.
+.IP \fBbody_checks_size_limit\fP
+Da amount of content per message body segment (attachment) dat is
+subjected ta \fB$body_checks\fR filtering.
+.IP \fBheader_checks\fR
+.IP "\fBmime_header_checks\fR (default: \fB$header_checks\fR)"
+.IP "\fBnested_header_checks\fR (default: \fB$header_checks\fR)"
+Lookup tablez wit content filta rulez fo' message header lines:
+respectively, these is applied ta tha initial message headers
+(not includin MIME headers), ta tha MIME headaz anywhere in
+the message, n' ta tha initial headaz of attached lyrics.
+.sp
+Note: these filtas peep one logical message header at a time, even
+when a message header spans multiple lines. Message headaz that
+are longer than \fB$header_size_limit\fR charactas is truncated.
+.IP \fBdisable_mime_input_processing\fR
+While receivin mail, give no special treatment ta MIME related
+message headers; all text afta tha initial message headaz is
+considered ta be part of tha message body. This means that
+\fBheader_checks\fR be applied ta all tha initial message headers,
+and dat \fBbody_checks\fR be applied ta tha remainder of the
+message.
+.sp
+Note: when used up in dis manner, \fBbody_checks\fR will process
+a multi-line message header one line at a time.
+.SH "EXAMPLES"
+.na
+.nf
+.ad
+.fi
+Header pattern ta block attachments wit wack file name
+extensions.  For convenience, tha PCRE /x flag is specified,
+so dat there is no need ta collapse tha pattern tha fuck into a
+single line of text.  Da purpose of tha [[:xdigit:]]
+sub-expressions is ta recognize Windows CLSID strings.
+
+.na
+.nf
+/etc/postfix/main.cf:
+    header_checks = pcre:/etc/postfix/header_checks.pcre
+
+/etc/postfix/header_checks.pcre:
+    /^Content-(Disposition|Type).*name\es*=\es*"?(.*(\e.|=2E)(
+      ade|adp|asp|bas|bat|chm|cmd|com|cpl|crt|dll|exe|
+      hlp|ht[at]|
+      inf|ins|isp|jse?|lnk|md[betw]|ms[cipt]|nws|
+      \e{[[:xdigit:]]{8}(?:-[[:xdigit:]]{4}){3}-[[:xdigit:]]{12}\e}|
+      ops|pcd|pif|prf|reg|sc[frt]|sh[bsm]|swf|
+      vb[esx]?|vxd|ws[cfh]))(\e?=)?"?\es*(;|$)/x
+        REJECT Attachment name "$2" may not end wit ".$4"
+.ad
+.fi
+
+Body pattern ta stop a specific HTML browser vulnerabilitizzle exploit.
+
+.na
+.nf
+/etc/postfix/main.cf:
+    body_checks = regexp:/etc/postfix/body_checks
+
+/etc/postfix/body_checks:
+    /^<iframe src=(3D)?cid:.* height=(3D)?0 width=(3D)?0>$/
+        REJECT IFRAME vulnerabilitizzle exploit
+.SH "SEE ALSO"
+.na
+.nf
+cleanup(8), canonicalize n' enqueue Postfix message
+pcre_table(5), format of PCRE lookup tables
+regexp_table(5), format of POSIX regular expression tables
+postconf(1), Postfix configuration utility
+postmap(1), Postfix lookup table pimpment
+postsuper(1), Postfix janitor
+postcat(1), show Postfix queue file contents
+RFC 2045, base64 n' quoted-printable encodin rules
+RFC 2047, message header encodin fo' non-ASCII text
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+CONTENT_INSPECTION_README, Postfix content inspection overview
+BUILTIN_FILTER_README, Postfix built-in content inspection
+BACKSCATTER_README, blockin returned forged mail
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

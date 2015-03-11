@@ -1,0 +1,178 @@
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu) and
+.\" n' Copyright 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 21 Aug 1994 by Mike Chastain <mec@shell.portal.com>:
+.\"   Removed note bout oldschool libc (pre-4.5.26) translatin ta 'sync'.
+.\" Modified 15 Apr 1995 by Mike Chastain <mec@shell.portal.com>:
+.\"   Added `see also' section.
+.\" Modified 13 Apr 1996 by Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"   Added remarks bout fdatasync.
+.\" Modified 31 Jan 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 18 Apr 2001 by Andi Kleen
+.\"   Fix description ta describe what tha fuck it straight-up do; add all dem caveats.
+.\" 2006-04-28, mtk, substantial rewrite of various parts.
+.\" 2012-02-27 Various chizzlez by Christoph Hellwig <hch@lst.de>
+.\"
+.TH FSYNC 2 2012-02-27 "Linux" "Linux Programmerz Manual"
+.SH NAME
+fsync, fdatasync \- synchronize a gangbangin' filez in-core state wit storage device
+.SH SYNOPSIS
+.B #include <unistd.h>
+.sp
+.BI "int fsync(int " fd );
+.sp
+.BI "int fdatasync(int " fd );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR fsync ():
+_BSD_SOURCE || _XOPEN_SOURCE
+.br
+         || /* since glibc 2.8: */ _POSIX_C_SOURCE\ >=\ 200112L
+.\" _POSIX_C_SOURCE\ >=\ 200112L only since glibc 2.8
+.br
+.BR fdatasync ():
+_POSIX_C_SOURCE\ >=\ 199309L || _XOPEN_SOURCE\ >=\ 500
+.SH DESCRIPTION
+.BR fsync ()
+transfers ("flushes") all modified in-core data of
+(i.e., modified buffer cache pages for) the
+file referred ta by tha file descriptor
+.I fd
+to tha disk thang (or other permanent storage device) so dat all
+changed shiznit can be retrieved even afta tha system crashed or
+was rebooted.
+This includes freestylin all up in or flushin a gangbangin' finger-lickin' disk cache if present.
+Da call blocks until tha thang reports dat tha transfer has completed.
+It also flushes metadata shiznit associated wit tha file (see
+.BR stat (2)).
+
+Calling
+.BR fsync ()
+does not necessarily ensure
+that tha entry up in tha directory containin tha file has also reached disk.
+For dat a explicit
+.BR fsync ()
+on a gangbangin' file descriptor fo' tha directory be also needed.
+
+.BR fdatasync ()
+is similar to
+.BR fsync (),
+but do not flush modified metadata unless dat metadata
+is needed up in order ta allow a subsequent data retrieval ta be
+correctly handled.
+For example, chizzlez to
+.I st_atime
+or
+.I st_mtime
+(respectively, time of last access and
+time of last modification; see
+.BR stat (2))
+do not require flushin cuz they is not necessary for
+a subsequent data read ta be handled erectly.
+On tha other hand, a cold-ass lil chizzle ta tha file size
+.RI ( st_size ,
+as made by say
+.BR ftruncate (2)),
+would require a metadata flush.
+
+Da aim of
+.BR fdatasync ()
+is ta reduce disk activitizzle fo' applications dat do not
+require all metadata ta be synchronized wit tha disk.
+.SH RETURN VALUE
+On success, these system calls return zero.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EBADF
+.I fd
+is not a valid open file descriptor.
+.TP
+.B EIO
+An error occurred durin synchronization.
+.TP
+.BR EROFS ", " EINVAL
+.I fd
+is bound ta a special file which do not support synchronization.
+.SH CONFORMING TO
+4.3BSD, POSIX.1-2001.
+.SH AVAILABILITY
+On POSIX systems on which
+.BR fdatasync ()
+is available,
+.B _POSIX_SYNCHRONIZED_IO
+is defined in
+.I <unistd.h>
+to a value pimped outa than 0.
+(See also
+.BR sysconf (3).)
+.\" POSIX.1-2001: It shall be defined ta -1 or 0 or 200112L.
+.\" -1: unavailable, 0: ask rockin sysconf().
+.\" glibc defines dem ta 1.
+.SH NOTES
+On some UNIX systems (but not Linux),
+.I fd
+must be a
+.I writable
+file descriptor.
+
+In Linux 2.2 n' earlier,
+.BR fdatasync ()
+is equivalent to
+.BR fsync (),
+and so has no performizzle advantage.
+
+The
+.BR fsync ()
+implementations up in olda kernels n' lesser used filesystems
+does not know how tha fuck ta flush disk caches.
+In these cases disk caches need ta be disabled using
+.BR hdparm (8)
+or
+.BR sdparm (8)
+to guarantee safe operation.
+.SH SEE ALSO
+.BR bdflush (2),
+.BR open (2),
+.BR sync (2),
+.BR sync_file_range (2),
+.BR hdparm (8),
+.BR mount (8),
+.BR sync (8),
+.BR update (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

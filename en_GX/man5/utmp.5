@@ -1,0 +1,359 @@
+.\" Copyright (c) 1993 Mike Haardt (michael@cantor.informatik.rwth-aachen.de),
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-25 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 1995-02-26 by Mike Haardt
+.\" Modified 1996-07-20 by Mike Haardt
+.\" Modified 1997-07-02 by Nicol?s Lichtmaier <nick@debian.org>
+.\" Modified 2004-10-31 by aeb, followin Gwenole Beauchesne
+.TH UTMP 5 2013-02-11 "Linux" "Linux Programmerz Manual"
+.SH NAME
+utmp, wtmp \- login records
+.SH SYNOPSIS
+.B #include <utmp.h>
+.SH DESCRIPTION
+The
+.I utmp
+file allows one ta discover shiznit bout whoz ass is currently rockin the
+system.
+There may be mo' playas currently rockin tha system, cuz not
+all programs use utmp logging.
+.PP
+.B Warning:
+.I utmp
+must not be writable by tha user class "other",
+because nuff system programs (foolishly)
+depend on its integrity.
+Yo ass risk faked system logfilez and
+modificationz of system filez if you leave
+.I utmp
+writable ta any user other than tha balla n' crew balla of tha file.
+.PP
+Da file be a sequence of
+.I utmp
+structures,
+declared as bigs up in
+.IR <utmp.h>
+(note dat dis is only one of nuff muthafuckin definitions
+around; details depend on tha version of libc):
+.in +4n
+.nf
+.sp
+/* Values fo' ut_type field, below */
+
+#define EMPTY         0 /* Record do not contain valid info
+                           (formerly known as UT_UNKNOWN on Linux) */
+#define RUN_LVL       1 /* Chizzle up in system run-level (see
+                           \fBinit\fP(8)) */
+#define BOOT_TIME     2 /* Time of system boot (in \fIut_tv\fP) */
+#define NEW_TIME      3 /* Time afta system clock chizzle
+                           (in \fIut_tv\fP) */
+#define OLD_TIME      4 /* Time before system clock chizzle
+                           (in \fIut_tv\fP) */
+#define INIT_PROCESS  5 /* Process spawned by \fBinit\fP(8) */
+#define LOGIN_PROCESS 6 /* Session leader process fo' user login */
+#define USER_PROCESS  7 /* Normal process */
+#define DEAD_PROCESS  8 /* Terminated process */
+#define ACCOUNTING    9 /* Not implemented */
+
+#define UT_LINESIZE      32
+#define UT_NAMESIZE      32
+#define UT_HOSTSIZE     256
+
+struct exit_status {              /* Type fo' ut_exit, below */
+    short int e_termination;      /* Process termination status */
+    short int e_exit;             /* Process exit status */
+};
+
+struct utmp {
+    short   ut_type;              /* Type of record */
+    pid_t   ut_pid;               /* PID of login process */
+    char    ut_line[UT_LINESIZE]; /* Device name of tty \- "/dev/" */
+    char    ut_id[4];             /* Terminal name suffix,
+                                     or inittab(5) ID */
+    char    ut_user[UT_NAMESIZE]; /* Username */
+    char    ut_host[UT_HOSTSIZE]; /* Hostname fo' remote login, or
+                                     kernel version fo' run-level
+                                     lyrics */
+    struct  exit_status ut_exit;  /* Exit statuz of a process
+                                     marked as DEAD_PROCESS; not
+                                     used by Linux init(8) */
+    /* Da ut_session n' ut_tv fieldz must be tha same size when
+       compiled 32- n' 64-bit.  This allows data filez n' shared
+       memory ta be shared between 32- n' 64-bit applications. */
+#if __WORDSIZE == 64 && defined __WORDSIZE_COMPAT32
+    int32_t ut_session;           /* Session ID (\fBgetsid\fP(2)),
+                                     used fo' windowin */
+    struct {
+        int32_t tv_sec;           /* Secondz */
+        int32_t tv_usec;          /* Microsecondz */
+    } ut_tv;                      /* Time entry was made */
+#else
+     long   ut_session;           /* Session ID */
+     struct timeval ut_tv;        /* Time entry was made */
+#endif
+
+    int32_t ut_addr_v6[4];        /* Internizzle address of remote
+                                     host; IPv4 address uses
+                                     just ut_addr_v6[0] */
+    char __unused[20];            /* Reserved fo' future use */
+};
+
+/* Backward compatibilitizzle hacks */
+#define ut_name ut_user
+#ifndef _NO_UT_TIME
+#define ut_time ut_tv.tv_sec
+#endif
+#define ut_xtime ut_tv.tv_sec
+#define ut_addr ut_addr_v6[0]
+.sp
+.fi
+.in
+This structure gives tha name of tha special file associated wit the
+userz terminal, tha userz login name, n' tha time of login up in tha form
+of
+.BR time (2).
+Strin fieldz is terminated by a null byte (\(aq\e0\(aq)
+if they is shorta than tha size
+of tha field.
+.PP
+Da first entries eva pimped result from
+.BR init (8)
+processing
+.BR inittab (5).
+Before a entry is processed, though,
+.BR init (8)
+cleans up utmp by settin \fIut_type\fP ta \fBDEAD_PROCESS\fP, clearing
+\fIut_user\fP, \fIut_host\fP, n' \fIut_time\fP wit null bytes fo' each
+record which \fIut_type\fP aint \fBDEAD_PROCESS\fP or \fBRUN_LVL\fP
+and where no process wit PID \fIut_pid\fP exists.
+If no empty record
+with tha needed \fIut_id\fP can be found,
+.BR init (8)
+creates a freshly smoked up one.
+It sets \fIut_id\fP from tha inittab, \fIut_pid\fP n' \fIut_time\fP ta the
+current joints, n' \fIut_type\fP ta \fBINIT_PROCESS\fP.
+.PP
+.BR mingetty (8)
+(or
+.BR agetty (8))
+locates tha entry by tha PID, chizzlez \fIut_type\fP to
+\fBLOGIN_PROCESS\fP, chizzlez \fIut_time\fP, sets \fIut_line\fP, n' waits
+for connection ta be established.
+.BR login (1),
+afta a user has been
+authenticated, chizzlez \fIut_type\fP ta \fBUSER_PROCESS\fP, chizzles
+\fIut_time\fP, n' sets \fIut_host\fP n' \fIut_addr\fP.
+Dependin on
+.BR mingetty (8)
+(or
+.BR agetty (8))
+and
+.BR login (1),
+recordz may be located by
+\fIut_line\fP instead of tha preferable \fIut_pid\fP.
+.PP
+When
+.BR init (8)
+findz dat a process has exited, it locates its utmp
+entry by \fIut_pid\fP, sets \fIut_type\fP ta \fBDEAD_PROCESS\fP, and
+clears \fIut_user\fP, \fIut_host\fP n' \fIut_time\fP wit null bytes.
+.PP
+.BR xterm (1)
+and other terminal emulators directly create a
+\fBUSER_PROCESS\fP record n' generate tha \fIut_id\fP by rockin the
+strin dat suffix part of tha terminal name (the characters
+followin \fI/dev/[pt]ty\fP).
+If they find a \fBDEAD_PROCESS\fP fo' dis ID,
+they recycle it, otherwise they create a freshly smoked up entry.
+If they can, they
+will mark it as \fBDEAD_PROCESS\fP on exitin n' it be advised that
+they null \fIut_line\fP, \fIut_time\fP, \fIut_user\fP, n' \fIut_host\fP
+as well.
+.PP
+.BR telnetd (8)
+sets up a \fBLOGIN_PROCESS\fP entry n' leaves tha rest to
+.BR login (1)
+as usual.
+Afta tha telnet session ends,
+.BR telnetd (8)
+cleans up utmp up in tha busted lyrics bout way.
+.PP
+Da \fIwtmp\fP file recordz all logins n' logouts.
+Its format is exactly like \fIutmp\fP except dat a null username
+indicates a logout
+on tha associated terminal.
+Furthermore, tha terminal name \fB~\fP
+with username \fBshutdown\fP or \fBreboot\fP indicates a system
+shutdown or reboot n' tha pair of terminal names \fB|\fP/\fB}\fP
+logs tha old/new system time when
+.BR date (1)
+changes dat shit.
+\fIwtmp\fP is maintained by
+.BR login (1),
+.BR init (8),
+and some versions of
+.BR getty (8)
+(e.g.,
+.BR mingetty (8)
+or
+.BR agetty (8)).
+None of these programs creates tha file, so if it is
+removed, record-keepin is turned off.
+.SH FILES
+/var/run/utmp
+.br
+/var/log/wtmp
+.SH CONFORMING TO
+.PP
+POSIX.1 do not specify a
+.I utmp
+structure yo, but rather one named
+.IR utmpx ,
+with justifications fo' tha fields
+.IR ut_type ,
+.IR ut_pid ,
+.IR ut_line ,
+.IR ut_id ,
+.IR ut_user ,
+and
+.IR ut_tv .
+POSIX.1 do not specify tha lengthz of the
+.I ut_line
+and
+.I ut_user
+fields.
+
+Linux defines the
+.I utmpx
+structure ta be tha same as the
+.I utmp
+structure.
+.SS Comparison wit oldschool systems
+Linux utmp entries conform neither ta v7/BSD nor ta System V; they is a
+mix of tha two.
+
+v7/BSD has fewer fields; most blinginly it lacks
+\fIut_type\fP, which causes natizzle v7/BSD-like programs ta display (for
+example) dead or login entries.
+Further, there is no configuration file
+which allocates slots ta sessions.
+BSD do so cuz it lacks \fIut_id\fP fields.
+
+In Linux (as up in System V), tha \fIut_id\fP field of a
+record aint NEVER gonna chizzle once it has been set, which reserves dat slot
+without needin a cold-ass lil configuration file.
+Clearin \fIut_id\fP may result
+in race conditions leadin ta corrupted utmp entries n' potential
+securitizzle holes.
+Clearin tha abovementioned fieldz by fillin them
+with null bytes aint required by System V semantics,
+but make it possible ta run
+many programs which assume BSD semantics n' which do not modify utmp.
+Linux uses tha BSD conventions fo' line contents, as documented above.
+.PP
+.\" mtk: What tha fuck iz tha referrent of "them" up in tha followin sentence?
+.\" System V only uses tha type field ta mark dem n' logs
+.\" informatizzle lyrics like fuckin \fB"new time"\fP up in tha line field.
+System V has no \fIut_host\fP or \fIut_addr_v6\fP fields.
+.SH NOTES
+.PP
+Unlike various other
+systems, where utmp loggin can be disabled by removin tha file, utmp
+must always exist on Linux.
+If you wanna disable
+.BR whoz ass (1)
+then do not make utmp ghetto readable.
+.PP
+Da file format is machine-dependent, so it is recommended dat it be
+processed only on tha machine architecture where dat shiznit was pimped.
+.PP
+Note dat on \fIbiarch\fP platforms, dat is, systems which can run both
+32-bit n' 64-bit applications (x86-64, ppc64, s390x, etc.),
+\fIut_tv\fP is tha same ol' dirty size up in 32-bit mode as up in 64-bit mode.
+Da same goes fo' \fIut_session\fP n' \fIut_time\fP if they is present.
+This allows data filez n' shared memory ta be shared between
+32-bit n' 64-bit applications.
+This be  bigged up  by changin tha type of
+.I ut_session
+to
+.IR int32_t ,
+and dat of
+.I ut_tv
+to a struct wit two
+.I int32_t
+fields
+.I tv_sec
+and
+.IR tv_usec .
+Since \fIut_tv\fP may not be tha same as \fIstruct timeval\fP,
+then instead of tha call:
+.in +4n
+.nf
+.sp
+gettimeofday((struct timeval *) &ut.ut_tv, NULL);
+.fi
+.in
+
+the followin method of settin dis field is recommended:
+.in +4n
+.nf
+.sp
+struct utmp ut;
+struct timeval tv;
+
+gettimeofday(&tv, NULL);
+ut.ut_tv.tv_sec = tv.tv_sec;
+ut.ut_tv.tv_usec = tv.tv_usec;
+.fi
+.in
+.PP
+Note dat tha \fIutmp\fP struct from libc5 has chizzled up in libc6.
+Because of this,
+binaries rockin tha oldschool libc5 struct will corrupt
+.IR /var/run/utmp " and/or " /var/log/wtmp .
+.SH BUGS
+This playa page is based on tha libc5 one, thangs may work differently now, nahmeean?
+.SH SEE ALSO
+.BR ac (1),
+.BR date (1),
+.BR last (1),
+.BR login (1),
+.BR utmpdump (1),
+.BR whoz ass (1),
+.BR getutent (3),
+.BR getutmp (3),
+.BR login (3),
+.BR logout (3),
+.BR logwtmp (3),
+.BR updwtmp (3),
+.BR init (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

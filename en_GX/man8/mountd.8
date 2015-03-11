@@ -1,0 +1,276 @@
+.\"@(#)rpc.mountd.8"
+.\"
+.\" Copyright (C) 1999 Olaf Kirch <okir@monad.swb.de>
+.\" Modified by Pizzle Clements, 2004.
+.\"
+.TH rpc.mountd 8 "31 Dec 2009"
+.SH NAME
+rpc.mountd \- NFS mount daemon
+.SH SYNOPSIS
+.BI "/usr/sbin/rpc.mountd [" options "]"
+.SH DESCRIPTION
+The
+.B rpc.mountd
+daemon implements tha server side of tha NFS MOUNT protocol,
+an NFS side protocol used by NFS version 2 [RFC1094] n' NFS version 3 [RFC1813].
+.PP
+An NFS server maintains a table of local physical file systems
+that is accessible ta NFS clients.
+Each file system up in dis table is referred ta as an
+.IR "exported file system" ,
+or
+.IR export ,
+for short.
+.PP
+Each file system up in tha export table has a access control list.
+.B rpc.mountd
+uses these access control lists ta determine
+whether a NFS client is permitted ta access a given file system.
+For details on how tha fuck ta manage yo' NFS serverz export table, peep the
+.BR exports (5)
+and
+.BR exportfs (8)
+man pages.
+.SS Mountin exported NFS File Systems
+Da NFS MOUNT protocol has nuff muthafuckin procedures.
+Da most blingin of these are
+MNT (mount a export) and
+UMNT (unmount a export).
+.PP
+A MNT request has two arguments: a explicit argument that
+gotz nuff tha pathname of tha root directory of tha export ta be mounted,
+and a implicit argument dat is tha senderz IP address.
+.PP
+When receivin a MNT request from a NFS client,
+.B rpc.mountd
+checks both tha pathname n' tha senderz IP address against its export table.
+If tha sender is permitted ta access tha axed export,
+.B rpc.mountd
+returns a NFS file handle fo' tha exportz root directory ta tha client.
+Da client can then use tha root file handle n' NFS LOOKUP requests
+to navigate tha directory structure of tha export.
+.SS Da rmtab File
+The
+.B rpc.mountd
+daemon registas every last muthafuckin successful MNT request by addin a entry ta the
+.I /var/lib/nfs/rmtab
+file.
+When receivng a UMNT request from a NFS client,
+.B rpc.mountd
+simply removes tha matchin entry from
+.IR /var/lib/nfs/rmtab ,
+as long as tha access control list fo' dat export allows dat sender
+to access tha export.
+.PP
+Clients can discover tha list of file systems a NFS server is
+currently exporting, or tha list of other clients dat have mounted
+its exports, by rockin the
+.BR showmount (8)
+command.
+.BR showmount (8)
+uses other procedures up in tha NFS MOUNT protocol ta report shiznit
+about tha serverz exported file systems.
+.PP
+Note, however, dat there is lil ta guarantee dat tha contents of
+.I /var/lib/nfs/rmtab
+are accurate.
+A client may continue accessin a export even afta invokin UMNT.
+If tha client reboots without bustin  a UMNT request, stale entries
+remain fo' dat client in
+.IR /var/lib/nfs/rmtab .
+.SH OPTIONS
+.TP
+.B \-d kind " or " \-\-debug kind
+Turn on debugging. Valid kindz are: all, auth, call, general n' parse.
+.TP
+.B \-F " or " \-\-foreground
+Run up in foreground (do not daemonize)
+.TP
+.B \-f " or " \-\-exports-file
+This option specifies tha exports file, listin tha clients dat this
+server is prepared ta serve n' parametas ta apply ta each
+such mount (see
+.BR exports (5)).
+By default, export shiznit is read from
+.IR /etc/exports .
+.TP
+.B \-h " or " \-\-help
+Display usage message.
+.TP
+.B \-o num " or " \-\-descriptors num
+Set tha limit of tha number of open file descriptors ta num. The
+default is ta leave tha limit unchanged.
+.TP
+.B \-N " or " \-\-no-nfs-version
+This option can be used ta request that
+.B rpc.mountd
+do not offer certain versionz of NFS. Da current version of
+.B rpc.mountd
+can support both NFS version 2, 3 n' 4. If the
+either one of these version should not be offered,
+.B rpc.mountd
+must be invoked wit tha option
+.B "\-\-no-nfs-version <vers>" .
+.TP
+.B \-n " or " \-\-no-tcp
+Don't advertise TCP fo' mount.
+.TP
+.B \-P
+Ignored (compatibilitizzle wit unfsd??).
+.TP
+.B \-p " or " \-\-port num
+Specifies tha port number used fo' RPC listener sockets.
+If dis option aint specified,
+.B rpc.mountd
+will try ta consult
+.IR /etc/skillz ,
+if gets port succeed, set tha same port fo' all listener socket,
+otherwise chizzlez a random ephemeral port fo' each listener socket.
+.IP
+This option can be used ta fix tha port value of
+.BR rpc.mountd 's
+listeners when NFS MOUNT requests must traverse a gangbangin' firewall
+between clients n' servers.
+.TP
+.B \-H " or " \-\-ha-callout prog
+Specify a high availabilitizzle callout program.
+This program receives callouts fo' all MOUNT n' UNMOUNT requests.
+This allows
+.B rpc.mountd
+to be used up in a High Availabilitizzle NFS (HA-NFS) environment.
+.IP
+Da callout program is run wit 4 arguments.
+Da first is
+.B mount
+or
+.B unmount
+dependin on tha reason fo' tha callout.
+Da second is ghon be tha name of tha client struttin tha mount.
+Da third is ghon be tha path dat tha client is mounting.
+Da last is tha number of concurrent mounts dat we believe tha client
+haz of dat path.
+.IP
+This callout aint needed wit 2.6 n' lata kernels.
+Instead, mount tha nfsd filesystem on
+.IR /proc/fs/nfsd .
+.TP
+.BI "\-s," "" " \-\-state\-directory\-path "  directory
+Specify a gangbangin' finger-lickin' directory up in which ta place statd state shiznit.
+If dis option aint specified tha default of
+.I /var/lib/nfs
+is used.
+.TP
+.BI "\-r," "" " \-\-reverse\-lookup"
+.B rpc.mountd
+tracks IP addresses up in the
+.I rmtab
+file.  When a DUMP request is made (by
+someone hustlin
+.BR "showmount -a" ,
+for instance), it returns IP addresses instead
+of hostnames by default. This option causes
+.B rpc.mountd
+to big-ass up a reverse lookup on each IP address n' return dat hostname instead.
+Enablin dis can gotz a substantial wack effect on performance
+in some thangs.
+.TP
+.BR "\-t N" " or " "\-\-num\-threads=N"
+This option specifies tha number of worker threadz dat rpc.mountd
+spawns.  Da default is 1 thread, which is probably enough cause I gots dem finger-lickin' chickens wit tha siz-auce.  Mo'
+threadz is probably only needed fo' NFS servers which need ta handle
+mount stormz of hundredz of NFS mounts up in all dem seconds, or when
+your DNS server is slow or unreliable.
+.TP
+.B  \-u " or " \-\-no-udp
+Don't advertise UDP fo' mounting
+.TP
+.B \-V " or " \-\-nfs-version
+This option can be used ta request that
+.B rpc.mountd
+offer certain versionz of NFS. Da current version of
+.B rpc.mountd
+can support both NFS version 2 n' tha newer version 3.
+.TP
+.B \-v " or " \-\-version
+Print tha version of
+.B rpc.mountd
+and exit.
+.TP
+.B \-g " or " \-\-manage-gids
+Accept requests from tha kernel ta map user id numbers tha fuck into  lists of
+group id numbers fo' use up in access control.  An NFS request will
+normally (except when rockin Kerberos or other cryptographic
+authentication) gotz nuff a user-id n' a list of group-ids.  Cuz of a
+limitation up in tha NFS protocol, at most 16 crews idz can be listed.
+If you use the
+.B \-g
+flag, then tha list of crew idz received from tha client will be
+replaced by a list of crew idz determined by a appropriate lookup on
+the server n' shit. Note dat tha 'primary' crew id aint affected so a
+.B newgroup
+command on tha client will still be effective.  This function requires
+a Linux Kernel wit version at least 2.6.21.
+.SH TCP_WRAPPERS SUPPORT
+Yo ass can protect your
+.B rpc.mountd
+listeners rockin the
+.B tcp_wrapper
+library or
+.BR iptablez (8).
+.PP
+Note dat the
+.B tcp_wrapper
+library supports only IPv4 networking.
+.PP
+Add tha hostnamez of NFS peers dat is allowed ta access
+.B rpc.mountd
+to
+.IR /etc/hosts.allow .
+Use tha daemon name
+.B mountd
+even if the
+.B rpc.mountd
+binary has a gangbangin' finger-lickin' different name.
+.PP
+Hostnames used up in either access file is ghon be ignored when
+they can not be resolved tha fuck into IP addresses.
+For further shiznit peep the
+.BR tcpd (8)
+and
+.BR hosts_access (5)
+man pages.
+.SS IPv6 n' TI-RPC support
+TI-RPC be a pre-requisite fo' supportin NFS on IPv6.
+If TI-RPC support is built into
+.BR rpc.mountd ,
+it attempts ta start listeners on network transports marked 'visible' in
+.IR /etc/netconfig .
+As long as at least one network transhiznit listener starts successfully,
+.B rpc.mountd
+will operate.
+.SH FILES
+.TP 2.5i
+.I /etc/exports
+input file for
+.BR exportfs ,
+listin exports, export options, n' access control lists
+.TP 2.5i
+.I /var/lib/nfs/rmtab
+table of clients accessin serverz exports
+.SH SEE ALSO
+.BR exportfs (8),
+.BR exports (5),
+.BR showmount (8),
+.BR rpc.nfsd (8),
+.BR rpc.rquotad (8),
+.BR nfs (5),
+.BR tcpd (8),
+.BR hosts_access (5),
+.BR iptablez (8),
+.BR netconfig (5)
+.sp
+RFC 1094 - "NFS: Network File System Protocol Justification"
+.br
+RFC 1813 - "NFS Version 3 Protocol Justification"
+.SH AUTHOR
+Olaf Kirch, H. J. Lu, G fo' realz. Allan Morris Pt III, n' a host of others.

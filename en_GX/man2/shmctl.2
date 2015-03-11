@@ -1,0 +1,437 @@
+.\" Copyright (c) 1993 Luigi P. Bai (lpb@softint.com) July 28, 1993
+.\" n' Copyright 1993 Giorgio Ciucci <giorgio@crcc.it>
+.\" n' Copyright 2004, 2005 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-28, Rik Faith <faith@cs.unc.edu>
+.\" Modified 1993-11-28, Giorgio Ciucci <giorgio@crcc.it>
+.\" Modified 1997-01-31, Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-02-18, Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2002-01-05, 2004-05-27, 2004-06-17,
+.\"    Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-10-11, aeb
+.\" Modified, Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Updated shmid_dz structure definitions
+.\"	Added shiznit on SHM_DEST n' SHM_LOCKED flags
+.\"	Noted dat CAP_IPC_LOCK aint required fo' SHM_UNLOCK
+.\"		since kernel 2.6.9
+.\" Modified, 2004-11-25, mtk, notes on 2.6.9 RLIMIT_MEMLOCK chizzles
+.\" 2005-04-25, mtk -- noted aberrant Linux behavior w.r.t. new
+.\"	attaches ta a segment dat has already been marked fo' deletion.
+.\" 2005-08-02, mtk: Added IPC_INFO, SHM_INFO, SHM_STAT descriptions.
+.\"
+.TH SHMCTL 2 2013-03-18 "Linux" "Linux Programmerz Manual"
+.SH NAME
+shmctl \- System V shared memory control
+.SH SYNOPSIS
+.ad l
+.B #include <sys/ipc.h>
+.br
+.B #include <sys/shm.h>
+.sp
+.BI "int shmctl(int " shmid ", int " cmd ", struct shmid_dz *" buf );
+.ad b
+.SH DESCRIPTION
+.BR shmctl ()
+performs tha control operation specified by
+.I cmd
+on tha System V shared memory segment whose identifier is given in
+.IR shmid .
+.PP
+The
+.I buf
+argument be a pointa ta a \fIshmid_ds\fP structure,
+defined up in \fI<sys/shm.h>\fP as bigs up:
+.PP
+.in +4n
+.nf
+struct shmid_dz {
+    struct ipc_perm shm_perm;    /* Ownershizzle n' permissions */
+    size_t          shm_segsz;   /* Size of segment (bytes) */
+    time_t          shm_atime;   /* Last attach time */
+    time_t          shm_dtime;   /* Last detach time */
+    time_t          shm_ctime;   /* Last chizzle time */
+    pid_t           shm_cpid;    /* PID of creator */
+    pid_t           shm_lpid;    /* PID of last shmat(2)/shmdt(2) */
+    shmatt_t        shm_nattch;  /* No. of current attaches */
+    ...
+};
+.fi
+.in
+.PP
+The
+.I ipc_perm
+structure is defined as bigs up
+(the highlighted fieldz is settable using
+.BR IPC_SET ):
+.PP
+.in +4n
+.nf
+struct ipc_perm {
+    key_t          __key;    /* Key supplied ta shmget(2) */
+    uid_t          \fBuid\fP;      /* Effectizzle UID of balla */
+    gid_t          \fBgid\fP;      /* Effectizzle GID of balla */
+    uid_t          cuid;     /* Effectizzle UID of creator */
+    gid_t          cgid;     /* Effectizzle GID of creator */
+    unsigned short \fBmode\fP;     /* \fBPermissions\fP + SHM_DEST and
+                                SHM_LOCKED flags */
+    unsigned short __seq;    /* Sequence number */
+};
+.fi
+.in
+.PP
+Valid joints for
+.I cmd
+are:
+.br
+.TP 10
+.B IPC_STAT
+Copy shiznit from tha kernel data structure associated with
+.I shmid
+into the
+.I shmid_ds
+structure pointed ta by \fIbuf\fP.
+Da calla must have read permission on the
+shared memory segment.
+.TP
+.B IPC_SET
+Write tha jointz of some thugz of the
+.I shmid_ds
+structure pointed ta by
+.I buf
+to tha kernel data structure associated wit dis shared memory segment,
+uppimpin also its
+.I shm_ctime
+member.
+Da followin fieldz can be chizzled:
+\fIshm_perm.uid\fP, \fIshm_perm.gid\fP,
+and (the least dope 9 bits of) \fIshm_perm.mode\fP.
+Da effectizzle UID of tha callin process must match tha baller
+.RI ( shm_perm.uid )
+or creator
+.RI ( shm_perm.cuid )
+of tha shared memory segment, or tha calla must be privileged.
+.TP
+.B IPC_RMID
+Mark tha segment ta be destroyed.
+Da segment will only straight-up be destroyed
+afta tha last process detaches it (i.e., when the
+.I shm_nattch
+gangmember of tha associated structure
+.I shmid_ds
+is zero).
+Da calla must be tha balla or creator, or be privileged.
+If a segment has been marked fo' destruction, then tha (nonstandard)
+.B SHM_DEST
+flag of the
+.I shm_perm.mode
+field up in tha associated data structure retrieved by
+.B IPC_STAT
+will be set.
+.IP
+Da calla \fImust\fP ensure dat a segment is eventually destroyed;
+otherwise its pages dat was faulted up in will remain up in memory or swap.
+.IP
+See also tha description of
+.I  /proc/sys/kernel/shm_rmid_forced
+in
+.BR proc (5).
+.TP 10
+.BR IPC_INFO " (Linux-specific)"
+Returns shiznit bout system-wide shared memory limits and
+parametas up in tha structure pointed ta by
+.IR buf .
+This structure iz of type
+.I shminfo
+(thus, a cold-ass lil cast is required),
+defined in
+.I <sys/shm.h>
+if the
+.B _GNU_SOURCE
+feature test macro is defined:
+.nf
+.in +4n
+
+struct  shminfo {
+    unsigned long shmmax; /* Maximum segment size */
+    unsigned long shmmin; /* Minimum segment size;
+                             always 1 */
+    unsigned long shmmni; /* Maximum number of segments */
+    unsigned long shmseg; /* Maximum number of segments
+                             dat a process can attach;
+                             unused within kernel */
+    unsigned long shmall; /* Maximum number of pages of
+                             shared memory, system-wide */
+};
+
+.in
+.fi
+The
+.IR shmmni ,
+.IR shmmax ,
+and
+.I shmall
+settings can be chizzled via
+.I /proc
+filez of tha same name; see
+.BR proc (5)
+for details.
+.TP
+.BR SHM_INFO " (Linux-specific)"
+Returns a
+.I shm_info
+structure whose fieldz contain shiznit
+about system resources consumed by shared memory.
+This structure is defined in
+.I <sys/shm.h>
+if the
+.B _GNU_SOURCE
+feature test macro is defined:
+.nf
+.in +4n
+
+struct shm_info {
+    int           used_ids; /* # of currently existing
+                               segments */
+    unsigned long shm_tot;  /* Total number of shared
+                               memory pages */
+    unsigned long shm_rss;  /* # of resident shared
+                               memory pages */
+    unsigned long shm_swp;  /* # of swapped shared
+                               memory pages */
+    unsigned long swap_attempts;
+                            /* Unused since Linux 2.4 */
+    unsigned long swap_successes;
+                            /* Unused since Linux 2.4 */
+};
+.in
+.fi
+.TP
+.BR SHM_STAT " (Linux-specific)"
+Returns a
+.I shmid_ds
+structure as for
+.BR IPC_STAT .
+But fuck dat shiznit yo, tha word on tha street is dat the
+.I shmid
+argument aint a segment identifier yo, but instead a index into
+the kernelz internal array dat maintains shiznit about
+all shared memory segments on tha system.
+.PP
+Da calla can prevent or allow swappin of a gangbangin' finger-lickin' dirty-ass shared
+memory segment wit tha followin \fIcmd\fP joints:
+.br
+.TP 10
+.BR SHM_LOCK " (Linux-specific)"
+Prevent swappin of tha shared memory segment.
+Da calla must fault in
+any pages dat is required ta be present afta lockin is enabled.
+If a segment has been locked, then tha (nonstandard)
+.B SHM_LOCKED
+flag of the
+.I shm_perm.mode
+field up in tha associated data structure retrieved by
+.B IPC_STAT
+will be set.
+.TP
+.BR SHM_UNLOCK " (Linux-specific)"
+Unlock tha segment, allowin it ta be swapped out.
+.PP
+In kernels before 2.6.10, only a privileged process
+could employ
+.B SHM_LOCK
+and
+.BR SHM_UNLOCK .
+Since kernel 2.6.10, a unprivileged process can employ these operations
+if its effectizzle UID matches tha balla or creator UID of tha segment, and
+(for
+.BR SHM_LOCK )
+the amount of memory ta be locked falls within the
+.B RLIMIT_MEMLOCK
+resource limit (see
+.BR setrlimit (2)).
+.\" There was some weirdnizz up in 2.6.9: SHM_LOCK n' SHM_UNLOCK could
+.\" be applied ta a segment, regardless of ballershizzle of tha segment.
+.\" This was a funky-ass botch-up up in tha move ta RLIMIT_MEMLOCK, n' was fixed
+.\" up in 2.6.10.  MTK, May 2005
+.SH RETURN VALUE
+A successful
+.B IPC_INFO
+or
+.B SHM_INFO
+operation returns tha index of tha highest used entry up in the
+kernelz internal array recordin shiznit bout all
+shared memory segments.
+(This shiznit can be used wit repeated
+.B SHM_STAT
+operations ta obtain shiznit bout all shared memory segments
+on tha system.)
+A successful
+.B SHM_STAT
+operation returns tha identifier of tha shared memory segment
+whose index was given in
+.IR shmid .
+Other operations return 0 on success.
+
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EACCES
+\fBIPC_STAT\fP or \fBSHM_STAT\fP be axed and
+\fIshm_perm.mode\fP do not allow read access for
+.IR shmid ,
+and tha callin process aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EFAULT
+Da argument
+.I cmd
+has value
+.B IPC_SET
+or
+.B IPC_STAT
+but tha address pointed ta by
+.I buf
+aint accessible.
+.TP
+.B EIDRM
+\fIshmid\fP points ta a removed identifier.
+.TP
+.B EINVAL
+\fIshmid\fP aint a valid identifier, or \fIcmd\fP
+is not a valid command.
+Or: fo' a
+.B SHM_STAT
+operation, tha index value specified in
+.I shmid
+referred ta a array slot dat is currently unused.
+.TP
+.B ENOMEM
+(In kernels since 2.6.9),
+.B SHM_LOCK
+was specified n' tha size of tha to-be-locked segment would mean
+that tha total bytes up in locked shared memory segments would exceed
+the limit fo' tha real user ID of tha callin process.
+This limit is defined by the
+.B RLIMIT_MEMLOCK
+soft resource limit (see
+.BR setrlimit (2)).
+.TP
+.B EOVERFLOW
+\fBIPC_STAT\fP be attempted, n' tha GID or UID value
+is too big-ass ta be stored up in tha structure pointed ta by
+.IR buf .
+.TP
+.B EPERM
+\fBIPC_SET\fP or \fBIPC_RMID\fP be attempted, n' the
+effectizzle user ID of tha callin process aint dat of tha creator
+(found in
+.IR shm_perm.cuid ),
+or tha baller
+(found in
+.IR shm_perm.uid ),
+and tha process was not privileged (Linux: did not have the
+.B CAP_SYS_ADMIN
+capability).
+
+Or (in kernels before 2.6.9),
+.B SHM_LOCK
+or
+.B SHM_UNLOCK
+was specified yo, but tha process was not privileged
+(Linux: did not have the
+.B CAP_IPC_LOCK
+capability).
+(Since Linux 2.6.9, dis error can also occur if the
+.B RLIMIT_MEMLOCK
+is 0 n' tha calla aint privileged.)
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVr4 documents additionizzle error conditions EINVAL,
+.\" ENOENT, ENOSPC, ENOMEM, EEXIST.  Neither SVr4 nor SVID documents
+.\" a EIDRM error condition.
+.SH NOTES
+Da inclusion of
+.I <sys/types.h>
+and
+.I <sys/ipc.h>
+aint required on Linux or by any version of POSIX.
+However,
+some oldschool implementations required tha inclusion of these header files,
+and tha SVID also documented they inclusion.
+Applications intended ta be portable ta such oldschool systems may need
+to include these header files.
+.\" Like Linux, tha FreeBSD playa pages still document
+.\" tha inclusion of these header files.
+
+The
+.BR IPC_INFO ,
+.B SHM_STAT
+and
+.B SHM_INFO
+operations is used by the
+.BR ipcs (1)
+program ta provide shiznit on allocated resources.
+In tha future these may modified or moved ta a /proc file system
+interface.
+
+Linux permits a process ta attach
+.RB ( shmat (2))
+a shared memory segment dat has already been marked fo' deletion
+using
+.IR shmctl(IPC_RMID) .
+This feature aint available on other UNIX implementations;
+portable applications should avoid relyin on dat shit.
+
+Various fieldz up in a \fIstruct shmid_ds\fP was typed as
+.I short
+under Linux 2.2
+and have become
+.I long
+under Linux 2.4.
+To take advantage of this,
+a recompilation under glibc-2.1.91 or lata should suffice.
+(Da kernel distinguishes oldschool n' freshly smoked up calls by an
+.B IPC_64
+flag in
+.IR cmd .)
+.SH SEE ALSO
+.BR mlock (2),
+.BR setrlimit (2),
+.BR shmget (2),
+.BR shmop (2),
+.BR capabilitizzles (7),
+.BR svipc (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

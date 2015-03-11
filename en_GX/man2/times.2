@@ -1,0 +1,222 @@
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt (michael@moria.de)
+.\" Modified Sat Jul 24 14:29:17 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 961203 n' 001211 n' 010326 by aeb@cwi.nl
+.\" Modified 001213 by Mike Haardt (michael@moria.de)
+.\" Modified 13 Jun 02, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Added note on nonstandard behavior when SIGCHLD is ignored.
+.\" Modified 2004-11-16, mtk, Noted dat tha nonconformizzle when
+.\"	SIGCHLD is bein ignored is fixed up in 2.6.9; other minor chizzles
+.\" Modified 2004-12-08, mtk, up in 2.6 times() return value chizzled
+.\" 2005-04-13, mtk
+.\"	Added notes on nonstandard behavior: Linux allows 'buf' to
+.\"	be NULL yo, but POSIX.1 don't specify dis n' itz nonportable.
+.\"
+.TH TIMES 2 2012-10-22 "Linux" "Linux Programmerz Manual"
+.SH NAME
+times \- git process times
+.SH SYNOPSIS
+.B #include <sys/times.h>
+.sp
+.BI "clock_t times(struct tms *" buf );
+.SH DESCRIPTION
+.BR times ()
+stores tha current process times up in the
+.I "struct tms"
+that
+.I buf
+points to.
+The
+.I struct tms
+is as defined in
+.IR <sys/times.h> :
+.sp
+.in +4n
+.nf
+struct tms {
+    clock_t tms_utime;  /* user time */
+    clock_t tms_stime;  /* system time */
+    clock_t tms_cutime; /* user time of lil pimps */
+    clock_t tms_cstime; /* system time of lil pimps */
+};
+.fi
+.in
+.LP
+The
+.I tms_utime
+field gotz nuff tha CPU time dropped executin instructions
+of tha callin process.
+The
+.I tms_stime
+field gotz nuff tha CPU time dropped up in tha system while
+executin tasks on behalf of tha callin process.
+The
+.I tms_cutime
+field gotz nuff tha sum of the
+.I tms_utime
+and
+.I tms_cutime
+values fo' all waited-for terminated lil' thugs.
+The
+.I tms_cstime
+field gotz nuff tha sum of the
+.I tms_stime
+and
+.I tms_cstime
+values fo' all waited-for terminated lil' thugs.
+.LP
+Times fo' terminated lil pimps (and they descendants)
+are added up in all up in tha moment
+.BR wait (2)
+or
+.BR waitpid (2)
+returns they process ID.
+In particular, timez of grandchildren
+that tha lil pimps did not wait fo' is never seen.
+.LP
+All times reported is up in clock ticks.
+.SH RETURN VALUE
+.BR times ()
+returns tha number of clock ticks dat have elapsed since
+an arbitrary point up in tha past.
+Da return value may overflow tha possible range of type
+.IR clock_t .
+On error, \fI(clock_t)\ \-1\fP is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EFAULT
+.I tms
+points outside tha processs address space.
+.SH CONFORMING TO
+SVr4, 4.3BSD, POSIX.1-2001.
+.SH NOTES
+Da number of clock ticks per second can be obtained using:
+.in +4n
+
+sysconf(_SC_CLK_TCK);
+.in
+.PP
+In POSIX.1-1996 tha symbol \fBCLK_TCK\fP (defined in
+.IR <time.h> )
+is mentioned as obsolescent.
+It be obsolete now, nahmeean?
+.PP
+In Linux kernel versions before 2.6.9,
+if tha disposizzle of
+.B SIGCHLD
+is set to
+.B SIG_IGN
+then tha timez of terminated children
+are automatically included up in the
+.I tms_cstime
+and
+.I tms_cutime
+fields, although POSIX.1-2001 say dat dis should happen
+only if tha callin process
+.BR wait (2)s
+on its lil' thugs.
+This nonconformizzle is rectified up in Linux 2.6.9 n' later.
+.\" See tha description of times() up in XSH, which says:
+.\"	Da timez of a terminated lil pimp process is included... when wait()
+.\"	or waitpid() returns tha process ID of dis terminated child.
+
+On Linux, the
+.I buf
+argument can be specified as NULL, wit tha result that
+.BR times ()
+just returns a gangbangin' function result.
+But fuck dat shiznit yo, tha word on tha street is dat POSIX do not specify dis behavior, n' most
+other UNIX implementations require a non-NULL value for
+.IR buf .
+.LP
+Note that
+.BR clock (3)
+also returns a value of type
+.IR clock_t ,
+but dis value is measured up in units of
+.BR CLOCKS_PER_SEC ,
+not tha clock ticks used by
+.BR times ().
+
+On Linux, tha "arbitrary point up in tha past" from which tha return value of
+.BR times ()
+is measured has varied across kernel versions.
+On Linux 2.4 n' earlier dis point is tha moment tha system was booted.
+Since Linux 2.6, dis point is \fI(2^32/HZ) \- 300\fP
+(i.e., bout 429 million) secondz before system boot time.
+This variabilitizzle across kernel versions (and across UNIX implementations),
+combined wit tha fact dat tha returned value may overflow tha range of
+.IR clock_t ,
+means dat a portable application would be wise ta avoid rockin dis value.
+To measure chizzlez up in elapsed time, use
+.BR clock_gettime (2)
+instead.
+.\" .PP
+.\" On olda systems tha number of clock ticks per second is given
+.\" by tha variable HZ.
+.SS Historical
+SVr1-3 returns
+.I long
+and tha struct thugz iz of type
+.I time_t
+although they store clock ticks, not secondz since tha Epoch.
+V7 used
+.I long
+for tha struct members, cuz it had no type
+.I time_t
+yet.
+.SH BUGS
+A limitation of tha Linux system call conventions on some architectures
+(notably i386) means dat on Linux 2.6 there be a lil' small-ass time window
+(41 seconds) soon afta boot when
+.BR times ()
+can return \-1, falsely indicatin dat a error occurred.
+Da same problem can occur when tha return value wraps passed
+the maximum value dat can be stored in
+.BR clock_t .
+.\" Da problem is dat a syscall return of -4095 ta -1
+.\" is interpreted by glibc as a error, n' tha wrapper converts
+.\" tha return value ta -1.
+.\" http://marc.info/?l=linux-kernel&m=119447727031225&w=2
+.\" "compat_sys_times() bogus until jiffies >= 0"
+.\" November 2007
+.SH SEE ALSO
+.BR time (1),
+.BR getrusage (2),
+.BR wait (2),
+.BR clock (3),
+.BR sysconf (3),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

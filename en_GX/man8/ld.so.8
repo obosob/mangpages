@@ -1,0 +1,505 @@
+.\" %%%LICENSE_START(PUBLIC_DOMAIN)
+.\" This is up in tha hood domain
+.\" %%%LICENSE_END
+.\"
+.TH LD.SO 8 2013-07-15 "GNU" "Linux Programmerz Manual"
+.SH NAME
+ld.so, ld-linux.so* \- dynamic linker/loader
+.SH SYNOPSIS
+Da dynamic linker can be run either indirectly by hustlin some
+dynamically linked program or library (in which case no command-line options
+to tha dynamic linker can be passed and, up in tha ELF case, tha dynamic linker
+which is stored up in the
+.B .interp
+section of tha program is executed) or directly by hustlin:
+.P
+.I /lib/ld-linux.so.*
+[OPTIONS] [PROGRAM [ARGUMENTS]]
+.SH DESCRIPTION
+Da programs
+.B ld.so
+and
+.B ld-linux.so*
+find n' load tha shared libraries needed by a program, prepare
+the program ta run, n' then run dat shit.
+.LP
+Linux binaries require dynamic linkin (linkin at run time)
+unless the
+.B \-static
+option was given to
+.BR ld (1)
+durin compilation.
+.LP
+Da program
+.B ld.so
+handlez a.out binaries, a gangbangin' format used long ago;
+.B ld-linux.so*
+handlez ELF (\fI/lib/ld-linux.so.1\fP fo' libc5, \fI/lib/ld-linux.so.2\fP
+for glibc2), which dem hoes has been rockin fo' muthafuckin years now, nahmeean?
+Otherwise both have tha same behavior, n' use tha same
+support filez n' programs
+.BR ldd (1),
+.BR ldconfig (8)
+and
+.IR /etc/ld.so.conf .
+.LP
+When resolvin library dependencies,
+the dynamic linker first inspects each dependency
+strin ta peep if it gotz nuff a slash (this can occur if
+a library pathname containin slashes was specified at link time).
+If a slash is found, then tha dependency strang is interpreted as
+a (relatizzle or absolute) pathname,
+and tha library is loaded rockin dat pathname.
+.LP
+If a library dependency do not contain a slash,
+then it is searched fo' up in tha followin order:
+.IP o 3
+(ELF only) Usin tha directories specified up in the
+DT_RPATH dynamic section attribute
+of tha binary if present n' DT_RUNPATH attribute do not exist.
+Use of DT_RPATH is deprecated.
+.IP o
+Usin tha environment variable
+.BR LD_LIBRARY_PATH .
+Except if tha executable be a set-user-ID/set-group-ID binary,
+in which case it is ignored.
+.IP o
+(ELF only) Usin tha directories specified up in the
+DT_RUNPATH dynamic section attribute
+of tha binary if present.
+.IP o
+From tha cache file
+.IR /etc/ld.so.cache ,
+which gotz nuff a cold-ass lil compiled list of muthafucka libraries previously found
+in tha augmented library path.
+If, however, tha binary was linked wit the
+.B \-z nodeflib
+linker option, libraries up in tha default library paths is skipped.
+Libraries installed up in hardware capabilitizzle directories (see below)
+are preferred ta other libraries.
+.IP o
+In tha default path
+.IR /lib ,
+and then
+.IR /usr/lib .
+If tha binary was linked wit the
+.B \-z nodeflib
+linker option, dis step is skipped.
+.SS Rpath token expansion
+.PP
+.B ld.so
+understandz certain strings up in a rpath justification (DT_RPATH or DT_RUNPATH); dem strings is substituted as bigs up
+.TP
+.IR $ORIGIN " (or equivalently " ${ORIGIN} )
+This expandz to
+the directory containin tha application executable.
+Thus, a application located in
+.I somedir/app
+could be compiled with
+
+    gcc -Wl,-rpath,\(aq$ORIGIN/../lib\(aq
+
+so dat it findz a associated shared library in
+.I somedir/lib
+no matta where
+.I somedir
+is located up in tha directory hierarchy.
+This facilitates tha creation of "turn-key" applications that
+do not need ta be installed tha fuck into special directories,
+but can instead be unpacked tha fuck into any directory
+and still find they own shared libraries.
+.TP
+.IR $LIB " (or equivalently " ${LIB} )
+This expandz to
+.I lib
+or
+.I lib64
+dependin on tha architecture
+(e.g., on x86-64, it expandz to
+.IR lib64
+and
+on x86-32, it expandz to
+.IR lib ).
+.TP
+.IR $PLATFORM " (or equivalently " ${PLATFORM} )
+This expandz ta a strang correspondin ta tha processor type
+of tha host system (e.g., "x86_64").
+On some architectures, tha Linux kernel don't provide a platform
+strin ta tha dynamic linker.
+Da value of dis strang is taken from the
+.BR AT_PLATFORM
+value up in tha auxiliary vector (see
+.BR getauxval (3)).
+.\" To git a scam of tha places dat $PLATFORM would match,
+.\" peep tha output of tha following:
+.\"
+.\"     mkdir /tmp/d
+.\"     LD_LIBRARY_PATH=/tmp/d strace -e open /bin/date 2>&1 | grep /tmp/d
+.\"
+.\" ld.so lets names be abbreviated, so $O will work fo' $ORIGIN;
+.\" Don't do this!!
+.SH OPTIONS
+.TP
+.B \-\-list
+List all dependencies n' how tha fuck they is resolved.
+.TP
+.B \-\-verify
+Verify dat program is dynamically linked n' dis dynamic linker can handle
+it.
+.TP
+.B \-\-library\-path PATH
+Use PATH instead of
+.B LD_LIBRARY_PATH
+environment variable settin (see below).
+.TP
+.B \-\-inhibit\-rpath LIST
+Ignore RPATH n' RUNPATH shiznit up in object names up in LIST.
+This option is ignored if
+.B ld.so
+is set-user-ID or set-group-ID.
+.TP
+.B \-\-audit LIST
+Use objects named up in LIST as auditors.
+.SH HARDWARE CAPABILITIES
+Some libraries is compiled rockin hardware-specific instructions which do
+not exist on every last muthafuckin CPU.
+Such libraries should be installed up in directories whose names define the
+required hardware capabilities, such as
+.IR /usr/lib/sse2/ .
+Da dynamic linker checks these directories against tha hardware of the
+machine n' selects da most thugged-out suitable version of a given library.
+Hardware capabilitizzle directories can be cascaded ta combine CPU features.
+Da list of supported hardware capabilitizzle names dependz on tha CPU.
+Da followin names is currently recognized:
+.TP
+.B Alpha
+ev4, ev5, ev56, ev6, ev67
+.TP
+.B MIPS
+loongson2e, loongson2f, octeon, octeon2
+.TP
+.B PowerPC
+4xxmac, altivec, arch_2_05, arch_2_06, booke, cellbe, dfp, efpdouble, efpsingle,
+fpu, ic_snoop, mmu, notb, pa6t, power4, power5, power5+, power6x, ppc32, ppc601,
+ppc64, smt, spe, ucache, vsx
+.TP
+.B SPARC
+flush, muldiv, stbar, swap, ultra3, v9, v9v, v9v2
+.TP
+.B s390
+dfp, eimm, esan3, etf3enh, g5, highgprs, hpage, ldisp, msa, stfle,
+z900, z990, z9-109, z10, zarch
+.TP
+.B x86 (32-bit only)
+acpi, apic, clflush, cmov, cx8, dts, fxsr, ht, i386, i486, i586, i686, mca, mmx,
+mtrr, pat, pbe, pge, pn, pse36, sep, ss, sse, sse2, tm
+.SH ENVIRONMENT
+There is four blingin environment variables.
+.TP
+.B LD_ASSUME_KERNEL
+(glibc since 2.2.3)
+Each shared library can inform tha dynamic linker of tha minimum kernel ABI
+version dat it requires.
+(This requirement is encoded up in a ELF note section dat is viewable via
+.IR "readelf\ \-n"
+as a section labeled
+.BR NT_GNU_ABI_TAG .)
+At run time,
+the dynamic linker determines tha ABI version of tha hustlin kernel and
+will reject loadin shared libraries dat specify minimum ABI versions
+that exceed dat ABI version.
+
+.BR LD_ASSUME_KERNEL
+can be used to
+cause tha dynamic linker ta assume dat it is hustlin on a system with
+a different kernel ABI version.
+For example, tha followin command line causes the
+dynamic linker ta assume it is hustlin on Linux 2.2.5 when loading
+the shared libraries required by
+.IR myprog :
+
+.in +4n
+.nf
+$ \fBLD_ASSUME_KERNEL=2.2.5 ./myprog\fP
+.fi
+.in
+
+On systems dat provide multiple versionz of a gangbangin' finger-lickin' dirty-ass shared library
+(in different directories up in tha search path) dat have
+different minimum kernel ABI version requirements,
+.BR LD_ASSUME_KERNEL
+can be used ta select tha version of tha library dat is used
+(dependent on tha directory search order).
+Historically, da most thugged-out common use of the
+.BR LD_ASSUME_KERNEL
+feature was ta manually select tha older
+LinuxThreadz POSIX threadz implementation on systems dat provided both
+LinuxThreadz n' NPTL
+(which latta was typically tha default on such systems);
+see
+.BR pthreadz (7).
+.TP
+.B LD_BIND_NOT
+(glibc since 2.2)
+Don't update tha Global Offset Table (GOT) n' Procedure Linkage Table (PLT)
+when resolvin a symbol.
+.TP
+.B LD_BIND_NOW
+(libc5; glibc since 2.1.1)
+If set ta a nonempty string,
+causes tha dynamic linker ta resolve all symbols
+at program startup instead of deferrin function call resolution ta tha point
+when they is first referenced.
+This is useful when rockin a thugged-out debugger.
+.TP
+.B LD_LIBRARY_PATH
+A colon-separated list of directories up in which ta search for
+ELF libraries at execution-time.
+Similar ta the
+.B PATH
+environment variable.
+Ignored up in set-user-ID n' set-group-ID programs.
+.TP
+.B LD_PRELOAD
+A list of additional, user-specified, ELF shared
+libraries ta be loaded before all others.
+Da shit of tha list can be separated by spaces or colons.
+This can be used ta selectively override functions up in other shared libraries.
+Da libraries is searched fo' rockin tha rulez given under DESCRIPTION.
+For set-user-ID/set-group-ID ELF binaries,
+preload pathnames containin slashes is ignored,
+and libraries up in tha standard search directories is loaded
+only if tha set-user-ID permission bit is enabled on tha library file.
+.TP
+.B LD_TRACE_LOADED_OBJECTS
+(ELF only)
+If set ta a nonempty string, causes tha program ta list its dynamic library
+dependencies, as if run by
+.BR ldd (1),
+instead of hustlin normally.
+.LP
+Then there be fuckin shitloadz of mo' or less obscure variables,
+many obsolete or only fo' internal use.
+.TP
+.B LD_AOUT_LIBRARY_PATH
+(libc5)
+Version of
+.B LD_LIBRARY_PATH
+for a.out binaries only.
+Oldskool versionz of ld\-linux.so.1 also supported
+.BR LD_ELF_LIBRARY_PATH .
+.TP
+.B LD_AOUT_PRELOAD
+(libc5)
+Version of
+.B LD_PRELOAD
+for a.out binaries only.
+Oldskool versionz of ld\-linux.so.1 also supported
+.BR LD_ELF_PRELOAD .
+.TP
+.B LD_AUDIT
+(glibc since 2.4)
+A colon-separated list of user-specified, ELF shared objects
+to be loaded before all others up in a separate linker namespace
+(i.e., one dat do not intrude upon tha aiiight symbol bindings that
+would occur up in tha process).
+These libraries can be used ta audit tha operation of tha dynamic linker.
+.B LD_AUDIT
+is ignored fo' set-user-ID/set-group-ID binaries.
+
+Da dynamic linker will notify tha audit
+libraries at so-called auditin checkpoints\(emfor example,
+loadin a freshly smoked up library, resolvin a symbol,
+or callin a symbol from another shared object\(emby
+callin a appropriate function within tha audit library.
+For details, see
+.BR rtld-audit (7).
+Da auditin intercourse is largely compatible wit dat provided on Solaris,
+as busted lyrics bout up in its
+.IR "Linker n' Libraries Guide" ,
+in tha chapter
+.IR "Runtime Linker Auditin Interface" .
+.TP
+.B LD_BIND_NOT
+(glibc since 2.1.95)
+Do not update tha GOT (global offset table) n' PLT (procedure linkage table)
+afta resolvin a symbol.
+.TP
+.B LD_DEBUG
+(glibc since 2.1)
+Output verbose debuggin shiznit bout tha dynamic linker.
+If set to
+.B all
+prints all debuggin shiznit it has, if set to
+.B help
+prints a help message bout which categories can be specified up in this
+environment variable.
+Since glibc 2.3.4,
+.B LD_DEBUG
+is ignored fo' set-user-ID/set-group-ID binaries.
+.TP
+.B LD_DEBUG_OUTPUT
+(glibc since 2.1)
+File up in which
+.B LD_DEBUG
+output should be written.
+Da default is standard output.
+.B LD_DEBUG_OUTPUT
+is ignored fo' set-user-ID/set-group-ID binaries.
+.TP
+.B LD_DYNAMIC_WEAK
+(glibc since 2.1.91)
+Allow weak symbols ta be overridden (revertin ta oldschool glibc behavior).
+For securitizzle reasons, since glibc 2.3.4,
+.B LD_DYNAMIC_WEAK
+is ignored fo' set-user-ID/set-group-ID binaries.
+.TP
+.B LD_HWCAP_MASK
+(glibc since 2.1)
+Mask fo' hardware capabilities.
+.TP
+.B LD_KEEPDIR
+(a.out only)(libc5)
+Don't ignore tha directory up in tha namez of a.out libraries ta be loaded.
+Use of dis option is straight fuckin discouraged.
+.TP
+.B LD_NOWARN
+(a.out only)(libc5)
+Suppress warnings bout a.out libraries wit incompatible minor
+version numbers.
+.TP
+.B LD_ORIGIN_PATH
+(glibc since 2.1)
+Path where tha binary is found (for non-set-user-ID programs).
+For securitizzle reasons, since glibc 2.4,
+.B LD_ORIGIN_PATH
+is ignored fo' set-user-ID/set-group-ID binaries.
+.\" Only used if $ORIGIN can't be determined by aiiight means
+.\" (from tha origin path saved at load time, or from /proc/self/exe)?
+.TP
+.B LD_POINTER_GUARD
+(glibc since 2.4)
+Set ta 0 ta disable pointa guarding.
+Any other value enablez pointa guarding, which be also tha default.
+Pointa guardin be a securitizzle mechanizzle whereby some pointas ta code
+stored up in writable program memory (return addresses saved by
+.BR setjmp (3)
+or function pointas used by various glibc internals) is mangled
+semi-randomly ta make it mo' hard as fuck fo' a attacker ta hijack
+the pointas fo' use up in tha event of a funky-ass buffer overrun or
+stack-smashin attack.
+.TP
+.B LD_PROFILE
+(glibc since 2.1)
+Shared object ta be profiled,
+specified either as a pathname or a soname.
+Profilin output is freestyled ta tha file whose name is:
+"\fI$LD_PROFILE_OUTPUT\fP/\fI$LD_PROFILE\fP.profile".
+.TP
+.B LD_PROFILE_OUTPUT
+(glibc since 2.1)
+Directory where
+.B LD_PROFILE
+output should be written.
+If dis variable aint defined, or is defined as a empty string,
+then tha default is
+.IR /var/tmp .
+.B LD_PROFILE_OUTPUT
+is ignored fo' set-user-ID n' set-group-ID programs,
+which always use
+.IR /var/profile .
+.TP
+.B LD_SHOW_AUXV
+(glibc since 2.1)
+Show auxiliary array passed up from tha kernel.
+For securitizzle reasons, since glibc 2.3.5,
+.B LD_SHOW_AUXV
+is ignored fo' set-user-ID/set-group-ID binaries.
+.\" FIXME
+.\" Document LD_TRACE_PRELINKING (e.g.: LD_TRACE_PRELINKING=libx1.so ./prog)
+.\" Since glibc 2.3
+.\" Also enablez DL_DEBUG_PRELINK
+.TP
+.B LD_USE_LOAD_BIAS
+.\" http://sources.redhat.com/ml/libc-hacker/2003-11/msg00127.html
+.\" Subject: [PATCH] Support LD_USE_LOAD_BIAS
+.\" Jakub Jelinek
+By default (i.e., if dis variable aint defined)
+executablez n' prelinked
+shared objects will honor base addressez of they dependent libraries
+and (nonprelinked) position-independent executablez (PIEs)
+and other shared objects aint gonna honor em.
+If
+.B LD_USE_LOAD_BIAS
+is defined wit tha value, both executablez n' PIEs
+will honor tha base addresses.
+If
+.B LD_USE_LOAD_BIAS
+is defined wit tha value 0,
+neither executablez nor PIEs will honor tha base addresses.
+This variable is ignored by set-user-ID n' set-group-ID programs.
+.TP
+.B LD_VERBOSE
+(glibc since 2.1)
+If set ta a nonempty string,
+output symbol versionin shiznit bout the
+program if the
+.B LD_TRACE_LOADED_OBJECTS
+environment variable has been set.
+.TP
+.B LD_WARN
+(ELF only)(glibc since 2.1.3)
+If set ta a nonempty string, warn bout unresolved symbols.
+.TP
+.B LDD_ARGV0
+(libc5)
+.IR argv [0]
+to be used by
+.BR ldd (1)
+when none is present.
+.SH FILES
+.PD 0
+.TP
+.I /lib/ld.so
+a.out dynamic linker/loader
+.TP
+.IR /lib/ld\-linux.so. { 1 , 2 }
+ELF dynamic linker/loader
+.TP
+.I /etc/ld.so.cache
+File containin a cold-ass lil compiled list of directories up in which ta search for
+libraries n' a ordered list of muthafucka libraries.
+.TP
+.I /etc/ld.so.preload
+File containin a whitespace-separated list of ELF shared libraries to
+be loaded before tha program.
+.TP
+.B lib*.so*
+shared libraries
+.PD
+.SH NOTES
+The
+.B ld.so
+functionalitizzle be available fo' executablez compiled rockin libc version
+4.4.3 or pimped outer.
+ELF functionalitizzle be available since Linux 1.1.52 n' libc5.
+.SH SEE ALSO
+.BR ldd (1),
+.BR sln (1),
+.BR getauxval (3),
+.BR rtld-audit (7),
+.BR ldconfig (8)
+.\" .SH AUTHORS
+.\" ld.so: Dizzy Engel, Eric Youngdale, Peta MacDonald, Hongjiu Lu, Linus
+.\"  Torvalds, Lars Wirzenius n' Mitch D'Souza
+.\" ld-linux.so: Roland McGrath, Ulrich Drepper n' others.
+.\"
+.\" In tha above, (libc5) standz fo' Dizzy Engelz ld.so/ld-linux.so.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

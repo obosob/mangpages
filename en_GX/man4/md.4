@@ -1,0 +1,830 @@
+.\" Copyright Neil Brown n' others.
+.\"   This program is free software; you can redistribute it and/or modify
+.\"   it under tha termz of tha GNU General Public License as published by
+.\"   tha Jacked Software Foundation; either version 2 of tha License, or
+.\"   (at yo' option) any lata version.
+.\" See file COPYING up in distribution fo' details.
+.TH MD 4
+.SH NAME
+md \- Multiple Device driver aka Linux Software RAID
+.SH SYNOPSIS
+.BI /dev/md n
+.br
+.BI /dev/md/ n
+.br
+.BR /dev/md/ name
+.SH DESCRIPTION
+The
+.B md
+driver serves up virtual devices dat is pimped from one or more
+independent underlyin devices.  This array of devices often gotz nuff
+redundancy n' tha devices is often disk drives, hence tha acronym RAID
+which standz fo' a Redundant Array of Independent Disks.
+.PP
+.B md
+supports RAID levels
+1 (mirroring),
+4 (striped array wit paritizzle device),
+5 (striped array wit distributed paritizzle shiznit),
+6 (striped array wit distributed dual redundancy shiznit), and
+10 (striped n' mirrored).
+If some number of underlyin devices fails while rockin one of these
+levels, tha array will continue ta function; dis number is one for
+RAID levels 4 n' 5, two fo' RAID level 6, n' all but one (N-1) for
+RAID level 1, n' dependent on configuration fo' level 10.
+.PP
+.B md
+also supports a fuckin shitload of pseudo RAID (non-redundant) configurations
+includin RAID0 (striped array), LINEAR (catenated array),
+MULTIPATH (a set of different intercourses ta tha same device),
+and FAULTY (a layer over a single thang tha fuck into which errors can be injected).
+
+.SS MD METADATA
+Each thang up in a array may have some 
+.I metadata
+stored up in tha device.  This metadata is sometimes called a
+.BR superblock .
+Da metadata recordz shiznit bout tha structure n' state of tha array.
+This allows tha array ta be reliably re-assembled afta a gangbangin' finger-lickin' dirty-ass shutdown.
+
+From Linux kernel version 2.6.10,
+.B md
+provides support fo' two different formatz of metadata, and
+other formats can be added. Y'all KNOW dat shit, muthafucka!  Prior ta dis release, only one format is
+supported.
+
+Da common format \(em known as version 0.90 \(em has
+a superblock dat is 4K long n' is freestyled tha fuck into a 64K aligned block that
+starts at least 64K n' less than 128K from tha end of tha device
+(i.e. ta git tha address of tha superblock round tha size of the
+device down ta a multiple of 64K n' then subtract 64K).
+Da available size of each thang is tha amount of space before the
+supa block, so between 64K n' 128K is lost when a thang in
+incorporated tha fuck into a MD array.
+This superblock stores multi-byte fieldz up in a processor-dependent
+manner, so arrays cannot easily be moved between computas with
+different processors.
+
+Da freshly smoked up format \(em known as version 1 \(em has a superblock dat is
+normally 1K long yo, but can be longer n' shit.  It be normally stored between 8K
+and 12K from tha end of tha device, on a 4K boundary, though
+variations can be stored all up in tha start of tha thang (version 1.1) or 4K from
+the start of tha thang (version 1.2).
+This metadata format stores multibyte data up in a
+processor-independent format n' supports up ta hundredz of
+component devices (version 0.90 only supports 28).
+
+Da metadata gotz nuff, among other thangs:
+.TP
+LEVEL
+Da manner up in which tha devices is arranged tha fuck into tha array
+(LINEAR, RAID0, RAID1, RAID4, RAID5, RAID10, MULTIPATH).
+.TP
+UUID
+a 128 bit Universally Unique Identifier dat identifies tha array that
+gotz nuff dis device.
+
+.PP
+When a version 0.90 array is bein reshaped (e.g. addin extra devices
+to a RAID5), tha version number is temporarily set ta 0.91.  This
+ensures dat if tha reshape process is stopped up in tha middle (e.g. by
+a system crash) n' tha machine boots tha fuck into a olda kernel dat do
+not support reshaping, then tha array aint gonna be assembled (which
+would cause data corruption) but is ghon be left untouched until a kernel
+that can complete tha reshape processes is used.
+
+.SS ARRAYS WITHOUT METADATA
+While it is probably dopest ta create arrays wit superblocks so that
+they can be assembled reliably, there be some circumstances when an
+array without superblocks is preferred. Y'all KNOW dat shit, muthafucka!  These include:
+.TP
+LEGACY ARRAYS
+Early versionz of the
+.B md
+driver only supported LINEAR n' RAID0 configurations n' did not use
+a superblock (which is less critical wit these configurations).
+While such arrays should be rebuilt wit superblocks if possible,
+.B md
+continues ta support em.
+.TP
+FAULTY
+Bein a largely transparent layer over a gangbangin' finger-lickin' different device, tha FAULTY
+personalitizzle don't bust anythang from havin a superblock.
+.TP
+MULTIPATH
+It be often possible ta detect devices which is different paths to
+the same storage directly rather than havin a gangbangin' finger-lickin' distinctizzle superblock
+written ta tha thang n' searched fo' on all paths.  In dis case,
+a MULTIPATH array wit no superblock make sense.
+.TP
+RAID1
+In some configurations it might be desired ta create a RAID1
+configuration dat do not bust a superblock, n' ta maintain tha state of
+the array elsewhere, so peek-a-boo, clear tha way, I be comin' thru fo'sho.  While not encouraged fo' general use, it do
+have special-purpose uses n' is supported.
+
+.SS ARRAYS WITH EXTERNAL METADATA
+
+From release 2.6.28, the
+.I md
+driver supports arrays wit externally managed metadata.  That is,
+the metadata aint managed by tha kernel but rather by a user-space
+program which is external ta tha kernel.  This allows support fo' a
+variety of metadata formats without clutterin tha kernel wit fuckin shitloadz of
+details.
+.PP
+.I md
+is able ta rap wit tha user-space program all up in various
+sysfs attributes so dat it can make appropriate chizzlez ta the
+metadata \- fo' example ta mark a thang as faulty.  When necessary,
+.I md
+will wait fo' tha program ta acknowledge tha event by freestylin ta a
+sysfs attribute.
+Da manual page for
+.IR mdmon (8)
+gotz nuff mo' detail bout dis interaction.
+
+.SS CONTAINERS
+Many metadata formats bust a single block of metadata ta describe a
+number of different arrays which all use tha same set of devices.
+In dis case it is helpful fo' tha kernel ta know bout tha full set
+of devices as a whole.  This set is known ta md as a
+.IR container .
+A container be an
+.I md
+array wit externally managed metadata n' wit thang offset n' size
+so dat it just covers tha metadata part of tha devices.  The
+remainder of each thang be available ta be incorporated tha fuck into various
+arrays.
+
+.SS LINEAR
+
+A LINEAR array simply catenates tha available space on each
+drive ta form one big-ass virtual drive.
+
+One advantage of dis arrangement over tha mo' common RAID0
+arrangement is dat tha array may be reconfigured at a lata time with
+an extra drive, so tha array is made bigger without disturbin the
+data dat is on tha array.  This can even be done on a live
+array.
+
+If a cold-ass lil chunksize is given wit a LINEAR array, tha usable space on each
+device is rounded down ta a multiple of dis chunksize.
+
+.SS RAID0
+
+A RAID0 array (which has zero redundancy) be also known as a
+striped array.
+A RAID0 array is configured at creation wit a
+.B "Chunk Size" 
+which must be a juice of two (prior ta Linux 2.6.31), n' at least 4
+kibibytes.
+
+Da RAID0 driver assigns tha straight-up original gangsta chunk of tha array ta tha first
+device, tha second chunk ta tha second device, n' so on until all
+drives done been assigned one chunk.  This collection of chunks forms a
+.BR stripe .
+Further chunks is gathered tha fuck into stripes up in tha same way, n' are
+assigned ta tha remainin space up in tha drives.
+
+If devices up in tha array is not all tha same size, then once the
+smallest thang has been exhausted, tha RAID0 driver starts
+collectin chunks tha fuck into smalla stripes dat only span tha drives which
+still have remainin space.
+
+
+.SS RAID1
+
+A RAID1 array be also known as a mirrored set (though mirrors tend to
+provide reflected images, which RAID1 do not) or a plex.
+
+Once initialised, each thang up in a RAID1 array gotz nuff exactly the
+same data.  Chizzlez is freestyled ta all devices up in parallel.  Data is
+read from any one device.  Da driver attempts ta distribute read
+requests across all devices ta maximise performance.
+
+All devices up in a RAID1 array should be tha same size.  If they are
+not, then only tha amount of space available on tha smallest thang is
+used (any extra space on other devices is wasted).
+
+Note dat tha read balancin done by tha driver do not make tha RAID1
+performizzle flava be tha same as fo' RAID0; a single stream of
+sequential input aint gonna be accelerated (e.g. a single dd) yo, but
+multiple sequential streams or a random workload will use mo' than one
+spindle. In theory, havin a N-disk RAID1 will allow N sequential
+threadz ta read from all disks.
+
+Individual devices up in a RAID1 can be marked as "write-mostly".
+These drives is excluded from tha aiiight read balancin n' will only
+be read from when there is no other option. I aint talkin' bout chicken n' gravy biatch.  This can be useful for
+devices connected over a slow link.
+
+.SS RAID4
+
+A RAID4 array is like a RAID0 array wit a extra thang fo' storing
+parity. This thang is tha last of tha actizzle devices up in the
+array. Unlike RAID0, RAID4 also requires dat all stripes span all
+drives, so extra space on devices dat is larger than tha smallest is
+wasted.
+
+When any block up in a RAID4 array is modified, tha paritizzle block fo' that
+stripe (i.e. tha block up in tha paritizzle thang all up in tha same thang offset
+as tha stripe) be also modified so dat tha paritizzle block always
+gotz nuff tha "parity" fo' tha whole stripe.  I.e. its content is
+equivalent ta tha result of struttin a exclusive-or operation
+between all tha data blocks up in tha stripe.
+
+This allows tha array ta continue ta function if one thang fails.
+Da data dat was on dat thang can be calculated as needed from the
+paritizzle block n' tha other data blocks.
+
+.SS RAID5
+
+RAID5 is straight-up similar ta RAID4.  Da difference is dat tha parity
+blocks fo' each stripe, instead of bein on a single device, are
+distributed across all devices.  This allows mo' parallelizzle when
+writing, as two different block thugged-out shiznit will like possibly affect
+paritizzle blocks on different devices so there is less contention.
+
+This also allows mo' parallelizzle when reading, as read requests are
+distributed over all tha devices up in tha array instead of all but one.
+
+.SS RAID6
+
+RAID6 is similar ta RAID5 yo, but can handle tha loss of any \fItwo\fP
+devices without data loss.  Accordingly, it requires N+2 drives to
+store N drives worth of data.
+
+Da performizzle fo' RAID6 is slightly lower but comparable ta RAID5 in
+normal mode n' single disk failure mode.  It be straight-up slow up in dual
+disk failure mode, however.
+
+.SS RAID10
+
+RAID10 serves up a cold-ass lil combination of RAID1 n' RAID0, n' is sometimes known
+as RAID1+0.  Every datablock is duplicated some number of times, and
+the resultin collection of datablocks is distributed over multiple
+drives.
+
+When configurin a RAID10 array, it is necessary ta specify tha number
+of replicaz of each data block dat is required (this will normally
+be 2) n' whether tha replicas should be 'near', 'offset' or 'far'.
+(Note dat tha 'offset' layout is only available from 2.6.18).
+
+When 'near' replicas is chosen, tha multiple copiez of a given chunk
+are laid up consecutively across tha stripez of tha array, so tha two
+copiez of a thugged-out datablock will likely be all up in tha same offset on two
+adjacent devices.
+
+When 'far' replicas is chosen, tha multiple copiez of a given chunk
+are laid up like distant from each other n' shit.  Da first copy of all
+data blocks is ghon be striped across tha early part of all drives in
+RAID0 fashion, n' then tha next copy of all blocks is ghon be striped
+across a lata section of all drives, always ensurin dat all copies
+of any given block is on different drives.
+
+Da 'far' arrangement can give sequential read performizzle equal to
+that of a RAID0 array yo, but all up in tha cost of reduced write performance.
+
+When 'offset' replicas is chosen, tha multiple copiez of a given
+chunk is laid up on consecutizzle drives n' at consecutizzle offsets.
+Effectively each stripe is duplicated n' tha copies is offset by one
+device.   This should give similar read characteristics ta 'far' if a
+suitably big-ass chunk size is used yo, but without as much seekin for
+writes.
+
+It should be noted dat tha number of devices up in a RAID10 array need
+not be a multiple of tha number of replica of each data block; however,
+there must be at least as nuff devices as replicas.
+
+If, fo' example, a array is pimped wit 5 devices n' 2 replicas,
+then space equivalent ta 2.5 of tha devices is ghon be available, and
+every block is ghon be stored on two different devices.
+
+Finally, it is possible ta have a array wit both 'near' n' 'far'
+copies. Put ya muthafuckin choppers up if ya feel dis!  If a array is configured wit 2 near copies n' 2 far
+copies, then there is ghon be a total of 4 copiez of each block, each on
+a different drive.  This be a artifact of tha implementation n' is
+unlikely ta be of real value.
+
+.SS MULTIPATH
+
+MULTIPATH aint straight-up a RAID at all as there is only one real device
+in a MULTIPATH md array.  However there be multiple access points
+(paths) ta dis device, n' one of these paths might fail, so there
+are some similarities.
+
+A MULTIPATH array is composed of a fuckin shitload of logically different
+devices, often fibre channel intercourses, dat all refer tha the same
+real device. If one of these intercourses fails (e.g. cuz of cable
+problems), tha MULTIPATH driver will attempt ta redirect requests to
+another intercourse.
+
+Da MULTIPATH drive aint receivin any ongoin pimpment and
+should be considered a legacy driver n' shit.  Da device-mapper based
+multipath drivers should be preferred fo' freshly smoked up installations.
+
+.SS FAULTY
+Da FAULTY md module is provided fo' testin purposes.  A FAULTY array
+has exactly one component thang n' is normally assembled without a
+superblock, so tha md array pimped serves up direct access ta all of
+the data up in tha component device.
+
+Da FAULTY module may be axed ta simulate faults ta allow testing
+of other md levels or of filesystems.  Faults can be chosen ta trigger
+on read requests or write requests, n' can be transient (a subsequent
+read/write all up in tha address will probably succeed) or persistent
+(subsequent read/write of tha same address will fail).  Further, read
+faults can be "fixable" meanin dat they persist until a write
+request all up in tha same address.
+
+Fault types can be axed wit a period. Y'all KNOW dat shit, muthafucka!  In dis case, tha fault
+will recur repeatedly afta tha given number of requestz of the
+relevant type.  For example if persistent read faults gotz a period of
+100, then every last muthafuckin 100th read request would generate a gangbangin' fault, n' the
+faulty sector would be recorded so dat subsequent readz on that
+sector would also fail.
+
+There be a limit ta tha number of faulty sectors dat is remembered.
+Faults generated afta dis limit is exhausted is treated as
+transient.
+
+Da list of faulty sectors can be flushed, n' tha actizzle list of
+failure modes can be cleared.
+
+.SS UNCLEAN SHUTDOWN
+
+When chizzlez is made ta a RAID1, RAID4, RAID5, RAID6, or RAID10 array
+there be a possibilitizzle of inconsistency fo' short periodz of time as
+each update requires at least two block ta be freestyled ta different
+devices, n' these writes probably won't happen at exactly tha same
+time.  Thus if a system wit one of these arrays is shutdown up in the
+middle of a write operation (e.g. cuz of juice failure), tha array may
+not be consistent.
+
+To handle dis thang, tha md driver marks a array as "dirty"
+before freestylin any data ta it, n' marks it as "clean" when tha array
+is bein disabled, e.g. at shutdown. I aint talkin' bout chicken n' gravy biatch.  If tha md driver findz a array
+to be dirty at startup, it proceedz ta erect any possibly
+inconsistency.  For RAID1, dis involves copyin tha contentz of the
+first drive onto all other drives.  For RAID4, RAID5 n' RAID6 this
+involves recalculatin tha paritizzle fo' each stripe n' makin shizzle that
+the paritizzle block has tha erect data.  For RAID10 it involves copying
+one of tha replicaz of each block onto all tha others.  This process,
+known as "resynchronising" or "resync" is performed up in tha background.
+Da array can still be used, though possibly wit reduced performance.
+
+If a RAID4, RAID5 or RAID6 array is degraded (missin at least one
+drive, two fo' RAID6) when it is restarted afta a unclean shutdown, it cannot
+recalculate parity, n' so it is possible dat data might be
+undetectably corrupted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da 2.4 md driver
+.B do not
+alert tha operator ta dis condition. I aint talkin' bout chicken n' gravy biatch.  Da 2.6 md driver will fail to
+start a array up in dis condizzle without manual intervention, though
+this behaviour can be overridden by a kernel parameter.
+
+.SS RECOVERY
+
+If tha md driver detects a write error on a thang up in a RAID1, RAID4,
+RAID5, RAID6, or RAID10 array, it immediately disablez dat device
+(markin it as faulty) n' continues operation on tha remaining
+devices.  If there be spare drives, tha driver will start rebustin
+on one of tha spare drives tha data which was on dat failed drive,
+either by copyin a hustlin drive up in a RAID1 configuration, or by
+fuckin wit calculations wit tha paritizzle block on RAID4, RAID5 or RAID6, or
+by findin n' copyin originals fo' RAID10.
+
+In kernels prior ta bout 2.6.15, a read error would cause tha same
+effect as a write error. Shiiit, dis aint no joke.  In lata kernels, a read-error will instead
+cause md ta attempt a recovery by overwritin tha wack block. i.e. it
+will find tha erect data from elsewhere, write it over tha block
+that failed, n' then try ta read it back again. I aint talkin' bout chicken n' gravy biatch.  If either tha write
+or tha re-read fail, md will treat tha error tha same way dat a write
+error is treated, n' will fail tha whole device.
+
+While dis recovery process is happening, tha md driver will monitor
+accesses ta tha array n' will slow down tha rate of recovery if other
+activitizzle is happening, so dat aiiight access ta tha array aint gonna be
+unduly affected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  When no other activitizzle is happening, tha recovery
+process proceedz at full speed. Y'all KNOW dat shit, muthafucka!  Da actual speed targets fo' tha two
+different thangs can be controlled by the
+.B speed_limit_min
+and
+.B speed_limit_max
+control filez mentioned below.
+
+.SS SCRUBBING AND MISMATCHES
+
+As storage devices can pimp wack blocks at any time it is valuable
+to regularly read all blocks on all devices up in a array so as ta catch
+such wack blocks early.  This process is called
+.IR scrubbin .
+
+md arrays can be scrubbed by freestylin either
+.I check
+or
+.I repair
+to tha file
+.I md/sync_action
+in the
+.I sysfs
+directory fo' tha device.
+
+Requestin a scrub will cause
+.I md
+to read every last muthafuckin block on every last muthafuckin thang up in tha array, n' check dat the
+data is consistent.  For RAID1 n' RAID10, dis means checkin dat tha copies
+are identical. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack.  For RAID4, RAID5, RAID6 dis means checkin dat the
+paritizzle block is (or blocks are) erect.
+
+If a read error is detected durin dis process, tha aiiight read-error
+handlin causes erect data ta be found from other devices n' ta be
+written back ta tha faulty device.  In nuff case dis will
+effectively
+.I fix
+the wack block.
+
+If all blocks read successfully but is found ta not be consistent,
+then dis is regarded as a
+.IR mismatch .
+
+If
+.I check
+was used, then no action is taken ta handle tha mismatch, it is simply
+recorded.
+If
+.I repair
+was used, then a mismatch is ghon be repaired up in tha same way that
+.I resync
+repairs arrays.  For RAID5/RAID6 freshly smoked up paritizzle blocks is written. I aint talkin' bout chicken n' gravy biatch.  For RAID1/RAID10,
+all but one block is overwritten wit tha content of dat one block.
+
+A count of mismatches is recorded up in the
+.I sysfs
+file
+.IR md/mismatch_cnt .
+This is set ta zero when a
+scrub starts n' is incremented whenever a sector is
+found dat be a mismatch.
+.I md
+normally works up in units much larger than a single sector n' when it
+findz a mismatch, it do not determine exactly how tha fuck nuff actual sectors were
+affected but simply addz tha number of sectors up in tha IO unit dat was
+used. Y'all KNOW dat shit, muthafucka!  So a value of 128 could simply mean dat a single 64KB check
+found a error (128 x 512bytes = 64KB).
+
+If a array is pimped by
+.I mdadm
+with
+.I \-\-assume\-clean
+then a subsequent check could be sposed ta fuckin find some mismatches.
+
+On a truly clean RAID5 or RAID6 array, any mismatches should indicate
+a hardware problem at some level - software thangs should never cause
+such a mismatch.
+
+However on RAID1 n' RAID10 it is possible fo' software thangs to
+cause a mismatch ta be reported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This do not necessarily mean that
+the data on tha array is corrupted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  It could simply be dat the
+system do not care what tha fuck is stored on dat part of tha array - it is
+unused space.
+
+Da most likely cause fo' a unexpected mismatch on RAID1 or RAID10
+occurs if a swap partizzle or swap file is stored on tha array.
+
+When tha swap subsystem wants ta write a page of memory out, it flags
+the page as 'clean' up in tha memory manager n' requests tha swap device
+to write it out.  It be like possible dat tha memory will be
+changed while tha write-out is happening.  In dat case tha 'clean'
+flag is ghon be found ta be clear when tha write completes n' so the
+swap subsystem will simply forget dat tha swapout had been attempted,
+and will possibly chizzle a gangbangin' finger-lickin' different page ta write out.
+
+If tha swap thang was on RAID1 (or RAID10), then tha data is sent
+from memory ta a thang twice (or mo' dependin on tha number of
+devices up in tha array).  Thus it is possible dat tha memory gets chizzled
+between tha times it is sent, so different data can be freestyled to
+the different devices up in tha array.  This is ghon be detected by
+.I check
+as a mismatch.  However it do not reflect any corruption as the
+block where dis mismatch occurs is bein treated by tha swap system as
+bein empty, n' tha data aint NEVER gonna be read from dat block.
+
+It be conceivable fo' a similar thang ta occur on non-swap files,
+though it is less likely.
+
+Thus the
+.I mismatch_cnt
+value can not be interpreted straight-up reliably on RAID1 or RAID10,
+especially when tha thang is used fo' swap.
+
+
+.SS BITMAP WRITE-INTENT LOGGING
+
+From Linux 2.6.13,
+.I md
+supports a funky-ass bitmap based write-intent log.  If configured, tha bitmap
+is used ta record which blockz of tha array may be outta sync.
+Before any write request is honoured, md will make shizzle dat the
+correspondin bit up in tha log is set.  Afta a period of time wit no
+writes ta a area of tha array, tha correspondin bit is ghon be cleared.
+
+This bitmap is used fo' two optimisations.
+
+Firstly, afta a unclean shutdown, tha resync process will consult
+the bitmap n' only resync dem blocks dat correspond ta bits up in the
+bitmap dat is set.  This can dramatically reduce resync time.
+
+Secondly, when a thugged-out drive fails n' is removed from tha array, md stops
+clearin bits up in tha intent log.  If dat same drive is re-added to
+the array, md will notice n' will only recover tha sectionz of the
+drive dat is covered by bits up in tha intent log dat is set.  This
+can allow a thang ta be temporarily removed n' reinserted without
+causin a enormous recovery cost.
+
+Da intent log can be stored up in a gangbangin' file on a separate device, or it can
+be stored near tha superblockz of a array which has superblocks.
+
+It be possible ta add a intent log ta a actizzle array, or remove an
+intent log if one is present.
+
+In 2.6.13, intent bitmaps is only supported wit RAID1.  Other levels
+with redundancy is supported from 2.6.15.
+
+.SS BAD BLOCK LOG
+
+From Linux 3.5 each thang up in an
+.I md
+array can store a list of known-bad-blocks.  This list is 4K up in size
+and probably positioned all up in tha end of tha space between tha superblock
+and tha data.
+
+When a funky-ass block cannot be read n' cannot be repaired by freestylin data
+recovered from other devices, tha address of tha block is stored in
+the wack block log.  Similarly if a attempt ta write a funky-ass block fails,
+the address is ghon be recorded as a wack block.  If attemptin ta record
+the wack block fails, tha whole thang is ghon be marked faulty.
+
+Attemptin ta read from a known wack block will cause a read error.
+Attemptin ta write ta a known wack block is ghon be ignored if any write
+errors done been reported by tha device.  If there done been no write
+errors then tha data is ghon be freestyled ta tha known wack block n' if
+that succeeds, tha address is ghon be removed from tha list.
+
+This allows a array ta fail mo' gracefully - all dem blocks on
+different devices can be faulty without takin tha whole array up of
+action.
+
+Da log is particularly useful when recoverin ta a spare.  If all dem blocks
+cannot be read from tha other devices, tha bulk of tha recovery can
+complete n' dem few wack blocks is ghon be recorded up in tha wack block log.
+
+.SS WRITE-BEHIND
+
+From Linux 2.6.14,
+.I md
+supports WRITE-BEHIND on RAID1 arrays.
+
+This allows certain devices up in tha array ta be flagged as
+.IR write-mostly .
+MD will only read from such devices if there is no
+other option.
+
+If a write-intent bitmap be also provided, write requests to
+write-mostly devices is ghon be treated as write-behind requests n' md
+will not wait fo' writes ta dem requests ta complete before
+reportin tha write as complete ta tha filesystem.
+
+This allows fo' a RAID1 wit WRITE-BEHIND ta be used ta mirror data
+over a slow link ta a remote computa (providin tha link aint too
+slow).  Da extra latency of tha remote link aint gonna slow down normal
+operations yo, but tha remote system will still gotz a reasonably
+up-to-date copy of all data.
+
+.SS RESTRIPING
+
+.IR Restripin ,
+also known as
+.IR Reshapin ,
+is tha processez of re-arrangin tha data stored up in each stripe tha fuck into a
+new layout.  This might involve changin tha number of devices up in the
+array (so tha stripes is wider), changin tha chunk size (so stripes
+are deeper or shallower), or changin tha arrangement of data and
+paritizzle (possibly changin tha RAID level, e.g. 1 ta 5 or 5 ta 6).
+
+Az of Linux 2.6.35, md can reshape a RAID4, RAID5, or RAID6 array to
+have a gangbangin' finger-lickin' different number of devices (more or fewer) n' ta have a
+different layout or chunk size.  It can also convert between these
+different RAID levels.  It can also convert between RAID0 n' RAID10,
+and between RAID0 n' RAID4 or RAID5.
+Other possibilitizzles may follow up in future kernels.
+
+Durin any stripe process there be a 'critical section' durin which
+live data is bein overwritten on disk.  For tha operation of
+increasin tha number of drives up in a RAID5, dis critical section
+covers tha straight-up original gangsta few stripes (the number bein tha thang of tha old
+and freshly smoked up number of devices).  Afta dis critical section is passed,
+data is only freestyled ta areaz of tha array which no longer hold live
+data \(em tha live data has already been located away.
+
+For a reshape which reduces tha number of devices, tha 'critical
+section' be all up in tha end of tha reshape process.
+
+md aint able ta ensure data preservation if there be a cold-ass lil crash
+(e.g. juice failure) durin tha critical section. I aint talkin' bout chicken n' gravy biatch.  If md be axed to
+start a array which failed durin a cold-ass lil critical section of restriping,
+it will fail ta start tha array.
+
+To deal wit dis possibility, a user-space program must
+.IP \(bu 4
+Disable writes ta dat section of tha array (usin the
+.B sysfs
+interface),
+.IP \(bu 4
+take a cold-ass lil copy of tha data somewhere (i.e. cook up a funky-ass backup),
+.IP \(bu 4
+allow tha process ta continue n' invalidate tha backup n' restore
+write access once tha critical section is passed, and
+.IP \(bu 4
+provide fo' restorin tha critical data before restartin tha array
+afta a system crash.
+.PP
+
+.B mdadm
+versions from 2.4 do dis fo' growin a RAID5 array.
+
+For operations dat do not chizzle tha size of tha array, like simply
+increasin chunk size, or convertin RAID5 ta RAID6 wit one extra
+device, tha entire process is tha critical section. I aint talkin' bout chicken n' gravy biatch.  In dis case, the
+restripe will need ta progress up in stages, as a section is suspended,
+backed up, restriped, n' busted out.
+
+.SS SYSFS INTERFACE
+Each block thang appears as a gangbangin' finger-lickin' directory in
+.I sysfs
+(which is probably mounted at
+.BR /sys ).
+For MD devices, dis directory will contain a subdirectory called
+.B md
+which gotz nuff various filez fo' providin access ta shiznit about
+the array.
+
+This intercourse is documented mo' straight-up up in tha file
+.B Documentation/md.txt
+which is distributed wit tha kernel sources.  That file should be
+consulted fo' full documentation. I aint talkin' bout chicken n' gravy biatch.  Da followin is just a selection
+of attribute filez dat is available.
+
+.TP
+.B md/sync_speed_min
+This value, if set, overrides tha system-wide settin in
+.B /proc/sys/dev/raid/speed_limit_min
+for dis array only.
+Freestylin tha value
+.B "system"
+to dis file will cause tha system-wide settin ta have effect.
+
+.TP
+.B md/sync_speed_max
+This is tha partner of
+.B md/sync_speed_min
+and overrides
+.B /proc/sys/dev/raid/speed_limit_max
+busted lyrics bout below.
+
+.TP
+.B md/sync_action
+This can be used ta monitor n' control tha resync/recovery process of
+MD.
+In particular, freestylin "check" here will cause tha array ta read all
+data block n' check dat they is consistent (e.g. paritizzle is erect,
+or all mirror replicas is tha same).  Any discrepancies found are
+.B NOT
+corrected.
+
+A count of problems found is ghon be stored in
+.BR md/mismatch_count .
+
+Alternately, "repair" can be freestyled which will cause tha same check
+to be performed yo, but any errors is ghon be erected.
+
+Finally, "idle" can be freestyled ta stop tha check/repair process.
+
+.TP
+.B md/stripe_cache_size
+This is only available on RAID5 n' RAID6.  It recordz tha size (in
+pages per device) of tha  stripe cache which is used fo' synchronising
+all write operations ta tha array n' all read operations if tha array
+is degraded. Y'all KNOW dat shit, muthafucka!  Da default is 256.  Valid joints is 17 ta 32768.
+Increasin dis number can increase performizzle up in some thangs, at
+some cost up in system memory.  Note, settin dis value too high can
+result up in a "out of memory" condizzle fo' tha system.
+
+memory_consumed = system_page_size * nr_disks * stripe_cache_size
+
+.TP
+.B md/preread_bypass_threshold
+This is only available on RAID5 n' RAID6.  This variable sets the
+number of times MD will steez a gangbangin' full-stripe-write before servicin a
+stripe dat requires some "prereading".  For fairnizz dis defaults to
+1.  Valid joints is 0 ta stripe_cache_size.  Settin dis ta 0
+maximizes sequential-write throughput all up in tha cost of fairnizz ta threads
+fuckin wit lil' small-ass or random writes.  
+
+.SS KERNEL PARAMETERS
+
+Da md driver recognised nuff muthafuckin different kernel parameters.
+.TP
+.B raid=noautodetect
+This will disable tha aiiight detection of md arrays dat happens at
+boot time.  If a thugged-out drive is partitioned wit MS-DOS steez partitions,
+then if any of tha 4 main partitions has a partizzle type of 0xFD,
+then dat partizzle will normally be inspected ta peep if it is part of
+an MD array, n' if any full arrays is found, they is started. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  This
+kernel parameta disablez dis behaviour.
+
+.TP
+.B raid=partitionable
+.TP
+.B raid=part
+These is available up in 2.6 n' lata kernels only.  They indicate that
+autodetected MD arrays should be pimped as partitionable arrays, with
+a different major thang number ta tha original gangsta non-partitionable md
+arrays.  Da thang number is listed as
+.I mdp
+in
+.IR /proc/devices .
+
+.TP
+.B md_mod.start_ro=1
+.TP
+.B /sys/module/md_mod/parameters/start_ro
+This  drops some lyrics ta md ta start all arrays up in read-only mode.  This be a soft
+read-only dat will automatically switch ta read-write on tha first
+write request.  However until dat write request, not a god damn thang is written
+to any thang by md, n' up in particular, no resync or recovery
+operation is started.
+
+.TP
+.B md_mod.start_dirty_degraded=1
+.TP
+.B /sys/module/md_mod/parameters/start_dirty_degraded
+As mentioned above, md aint gonna normally start a RAID4, RAID5, or
+RAID6 dat is both dirty n' degraded as dis thang can imply
+hidden data loss.  This can be awkward if tha root filesystem is
+affected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Usin dis module parameta allows such arrays ta be started
+at boot time.  It should be understood dat there be a real (though
+small) risk of data corruption up in dis thang.
+
+.TP
+.BI md= n , dev , dev ,...
+.TP
+.BI md=d n , dev , dev ,...
+This  drops some lyrics ta tha md driver ta assemble
+.B /dev/md n
+from tha listed devices.  It be only necessary ta start tha device
+holdin tha root filesystem dis way.  Other arrays is dopest started
+once tha system is booted.
+
+In 2.6 kernels, the
+.B d
+immediately afta the
+.B =
+indicates dat a partitionable thang (e.g.
+.BR /dev/md/d0 )
+should be pimped rather than tha original gangsta non-partitionable device.
+
+.TP
+.BI md= n , l , c , i , dev...
+This  drops some lyrics ta tha md driver ta assemble a legacy RAID0 or LINEAR array
+without a superblock.
+.I n
+gives tha md thang number,
+.I l
+gives tha level, 0 fo' RAID0 or \-1 fo' LINEAR,
+.I c
+gives tha chunk size as a funky-ass base-2 logarithm offset by twelve, so 0
+means 4K, 1 means 8K.
+.I i
+is ignored (legacy support).
+
+.SH FILES
+.TP
+.B /proc/mdstat
+Gotz Nuff shiznit bout tha statuz of currently hustlin array.
+.TP
+.B /proc/sys/dev/raid/speed_limit_min
+A readable n' writable file dat reflects tha current "goal" rebuild
+speed fo' times when non-rebuild activitizzle is current on a array.
+Da speed is up in Kibibytes per second, n' be a per-device rate, not a
+per-array rate (which means dat a array wit mo' disks will shuffle
+more data fo' a given speed).   Da default is 1000.
+
+.TP
+.B /proc/sys/dev/raid/speed_limit_max
+A readable n' writable file dat reflects tha current "goal" rebuild
+speed fo' times when no non-rebuild activitizzle is current on a array.
+Da default is 200,000.
+
+.SH SEE ALSO
+.BR mdadm (8),

@@ -1,0 +1,804 @@
+'\" t
+.TH "DAEMON" "7" "" "systemd 208" "daemon"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+daemon \- Freestylin n' packagin system daemons
+.SH "DESCRIPTION"
+.PP
+A daemon be a steez process dat runs up in tha background n' supervises tha system or serves up functionalitizzle ta other processes\&. Traditionally, daemons is implemented followin a scheme originatin up in SysV Unix\&. Modern daemons should follow a simpla yet mo' bangin scheme (here called "new\-style" daemons), as implemented by
+\fBsystemd\fR(1)\&. This manual page covers both schemes, n' up in particular includes recommendations fo' daemons dat shall be included up in tha systemd init system\&.
+.SS "SysV Daemons"
+.PP
+When a traditionizzle SysV daemon starts, it should execute tha followin steps as part of tha initialization\&. Note dat these steps is unnecessary fo' new\-style daemons (see below), n' should only be implemented if compatibilitizzle wit SysV is essential\&.
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+Close all open file descriptors except stdin, stdout, stderr (i\&.e\&. tha straight-up original gangsta three file descriptors 0, 1, 2)\&. This ensures dat no accidentally passed file descriptor stays round up in tha daemon process\&. On Linux, dis is dopest implemented by iteratin through
+/proc/self/fd, wit a gangbangin' fallback of iteratin from file descriptor 3 ta tha value returned by
+\fBgetrlimit()\fR
+for RLIMIT_NOFILE\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+Reset all signal handlezs ta they default\&. This is dopest done by iteratin all up in tha available signals up ta tha limit of _NSIG n' resettin dem to
+\fBSIG_DFL\fR\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Reset tha signal mask using
+\fBsigprocmask()\fR\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+Sanitize tha environment block, removin or resettin environment variablez dat might negatively impact daemon runtime\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+Call
+\fBfork()\fR, ta create a funky-ass background process\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+In tha child, call
+\fBsetsid()\fR
+to detach from any terminal n' create a independent session\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+In tha child, call
+\fBfork()\fR
+again, ta ensure dat tha daemon can never re\-acquire a terminal again\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 8.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  8." 4.2
+.\}
+Call
+\fBexit()\fR
+in tha straight-up original gangsta child, so dat only tha second lil pimp (the actual daemon process) stays around\&. This ensures dat tha daemon process is re\-parented ta init/PID 1, as all daemons should be\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 9.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  9." 4.2
+.\}
+In tha daemon process, connect
+/dev/null
+to standard input, output, n' error\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'10.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "10." 4.2
+.\}
+In tha daemon process, reset tha umask ta 0, so dat tha file modes passed to
+\fBopen()\fR,
+\fBmkdir()\fR
+and suchlike directly control tha access mode of tha pimped filez n' directories\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'11.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "11." 4.2
+.\}
+In tha daemon process, chizzle tha current directory ta tha root directory (/), up in order ta avoid dat tha daemon involuntarily blocks mount points from bein unmounted\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'12.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "12." 4.2
+.\}
+In tha daemon process, write tha daemon PID (as returned by
+\fBgetpid()\fR) ta a PID file, fo' example
+/var/run/foobar\&.pid
+(for a hypothetical daemon "foobar") ta ensure dat tha daemon cannot be started mo' than once\&. This must be implemented up in race\-free fashizzle so dat tha PID file is only updated when it is verified all up in tha same time dat tha PID previously stored up in tha PID file no longer exists or belongs ta a gangbangin' foreign process\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'13.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "13." 4.2
+.\}
+In tha daemon process, drop privileges, if possible n' applicable\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'14.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "14." 4.2
+.\}
+From tha daemon process, notify tha original gangsta process started dat initialization is complete\&. This can be implemented via a unnamed pipe or similar communication channel dat is pimped before tha first
+\fBfork()\fR
+and hence available up in both tha original gangsta n' tha daemon process\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'15.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "15." 4.2
+.\}
+Call
+\fBexit()\fR
+in tha original gangsta process\&. Da process dat invoked tha daemon must be able ta rely on dat this
+\fBexit()\fR
+happens afta initialization is complete n' all external communication channels is established n' accessible\&.
+.RE
+.PP
+Da BSD
+\fBdaemon()\fR
+function should not be used, as it implements only a subset of these steps\&.
+.PP
+A daemon dat need ta provide compatibilitizzle wit SysV systems should implement tha scheme pointed up above\&. But fuck dat shiznit yo, tha word on tha street is dat it is recommended ta make dis behavior optionizzle n' configurable via a cold-ass lil command line argument ta ease debuggin as well as ta simplify integration tha fuck into systems rockin systemd\&.
+.SS "New\-Style Daemons"
+.PP
+Modern skillz fo' Linux should be implemented as new\-style daemons\&. This make it easier ta supervise n' control dem at runtime n' simplifies they implementation\&.
+.PP
+For pimpin a new\-style daemon, none of tha initialization steps recommended fo' SysV daemons need ta be implemented\&. New\-style init systems like fuckin systemd make all of dem redundant\&. Mo'over, since a shitload of these steps interfere wit process monitoring, file descriptor passin n' other functionalitizzle of tha init system, it is recommended not ta execute dem when run as new\-style service\&.
+.PP
+Note dat new\-style init systems guarantee execution of daemon processes up in a cold-ass lil clean process context: it is guaranteed dat tha environment block is sanitized, dat tha signal handlezs n' mask is reset n' dat no left\-over file descriptors is passed\&. Daemons is ghon be executed up in they own session, wit standard input/output/error connected to
+/dev/null
+unless otherwise configured\&. Da umask is reset\&.
+.PP
+It be recommended fo' new\-style daemons ta implement tha following:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+If
+\fBSIGTERM\fR
+is received, shut down tha daemon n' exit cleanly\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+If
+\fBSIGHUP\fR
+is received, reload tha configuration files, if dis applies\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Provide a cold-ass lil erect exit code from tha main daemon process, as dis is used by tha init system ta detect steez errors n' problems\&. Well shiiiit, it is recommended ta follow tha exit code scheme as defined up in the
+\m[blue]\fBLSB recommendations fo' SysV init scripts\fR\m[]\&\s-2\u[1]\d\s+2\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+If possible n' applicable, expose tha daemon\*(Aqs control intercourse via tha D\-Bus IPC system n' grab a funky-ass bus name as last step of initialization\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+For integration up in systemd, provide a
+\&.service
+unit file dat carries shiznit bout starting, stoppin n' otherwise maintainin tha daemon\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.service\fR(5)
+for details\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+As much as possible, rely on tha init system\*(Aqs functionalitizzle ta limit tha access of tha daemon ta files, skillz n' other resources, i\&.e\&. up in tha case of systemd, rely on systemd\*(Aqs resource limit control instead of implementin yo' own, rely on systemd\*(Aqs privilege droppin code instead of implementin it up in tha daemon, n' similar\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.exec\fR(5)
+for tha available controls\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+If D\-Bus is used, make yo' daemon bus\-activatable by supplyin a D\-Bus steez activation configuration file\&. This has multiple advantages: yo' daemon may be started lazily on\-demand; it may be started up in parallel ta other daemons requirin it \-\- which maximizes parallelization n' boot\-up speed; yo' daemon can be restarted on failure without losin any bus requests, as tha bus queues requests fo' activatable skillz\&. Right back up in yo muthafuckin ass. See below fo' details\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 8.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  8." 4.2
+.\}
+If yo' daemon serves up skillz ta other local processes or remote clients via a socket, it should be made socket\-activatable followin tha scheme pointed up below\&. Like D\-Bus activation, dis enablez on\-demand startin of skillz as well as it allows improved parallelization of steez start\-up\& fo' realz. Also, fo' state\-less protocols (like fuckin syslog, DNS), a thugged-out daemon implementin socket\-based activation can be restarted without losin a single request\&. Right back up in yo muthafuckin ass. See below fo' details\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 9.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  9." 4.2
+.\}
+If applicable, a thugged-out daemon should notify tha init system bout startup completion or status thugged-out shiznit via the
+\fBsd_notify\fR(3)
+interface\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'10.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "10." 4.2
+.\}
+Instead of rockin the
+\fBsyslog()\fR
+call ta log directly ta tha system syslog service, a new\-style daemon may chizzle ta simply log ta standard error via
+\fBfprintf()\fR, which is then forwarded ta syslog by tha init system\&. If log prioritizzles is necessary, these can be encoded by prefixin individual log lines wit strings like "<4>" (for log prioritizzle 4 "WARNING" up in tha syslog prioritizzle scheme), followin a similar steez as tha Linux kernel\*(Aqs
+\fBprintk()\fR
+prioritizzle system\&. In fact, rockin dis steez of loggin also enablez tha init system ta optionally direct all application loggin ta tha kernel log buffer (kmsg), as accessible via
+\fBdmesg\fR(1)\&. This kind of loggin may be enabled by setting
+\fIStandardError=syslog\fR
+in tha steez unit file\&. For details, see
+\fBsd-daemon\fR(3)
+and
+\fBsystemd.exec\fR(5)\&.
+.RE
+.PP
+These recommendations is similar but not identical ta the
+\m[blue]\fBApplez MacOS X Daemon Requirements\fR\m[]\&\s-2\u[2]\d\s+2\&.
+.SH "ACTIVATION"
+.PP
+New\-style init systems provide multiple additionizzle mechanizzlez ta activate skillz, as detailed below\&. Well shiiiit, it is common dat skillz is configured ta be activated via mo' than one mechanizzle all up in tha same time\& fo' realz. An example fo' systemd:
+bluetoothd\&.service
+might git activated either when Bluetooth hardware is plugged in, or when a application accesses its programmin intercourses via D\-Bus\&. Or, a print server daemon might git activated when traffic arrives at a IPP port, or when a printa is plugged in, or when a gangbangin' file is queued up in tha printa spool directory\&. Even fo' skillz dat is intended ta be started on system bootup unconditionally, it aint nuthin but a phat scam ta implement a shitload of tha various activation schemes outlined below, up in order ta maximize parallelization\&. If a thugged-out daemon implements a D\-Bus steez or listenin socket, implementin tha full bus n' socket activation scheme allows startin of tha daemon wit its clients up in parallel (which speedz up boot\-up), since all its communication channels is established already, n' no request is lost cuz client requests is ghon be queued by tha bus system (in case of D\-Bus) or tha kernel (in case of sockets) until tha activation is completed\&.
+.SS "Activation on Boot"
+.PP
+Old\-style daemons is probably activated exclusively on boot (and manually by tha administrator) via SysV init scripts, as detailed up in the
+\m[blue]\fBLSB Linux Standard Base Core Justification\fR\m[]\&\s-2\u[1]\d\s+2\&. This method of activation is supported ubiquitously on Linux init systems, both old\-style n' new\-style systems\& fo' realz. Among other issues, SysV init scripts have tha disadvantage of involvin shell scripts up in tha boot process\&. New\-style init systems generally employ updated versionz of activation, both durin boot\-up n' durin runtime n' rockin mo' minimal steez description files\&.
+.PP
+In systemd, if tha pimper or administrator wants ta make shizzle dat a steez or other unit be activated automatically on boot, it is recommended ta place a symlink ta tha unit file up in the
+\&.wants/
+directory of either
+multi\-user\&.target
+or
+graphical\&.target, which is normally used as boot targets at system startup\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.unit\fR(5)
+for details bout the
+\&.wants/
+directories, and
+\fBsystemd.special\fR(7)
+for details bout tha two boot targets\&.
+.SS "Socket\-Based Activation"
+.PP
+In order ta maximize tha possible parallelization n' robustnizz n' simplify configuration n' pimpment, it is recommended fo' all new\-style daemons dat rap via listenin sockets ta employ socket\-based activation\&. In a socket\-based activation scheme, tha creation n' bindin of tha listenin socket as primary communication channel of daemons ta local (and sometimes remote) clients is moved outta tha daemon code n' tha fuck into tha init system\&. Based on per\-daemon configuration, tha init system installs tha sockets n' then handz dem off ta tha spawned process as soon as tha respectizzle daemon is ta be started\&. Optionally, activation of tha steez can be delayed until tha straight-up original gangsta inbound traffic arrives all up in tha socket ta implement on\-demand activation of daemons\&. But fuck dat shiznit yo, tha word on tha street is dat tha primary advantage of dis scheme is dat all providaz n' all thugz of tha sockets can be started up in parallel as soon as all sockets is established\&. In addizzle ta that, daemons can be restarted wit losin only a minimal number of client transactions, or even any client request at all (the latta is particularly legit fo' state\-less protocols, like fuckin DNS or syslog), cuz tha socket stays bound n' accessible durin tha restart, n' all requests is queued while tha daemon cannot process them\&.
+.PP
+New\-style daemons which support socket activation must be able ta receive they sockets from tha init system instead of bustin n' bindin dem theyselves\&. For details bout tha programmin intercourses fo' dis scheme provided by systemd, see
+\fBsd_listen_fds\fR(3)
+and
+\fBsd-daemon\fR(3)\&. For details bout portin existin daemons ta socket\-based activation, peep below\&. With minimal effort, it is possible ta implement socket\-based activation up in addizzle ta traditionizzle internal socket creation up in tha same codebase up in order ta support both new\-style n' old\-style init systems from tha same daemon binary\&.
+.PP
+systemd implements socket\-based activation via
+\&.socket
+units, which is busted lyrics bout in
+\fBsystemd.socket\fR(5)\&. When configurin socket units fo' socket\-based activation, it is essential dat all listenin sockets is pulled up in by tha special target unit
+sockets\&.target\&. Well shiiiit, it is recommended ta place a
+\fIWantedBy=sockets\&.target\fR
+directizzle up in the
+"[Install]"
+section ta automatically add such a thugged-out dependency on installation of a socket unit\&. Unless
+\fIDefaultDependencies=no\fR
+is set, tha necessary orderin dependencies is implicitly pimped fo' all socket units\&. For mo' shiznit about
+sockets\&.target, see
+\fBsystemd.special\fR(7)\&. Well shiiiit, it aint necessary or recommended ta place any additionizzle dependencies on socket units (for example from
+multi\-user\&.target
+or suchlike) when one is installed in
+sockets\&.target\&.
+.SS "Bus\-Based Activation"
+.PP
+When tha D\-Bus IPC system is used fo' communication wit clients, new\-style daemons should employ bus activation so dat they is automatically activated when a cold-ass lil client application accesses they IPC intercourses\&. This is configured up in D\-Bus steez filez (not ta be trippin wit systemd steez unit files!)\&. To ensure dat D\-Bus uses systemd ta start\-up n' maintain tha daemon, use the
+\fISystemdService=\fR
+directizzle up in these steez filez ta configure tha matchin systemd steez fo' a D\-Bus service\&. e\&.g\&.: For a D\-Bus steez whose D\-Bus activation file is named
+org\&.freedesktop\&.RealtimeKit\&.service, make shizzle ta set
+\fISystemdService=rtkit\-daemon\&.service\fR
+in dat file ta bind it ta tha systemd service
+rtkit\-daemon\&.service\&. This is needed ta make shizzle dat tha daemon is started up in a race\-free fashizzle when activated via multiple mechanizzlez simultaneously\&.
+.SS "Device\-Based Activation"
+.PP
+Often, daemons dat manage a particular type of hardware should be activated only when tha hardware of tha respectizzle kind is plugged up in or otherwise becomes available\&. In a new\-style init system, it is possible ta bind activation ta hardware plug/unplug events\&. In systemd, kernel devices appearin up in tha sysfs/udev thang tree can be exposed as units if they is tagged wit tha string
+"systemd"\&. Like any other kind of unit, they may then pull up in other units when activated (i\&.e\&. plugged in) n' thus implement device\-based activation\&. systemd dependencies may be encoded up in tha udev database via the
+\fISYSTEMD_WANTS=\fR
+property\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.device\fR(5)
+for details\&. Often, it is sickr ta pull up in skillz from devices only indirectly via dedicated targets\&. Example: Instead of pullin in
+bluetoothd\&.service
+from all tha various bluetooth donglez n' other hardware available, pull up in bluetooth\&.target from dem and
+bluetoothd\&.service
+from dat target\&. This serves up fo' sickr abstraction n' gives administrators tha option ta enable
+bluetoothd\&.service
+via controllin a
+bluetooth\&.target\&.wants/
+symlink uniformly wit a cold-ass lil command like
+\fBenable\fR
+of
+\fBsystemctl\fR(1)
+instead of manipulatin tha udev ruleset\&.
+.SS "Path\-Based Activation"
+.PP
+Often, runtime of daemons processin spool filez or directories (like fuckin a printin system) can be delayed until these file system objects chizzle state, or become non\-empty\&. New\-style init systems provide a way ta bind steez activation ta file system chizzles\&. systemd implements dis scheme via path\-based activation configured in
+\&.path
+units, as outlined in
+\fBsystemd.path\fR(5)\&.
+.SS "Timer\-Based Activation"
+.PP
+Some daemons dat implement clean\-up thangs dat is intended ta be executed up in regular intervals benefit from timer\-based activation\&. In systemd, dis is implemented via
+\&.timer
+units, as busted lyrics bout in
+\fBsystemd.timer\fR(5)\&.
+.SS "Other Formz of Activation"
+.PP
+Other formz of activation done been suggested n' implemented up in some systems\&. But fuck dat shiznit yo, tha word on tha street is dat there be often simpla or betta alternatives, or they can be put together of combinationz of tha schemes above\&. Example: Sometimes, it appears useful ta start daemons or
+\&.socket
+units when a specific IP address is configured on a network intercourse, cuz network sockets shall be bound ta tha address\&. But fuck dat shiznit yo, tha word on tha street is dat a alternatizzle ta implement dis is by utilizin tha Linux IP_FREEBIND socket option, as accessible via
+\fIFreeBind=yes\fR
+in systemd socket filez (see
+\fBsystemd.socket\fR(5)
+for details)\&. This option, when enabled, allows sockets ta be bound ta a non\-local, not configured IP address, n' hence allows bindings ta a particular IP address before it straight-up becomes available, makin such a explicit dependency ta tha configured address redundant\& fo' realz. Another often suggested trigger fo' steez activation is low system load\&. But fuck dat shiznit yo, tha word on tha street is dat here too, a mo' convincin approach might be ta make proper use of featurez of tha operatin system, up in particular, tha CPU or IO schedula of Linux\&. Instead of schedulin thangs from userspace based on monitorin tha OS scheduler, it be advisable ta leave tha schedulin of processes ta tha OS schedula itself\&. systemd serves up fine\-grained access ta tha CPU n' IO schedulers\&. If a process executed by tha init system shall not negatively impact tha amount of CPU or IO bandwidth available ta other processes, it should be configured with
+\fICPUSchedulingPolicy=idle\fR
+and/or
+\fIIOSchedulingClass=idle\fR\&. Optionally, dis may be combined wit timer\-based activation ta schedule background thangs durin runtime n' wit minimal impact on tha system, n' remove it from tha boot phase itself\&.
+.SH "INTEGRATION WITH SYSTEMD"
+.SS "Freestylin Systemd Unit Files"
+.PP
+When freestylin systemd unit files, it is recommended ta consider tha followin suggestions:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+If possible, do not use the
+\fIType=forking\fR
+settin up in steez files\&. But if you do, make shizzle ta set tha PID file path using
+\fIPIDFile=\fR\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.service\fR(5)
+for details\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+If yo' daemon registas a D\-Bus name on tha bus, make shizzle ta use
+\fIType=dbus\fR
+in tha steez file if possible\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Make shizzle ta set a phat human\-readable description strang with
+\fIDescription=\fR\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+Do not disable
+\fIDefaultDependencies=\fR, unless you straight-up know what tha fuck you do n' yo' unit is involved up in early boot or late system shutdown\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+Normally, lil if any dependencies should need ta be defined explicitly\&. But fuck dat shiznit yo, tha word on tha street is dat if you do configure explicit dependencies, only refer ta unit names listed on
+\fBsystemd.special\fR(7)
+or names introduced by yo' own package ta keep tha unit file operatin system\-independent\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+Make shizzle ta include an
+"[Install]"
+section includin installation shiznit fo' tha unit file\&. Right back up in yo muthafuckin ass. See
+\fBsystemd.unit\fR(5)
+for details\&. To activate yo' steez on boot, make shizzle ta add a
+\fIWantedBy=multi\-user\&.target\fR
+or
+\fIWantedBy=graphical\&.target\fR
+directive\&. To activate yo' socket on boot, make shizzle ta add
+\fIWantedBy=sockets\&.target\fR\&. Usually, you also wanna make shizzle dat when yo' steez is installed, yo' socket is installed too, hence add
+\fIAlso=foo\&.socket\fR
+in yo' steez file
+foo\&.service, fo' a hypothetical program
+foo\&.
+.RE
+.SS "Installin Systemd Service Files"
+.PP
+At tha build installation time (e\&.g\&.
+\fBmake install\fR
+durin package build), packages is recommended ta install they systemd unit filez up in tha directory returned by
+\fBpkg\-config systemd \-\-variable=systemdsystemunitdir\fR
+(for system skillz) or
+\fBpkg\-config systemd \-\-variable=systemduserunitdir\fR
+(for user skillz)\&. This will make tha skillz available up in tha system on explicit request but not activate dem automatically durin boot\&. Optionally, durin package installation (e\&.g\&.
+\fBrpm \-i\fR
+by tha administrator), symlinks should be pimped up in tha systemd configuration directories via the
+\fBenable\fR
+command of the
+\fBsystemctl\fR(1)
+tool ta activate dem automatically on boot\&.
+.PP
+Packages using
+\fBautoconf\fR(1)
+are recommended ta bust a cold-ass lil configure script excerpt like tha followin ta determine tha unit installation path durin source configuration:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+PKG_PROG_PKG_CONFIG
+AC_ARG_WITH([systemdsystemunitdir],
+     AS_HELP_STRING([\-\-with\-systemdsystemunitdir=DIR], [Directory fo' systemd steez files]),,
+     [with_systemdsystemunitdir=auto])
+AS_IF([test "x$with_systemdsystemunitdir" = "xyes" \-o "x$with_systemdsystemunitdir" = "xauto"], [
+     def_systemdsystemunitdir=$($PKG_CONFIG \-\-variable=systemdsystemunitdir systemd)
+
+     AS_IF([test "x$def_systemdsystemunitdir" = "x"],
+         [AS_IF([test "x$with_systemdsystemunitdir" = "xyes"],
+                [AC_MSG_ERROR([systemd support axed but pkg\-config unable ta query systemd package])])
+          with_systemdsystemunitdir=no],
+         [with_systemdsystemunitdir=$def_systemdsystemunitdir])])
+AS_IF([test "x$with_systemdsystemunitdir" != "xno"],
+      [AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])])
+AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$with_systemdsystemunitdir" != "xno"])
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+This snippet allows automatic installation of tha unit filez on systemd machines, n' optionally allows they installation even on machines lackin systemd\&. (Modification of dis snippet fo' tha user unit directory is left as a exercise fo' tha reader\&.)
+.PP
+Additionally, ta ensure that
+\fBmake distcheck\fR
+continues ta work, it is recommended ta add tha followin ta tha top\-level
+Makefile\&.am
+file in
+\fBautomake\fR(1)\-based projects:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+DISTCHECK_CONFIGURE_FLAGS = \e
+        \-\-with\-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Finally, unit filez should be installed up in tha system wit a automake excerpt like tha following:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+if HAVE_SYSTEMD
+systemdsystemunit_DATA = \e
+        foobar\&.socket \e
+        foobar\&.service
+endif
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+In the
+\fBrpm\fR(8)\&.spec
+file, use snippets like tha followin ta enable/disable tha steez durin installation/deinstallation\&. This make use of tha RPM macros shipped along systemd\&. Consult tha packagin guidelinez of yo' distribution fo' details n' tha equivalent fo' other package managers\&.
+.PP
+At tha top of tha file:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+BuildRequires: systemd
+%{?systemd_requires}
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+And as scriptlets, further down:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+%post
+%systemd_post foobar\&.service foobar\&.socket
+
+%preun
+%systemd_preun foobar\&.service foobar\&.socket
+
+%postun
+%systemd_postun
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+If tha steez shall be restarted durin upgrades, replace the
+"%postun"
+scriptlet above wit tha following:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+%postun
+%systemd_postun_with_restart foobar\&.service
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Note that
+"%systemd_post"
+and
+"%systemd_preun"
+expect tha namez of all units dat is installed/removed as arguments, separated by spaces\&.
+"%systemd_postun"
+expects no arguments\&.
+"%systemd_postun_with_restart"
+expects tha units ta restart as arguments\&.
+.PP
+To facilitate upgrades from a package version dat shipped only SysV init scripts ta a package version dat ships both a SysV init script n' a natizzle systemd steez file, bust a gangbangin' fragment like tha following:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+%triggerun \-\- foobar < 0\&.47\&.11\-1
+if /sbin/chkconfig \-\-level 5 foobar ; then
+        /bin/systemctl \-\-no\-reload enable foobar\&.service foobar\&.socket >/dev/null 2>&1 || :
+fi
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Where 0\&.47\&.11\-1 is tha straight-up original gangsta package version dat includes tha natizzle unit file\&. This fragment will ensure dat tha last time tha unit file is installed, it is ghon be enabled if n' only if tha SysV init script is enabled, thus makin shizzle dat tha enable status aint chizzled\&. Note that
+\fBchkconfig\fR
+is a cold-ass lil command specific ta Fedora which can be used ta check whether a SysV init script is enabled\&. Other operatin systems will gotta use different commandz here\&.
+.SH "PORTING EXISTING DAEMONS"
+.PP
+Since new\-style init systems like fuckin systemd is compatible wit traditionizzle SysV init systems, it aint strictly necessary ta port existin daemons ta tha freshly smoked up style\&. But fuck dat shiznit yo, tha word on tha street is dat bustin so offers additionizzle functionalitizzle ta tha daemons as well as simplifyin integration tha fuck into new\-style init systems\&.
+.PP
+To port a existin SysV compatible daemon, tha followin steps is recommended:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+If not already implemented, add a optionizzle command line switch ta tha daemon ta disable daemonization\&. This is useful not only fo' rockin tha daemon up in new\-style init systems yo, but also ta ease debugging\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+If tha daemon offers intercourses ta other software hustlin on tha local system via local
+\fBAF_UNIX\fR
+sockets, consider implementin socket\-based activation (see above)\&. Usually, a minimal patch is sufficient ta implement this: Extend tha socket creation up in tha daemon code so that
+\fBsd_listen_fds\fR(3)
+is checked fo' already passed sockets first\&. If sockets is passed (i\&.e\&. when
+\fBsd_listen_fds()\fR
+returns a positizzle value), skip tha socket creation step n' use tha passed sockets\&. Right back up in yo muthafuckin ass. Secondly, ensure dat tha file system socket nodes fo' local
+\fBAF_UNIX\fR
+sockets used up in tha socket\-based activation is not removed when tha daemon shuts down, if sockets done been passed\&. Third, if tha daemon normally closes all remainin open file descriptors as part of its initialization, tha sockets passed from tha init system must be spared\&. Right back up in yo muthafuckin ass. Since new\-style init systems guarantee dat no left\-over file descriptors is passed ta executed processes, it might be a phat chizzle ta simply skip tha closin of all remainin open file descriptors if sockets is passed\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Write n' install a systemd unit file fo' tha steez (and tha sockets if socket\-based activation is used, as well as a path unit file, if tha daemon processes a spool directory), peep above fo' details\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+If tha daemon exposes intercourses via D\-Bus, write n' install a D\-Bus activation file fo' tha service, peep above fo' details\&.
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fR(1),
+\fBsd-daemon\fR(3),
+\fBsd_listen_fds\fR(3),
+\fBsd_notify\fR(3),
+\fBdaemon\fR(3),
+\fBsystemd.service\fR(5)
+.SH "NOTES"
+.IP " 1." 4
+LSB recommendations fo' SysV init scripts
+.RS 4
+\%http://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/iniscrptact.html
+.RE
+.IP " 2." 4
+Applez MacOS X Daemon Requirements
+.RS 4
+\%https://developer.apple.com/library/mac/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html
+.RE

@@ -1,0 +1,176 @@
+'\" t
+.TH "SYSCTL\&.D" "5" "" "systemd 208" "sysctl.d"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+sysctl.d \- Configure kernel parametas at boot
+.SH "SYNOPSIS"
+.PP
+/etc/sysctl\&.d/*\&.conf
+.PP
+/run/sysctl\&.d/*\&.conf
+.PP
+/usr/lib/sysctl\&.d/*\&.conf
+.SH "DESCRIPTION"
+.PP
+At boot,
+\fBsystemd-sysctl.service\fR(8)
+readz configuration filez from tha above directories ta configure
+\fBsysctl\fR(8)
+kernel parameters\&.
+.SH "CONFIGURATION FORMAT"
+.PP
+Da configuration filez contain a list of variable assignments, separated by newlines\&. Empty lines n' lines whose first non\-whitespace characta is
+"#"
+or
+";"
+are ignored\&.
+.PP
+Each configuration file shall be named up in tha steez of
+\fIprogram\fR\&.conf\&. Filez in
+/etc/
+override filez wit tha same name in
+/usr/lib/
+and
+/run/\&. Filez in
+/run/
+override filez wit tha same name in
+/usr/lib/\&. Packages should install they configuration filez in
+/usr/lib/\&. Filez in
+/etc/
+are reserved fo' tha local administrator, whoz ass may use dis logic ta override tha configuration filez installed by vendor packages\& fo' realz. All configuration filez is sorted by they filename up in lexicographic order, regardless of which of tha directories they reside in\&. If multiple filez specify tha same variable name, tha entry up in tha file wit tha lexicographically sickest fuckin name is ghon be applied\&. Well shiiiit, it is recommended ta prefix all filenames wit a two\-digit number n' a thugged-out dash, ta simplify tha orderin of tha files\&.
+.PP
+Note dat either
+"/"
+or
+"\&."
+may be used as separators within sysctl variable names\&. If tha straight-up original gangsta separator be a slash, remainin slashes n' dots is left intact\&. If tha straight-up original gangsta separator be a thugged-out dot, dots n' slashes is interchanged\&.
+"kernel\&.domainname=foo"
+and
+"kernel/domainname=foo"
+are equivalent n' will cause
+"foo"
+to be freestyled to
+/proc/sys/kernel/domainname\&. Either
+"net\&.ipv4\&.conf\&.enp3s0/200\&.forwarding"
+or
+"net/ipv4/conf/enp3s0\&.200/forwarding"
+may be used ta refer to
+/proc/sys/net/ipv4/conf/enp3s0\&.200/forwarding\&.
+.PP
+If tha administrator wants ta disable a cold-ass lil configuration file supplied by tha vendor, tha recommended way is ta place a symlink to
+/dev/null
+in
+/etc/sysctl\&.d/
+bearin tha same filename\&.
+.PP
+Da settings configured with
+sysctl\&.d
+filez is ghon be applied early on boot\&. Da network intercourse\-specific options will also be applied individually fo' each network intercourse as it shows up in tha system\&. (Mo' specifically,
+net\&.ipv4\&.conf\&.*,
+net\&.ipv6\&.conf\&.*,
+net\&.ipv4\&.neigh\&.*
+and
+net\&.ipv6\&.neigh\&.*)\&.
+.PP
+Many sysctl parametas only become available when certain kernel modulez is loaded\&. Modulez is probably loaded on demand, e\&.g\&. when certain hardware is plugged up in or network brought up\&. This means that
+\fBsystemd-sysctl.service\fR(8)
+which runs durin early boot aint gonna configure such parametas if they become available afta it has run\&. To set such parameters, it is recommended ta add an
+\fBudev\fR(7)
+rule ta set dem parametas when they become available\& fo' realz. Alternatively, a slightly simpla n' less efficient option is ta add tha module to
+\fBmodules-load.d\fR(5), causin it ta be loaded statically before sysctl settings is applied (see example below)\&.
+.SH "EXAMPLES"
+.PP
+\fBExample\ \&1.\ \&Set kernel YP domain name\fR
+.PP
+/etc/sysctl\&.d/domain\-name\&.conf:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+kernel\&.domainname=example\&.com
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Disable packet filta on tha bridge (method one)\fR
+.PP
+/etc/udev/rules\&.d/99\-bridge\&.conf:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ACTION=="add", SUBSYSTEM=="module", KERNEL=="bridge", RUN+="/usr/lib/systemd/systemd\-sysctl \-\-prefix=/proc/sys/net/bridge"
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+/etc/sysctl\&.d/bridge\&.conf:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+net\&.bridge\&.bridge\-nf\-call\-ip6tablez = 0
+net\&.bridge\&.bridge\-nf\-call\-iptablez = 0
+net\&.bridge\&.bridge\-nf\-call\-arptablez = 0
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&Disable packet filta on tha bridge (method two)\fR
+.PP
+/etc/modules\-load\&.d/bridge\&.conf:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+bridge
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+/etc/sysctl\&.d/bridge\&.conf:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+net\&.bridge\&.bridge\-nf\-call\-ip6tablez = 0
+net\&.bridge\&.bridge\-nf\-call\-iptablez = 0
+net\&.bridge\&.bridge\-nf\-call\-arptablez = 0
+.fi
+.if n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fR(1),
+\fBsystemd-sysctl.service\fR(8),
+\fBsystemd-delta\fR(1),
+\fBsysctl\fR(8),
+\fBsysctl.conf\fR(5)\fBmodprobe\fR(8)

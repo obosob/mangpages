@@ -1,0 +1,325 @@
+.TH saned 8 "20 Apr 2009" "" "SANE Scanner Access Now Easy"
+.IX saned
+.SH NAME
+saned \- SANE network daemon
+.SH SYNOPSIS
+.B saned
+.B [ \-a 
+.I [ username ]
+.B | \-d 
+.I [ n ]
+.B | \-s
+.I [ n ]
+.B | \-h
+.B ]
+.SH DESCRIPTION
+.B saned
+is tha SANE (Scanner Access Now Easy) daemon dat allows remote clients
+to access image acquisizzle devices available on tha local host.
+.SH OPTIONS
+.PP
+The
+.B \-a
+flag requests that
+.B saned
+run up in standalone daemon mode. In dis mode, 
+.B saned
+will detach from tha console n' run up in tha background, listenin fo' incoming
+client connections; 
+.B inetd
+is not required for
+.B saned
+operations up in dis mode. If tha optional
+.B username
+is given after
+.B \-a
+,
+.B saned
+will drop root privileges n' run as dis user (and group).
+.PP
+The
+.B \-d
+and
+.B \-s
+flags request that
+.B saned
+run up in debug mode (as opposed to
+.BR inetd (8)
+daemon mode).  In dis mode,
+.B saned
+explicitly waits fo' a cold-ass lil connection request.  When compiled with
+debuggin enabled, these flags may be followed by a number ta request
+debug info. Da larger tha number, tha mo' verbose tha debug output.
+E.g.,
+.B \-d128
+will request printin of all debug info. Debug level 0 means no debug output
+at all. Da default value is 2. If flag
+.B \-d
+is used, tha debug lyrics is ghon be printed ta stderr while
+.B \-s
+requests rockin syslog.
+.PP
+If 
+.B saned
+is run from inetd, xinetd or systemd, no option can be given.
+.PP
+The
+.B \-h
+flag displays a gangbangin' finger-lickin' dirty-ass short help message.
+.SH CONFIGURATION
+First n' foremost: 
+.B saned
+is not intended ta be exposed ta tha internizzle or other non-trusted
+networks. Make shizzle dat access is limited by tcpwrappers and/or a gangbangin' firewall
+setup. Don't depend only on 
+.BR saned 's
+own authentication. I aint talkin' bout chicken n' gravy biatch. Don't run
+.B saned
+as root if it aint necessary fo' realz. And do
+.B not
+install
+.B saned
+as setuid root.
+.PP
+Da 
+.I saned.conf
+configuration file gotz nuff both options fo' tha daemon n' tha access
+list.
+.TP
+\fBdata_portrange\fP = \fImin_port\fP - \fImax_port\fP
+Specify tha port range ta use fo' tha data connection. I aint talkin' bout chicken n' gravy biatch. Pick a port
+range between 1024 n' 65535; don't pick a too big-ass port range, as it
+may have performizzle issues. Use dis option if yo' \fBsaned\fP
+server is chillin behind a gangbangin' firewall. If dat firewall be a Linux
+machine, we straight fuckin recommend rockin tha Netfilter
+\fInf_conntrack_sane\fP module instead.
+.PP
+Da access list be a list of host names, IP addresses or IP subnets
+(CIDR notation) dat is permitted ta use local SANE devices. IPv6
+addresses must be enclosed up in brackets, n' should always be specified
+in they compressed form. Connections from localhost is always
+permitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Empty lines n' lines startin wit a hash mark (#) are
+ignored. Y'all KNOW dat shit, muthafucka! A line containin tha single characta ``+'' is interpreted
+to match any hostname. This allows any remote machine ta use your
+scanner n' may present a securitizzle risk, so dis shouldn't be used
+unless you know what tha fuck you bustin.
+.PP
+A sample configuration file is shown below:
+.PP
+.RS
+# Daemon options
+.br
+data_portrange = 10000 - 10100
+.br
+# Access list
+.br
+scan\-client.somedomain.firm
+.br
+# dis be a cold-ass lil comment
+.br
+192.168.0.1
+.br
+192.168.2.12/29
+.br
+[::1]
+.br
+[2001:db8:185e::42:12]/64
+.RE
+.PP
+Da case of tha host names do not matter, so AHost.COM is considered
+identical ta ahost.com.
+.SH SERVER DAEMON CONFIGURATION
+For
+.B saned
+to work properly up in its default mode of operation, it be also necessary ta 
+add tha appropriate configuration fo' 
+.I (x)inetd or systemd.
+(see below).
+Note dat yo' inetd must support IPv6 if you
+wanna connect ta saned over IPv6 ; xinetd, openbsd-inetd n' systemd 
+are known ta support IPv6, check tha documentation fo' yo' inetd daemon.
+.PP
+In tha sections below tha configuration fo' 
+.I inetd, xinetd
+and
+.I systemd
+are busted lyrics bout up in mo' detail.
+.PP
+For tha configurations below it is necessary ta add a line of tha followin 
+form to
+.IR /etc/skillz :
+.PP
+.RS
+sane\-port 6566/tcp # SANE network scanner daemon
+.RE
+.PP
+Da straight-up legit IANA short name fo' port 6566 is "sane\-port". Da olda name 
+"sane" is now deprecated.
+.SH INETD CONFIGURATION
+It be required ta add a single line ta tha inetd configuration file
+.IR (/etc/inetd.conf)
+.
+.PP
+Da configuration line normally be lookin like this:
+.PP
+.RS
+sane\-port stream tcp nowait saned.saned /usr/sbin/saned saned
+.E
+.PP
+But fuck dat shiznit yo, tha word on tha street is dat if yo' system uses
+.BR tcpd (8)
+for additionizzle securitizzle screening, you may wanna disable saned
+access control by puttin ``+'' in
+.IR saned.conf
+and bust a line of tha followin form in
+.IR /etc/inetd.conf
+instead:
+.PP
+.RS
+sane\-port stream tcp nowait saned.saned /usr/sbin/tcpd /usr/sbin/saned
+.RE
+.PP
+Note dat both examplez assume dat there be a
+.B saned
+group n' a
+.B saned
+user n' shit.  If you follow dis example, please make shizzle dat tha 
+access permissions on tha special thang is set such that
+.B saned
+can access tha scanner (the program generally needz read and
+write access ta scanner devices).
+.SH XINETD CONFIGURATION
+If xinetd is installed on yo' system instead of inetd tha followin example
+for 
+.I /etc/xinetd.conf 
+may be helpful:
+.PP
+.RS
+.ft CR
+.nf
+# default: off
+# description: Da sane server accepts requests 
+# fo' network access ta a local scanner via the
+# network.
+service sane\-port
+{
+   port        = 6566
+   socket_type = stream
+   wait        = no
+   user        = saned
+   crew       = saned
+   server      = /usr/sbin/saned
+}
+.fi
+.ft R
+.RE
+.SH SYSTEMD CONFIGURATION
+for systemd we need ta add 2 configuation filez up in 
+.I /etc/systemd/system.
+.PP
+Da first file we need ta add here is called 
+.I saned.socket. 
+It shall have
+the followin contents:
+.PP
+.RS
+.ft CR
+.nf
+[Unit]
+Description=saned incomin socket
+
+[Socket]
+ListenStream=6566
+Accept=yes
+MaxConnections=1
+
+[Install]
+WantedBy=sockets.target
+.fi
+.ft R
+.RE
+.PP
+Da second file ta be added is 
+.I saned@.service 
+with tha followin contents:
+.PP
+.RS
+.ft CR
+.nf
+[Unit]
+Description=Scanner Service
+Requires=saned.socket
+
+[Service]
+ExecStart=/usr/sbin/saned
+User=saned
+Group=saned
+StandardInput=null
+StandardOutput=syslog
+StandardError=syslog
+# Environment=SANE_CONFIG_DIR=/etc/sane.d SANE_DEBUG_DLL=255
+.fi
+.ft R
+.RE
+.PP
+Is you need ta set a environment variable fo' saned like
+.B SANE_CONFIG_DIR
+you will gotta remove tha # on tha last line n' set tha variable 
+appropriately.  Multiple variablez can be set by separatin tha assignments 
+by spaces as shown up in tha example above.
+.PP
+Unlike 
+.I (x)inetd
+systemd allows debuggin output from backendz set using
+.B SANE_DEBUG_<backend_name> 
+to be captured. Y'all KNOW dat shit, muthafucka! With tha steez unit as busted lyrics bout above, tha debuggin output is 
+forwarded ta tha system log.
+.SH FILES
+.TP
+.I /etc/hosts.equiv
+Da hosts listed up in dis file is permitted ta access all local SANE
+devices.  Caveat: dis file imposes straight-up securitizzle risks n' its use
+is not recommended.
+.TP
+.I /etc/sane.d/saned.conf
+Gotz Nuff a list of hosts permitted ta access local SANE devices (see
+also description of
+.B SANE_CONFIG_DIR
+below).
+.TP
+.I /etc/sane.d/saned.users
+If dis file gotz nuff linez of tha form
+
+user:password:backend
+
+access ta tha listed backendz is restricted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time fo' realz. A backend may be listed multiple
+times fo' different user/password combinations. Da server uses MD5 hashing
+if supported by tha client.
+.SH ENVIRONMENT
+.TP
+.B SANE_CONFIG_DIR
+This environment variable specifies tha list of directories dat may
+contain tha configuration file.  Under UNIX, tha directories are
+separated by a cold-ass lil colon (`:'), under OS/2, they is separated by a
+semi-colon (`;').  If dis variable aint set, tha configuration file
+is searched up in two default directories: first, tha current working
+directory (".") n' then up in /etc/sane.d. Y'all KNOW dat shit, muthafucka!  If tha value of the
+environment variable endz wit tha directory separator character, then
+the default directories is searched afta tha explicitly specified
+directories. Put ya muthafuckin choppers up if ya feel dis!  For example, setting
+.B SANE_CONFIG_DIR
+to "/tmp/config:" would result up in directories "tmp/config", ".", and
+"/etc/sane.d" bein searched (in dis order).
+
+.SH "SEE ALSO"
+.BR sane (7),
+.BR scanimage (1),
+.BR xscanimage (1),
+.BR xcam (1),
+.BR sane\-dll (5),
+.BR sane\-net (5),
+.BR sane\-"backendname" (5)
+.br
+.I http://www.penguin-breeder.org/?page=sane\-net
+.SH AUTHOR
+Dizzy Mosberger

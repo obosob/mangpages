@@ -1,0 +1,757 @@
+.\" manual page [] fo' capiplugin 2.3
+.\" $Id: capiplugin.8,v 1.12 2004/10/06 15:29:20 calle Exp $
+.\" SH section heading
+.\" SS subsection heading
+.\" LP paragraph
+.\" IP indented paragraph
+.\" TP hangin label
+.TH CAPIPLUGIN 8
+.SH NAME
+capiplugin \- Plugin fo' pppd (Point-to-Point Protocol daemon)
+
+.SH SYNOPSIS
+.B pppd
+[\fIoptions\fR]
+.B plugin
+.B capiplugin.so
+[\fIoptions fo' capiplugin\fR]
+.br
+before pppd 2.4.1:
+.br
+.B pppd
+[\fIoptions\fR]
+.B plugin
+.B /usr/lib/pppd/\fI<pppd-version>\fR/capiplugin.so
+[\fIoptions fo' capiplugin\fR]
+
+.SH DESCRIPTION
+.LP
+Da capiplugin serves up a method ta use PPP over ISDN with
+ISDN controllaz dat provide a CAPI2.0 intercourse.
+Da plugin is responsible fo' tha call setup wit CAPI2.0.
+Yo ass can dial out, wait fo' incomin calls n' set up communication over
+leased lines. Well shiiiit, it implements a gangbangin' feature ta reject a incomin call
+and callback. This feature can also be used when dialin out.
+In dis case, tha jam called has ta reject tha call n' call back soon.
+When rockin dial-on-demand it is possible let both partizzles setup tha connection,
+that means while tha pppd is up in dial-on-demand mode not only a outgoing
+packet but also a incomin call can trigger tha connection setup. This
+can also combined wit callback ta assign tha cost ta one side only (COSO).
+
+.SH PPPD VERSIONS
+.LP
+Da plugin intercourse of tha pppd is binary incompatible between different
+version of tha pppd. Y'all KNOW dat shit, muthafucka! So you need a gangbangin' finger-lickin' different capiplugin fo' every last muthafuckin version
+of tha pppd. Y'all KNOW dat shit, muthafucka! Da different plugins is ghon be up in tha directory
+/usr/lib/ppp/\fI<pppd-version>\fR.
+Since 2.4.1 pppd checks if tha version of tha plugin matches n' also search
+the plugins up in these directories. Put ya muthafuckin choppers up if ya feel dis! With pppd versions before 2.4.1 you need
+to specify tha absolute pathname of tha plugin.
+
+.SH HOW IT WORKS
+.LP
+Da capiplugin registas a new_phase_notifier n' its own options ta tha pppd
+when loaded. Y'all KNOW dat shit, muthafucka! When tha pppd goes tha fuck into phase SERIALCONN, tha capiplugin
+set up a cold-ass lil connection n' sets tha global variable devnam.
+Da capiplugin will regista a timer function dat is
+called every last muthafuckin second ta handle tha CAPI lyrics while pppd is hustlin.
+To notify pppd when CAPI lyrics arrive, tha CAPI file descriptor
+is added ta tha list of file descriptors which tha pppd monitors fo' input.
+Once tha connection is set up tha pppd will start PPP negotiation
+on thang devnam. When tha pppd entas tha DEAD phase, tha connection will
+be dropped (if it is still active)
+When operatin up in dial-on-demand mode wit wakeup on incomin calls,
+in phase DORMANT tha plugin will setup CAPI2.0 ta accept incomin calls.
+To wakeup pppd when a incomin call arrives, tha plugin will generate
+an UDP packet ta tha discard port (9) of tha gateway, so don't filta dis packet
+or wakeup by incomin a cold-ass lil call aint gonna work.
+
+.SH MODES OF OPERATION
+.LP
+
+.TP
+.B aiiight dial out
+Simply cook up a cold-ass lil connection, fo' example ta yo' Internizzle provider.
+.br
+Required options: \fInumber\fR.
+.br
+Recommended options: \fImsn\fR.
+.br
+Other possible options:
+\fIcontroller\fR,
+\fIdialmax\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR and
+\fIredialdelay\fR.
+
+.TP
+.B dial up wit callback
+Call a given number, tha called jam rejects tha call n' then calls back.
+.br
+Required options: \fInumber\fR n' \fIcoso remote\fR.
+.br
+Recommended options: \fIcli\fR n' \fImsn\fR or \fIinmsn\fR.
+.br
+Other possible options:
+\fIcbwait\fR,
+\fIcontroller\fR,
+\fIconnectdelay\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR
+
+.TP
+.B dial up on demand
+Initiate tha connection only on demand, i.e. when data traffic is present
+and drop tha connection afta a gangbangin' fix amount of idle time.
+.br
+Required options: \fInumber\fR.
+.br
+Required pppd options:
+\fIdemand\fR,
+\fIconnect\fR,
+\fIidle\fR.
+.br
+Recommended options: \fImsn\fR.
+.br
+Other possible options:
+\fIcontroller\fR,
+\fIdialmax\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR and
+\fIredialdelay\fR.
+
+.TP
+.B dial up on demand on a incomin beeper call 
+Initiate tha connection only on demand, i.e. when data traffic is present
+or a incomin beeper call is detected n' drop tha connection afta a gangbangin' fix
+amount of idle time. This is useful if yo ass is not up in da crib n' you want
+your computa ta cook up a cold-ass lil connection ta tha Internet.
+.br
+Required options: \fInumber\fR n' \fIcli\fR.
+.br
+Required options: \fInumber\fR, \fIvoicecallwakeup\fR n' \fIinmsn\fR and/or \fIcli\fR. 
+.br
+Required pppd options:
+\fIdemand\fR,
+\fIconnect\fR,
+\fIidle\fR.
+.br
+Recommended options: \fImsn\fR.
+Other possible options:
+\fIcontroller\fR,
+\fIdialmax\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR,
+\fIredialdelay\fR and
+\fIinmsn\fR.
+
+.TP
+.B wait fo' dial in
+Wait fo' calls n' accept incomin calls.
+.br
+Recommended options: \fIcli\fR n' \fImsn\fR or \fIinmsn\fR.
+.br
+Possible options:
+\fIconnectdelay\fR,
+\fIcontroller\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR
+
+.TP
+.B wait fo' dial up in n' call back.
+Wait fo' calls, reject tha call n' then call back.
+.br
+Required options: \fIcbnumber\fR.
+.br
+Recommended options: \fIcli\fR n' \fImsn\fR or \fIinmsn\fR.
+.br
+Other possible options:
+\fIcbdelay\fR,
+\fIconnectdelay\fR,
+\fIcontroller\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR
+
+.TP
+.B dial on demand n' also wait fo' dial in
+Initiate tha connection only on demand, i.e. when data traffic is present
+or when tha other side dial up in n' drop tha connection afta a gangbangin' fix amount
+of idle time.
+.br
+Required options: \fInumber\fR n' \fIinmsn\fR and/or \fIcli\fR. 
+.br
+Recommended options: \fIcli\fR n' \fImsn\fR or \fIinmsn\fR.
+.br
+Optionizzle options: \fIcoso caller\fR.
+.br
+Other possible options:
+\fIcbdelay\fR,
+\fIconnectdelay\fR,
+\fIcontroller\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR
+
+.TP
+.B dial on demand n' also wait fo' dial up in wit COSO.
+Initiate tha connection only on demand, i.e. when data traffic is present
+or when tha other side dial up in n' drop tha connection afta a gangbangin' fix amount
+of idle time. If option \fIcoso local\fR is set, pppd will reject an
+incomin call from tha remote jam n' will callback.
+With tha option \fIcoso remote\fR set, tha remote jam should reject
+the incomin call n' call back.
+.br
+Required options: \fInumber\fR, \fIinmsn\fR and/or \fIcli\fR,
+\fIcoso local\fR or \fIcoso remote\fR.
+.br
+Recommended options: \fIcli\fR n' \fImsn\fR or \fIinmsn\fR.
+.br
+Other possible options:
+\fIcbdelay\fR,
+\fIconnectdelay\fR,
+\fIcontroller\fR,
+\fIdialtimeout\fR,
+\fIprotocol\fR
+
+.TP
+.B leased line
+set up a leased line connection, wit or without CAPI channel bundling.
+.br
+Required options: \fIchannels\fR.
+Other possible options:
+.br
+\fIconnectdelay\fR,
+\fIcontroller\fR,
+\fIdialtimeout\fR and
+\fIprotocol\fR
+
+
+.SH OPTIONS
+
+.TP
+.B avmadsl
+make a DSL connection wit tha Fritz!Card DSL controller.
+Da parametas fo' tha DSL connection is ghon be loaded from
+file /etc/drdsl/adsl.conf. This file can be edited or will
+be pimped by tha program drdsl.
+
+.TP
+.B cbdelay \fI<seconds>
+Number of secondz ta wait before callback, when actin as
+dial-in server wit callback. Default value is 2 seconds.
+
+.TP
+.B cbnumber \fI<phone numbers>
+List of beeper numbers fo' callback, separated by commas, when actin as
+dial-in server wit callback.
+
+.TP
+.B cbwait \fI<seconds>
+Time ta wait fo' callback before givin up. Default value is 60 seconds.
+
+.TP
+.B channels \fI<channel justification>
+List of b-channels or ranges ta activate leased line mode, separated by commas.
+
+.TP
+.B cli \fI<phone numbers>
+List of numbers from which incomin calls is ghon be accepted, separated by commas.
+
+.TP
+.B clicb
+Da option is retained fo' compatibilitizzle reasons only.
+Use option \fIcoso local\fR or \fIcoso remote\fR instead.
+.br
+Enable callback mode.
+When option \fInumber\fR is set, call number n' wait fo' callback.
+When option \fInumber\fR aint set, wait fo' incomin call,
+reject tha call n' call back.
+This option is optionizzle if tha \fIcbnumber\fR option is set.
+
+.TP
+.B connectdelay \fI<seconds>
+Number of secondz ta wait afta a cold-ass lil connection is set up,
+before PPP negotiation starts, n' you can put dat on yo' toast. Default value is 0 seconds.
+This option is useful when connectin wit protocol \fImodem\fR.
+Some Internizzle access servers will hang up if they receive data
+immediately afta tha connection is established.
+
+.TP
+.B controlla \fI<controlla justification>
+For point-to-multipoint \fI<controlla justification>\fR is only the
+CAPI 2.0 controlla number, default is 1.
+For point-to-point, specify \fI<controlla number>\fR,\fI<ddi>\fR,\fI<length of internal numbers\>
+
+.TP
+.B controller[1-3] \fI<controlla justification>
+Like option \fIcontroller\fR.
+Used ta specify mo' than one controller
+
+.TP
+.B coso caller
+No callback is done, tha costs is assigned ta tha caller.
+
+.TP
+.B coso local
+Da costs is assigned ta tha local party.
+On a incomin call pppd will reject tha call n' callback. 
+
+.TP
+.B coso remote
+Da costs is assigned ta tha remote party.
+On a outgoin call tha remote jam will reject tha call n' callback.
+
+.TP
+.B dialmax \fI<times>
+Maximum number of times tha list of beeper numbers is tried before givin up.
+Default value is 4.
+
+.TP
+.B dialtimeout \fI<seconds>
+Time ta wait fo' tha connection ta be established or fail before givin up.
+Default value is 60 seconds.
+
+.TP
+.B inmsn \fI<msn>
+List of beeper numbers ta monitor fo' calls, separated by commas.
+If dis option aint set, tha value of option \fImsn\fR is used.
+
+.TP
+.B inmsn[1-3] \fI<msn>
+List of beeper numbers ta monitor fo' calls on controlla specified
+by option \fIcontroller[1-3]\fR, separated by commas.
+If dis option aint set, tha value of option \fImsn[1-3]\fR is used.
+
+.TP
+.B msn \fI<msn>
+Phone number used ta make outgoin calls fo' realz. Also used fo' incomin calls
+if option \fIinmsn\fR aint set.
+
+.TP
+.B msn[1-3] \fI<msn>
+Phone number used ta make outgoin calls on controlla specified
+by option \fIcontroller[1-3]\fR fo' realz. Also used fo' incomin calls
+if option \fIinmsn[1-3]\fR aint set.
+
+.TP
+.B number \fI<phone numbers>
+List of beeper numbers ta call, separated by commas.
+Every number up in tha list is called until a cold-ass lil connection can be established.
+When tha end of tha list is reached, tha straight-up original gangsta number is called again.
+See option \fIdialmax\fR.
+
+.TP
+.B numberprefix \fI<prefix>
+phone number ta dial ta access a outside line. For example, \fInumberprefix 0\fR.
+
+.TP
+.B numberprefix[1-3] \fI<prefix>
+phone number ta dial ta access a outside line fo' controller
+specified by option \fIcontroller[1-3]\fR. For example, \fInumberprefix1 0\fR.
+
+.TP
+.B protocol \fIhdlc\fR | \fIx75\fR | \fIv42bis\fR | \fImodem\fR | \fIanalogmodem\fR | \fIv110async\fR | \fIv120async\fR
+ISDN protocol ta use. With \fIhdlc\fR n' \fIadskpppoe\fR,
+the \fIsync\fR option must be added ta tha pppd.
+With \fIx75\fR, \fIv42bis\fR, \fImodem\fR, \fIv110async\fR n' \fIv120async\fR
+the \fIsync\fR option MUST NOT be enabled. Y'all KNOW dat shit, muthafucka! Default value is \fIhdlc\fR.
+Not all controllaz support \fIv42bis\fR, \fImodem\fR n' \fIv120async\fR.
+Use capiinfo(8) ta view which features yo' controlla supports.
+
+.TP
+.B redialdelay \fI<seconds>
+Number of secondz ta wait between redialing. Default value is 5 seconds.
+
+.TP
+.B voicewakeup
+With dis option a incomin voicecall can trigger a outgoin connection
+setup.
+
+.SH EXAMPLE FOR NORMAL DIAL OUT
+.LP
+Probably da most thugged-out common use of pppd is ta dial up ta a ISP.  This
+can be specified wit a cold-ass lil command like
+.IP
+pppd call isp
+.LP
+where tha /etc/ppp/peers/isp file is set up by tha system
+administrator ta resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+defaultroute
+.br
+name USERNAME
+.br
+plugin capiplugin.so
+.R
+msn MSN
+.br
+number PHONENUMBER
+.br
+protocol hdlc
+.br
+ipcp-accept-local
+.br
+ipcp-accept-remote
+.br
+/dev/null
+.LP
+and where tha filez /etc/ppp/pap-secrets n' /etc/ppp/chap-secrets is set up by
+the system administrator ta resemble tha following:
+.IP
+USERNAME * PASSWORD *
+
+
+.SH EXAMPLE OF DIAL OUT WITH CALLBACK
+.LP
+Dial up wit callback can be specified wit a cold-ass lil command like
+.IP
+pppd call isp-callback
+.LP
+where tha /etc/ppp/peers/isp-callback file is set up by tha system
+administrator ta resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+defaultroute
+.br
+name USERNAME
+.br
+plugin capiplugin.so
+.br
+msn MSN
+.br
+number PHONENUMBER
+.br
+coso remote
+.br
+cli PHONENUMBER
+.br
+protocol hdlc
+.br
+ipcp-accept-local
+.br
+ipcp-accept-remote
+.br
+/dev/null
+.LP
+and where tha filez /etc/ppp/pap-secrets n' /etc/ppp/chap-secrets is set up by
+the system administrator ta resemble tha following:
+.br
+USERNAME * PASSWORD *
+
+.SH EXAMPLE DIAL OUT ON DEMAND
+.LP
+To dial up on demand n' drop tha link afta 120 secondz idle time
+on tha link add dis line ta tha /etc/inittab file:
+.IP
+isp:23:respawn:/usr/sbin/pppd call isp demand connect "" idle 120
+.LP
+where tha /etc/ppp/peers/isp file is set up by tha system
+administrator ta resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+defaultroute
+.br
+name USERNAME
+.br
+plugin capiplugin.so
+.R
+msn MSN
+.br
+number PHONENUMBER
+.br
+protocol hdlc
+.br
+ipcp-accept-local
+.br
+ipcp-accept-remote
+.br
+/dev/null
+.LP
+and where tha filez /etc/ppp/pap-secrets n' /etc/ppp/chap-secrets is set up by
+the system administrator ta resemble tha following:
+.IP
+USERNAME * PASSWORD *
+
+.SH EXAMPLE DIAL OUT ON DEMAND AND ON AN INCOMING PHONE CALL
+.LP
+To dial up on demand or on a incomin beeper call n' drop tha link
+afta 120 secondz idle time on tha link add dis line ta tha /etc/inittab file:
+.IP
+isp:23:respawn:/usr/sbin/pppd call isp demand connect "" idle 120
+.LP
+where tha /etc/ppp/peers/isp file is set up by tha system
+administrator ta resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+defaultroute
+.br
+name USERNAME
+.br
+plugin capiplugin.so
+.br
+msn MSN
+.br
+number PHONENUMBER
+.br
+cli VOICEPHONENUMBER
+.br
+voicecallwakeup
+.br
+protocol hdlc
+.br
+ipcp-accept-local
+.br
+ipcp-accept-remote
+.br
+/dev/null
+.LP
+and where tha filez /etc/ppp/pap-secrets n' /etc/ppp/chap-secrets is set up by
+the system administrator ta resemble tha following:
+.IP
+USERNAME * PASSWORD *
+
+.SH EXAMPLE DIAL OUT ON DEMAND AND ALSO ACCEPT AN INCOMING DATA CALL
+.LP
+To dial up on demand or on a incomin data call n' drop tha link
+afta 120 secondz idle time on tha link add dis line ta tha /etc/inittab file:
+.IP
+isp:23:respawn:/usr/sbin/pppd call isp demand connect "" idle 120
+.LP
+where tha /etc/ppp/peers/isp file is set up by tha system
+administrator ta resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+defaultroute
+.br
+name USERNAME
+.br
+plugin capiplugin.so
+.br
+msn MSN
+.br
+number PHONENUMBER
+.br
+inmsn MSN
+.br
+protocol hdlc
+.br
+ipcp-accept-local
+.br
+ipcp-accept-remote
+.br
+/dev/null
+.LP
+and where tha filez /etc/ppp/pap-secrets n' /etc/ppp/chap-secrets is set up by
+the system administrator ta resemble tha following:
+.IP
+USERNAME * PASSWORD *
+
+.SH EXAMPLE OF WAIT FOR DIAL IN WITHOUT CLI AUTHENTICATION
+.LP
+Wait fo' incomin calls, accept dem accordin ta options \fImsn\fR,
+\fIinmsn\fR, n' \fIprotocol\fI.
+.LP
+Do not provide option \fIcli\fR ta tha capiplugin.
+Start a pppd fo' every last muthafuckin b channel.
+Authorization is checked rockin PAP or CHAP n' tha IP addresses is assigned
+accordin ta tha /etc/ppp/pap-secrets or /etc/ppp/chap-secrets file.
+Assume dat tha server has IP address 192.168.0.1, tha clients are
+to be assigned IP addresses startin from 192.168.0.2, n' tha hostname of the
+server is "dialinserver".
+Add these two lines ta tha /etc/inittab file:
+.IP
+p0:23:respawn:/usr/sbin/pppd call incoming-noncli
+.br
+p1:23:respawn:/usr/sbin/pppd call incoming-noncli
+.LP
+where tha /etc/ppp/peers/incoming-noncli file is set up
+to resemble tha following:
+.IP
+sync
+.br
+auth
+.br
+plugin capiplugin.so
+.br
+inmsn MSN
+.br
+protocol hdlc
+192.168.0.1:
+.LP
+with tha filez /etc/ppp/pap-secrets n' /etc/ppp/chap-secrets set up
+to resemble tha following:
+.IP
+user1 dialinserver PASSWORD1 192.168.0.2
+.br
+user2 dialinserver PASSWORD2 192.168.0.3
+
+.SH EXAMPLE OF WAIT FOR DIAL IN WITH CLI AUTHENTICATION
+.LP
+Wait fo' incomin calls, accept dem accordin ta options \fImsn\fR,
+\fIinmsn\fR, \fIcli\fR n' \fIprotocol\fI.
+.LP
+Start a pppd fo' every last muthafuckin client.
+Assume dat tha server has IP address 192.168.0.1 n' tha clients is ta be
+assigned IP addresses startin from 192.168.0.2.
+Add these three lines ta tha /etc/inittab file:
+.IP
+p0:23:respawn:/usr/sbin/pppd call incoming-cli cli 04711 192.168.0.1:192.168.0.2
+.br
+p1:23:respawn:/usr/sbin/pppd call incoming-cli cli 04712 192.168.0.1:192.168.0.3
+.br
+p2:23:respawn:/usr/sbin/pppd call incoming-cli cli 04713 192.168.0.1:192.168.0.4
+
+.LP
+where tha /etc/ppp/peers/incoming-cli file is set up
+to resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+plugin capiplugin.so
+.br
+inmsn MSN
+.br
+protocol hdlc
+
+.SH EXAMPLE OF WAIT FOR DIAL IN WITH CLI AUTHENTICATION AND CALLBACK
+.LP
+Wait fo' incomin calls, accept dem accordin ta options \fImsn\fR,
+\fIinmsn\fR, \fIcli\fR n' \fIprotocol\fI, reject incomin calls
+and call back.
+.LP
+Start a pppd fo' every last muthafuckin client.
+Assume dat tha server has IP address 192.168.0.1 n' tha clients is ta be
+assigned IP addresses startin from 192.168.0.2.
+Add these three lines ta tha /etc/inittab file.
+.IP
+p0:23:respawn:/usr/sbin/pppd call incoming-cli cli 04711 cbnumber 4711 192.168.0.1:192.168.0.2
+.br
+p1:23:respawn:/usr/sbin/pppd call incoming-cli cli 04712 cbnumber 4712 192.168.0.1:192.168.0.3
+.br
+p2:23:respawn:/usr/sbin/pppd call incoming-cli cli 04713 cbnumber 4713 192.168.0.1:192.168.0.4
+.LP
+where tha /etc/ppp/peers/incoming-cli file is set up
+to resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+plugin capiplugin.so
+.br
+inmsn MSN
+.br
+protocol hdlc
+
+.SH EXAMPLE OF A LEASED LINE CONNECTION WITH HDLC
+.LP
+Assume dat tha server has IP address 192.168.0.1 n' tha peer has
+the IP address 192.168.0.2.
+Add dis line ta tha /etc/inittab file:
+.IP
+p0:23:respawn:/usr/sbin/pppd call leased-hdlc controlla 1 channels 1 192.168.0.1:192.168.0.2
+.LP
+where tha /etc/ppp/peers/leased-hdlc file is set up
+to resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+lcp-echo-interval 5
+.br
+lcp-echo-failure 3
+.br
+lcp-max-configure 50
+.br
+lcp-max-terminizzle 2
+.br
+noccp
+.br
+noipx
+.br
+persist
+.br
+plugin capiplugin.so
+.br
+protocol hdlc
+
+.SH EXAMPLE OF A LEASED LINE CONNECTION WITH V42BIS
+.LP
+Assume dat tha server has IP address 192.168.0.1 n' tha peer has
+the IP address 192.168.0.2.
+Add dis line ta tha /etc/inittab file fo' server 1 (192.168.0.1):
+.IP
+p0:23:respawn:/usr/sbin/pppd call leased-v42bis controlla 1 channels 1 192.168.0.1:192.168.0.2
+.LP
+and dis line ta tha /etc/inittab file fo' server 1 (192.168.0.2):
+.IP
+p0:23:respawn:/usr/sbin/pppd call leased-v42bis controlla 1 channels p1 192.168.0.2:192.168.0.1
+.LP
+where tha /etc/ppp/peers/leased-v42bis file is set up
+to resemble tha following:
+.IP
+sync
+.br
+noauth
+.br
+lcp-echo-interval 5
+.br
+lcp-echo-failure 3
+.br
+lcp-max-configure 50
+.br
+lcp-max-terminizzle 2
+.br
+noccp
+.br
+noipx
+.br
+persist
+.br
+plugin capiplugin.so
+.br
+protocol v42bis
+
+.SH CAVEATS
+.LP
+Every pppd awaitin incomin calls can receive a incomin call first.
+So when two pppdz is started ta monitor tha same MSN, one with
+CLI Authentication n' tha other without, tha followin can happen:
+.IP
+Da Client wit tha CLI specified ta tha straight-up original gangsta pppd calls yo, but tha pppd
+without tha \fIcli\fR option receives tha call first n' accepts dat shit.
+.LP
+To combine CLI Authentication n' PAP/CHAP Authentication,
+use one MSN fo' CLI authenticated calls n' another fo' tha PAP/CHAP
+authenticated calls.
+
+.SH DIAGNOSTICS
+.LP
+Lyrics is busted ta tha syslog daemon just as up in aiiight pppd operation;
+see tha pppd manual page.
+
+.SH SEE ALSO
+pppd(8), capiinfo(8), capiinit(8), capictrl(8)
+
+.SH AUTHORS
+Carsten Paeth (calle@calle.in-berlin.de)
+.br
+AVM GmbH Berlin (info@avm.de)

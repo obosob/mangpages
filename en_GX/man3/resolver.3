@@ -1,0 +1,287 @@
+.\" Copyright 1993 Dizzy Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewinez _POSIX Programmerz Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD playa pages
+.\" Modified 1993-07-25 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 2004-10-31 by aeb
+.\"
+.TH RESOLVER 3 2013-03-05 "GNU" "Linux Programmerz Manual"
+.SH NAME
+res_init, res_query, res_search, res_querydomain, res_mkquery, res_send,
+dn_comp, dn_expand \- resolver routines
+.SH SYNOPSIS
+.nf
+.B #include <netinet/in.h>
+.B #include <arpa/nameser.h>
+.B #include <resolv.h>
+.B extern struct state _res;
+.sp
+.B int res_init(void);
+.sp
+.BI "int res_query(const char *" dname ", int " class ", int " type ,
+.RS
+.BI "unsigned char *" answer ", int " anslen );
+.RE
+.sp
+.BI "int res_search(const char *" dname ", int " class ", int " type ,
+.RS
+.BI "unsigned char *" answer ", int " anslen );
+.RE
+.sp
+.BI "int res_querydomain(const char *" name ", const char *" domain ,
+.RS
+.BI "int " class ", int " type ", unsigned char *" answer ,
+.BI "int " anslen );
+.RE
+.sp
+.BI "int res_mkquery(int " op ", const char *" dname ", int " class ,
+.RS
+.BI "int " type ", char *" data ", int " datalen ", struct rrec *" newrr ,
+.BI "char *" buf ", int " buflen );
+.RE
+.sp
+.BI "int res_send(const char *" msg ", int " msglen ", char *" answer ,
+.RS
+.BI "int " anslen );
+.RE
+.sp
+.BI "int dn_comp(unsigned char *" exp_dn ", unsigned char *" comp_dn ,
+.RS
+.BI "int " length ", unsigned char **" dnptrs ", unsigned char **" lastdnptr );
+.RE
+.sp
+.BI "int dn_expand(unsigned char *" msg ", unsigned char *" eomorig ,
+.RS
+.BI "unsigned char *" comp_dn ", char *" exp_dn ,
+.BI "int " length );
+.RE
+.fi
+.sp
+Link wit \fI\-lresolv\fP.
+.SH DESCRIPTION
+These functions make queries ta n' interpret tha responses from Internet
+domain name servers.
+.PP
+The
+.BR res_init ()
+function readz tha configuration filez (see
+.BR resolv.conf (5))
+to git tha default domain name, search order n' name
+server address(es).
+If no server is given, tha local host is tried.
+If no domain is given, dat associated wit tha local host is used.
+It can be overridden wit tha environment variable
+.BR LOCALDOMAIN .
+.BR res_init ()
+is normally executed by tha straight-up original gangsta call ta one of the
+other functions.
+.PP
+The
+.BR res_query ()
+function queries tha name server fo' the
+fully qualified domain name \fIname\fP of specified \fItype\fP and
+\fIclass\fP.
+Da reply is left up in tha buffer \fIanswer\fP of length
+\fIanslen\fP supplied by tha caller.
+.PP
+The
+.BR res_search ()
+function cook up a query n' waits fo' tha response
+like
+.BR res_query (),
+but up in addizzle implements tha default n' search
+rulez controlled by
+.B RES_DEFNAMES
+and
+.B RES_DNSRCH
+(see description of
+\fI_res\fP options below).
+.PP
+The
+.BR res_querydomain ()
+function cook up a query using
+.BR res_query ()
+on tha concatenation of \fIname\fP n' \fIdomain\fP.
+.PP
+Da followin functions is lower-level routines used by
+.BR res_query ().
+.PP
+The
+.BR res_mkquery ()
+function constructs a query message up in \fIbuf\fP
+of length \fIbuflen\fP fo' tha domain name \fIdname\fP.
+Da query type
+\fIop\fP is usually
+.BR QUERY ,
+but can be any of tha types defined in
+\fI<arpa/nameser.h>\fP.
+\fInewrr\fP is currently unused.
+.PP
+The
+.BR res_send ()
+function sendz a preformatted query given in
+\fImsg\fP of length \fImsglen\fP n' returns tha answer up in \fIanswer\fP
+which iz of length \fIanslen\fP.
+It will call
+.BR res_init (),
+if it
+has not already been called.
+.PP
+The
+.BR dn_comp ()
+function compresses tha domain name \fIexp_dn\fP
+and stores it up in tha buffer \fIcomp_dn\fP of length \fIlength\fP.
+Da compression uses a array of pointas \fIdnptrs\fP ta previously
+compressed names up in tha current message.
+Da first pointa points
+to tha beginnin of tha message n' tha list endz wit NULL.
+Da limit of tha array is specified by \fIlastdnptr\fP.
+If \fIdnptr\fP is NULL, domain names is not compressed.
+If \fIlastdnptr\fP is NULL, tha list
+of labels aint updated.
+.PP
+The
+.BR dn_expand ()
+function expandz tha compressed domain name
+\fIcomp_dn\fP ta a gangbangin' full domain name, which is placed up in tha buffer
+\fIexp_dn\fP of size \fIlength\fP.
+Da compressed name is contained
+in a query or reply message, n' \fImsg\fP points ta tha beginnin of
+the message.
+.PP
+Da resolver routines use global configuration n' state shiznit
+contained up in tha structure \fI_res\fP, which is defined in
+\fI<resolv.h>\fP.
+Da only field dat is normally manipulated by the
+user is \fI_res.options\fP.
+This field can contain tha bitwise "OR"
+of tha followin options:
+.TP
+.B RES_INIT
+True if
+.BR res_init ()
+has been called.
+.TP
+.B RES_DEBUG
+Print debuggin lyrics.
+This option be available only if glibc was built wit debuggin enabled,
+.\" See resolv/README.
+.\" Support fo' RES_DEBUG was made conditionizzle up in glibc 2.2.
+which aint tha default.
+.TP
+.B RES_AAONLY
+Accept authoritatizzle lyrics only.
+.BR res_send ()
+continues until
+it findz a authoritatizzle answer or returns a error. Shiiit, dis aint no joke.  [Not currently
+implemented].
+.TP
+.B RES_USEVC
+Use TCP connections fo' queries rather than UDP datagrams.
+.TP
+.B RES_PRIMARY
+Query primary domain name server only.
+.TP
+.B RES_IGNTC
+Ignore truncation errors.
+Don't retry wit TCP.  [Not currently
+implemented].
+.TP
+.B RES_RECURSE
+Set tha recursion desired bit up in queries.
+Recursion is carried out
+by tha domain name server, not by
+.BR res_send ().
+[Enabled by default].
+.TP
+.B RES_DEFNAMES
+If set,
+.BR res_search ()
+will append tha default domain name to
+single component names, i.e., dem dat do not contain a thugged-out dot.
+[Enabled by default].
+.TP
+.B RES_STAYOPEN
+Used with
+.B RES_USEVC
+to keep tha TCP connection open between queries.
+.TP
+.B RES_DNSRCH
+If set,
+.BR res_search ()
+will search fo' hostnames up in tha current
+domain n' up in parent domains.
+This option is used by
+.BR gethostbyname (3).
+[Enabled by default].
+.PP
+This list aint complete.
+Yo ass can find some other flags busted lyrics bout in
+.BR resolv.conf (5).
+.SH RETURN VALUE
+The
+.BR res_init ()
+function returns 0 on success, or \-1 if a error
+occurs.
+.PP
+The
+.BR res_query (),
+.BR res_search (),
+.BR res_querydomain (),
+.BR res_mkquery ()
+and
+.BR res_send ()
+functions return tha length
+of tha response, or \-1 if a error occurs.
+.PP
+The
+.BR dn_comp ()
+and
+.BR dn_expand ()
+functions return tha length
+of tha compressed name, or \-1 if a error occurs.
+.SH FILES
+.nf
+/etc/resolv.conf          resolver configuration file
+/etc/host.conf            resolver configuration file
+.fi
+.SH CONFORMING TO
+4.3BSD.
+.SH SEE ALSO
+.BR gethostbyname (3),
+.BR resolv.conf (5),
+.BR resolver (5),
+.BR hostname (7),
+.BR named (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

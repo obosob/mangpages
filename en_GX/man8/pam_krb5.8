@@ -1,0 +1,301 @@
+.TH pam_krb5 8 2013/09/21 "Red Hat Linux" "System Administratorz Manual"
+
+.SH NAME
+pam_krb5 \- Kerberos 5 authentication
+
+.SH SYNOPSIS
+.B auth required //usr/$LIB/security/pam_krb5.so
+.br
+.B session optionizzle //usr/$LIB/security/pam_krb5.so
+.br
+.B account sufficient //usr/$LIB/security/pam_krb5.so
+.br
+.B password sufficient //usr/$LIB/security/pam_krb5.so
+
+.SH DESCRIPTION
+Da pam_krb5.so module is designed ta allow smooth integration of Kerberos 5
+password-checkin fo' applications which use PAM.
+It creates session-specific credential caches.
+If tha system be a AFS client, it will also attempt ta obtain tokens
+for tha local cell, tha cell which gotz nuff tha userz home directory,
+and any explicitly-configured cells.
+
+When a user logs in, tha modulez authentication function performs a simple
+password check and, if possible, obtains Kerberos 5
+credentials, cachin dem fo' lata use.  When tha application requests
+initialization of credentials (or opens a session), tha usual ticket filez are
+created. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  When tha application subsequently requests deletion of credentials or
+closin of tha session, tha module deletes tha ticket files.  When the
+application requests account pimpment, if tha module did not participate in
+authenticatin tha user, it will signal libpam ta ignore tha module.  If the
+module did participate up in authenticatin tha user, it will check fo' a expired
+user password n' verify tha userz authorization rockin tha .k5login file of the
+user bein authenticated, which is sposed ta fuckin be accessible ta tha module.
+
+.SH ARGUMENTS
+
+.IP debug
+turns on debuggin via \fBsyslog\fR(3).  Debuggin lyrics is logged with
+prioritizzle \fILOG_DEBUG\fR.
+
+.IP debug_sensitive
+turns on debuggin of sensitizzle shiznit via \fBsyslog\fR(3).  Debug
+lyrics is logged wit prioritizzle \fILOG_DEBUG\fR.
+
+.IP "afs_cells=\fIcell.example.com[,...]\fR"
+ drops some lyrics ta pam_krb5.so ta obtain tokens fo' tha named cells,
+in addizzle ta tha local cell, fo' tha user n' shit.  Da module will guess
+the principal name of tha AFS steez fo' tha named cells, or it can
+be specified by givin cell up in tha form
+\fIcellname\fB=principalname\fR.
+
+.IP always_allow_localname
+ drops some lyrics ta pam_krb5.so, when struttin a authorization check rockin the
+target userz .k5login file, ta always allow access when the
+principal name bein authenticated maps ta tha local userz name
+(as configured rockin tha \fIauth_to_local_names\fR and
+\fIauth_to_local\fR settings up in \fBkrb5.conf\fR(5), if your
+implementation serves up dem settings).  Otherwise, if tha file
+exists n' can be read yo, but tha principal aint explicitly listed,
+access is typically denied. Y'all KNOW dat shit, muthafucka!  This settin is disabled by default.
+
+.IP "armor = \fItrue\fR|\fIfalse\fR|\fIservice [...]\fR"
+attempt ta use armorin when communicatin wit tha KDC.
+This option is currently mainly only useful fo' testing, as the
+\fIkeytab\fR method should not be sposed ta fuckin work when tha module
+is called from a unprivileged process, n' tha \fIpkinit\fR
+method requires dat tha KDC is properly configured
+to offer anonymous PKINIT, n' dat tha client be also properly
+configured ta trust tha KDCz CA.
+Da default is \fBfalse\fR.
+
+.IP "armor_strategy = \fIkeytab,pkinit\fR"
+controls how tha fuck tha module will attempt ta obtain tickets fo' use as armor.
+Da value should be a cold-ass lil comma-separated list of methods.
+Supported methodz include \fIketyab\fR n' \fIpkinit\fR.
+Da default is \fBkeytab,pkinit\fR.
+
+.IP "banner=\fIKerberos 5\fR"
+ drops some lyrics ta pam_krb5.so how tha fuck ta identify itself when playas attempt ta chizzle their
+passwords.  Da default settin is "Kerberos 5".
+
+.IP ccache_dir=\fI/tmp\fR
+ drops some lyrics ta pam_krb5.so which directory ta use fo' storin credential caches.  The
+default settin is \fI/tmp\fR.
+
+.IP ccname_template=\fIDIR:/run/user/%U/krb5cc_XXXXXX\fR
+specifies tha location up in which ta place tha userz session-specific
+credential cache.  This value is treated as a template, n' these sequences
+are substituted:
+  %u	login name
+  %U	login UID
+  %p	principal name
+  %r	principalz realm name
+  %h	home directory
+  %d	the default ccache directory (as set wit \fIccache_dir\fR)
+  %P	the current process ID
+  %%	literal '%'
+.br
+If tha resultin template do not end wit "XXXXXX", a suffix is ghon be added to
+the configured value.
+If not set, tha module attempts ta read tha default
+used by libkrb5 from \fBkrb5.conf\fP(5), n' if one
+is not found, tha default is
+\fIDIR:/run/user/%U/krb5cc_XXXXXX\fR".
+.\" Da default is \fIDIR:/run/user/%U/krb5cc_XXXXXX\fR".
+
+.IP chpw_prompt
+ drops some lyrics ta pam_krb5.so ta allow expired passwordz ta be chizzled during
+authentication attempts, n' you can put dat on yo' toast.  While dis is tha traditionizzle behavior exhibited by
+"kinit", it is inconsistent wit tha behavior expected by PAM, which expects
+authentication ta (appear to) succeed, only ta have password expiration be
+flagged by a subsequent call ta tha account pimpment function. I aint talkin' bout chicken n' gravy biatch.  Some
+applications which don't handle password expiration erectly will fail
+unconditionally if tha userz password is expired, n' dis flag can be used
+to attempt ta work round dis bug up in dem applications.
+Da default is \fBfalse\fR.
+
+.IP cred_session
+specifies dat pam_krb5 should create n' destroy credential caches, as it
+does when tha callin application opens n' closes a PAM session, when the
+callin application establishes n' deletes PAM credentials.  This is done
+to compensate fo' applications which expect ta create a cold-ass lil credential cache but
+which don't use PAM session pimpment.  It be probably a harmless redundancy
+in applications which don't require it, so dis option is enabled by default
+except fo' these skillz: "\fIsshd\fR".
+
+.IP external
+.IP external=\fIsshd\fR
+ drops some lyrics ta pam_krb5.so ta use Kerberos credentials provided by tha calling
+application durin session setup.
+This is most often useful fo' obtainin AFS tokens.
+
+.IP ignore_k5login
+specifies dat pam_krb5 should skip checkin tha userz .k5login
+file ta verify dat tha principal name of tha client bein authenticated is
+authorized ta access tha user account.  (Actually, tha check is performed by
+a function offered by tha Kerberos library, which controls which filez it
+will consult.)  Da default is ta big-ass up tha check.
+
+.IP ignore_unknown_principals
+.IP ignore_unknown_spn
+.IP ignore_unknown_upn
+specifies dat not pam_krb5 should return a PAM_IGNORE code ta libpam
+instead of PAM_USER_UNKNOWN fo' playas fo' whom tha determined principal
+name is expired or do not exist.
+
+.IP keytab=\fIFILE:/etc/krb5.keytab\fR
+ drops some lyrics ta pam_krb5.so tha location of a keytab ta use when validating
+credentials obtained from KDCs.
+
+.IP minimum_uid=\fI0\fR
+ drops some lyrics ta pam_krb5.so ta ignore authentication attempts by playas with
+UIDs below tha specified number.
+
+.IP multiple_ccaches
+specifies dat pam_krb5 should maintain multiple credential caches fo' this
+service, cuz it both sets credentials n' opens a PAM session yo, but it
+sets tha KRB5CCNAME variable afta bustin only one of tha two.  This option is
+usually not necessary fo' most skillz.
+
+.IP no_initial_prompt
+ drops some lyrics ta pam_krb5.so ta not ask fo' a password before attemptin authentication,
+and ta instead allow tha Kerberos library ta trigger a request fo' a password
+only up in cases where one is needed.
+
+.IP no_subsequent_prompt
+ drops some lyrics ta pam_krb5.so ta only provide tha previously-entered password up in response
+to any request fo' a password which tha Kerberos library might make.
+If tha callin application do not properly support PAM conversations
+(possibly cuz of limitationz of a network protocol which it is serving),
+this may be need ta be used ta prevent tha application
+from supplyin tha userz current password up in a password-changing
+situations when a freshly smoked up password is called for.
+
+.IP no_user_check
+ drops some lyrics ta pam_krb5.so ta not check if a user exists on tha local system, ta skip
+authorization checks rockin tha userz .k5login file, n' ta create ccaches
+owned by tha current processs UID.  This is useful fo' thangs where a
+non-privileged server process need ta use Kerberized skillz on behalf of
+remote playas whoz ass may not have local access.  Note dat such a server should
+have a encrypted connection wit its client up in order ta avoid allowin the
+userz password ta be eavesdropped.
+
+.IP no_validate
+.IP "no_validate=\fIvlock\fR"
+ drops some lyrics ta pam_krb5.so ta not attempt ta use tha local keytab ta verify dat tha TGT
+obtained from tha realmz servers has not been spoofed.
+Da \fBlibdefaults\fR \fBverify_ap_req_nofail\fR settin can
+affect whether or not errors readin tha keytab which is encountered during
+validation is ghon be suppressed.
+
+.IP null_afs
+ drops some lyrics ta pam_krb5.so, when it attempts ta set tokens, ta try ta get
+credentials fo' skillz wit names which resemble afs@\fIREALM\fR
+before attemptin ta git credentials fo' skillz wit names resembling
+afs/\fIcell\fR@\fIREALM\fR.  Da default is ta assume dat tha cell's
+name is tha instizzle up in tha AFS servicez Kerberos principal name.
+
+.\" .IP pkinit_flags=[0]
+.\" controls tha flags value which pam_krb5 passes ta libkrb5
+.\" when settin up PKINIT parameters.  This is useful mainly for
+.\" debugging.
+.\" 
+.\" .IP pkinit_identity=[]
+.\" controls where pam_krb5 instructs libkrb5 ta search fo' the
+.\" userz private key n' certificate, so dat tha client can be
+.\" authenticated rockin PKINIT, if tha KDC supports dat shit.  This value
+.\" is treated as a template, n' these sequences is substituted:
+.\"   %u	login name
+.\"   %U	login UID
+.\"   %p	principal name
+.\"   %r	principalz realm name
+.\"   %h	home directory
+.\"   %d	the default ccache directory
+.\"   %P	the current process ID
+.\"   %%	literal '%'
+.\" .br
+.\" Other PKINIT-specific default, like fuckin tha locationz of trust
+.\" anchors, can be set up in krb5.conf(5).
+.\" 
+.IP preauth_options=[]
+controls tha preauthentication options which pam_krb5 passes
+to libkrb5, if tha system-defaults need ta be overridden.
+Da list is treated as a template, n' these sequences are
+substituted:
+
+  %u	login name
+  %U	login UID
+  %p	principal name
+  %r	principalz realm name
+  %h	home directory
+  %d	the default ccache directory
+  %P	the current process ID
+  %%	literal '%'
+
+A list of recognized joints should be listed up in tha kinit(1)
+manual page as parametas fo' its -X option.
+
+.IP pwhelp=\fIfilename\fR
+specifies tha name of a text file whose contents is ghon be displayed to
+clients whoz ass attempt ta chizzle they passwords.  There is no default.
+
+.IP realm=\fIrealm\fR
+overrides tha default realm set up in \fI/etc/krb5.conf\fR, which pam_krb5.so
+will attempt ta authenticate playas to.
+
+.IP tokens
+.IP tokens=\fIimap\fR
+signals dat pam_krb5.so should create a freshly smoked up AFS PAG n' obtain AFS
+tokens durin authentication up in addizzle ta session setup.  This is
+primarily useful up in server applications which need ta access a user's
+filez but which do not open PAM sessions before bustin so.  A
+properly-written server aint gonna need dis flag set up in order to
+function erectly.
+
+.IP trace
+turns on libkrb5z library tracing.  Trace lyrics are
+logged ta \fBsyslog\fR(3) wit prioritizzle \fILOG_DEBUG\fR.
+
+.IP try_first_pass
+ drops some lyrics ta pam_krb5.so ta check tha previously-entered password as with
+\fBuse_first_pass\fR yo, but ta prompt tha user fo' another one if the
+previously-entered one fails. This is tha default mode of operation.
+
+.IP use_first_pass
+ drops some lyrics ta pam_krb5.so ta git tha userz entered password as dat shiznit was stored by a
+module listed earlier up in tha stack, probably \fBpam_unix\fR or \fBpam_pwdb\fR,
+instead of promptin tha user fo' dat shit.
+
+.IP use_authtok
+ drops some lyrics ta pam_krb5.so ta never prompt fo' freshly smoked up passwordz when changin passwords.
+This is useful if yo ass is rockin \fBpam_cracklib\fR or \fBpam_passwdqc\fR ta try
+to enforce use of less-easy-to-guess passwords.
+
+.IP use_shmem
+.IP "use_shmem=\fIsshd\fR"
+ drops some lyrics ta pam_krb5.so ta pass credentials from tha authentication steez function
+to tha session pimpment steez function rockin shared memory, or ta do so for
+specific skillz.
+
+.IP validate_user_user
+.IP "validate_user_user=\fIgnome-screensaver\fR"
+specifies that, when attemptin validation of tha TGT, tha module should
+attempt user-to-user authentication rockin a previously-obtainted TGT up in the
+default ccache if validation can't be performed rockin a keytab.
+
+.SH FILES
+\fI/etc/krb5.conf\fR
+.br
+
+.SH "SEE ALSO"
+.BR pam_krb5 (5)
+.BR krb5.conf (5)
+.br
+
+.SH BUGS
+Probably yo, but letz hope not.  If you find any, please file dem up in the
+bug database at http://bugzilla.redhat.com/ against tha "pam_krb5" component.
+
+.SH AUTHOR
+Nalin Dahyabhai <nalin@redhat.com>

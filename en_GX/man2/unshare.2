@@ -1,0 +1,282 @@
+
+.\" n' Copyright (C) 2006, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(GPL_NOVERSION_ONELINE)
+.\" Licensed under tha GPL
+.\" %%%LICENSE_END
+.\"
+.\" Patch Justification:
+.\" unshare system call is needed ta implement, rockin PAM,
+.\" per-security_context and/or per-user namespace ta provide
+.\" polyinstantiated directories. Put ya muthafuckin choppers up if ya feel dis! Usin unshare n' bind mounts, a
+.\" PAM module can create private namespace wit appropriate
+.\" directories(based on userz securitizzle context) bind mounted on
+.\" hood directories like fuckin /tmp, thus providin a instizzle of
+.\" /tmp dat is based on userz securitizzle context. Without the
+.\" unshare system call, namespace separation can only be  bigged up 
+.\" by clone, which would require portin n' maintainin all commands
+.\" like fuckin login, n' su, dat establish a user session.
+.\"
+.TH UNSHARE 2 2013-04-17 "Linux" "Linux Programmerz Manual"
+.SH NAME
+unshare \- disassociate partz of tha process execution context
+.SH SYNOPSIS
+.nf
+.B #include <sched.h>
+.sp
+.BI "int unshare(int " flags );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR unshare ():
+.ad l
+.RS 4
+.PD 0
+.TP 4
+Since glibc 2.14:
+_GNU_SOURCE
+.TP 4
+.\" FIXME See http://sources.redhat.com/bugzilla/show_bug.cgi?id=4749
+Before glibc 2.14:
+_BSD_SOURCE || _SVID_SOURCE
+    /* _GNU_SOURCE also suffices */
+.PD
+.RE
+.ad b
+.SH DESCRIPTION
+.BR unshare ()
+allows a process ta disassociate partz of its execution
+context dat is currently bein shared wit other processes.
+Part of tha execution context, like fuckin tha mount namespace, is shared
+implicitly when a freshly smoked up process is pimped using
+.BR fork (2)
+or
+.BR vfork (2),
+while other parts, like fuckin virtual memory, may be
+shared by explicit request when bustin a process using
+.BR clone (2).
+
+Da main use of
+.BR unshare ()
+is ta allow a process ta control its
+shared execution context without bustin a freshly smoked up process.
+
+The
+.I flags
+argument be a lil' bit mask dat specifies which parts of
+the execution context should be unshared.
+This argument is specified by ORin together zero or more
+of tha followin constants:
+.TP
+.B CLONE_FILES
+Reverse tha effect of the
+.BR clone (2)
+.B CLONE_FILES
+flag.
+Unshare tha file descriptor table, so dat tha callin process
+no longer shares its file descriptors wit any other process.
+.TP
+.B CLONE_FS
+Reverse tha effect of the
+.BR clone (2)
+.B CLONE_FS
+flag.
+Unshare file system attributes, so dat tha callin process
+no longer shares its root directory
+.RB ( chroot (2)),
+current directory
+.RB ( chdir (2)),
+or umask
+.RB ( umask (2))
+attributes wit any other process.
+.TP
+.BR CLONE_NEWIPC " (since Linux 2.6.19)
+This flag has tha same ol' dirty effect as the
+.BR clone (2)
+.B CLONE_NEWIPC
+flag.
+Unshare tha System V IPC namespace,
+so dat tha callin process has a private copy of the
+System V IPC namespace which aint shared wit any other process.
+Specifyin dis flag automatically implies
+.BR CLONE_SYSVSEM
+as well.
+Use of
+.BR CLONE_NEWIPC
+requires the
+.BR CAP_SYS_ADMIN
+capability.
+.TP
+.BR CLONE_NEWNET " (since Linux 2.6.24)
+This flag has tha same ol' dirty effect as the
+.BR clone (2)
+.B CLONE_NEWNET
+flag.
+Unshare tha network namespace,
+so dat tha callin process is moved tha fuck into a
+new network namespace which aint shared
+with any previously existin process.
+Use of
+.BR CLONE_NEWNET
+requires the
+.BR CAP_SYS_ADMIN
+capability.
+.TP
+.B CLONE_NEWNS
+.\" These flag name is inconsistent:
+.\" CLONE_NEWNS do tha same thang up in clone() yo, but CLONE_VM,
+.\" CLONE_FS, n' CLONE_FILES reverse tha action of tha clone()
+.\" flagz of tha same name.
+This flag has tha same ol' dirty effect as the
+.BR clone (2)
+.B CLONE_NEWNS
+flag.
+Unshare tha mount namespace,
+so dat tha callin process has a private copy of
+its namespace which aint shared wit any other process.
+Specifyin dis flag automatically implies
+.B CLONE_FS
+as well.
+Use of
+.BR CLONE_NEWNS
+requires the
+.BR CAP_SYS_ADMIN
+capability.
+.TP
+.BR CLONE_NEWUTS " (since Linux 2.6.19)
+This flag has tha same ol' dirty effect as the
+.BR clone (2)
+.B CLONE_NEWUTS
+flag.
+Unshare tha UTS IPC namespace,
+so dat tha callin process has a private copy of the
+UTS namespace which aint shared wit any other process.
+Use of
+.BR CLONE_NEWUTS
+requires the
+.BR CAP_SYS_ADMIN
+capability.
+.TP
+.BR CLONE_SYSVSEM " (since Linux 2.6.26)
+.\" commit 9edff4ab1f8d82675277a04e359d0ed8bf14a7b7
+This flag reverses tha effect of the
+.BR clone (2)
+.B CLONE_SYSVSEM
+flag.
+Unshare System V semaphore undo joints,
+so dat tha callin process has a private copy
+which aint shared wit any other process.
+Use of
+.BR CLONE_SYSVSEM
+requires the
+.BR CAP_SYS_ADMIN
+capability.
+.\" As at 2.6.16, tha followin forced implications also apply,
+.\" although tha relevant flags is not yet implemented.
+.\" If CLONE_THREAD is set force CLONE_VM.
+.\" If CLONE_VM is set, force CLONE_SIGHAND.
+.\" CLONE_NEWNSIf CLONE_SIGHAND is set n' signals is also bein shared
+.\" (i.e., current->signal->count > 1), force CLONE_THREAD.
+.\"
+.\" FIXME . CLONE_VM aint (yet, as at 2.6.16) implemented.
+.\" .TP
+.\" .B CLONE_VM
+.\" Reverse tha effect of the
+.\" .BR clone (2)
+.\" .B CLONE_VM
+.\" flag.
+.\" .RB ( CLONE_VM
+.\" be also implicitly set by
+.\" .BR vfork (2),
+.\" n' can be reversed rockin this
+.\" .BR unshare ()
+.\" flag.)
+.\" Unshare virtual memory, so dat tha callin process no
+.\" longer shares its virtual address space wit any other process.
+.PP
+If
+.I flags
+is specified as zero, then
+.BR unshare ()
+is a no-op;
+no chizzlez is made ta tha callin processs execution context.
+.SH RETURN VALUE
+On success, zero returned.
+On failure, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EINVAL
+An invalid bit was specified in
+.IR flags .
+.TP
+.B ENOMEM
+Cannot allocate sufficient memory ta copy partz of caller's
+context dat need ta be unshared.
+.TP
+.B EPERM
+Da callin process did not have tha required privileges fo' dis operation.
+.SH VERSIONS
+The
+.BR unshare ()
+system call was added ta Linux up in kernel 2.6.16.
+.SH CONFORMING TO
+The
+.BR unshare ()
+system call is Linux-specific.
+.SH NOTES
+Not all of tha process attributes dat can be shared when
+a freshly smoked up process is pimped using
+.BR clone (2)
+can be unshared using
+.BR unshare ().
+In particular, as at kernel 3.8,
+.\" FIXME all of tha followin need ta be reviewed fo' tha current kernel
+.BR unshare ()
+does not implement flags dat reverse tha effects of
+.BR CLONE_SIGHAND ,
+.\" But fuck dat shiznit yo, tha word on tha street is dat we can do unshare(CLONE_SIGHAND) if CLONE_SIGHAND
+.\" was not specified when bustin clone(); i.e., unsharing
+.\" signal handlezs is permitted if we is not actually
+.\" pluggin signal handlezs.   mtk
+.BR CLONE_THREAD ,
+or
+.BR CLONE_VM .
+.\" But fuck dat shiznit yo, tha word on tha street is dat we can do unshare(CLONE_VM) if CLONE_VM
+.\" was not specified when bustin clone(); i.e., unsharing
+.\" virtual memory is permitted if we is not actually
+.\" pluggin virtual memory.   mtk
+Such functionalitizzle may be added up in tha future, if required.
+.\"
+.\"9) Future Work
+.\"--------------
+.\"Da current implementation of unshare do not allow unsharin of
+.\"signals n' signal handlezs. Right back up in yo muthafuckin ass. Signals is complex ta begin wit and
+.\"to unshare signals and/or signal handlezz of a cold-ass lil currently hustlin
+.\"process is even mo' complex. If up in tha future there be a specific
+.\"need ta allow unsharin of signals and/or signal handlezs, it can
+.\"be incrementally added ta unshare without affectin legacy
+.\"applications rockin unshare.
+.\"
+.SH SEE ALSO
+.BR clone (2),
+.BR fork (2),
+.BR kcmp (2),
+.BR setns (2),
+.BR vfork (2)
+
+.I Documentation/unshare.txt
+in tha Linux kernel source tree
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

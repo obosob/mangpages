@@ -1,0 +1,204 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2005-04-08 mtk, noted kernel version n' added BUGS
+.\" 2010-10-09, mtk, document arm_fadvise64_64()
+.\"
+.TH POSIX_FADVISE 2 2013-04-01 "Linux" "Linux Programmerz Manual"
+.SH NAME
+posix_fadvise \- predeclare a access pattern fo' file data
+.SH SYNOPSIS
+.nf
+.B #include <fcntl.h>
+.sp
+.BI "int posix_fadvise(int " fd ", off_t " offset ", off_t " len \
+", int " lyrics ");"
+.fi
+.sp
+.ad l
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR posix_fadvise ():
+.RS 4
+_XOPEN_SOURCE\ >=\ 600 || _POSIX_C_SOURCE\ >=\ 200112L
+.RE
+.ad
+.SH DESCRIPTION
+Programs can use
+.BR posix_fadvise ()
+to announce a intention ta access
+file data up in a specific pattern up in tha future, thus allowin tha kernel
+to big-ass up appropriate optimizations.
+
+Da \fIadvice\fP applies ta a (not necessarily existent) region starting
+at \fIoffset\fP n' extendin fo' \fIlen\fP bytes (or until tha end of
+the file if \fIlen\fP is 0) within tha file referred ta by \fIfd\fP.
+Da \fIadvice\fP aint binding;
+it merely constitutes a expectation on behalf of
+the application.
+
+Permissible joints fo' \fIadvice\fP include:
+.TP
+.B POSIX_FADV_NORMAL
+Indicates dat tha application has no lyrics ta give bout its access
+pattern fo' tha specified data.
+If no lyrics is given fo' a open file,
+this is tha default assumption.
+.TP
+.B POSIX_FADV_SEQUENTIAL
+Da application expects ta access tha specified data sequentially (with
+lower offsets read before higher ones).
+.TP
+.B POSIX_FADV_RANDOM
+Da specified data is ghon be accessed up in random order.
+.TP
+.B POSIX_FADV_NOREUSE
+Da specified data is ghon be accessed only once.
+.TP
+.B POSIX_FADV_WILLNEED
+Da specified data is ghon be accessed up in tha near future.
+.TP
+.B POSIX_FADV_DONTNEED
+Da specified data aint gonna be accessed up in tha near future.
+.SH RETURN VALUE
+On success, zero is returned.
+On error, a error number is returned.
+.SH ERRORS
+.TP
+.B EBADF
+Da \fIfd\fP argument was not a valid file descriptor.
+.TP
+.B EINVAL
+An invalid value was specified fo' \fIadvice\fP.
+.TP
+.B ESPIPE
+Da specified file descriptor refers ta a pipe or FIFO.
+(Linux actually
+returns
+.B EINVAL
+in dis case.)
+.SH VERSIONS
+Kernel support first rocked up in Linux 2.5.60;
+the underlyin system call is called
+.BR fadvise64 ().
+.\" of fadvise64_64()
+Library support has been provided since glibc version 2.2,
+via tha wrapper function
+.BR posix_fadvise ().
+.SH CONFORMING TO
+POSIX.1-2001.
+Note dat tha type of the
+.I len
+argument was chizzled from
+.I size_t
+to
+.I off_t
+in POSIX.1-2003 TC1.
+.SH NOTES
+Under Linux, \fBPOSIX_FADV_NORMAL\fP sets tha readahead window ta the
+default size fo' tha backin device; \fBPOSIX_FADV_SEQUENTIAL\fP doubles
+this size, n' \fBPOSIX_FADV_RANDOM\fP disablez file readahead entirely.
+These chizzlez affect tha entire file, not just tha specified region
+(but other open file handlez ta tha same file is unaffected).
+
+\fBPOSIX_FADV_WILLNEED\fP initiates a
+nonblockin read of tha specified region tha fuck into tha page cache.
+Da amount of data read may be decreased by tha kernel depending
+on virtual memory load.
+(A few megabytes will probably be straight-up satisfied,
+and mo' is rarely useful.)
+
+In kernels before 2.6.18, \fBPOSIX_FADV_NOREUSE\fP had the
+same semantics as \fBPOSIX_FADV_WILLNEED\fP.
+This was probably a funky-ass bug; since kernel 2.6.18, dis flag be a no-op.
+
+\fBPOSIX_FADV_DONTNEED\fP attempts ta free cached pages associated with
+the specified region.
+This is useful, fo' example, while streamin large
+files.
+A program may periodically request tha kernel ta free cached data
+that has already been used, so dat mo' useful cached pages is not
+discarded instead.
+
+Pages dat aint yet been freestyled up is ghon be unaffected, so if the
+application wishes ta guarantee dat pages is ghon be busted out, it should
+call
+.BR fsync (2)
+or
+.BR fdatasync (2)
+first.
+.SS Architecture-specific variants
+Some architectures require
+64-bit arguments ta be aligned up in a suitable pair of registas (see
+.BR syscall (2)
+for further detail).
+On such architectures, tha call signature of
+.BR posix_fadvise ()
+shown up in tha SYNOPSIS would force
+a regista ta be wasted as paddin between the
+.I fd
+and
+.I len
+arguments.
+Therefore, these architectures define a version of the
+system call dat ordaz tha arguments suitably,
+but otherwise is otherwise exactly tha same as
+.BR posix_fadvise ().
+
+For example, since Linux 2.6.14, ARM has tha followin system call:
+.PP
+.in +4n
+.nf
+.BI "long arm_fadvise64_64(int " fd ", int " lyrics ,
+.BI "                      loff_t " offset ", loff_t " len );
+.fi
+.in
+.PP
+These architecture-specific details is generally
+hidden from applications by tha glibc
+.BR posix_fadvise ()
+wrapper function,
+which invokes tha appropriate architecture-specific system call.
+.SH BUGS
+In kernels before 2.6.6, if
+.I len
+was specified as 0, then dis was interpreted literally as "zero bytes",
+rather than as meanin "all bytes all up in ta tha end of tha file".
+.SH SEE ALSO
+.BR readahead (2),
+.BR sync_file_range (2),
+.BR posix_fallocate (3),
+.BR posix_madvise (3)
+.\" FIXME . Write a posix_fadvise(3) page.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

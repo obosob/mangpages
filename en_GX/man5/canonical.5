@@ -1,0 +1,276 @@
+.TH CANONICAL 5 
+.ad
+.fi
+.SH NAME
+canonical
+\-
+Postfix canonical table format
+.SH "SYNOPSIS"
+.na
+.nf
+\fBpostmap /etc/postfix/canonical\fR
+
+\fBpostmap -q "\fIstring\fB" /etc/postfix/canonical\fR
+
+\fBpostmap -q - /etc/postfix/canonical <\fIinputfile\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da optionizzle \fBcanonical\fR(5) table specifies a address mappin for
+local n' non-local addresses. Da mappin is used by the
+\fBcleanup\fR(8) daemon, before mail is stored tha fuck into the
+queue.  Da address mappin is recursive.
+
+Normally, tha \fBcanonical\fR(5) table is specified as a text file
+that serves as input ta tha \fBpostmap\fR(1) command.
+Da result, a indexed file up in \fBdbm\fR or \fBdb\fR format,
+is used fo' fast searchin by tha mail system. Execute tha command
+"\fBpostmap /etc/postfix/canonical\fR" ta rebuild a indexed
+file afta changin tha correspondin text file.
+
+When tha table is provided via other means like fuckin NIS, LDAP
+or SQL, tha same lookups is done as fo' ordinary indexed files.
+
+Alternatively, tha table can be provided as a regular-expression
+map where patterns is given as regular expressions, or lookups
+can be pimped up ta TCP-based server n' shit. In dem cases, tha lookups
+are done up in a slightly different way as busted lyrics bout below under
+"REGULAR EXPRESSION TABLES" or "TCP-BASED TABLES".
+
+By default tha \fBcanonical\fR(5) mappin affects both message
+header addresses (i.e. addresses dat step tha fuck up inside lyrics)
+and message envelope addresses (for example, tha addresses
+that is used up in SMTP protocol commands). This is controlled with
+the \fBcanonical_classes\fR parameter.
+
+NOTE: Postfix versions 2.2 n' lata rewrite message headers
+from remote SMTP clients only if tha client matches the
+local_header_rewrite_clients parameter, or if the
+remote_header_rewrite_domain configuration parameta specifies
+a non-empty value. To git tha behavior before Postfix 2.2,
+specify "local_header_rewrite_clients = static:all".
+
+Typically, one would use tha \fBcanonical\fR(5) table ta replace login
+names by \fIFirstname.Lastname\fR, or ta clean up addresses produced
+by legacy mail systems.
+
+Da \fBcanonical\fR(5) mappin aint ta be trippin wit \fIvirtual
+alias\fR support or wit local aliasing. To chizzle tha destination
+but not tha headers, use tha \fBvirtual\fR(5) or \fBaliases\fR(5)
+map instead.
+.SH "CASE FOLDING"
+.na
+.nf
+.ad
+.fi
+Da search strang is folded ta lowercase before database
+lookup fo' realz. Az of Postfix 2.3, tha search strang aint case
+folded wit database types like fuckin regexp: or pcre: whose
+lookup fieldz can match both upper n' lower case.
+.SH "TABLE FORMAT"
+.na
+.nf
+.ad
+.fi
+Da input format fo' tha \fBpostmap\fR(1) command be as bigs up:
+.IP "\fIpattern result\fR"
+When \fIpattern\fR matches a mail address, replace it by the
+correspondin \fIresult\fR.
+.IP "blank lines n' comments"
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP "multi-line text"
+A logical line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.SH "TABLE SEARCH ORDER"
+.na
+.nf
+.ad
+.fi
+With lookups from indexed filez like fuckin DB or DBM, or from networked
+tablez like fuckin NIS, LDAP or SQL, patterns is tried up in tha order as
+listed below:
+.IP "\fIuser\fR@\fIdomain address\fR"
+Replace \fIuser\fR@\fIdomain\fR by \fIaddress\fR. This form
+has tha highest precedence.
+.sp
+This is useful ta clean up addresses produced by legacy mail systems.
+It can also be used ta produce \fIFirstname.Lastname\fR style
+addresses yo, but peep below fo' a simpla solution.
+.IP "\fIuser address\fR"
+Replace \fIuser\fR@\fIsite\fR by \fIaddress\fR when \fIsite\fR is
+equal ta $\fBmyorigin\fR, when \fIsite\fR is listed in
+$\fBmydestination\fR, or when it is listed up in $\fBinet_interfaces\fR
+or $\fBproxy_interfaces\fR.
+.sp
+This form is useful fo' replacin login names by
+\fIFirstname.Lastname\fR.
+.IP "@\fIdomain address\fR"
+Replace other addresses up in \fIdomain\fR by \fIaddress\fR.
+This form has tha lowest precedence.
+.sp
+Note: @\fIdomain\fR be a wild-card. Y'all KNOW dat shit, muthafucka! When dis form be applied
+to recipient addresses, tha Postfix SMTP server accepts
+mail fo' any recipient up in \fIdomain\fR, regardless of whether
+that recipient exists, n' you can put dat on yo' toast.  This may turn yo' mail system into
+a backscatta source: Postfix first accepts mail for
+non-existent recipients n' then tries ta return dat mail
+as "undeliverable" ta tha often forged sender address.
+.SH "RESULT ADDRESS REWRITING"
+.na
+.nf
+.ad
+.fi
+Da lookup result is subject ta address rewriting:
+.IP \(bu
+When tha result has tha form @\fIotherdomain\fR, the
+result becomes tha same ol' dirty \fIuser\fR up in \fIotherdomain\fR.
+.IP \(bu
+When "\fBappend_at_myorigin=yes\fR", append "\fB@$myorigin\fR"
+to addresses without "@domain".
+.IP \(bu
+When "\fBappend_dot_mydomain=yes\fR", append
+"\fB.$mydomain\fR" ta addresses without ".domain".
+.SH "ADDRESS EXTENSION"
+.na
+.nf
+.fi
+.ad
+When a mail address localpart gotz nuff tha optionizzle recipient delimiter
+(e.g., \fIuser+foo\fR@\fIdomain\fR), tha lookup order becomes:
+\fIuser+foo\fR@\fIdomain\fR, \fIuser\fR@\fIdomain\fR, \fIuser+foo\fR,
+\fIuser\fR, n' @\fIdomain\fR.
+
+Da \fBpropagate_unmatched_extensions\fR parameta controls whether
+an unmatched address extension (\fI+foo\fR) is propagated ta the
+result of table lookup.
+.SH "REGULAR EXPRESSION TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when tha table
+is given up in tha form of regular expressions. For a thugged-out description of
+regular expression lookup table syntax, peep \fBregexp_table\fR(5)
+or \fBpcre_table\fR(5).
+
+Each pattern be a regular expression dat be applied ta tha entire
+address bein looked up. Thus, \fIuser@domain\fR mail addresses is not
+broken up tha fuck into they \fIuser\fR n' \fI@domain\fR constituent parts,
+nor is \fIuser+foo\fR fucked up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Patterns is applied up in tha order as specified up in tha table, until a
+pattern is found dat matches tha search string.
+
+Results is tha same as wit indexed file lookups, with
+the additionizzle feature dat parenthesized substrings from the
+pattern can be interpolated as \fB$1\fR, \fB$2\fR n' so on.
+.SH "TCP-BASED TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when lookups
+are pimped up ta a TCP-based server n' shit. For a thugged-out description of tha TCP
+client/server lookup protocol, peep \fBtcp_table\fR(5).
+This feature aint available up ta n' includin Postfix version 2.4.
+
+Each lookup operation uses tha entire address once.  Thus,
+\fIuser@domain\fR mail addresses is not fucked up tha fuck into their
+\fIuser\fR n' \fI@domain\fR constituent parts, nor is
+\fIuser+foo\fR fucked up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Results is tha same as wit indexed file lookups.
+.SH BUGS
+.ad
+.fi
+Da table format do not KNOW quotin conventions.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da followin \fBmain.cf\fR parametas is especially relevant.
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP \fBcanonical_classes\fR
+What addresses is subject ta canonical address mapping.
+.IP \fBcanonical_maps\fR
+List of canonical mappin tables.
+.IP \fBrecipient_canonical_maps\fR
+Address mappin lookup table fo' envelope n' header recipient
+addresses.
+.IP \fBsender_canonical_maps\fR
+Address mappin lookup table fo' envelope n' header sender
+addresses.
+.IP \fBpropagate_unmatched_extensions\fR
+A list of address rewritin or forwardin mechanizzlez dat propagate
+an address extension from tha original gangsta address ta tha result.
+Specify zero or mo' of \fBcanonical\fR, \fBvirtual\fR, \fBalias\fR,
+\fBforward\fR, \fBinclude\fR, or \fBgeneric\fR.
+.PP
+Other parametaz of interest:
+.IP \fBinet_interfaces\fR
+Da network intercourse addresses dat dis system receives mail on.
+Yo ass need ta stop n' start Postfix when dis parameta chizzles.
+.IP \fBlocal_header_rewrite_clients\fR
+Rewrite message header addresses up in mail from these clients
+and update incomplete addresses wit tha domain name in
+$myorigin or $mydomain; either don't rewrite message headers
+from other clients at all, or rewrite message headaz and
+update incomplete addresses wit tha domain specified in
+the remote_header_rewrite_domain parameter.
+.IP \fBproxy_interfaces\fR
+Other intercourses dat dis machine receives mail on by way of a
+proxy agent or network address translator.
+.IP \fBmasquerade_classes\fR
+List of address classes subject ta masquerading: zero or mo' of
+\fBenvelope_sender\fR, \fBenvelope_recipient\fR, \fBheader_sender\fR,
+\fBheader_recipient\fR.
+.IP \fBmasquerade_domains\fR
+List of domains dat hide they subdomain structure.
+.IP \fBmasquerade_exceptions\fR
+List of user names dat is not subject ta address masquerading.
+.IP \fBmydestination\fR
+List of domains dat dis mail system considaz local.
+.IP \fBmyorigin\fR
+Da domain dat be appended ta locally-posted mail.
+.IP \fBballer_request_special\fR
+Give special treatment ta \fBballer-\fIxxx\fR n' \fIxxx\fB-request\fR
+addresses.
+.IP \fBremote_header_rewrite_domain\fR
+Don't rewrite message headaz from remote clients at all
+when dis parameta is empty; otherwise, rewrite message
+headaz n' append tha specified domain name ta incomplete
+addresses.
+.SH "SEE ALSO"
+.na
+.nf
+cleanup(8), canonicalize n' enqueue mail
+postmap(1), Postfix lookup table manager
+postconf(5), configuration parameters
+virtual(5), virtual aliasing
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+ADDRESS_REWRITING_README, address rewritin guide
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

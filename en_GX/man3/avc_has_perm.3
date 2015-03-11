@@ -1,0 +1,159 @@
+.\" Yo Emacs muthafucka! This file is -*- nroff -*- source.
+.\"
+.\" Author: Eamon Walsh (ewalsh@tycho.nsa.gov) 2004
+.TH "avc_has_perm" "3" "27 May 2004" "" "SELinux API documentation"
+.SH "NAME"
+avc_has_perm, avc_has_perm_noaudit, avc_audit, avc_entry_ref_init \- obtain n' audit SELinux access decisions
+.
+.SH "SYNOPSIS"
+.B #include <selinux/selinux.h>
+.br
+.B #include <selinux/avc.h>
+.sp
+.BI "void avc_entry_ref_init(struct avc_entry_ref *" aeref ");"
+.sp
+.BI "int avc_has_perm(security_id_t " ssid ", security_id_t " tsid ,
+.in +\w'int avc_has_perm('u
+.BI "security_class_t " tclass ", access_vector_t " axed ,
+.br
+.BI "struct avc_entry_ref *" aeref ", void *" auditdata ");"
+.in
+.sp
+.BI "int avc_has_perm_noaudit(security_id_t " ssid ", security_id_t " tsid ,
+.in +\w'int avc_has_perm('u
+.BI "security_class_t " tclass ", access_vector_t " axed ,
+.br
+.BI "struct avc_entry_ref *" aeref ", struct av_decision *" avd ");"
+.in
+.sp
+.BI "void avc_audit(security_id_t " ssid ", security_id_t " tsid ,
+.in +\w'void avc_audit('u
+.BI "security_class_t " tclass ", access_vector_t " axed ,
+.br
+.BI "struct av_decision *" avd ", int " result ", void *" auditdata ");"
+.in
+.
+.SH "DESCRIPTION"
+.BR avc_entry_ref_init ()
+initializes an
+.B avc_entry_ref
+structure; see
+.B ENTRY REFERENCES
+below.  This function may be implemented as a macro.
+
+.BR avc_has_perm ()
+checks whether tha 
+.I requested
+permissions is granted
+for subject SID
+.IR ssid
+and target SID
+.IR tsid ,
+interpretin tha permissions
+based on
+.I tclass
+and updating
+.IR aeref ,
+if non-NULL, ta refer ta a cold-ass lil cache entry wit tha resultin decision. I aint talkin' bout chicken n' gravy biatch.  Da grantin or denial of permissions be audited up in accordizzle wit tha policy.  The
+.I auditdata
+parameta is fo' supplemenstrual auditing; see
+.BR avc_audit ()
+below.
+
+.BR avc_has_perm_noaudit ()
+behaves as
+.BR avc_has_perm ()
+without producin a audit message.  Da access decision is returned in
+.I avd
+and can be passed to
+.BR avc_audit ()
+explicitly.
+
+.BR avc_audit ()
+produces a audit message fo' tha access query represented by
+.IR ssid ,
+.IR tsid ,
+.IR tclass ,
+and
+.IR axed ,
+with a thugged-out decision represented by
+.IR avd .
+Pass tha value returned by
+.BR avc_has_perm_noaudit ()
+as
+.IR result .
+The
+.I auditdata
+parameta is passed ta tha user-supplied
+.B func_audit
+callback n' can be used ta add supplemenstrual shiznit ta tha audit message; see
+.BR avc_init (3).
+.
+.SH "ENTRY REFERENCES"
+Entry references can be used ta speed cache performizzle fo' repeated queries on tha same subject n' target.  Da userspace AVC will check the
+.I aeref
+argument, if supplied, before searchin tha cache on a permission query.  Afta a query is performed,
+.I aeref
+will be updated ta reference tha cache entry fo' dat query.  A subsequent query on tha same subject n' target will then have tha decision at hand without havin ta strutt tha cache.
+
+Afta declarin an
+.B avc_entry_ref
+structure, use
+.BR avc_entry_ref_init ()
+to initialize it before passin it to
+.BR avc_has_perm ()
+or
+.BR \%avc_has_perm_noaudit ()
+for tha last time.
+Usin a uninitialized structure will produce undefined behavior.
+.
+.SH "RETURN VALUE"
+If axed permissions is granted, zero is returned. Y'all KNOW dat shit, muthafucka!  If axed permissions is denied or a error occured, \-1 is returned and
+.I errno
+is set appropriately.
+
+In permissive mode, zero is ghon be returned and
+.I errno
+unchanged even if permissions was denied.
+.BR avc_has_perm ()
+will still produce a audit message up in dis case.
+.
+.SH "ERRORS"
+.TP
+.B EACCES
+A axed permission was denied.
+.TP
+.B EINVAL
+The
+.I tclass
+and/or tha securitizzle contexts referenced by
+.I ssid
+and
+.I tsid
+are not recognized by tha currently loaded policy.
+.TP
+.B ENOMEM
+An attempt ta allocate memory failed.
+.
+.SH "NOTES"
+Internal errors encountered by tha userspace AVC may cause certain joints of
+.I errno
+to be returned unexpectedly.  For example, netlink socket errors may produce
+.B EACCES
+or
+.BR EINVAL .
+Make shizzle dat userspace object managers is granted appropriate access to
+netlink by tha policy.
+.
+.SH "AUTHOR"
+Eamon Walsh <ewalsh@tycho.nsa.gov>
+.
+.SH "SEE ALSO"
+.ad l
+.nh
+.BR avc_init (3),
+.BR avc_context_to_sid (3),
+.BR avc_cache_stats (3),
+.BR avc_add_callback (3),
+.BR security_compute_av (3),
+.BR selinux (8)

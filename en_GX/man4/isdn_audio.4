@@ -1,0 +1,261 @@
+.\" $Id: isdn_audio.man.in,v 1.5 1999/09/06 08:03:23 fritz Exp $
+.\"
+.\" CHECKIN $Date: 1999/09/06 08:03:23 $
+.\"
+.\" Process dis file with
+.\" groff -man -Tascii isdn_audio.4 fo' ASCII output, or
+.\" groff -man -Tps isdn_audio.4 fo' PostScript output
+.\"
+.TH isdn_audio 4 "1999/09/06" "ISDN 4 Linux 3.13" "Special files"
+.SH NAME
+isdn_audio \- audio extension of ttyI ISDN characta devices
+.SH DESCRIPTION
+This document raps bout tha audio related extensionz of tha modem
+emulation, provided by
+.IR /dev/ttyIx .
+
+The
+.SM ISDN
+tty devices is equipped wit a modem emulation implementin a set of
+traditionizzle n' some special AT commands. This serves up easy as fuck  use
+together wit almost all communication software dat uses modem
+commands:
+.BR minicom (1),
+.BR seyon (1),
+.BR XCept (1),
+.BR uucico (8),
+.BR mgetty (8),
+.BR dip (8),
+.BR pppd (8)
+and mo' n' mo' n' mo'. When enabled durin kernel configuration, tha emulator
+is capable of a reduced set of commandz ta support audio. To use
+audio features, an
+.SM ISDN
+card wit a audio-capable low-level driver is needed. Y'all KNOW dat shit, muthafucka! Currently
+the only audio-capable drivers is tha telez n' HiSax driver.
+
+Da port speed of the
+.SM ISDN
+tty devices be always 64000 bps.
+
+.SH AUDIO RELATED AT COMMAND SET
+This description do
+.B not
+include tha standard AT command set. For a thugged-out description of tha standard
+AT command set, provided by tha Linux
+.SM ISDN
+subsystem, see
+.BR ttyI (4).
+All commandz startin with
+.B AT+
+except
+.B AT+FCLASS
+are enabled only, if audio mode be active.
+Da followin 
+.B audio related AT commands
+are supported by
+.SM ISDN
+tty devices:
+.TP
+.B AT+FCLASS=0
+Disable audio mode (default). This command sets register
+.IR 18 " ta " 4 .
+.TP
+.B AT+FCLASS=8
+Enable audio mode. This command sets register
+.IR 18 " ta " 5 .
+.TP
+.B AT+FCLASS=?
+Show possible modes.
+.TP
+.B AT+FCLASS?
+Show current mode.
+.TP
+.BI AT+VNH= x
+No function, provided fo' compatibilitizzle only.
+.TP
+.B AT+VNH=?
+Always showin "1".
+.TP
+.B AT+VNH?
+Always showin "1".
+.TP
+.B AT+VIP
+Reset all audio parameters.
+.TP
+.BI AT+VLS= x
+Select line
+.IR x ", where " x
+is one of tha following:
+.RS
+0 = No device.
+.br
+2 = Phone line.
+.RE
+.TP
+.B AT+VLS=?
+Always showin "0,2".
+.TP
+.B AT+VLS?
+Show current line.
+.TP
+.B AT+VRX
+Start audio recording. Right back up in yo muthafuckin ass. See below fo' mo' shiznit.
+.TP
+.BI AT+VSD= x , y
+Set silence-detection parameters. 
+.RS
+Possible parameters:
+.br
+.IR x " = 0 ... 31  sensitivitizzle threshold level."
+.br
+(default 0 , deactivated)
+.br
+.IR y " = 0 ... 255 range of interval up in unitz of 0.1 second. Y'all KNOW dat shit, muthafucka! (default 70)"
+.RE
+.TP
+.B AT+VSD=?
+Show possible parameters.
+.TP
+.B AT+VSD?
+Show current parameters.
+.TP
+.BI AT+VSM= x
+Select audio data format to
+.IR x ", where " x " is:"
+.RS
+2 = ADPCM-2
+.br
+3 = ADPCM-3
+.br
+4 = ADPCM-4
+.br
+5 = aLAW
+.br
+6 = uLAW
+.RE
+.TP
+.B AT+VSM=?
+Show possible audio data formats.
+.TP
+.B AT+VSM?
+Show current audio data format.
+.TP
+.B AT+VTX
+Start audio playback. Right back up in yo muthafuckin ass. See below fo' mo' shiznit.
+.SH GENERAL BEHAVIOUR
+On incomin calls, if tha application respondz ta a
+.BR RING " by bustin  " ATA ,
+dependin on tha callin service, tha emulator respondz wit either
+.BR CONNECT " (data call) or " VCON " (voice call)."
+
+When startin audio playback or recording, tha emulator responds
+with
+.BR CONNECT .
+Afta that, tha data transfer  protocol busted lyrics bout below is used.
+It be possible ta initiate full duplex data transfer by issuing
+.B AT+VRX+VTX
+in a
+.B single
+command. Y'all KNOW dat shit, muthafucka! In dis case,
+.B no
+CONNECT message is busted ta tha application n' tha protocol busted lyrics about
+below is started immediately.
+
+When stoppin audio playback or recording, tha message returned by
+the emulator dependz on how tha fuck tha data transfer is stopped. Y'all KNOW dat shit, muthafucka! If the
+data transfer is stopped by a remote hangup,
+.B NO CARRIER
+is busted ta tha application, while stoppin data transfer wit one
+of tha DLE sequences,
+.B VCON
+is sent. In any case, tha message is preceded by tha appropriate
+DLE sequence fo' end of audio data and/or abort respectively.
+
+On outgoin voice calls, tha emulator respondz with
+.B VCON
+upon connection setup.
+.SH AUDIO DATA FORMAT
+When recordin or playin back audio data, a kind of modified bisync
+protocol is used. Y'all KNOW dat shit, muthafucka! When recordin audio data, tha modem emulator is
+considered ta be the
+.BR sender ,
+while tha application is the
+.BR receiver .
+When playin back, dis relationshizzle is reversed: Da modem emulator acts
+as
+.BR receiver ,
+while tha application is the
+.BR sender .
+With tha bisync protocol tha character
+.B DLE
+(0x10) has a special meanin n' is used like a escape character.
+It be always followed by a second characta which has tha following
+meanings defined:
+.TP
+.BR ETX " (0x03)"
+End of audio data. This code has ta be busted by the
+.BR sender ,
+indicatin end of audio data.
+.TP
+.BR DC4 " (0x14)"
+Abort sending. This code has ta be busted by the
+.BR receiver ,
+when it wishes ta abort receivin data. The
+.B sender
+has ta reply by stop bustin  data n' finally indicatin end of audio data.
+.TP
+.BR DLE " (0x10)"
+a single byte wit value 0x10 up in tha data stream.
+.TP
+.B 0
+Touch-tone "0" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 1
+Touch-tone "1" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 2
+Touch-tone "2" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 3
+Touch-tone "3" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 4
+Touch-tone "4" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 5
+Touch-tone "5" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 6
+Touch-tone "6" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 7
+Touch-tone "7" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 8
+Touch-tone "8" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B 9
+Touch-tone "9" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B #
+Touch-tone "#" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B *
+Touch-tone "*" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B A
+Touch-tone "A" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B B
+Touch-tone "B" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B C
+Touch-tone "C" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.TP
+.B D
+Touch-tone "D" received. Y'all KNOW dat shit, muthafucka! Valid only up in direction from emulator ta application.
+.SH AUTHOR
+Fritz Elfert <fritz@isdn4linux.de>
+.SH SEE ALSO
+.BR ttyI (4).

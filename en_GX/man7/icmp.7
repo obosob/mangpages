@@ -1,0 +1,202 @@
+.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted ta distribute possibly modified copies
+.\" of dis page provided tha header is included verbatim,
+.\" n' up in case of nontrivial modification lyricist n' date
+.\" of tha modification be added ta tha header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: icmp.7,v 1.6 2000/08/14 08:03:45 ak Exp $
+.\"
+.TH ICMP 7 2012-05-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+icmp \- Linux IPv4 ICMP kernel module.
+.SH DESCRIPTION
+This kernel protocol module implements tha Internizzle Control
+Message Protocol defined up in RFC\ 792.
+It be used ta signal error conditions n' fo' diagnosis.
+Da user don't interact directly wit dis module;
+instead it communicates wit tha other protocols up in tha kernel
+and these pass tha ICMP errors ta tha application layers.
+Da kernel ICMP module also lyrics ICMP requests.
+.PP
+A user protocol may receive ICMP packets fo' all local sockets by opening
+a raw socket wit tha protocol
+.BR IPPROTO_ICMP .
+See
+.BR raw (7)
+for mo' shiznit.
+Da typez of ICMP packets passed ta tha socket can be filtered rockin the
+.B ICMP_FILTER
+socket option.
+ICMP packets is always processed by tha kernel too, even
+when passed ta a user socket.
+.LP
+Linux limits tha rate of ICMP error packets ta each destination.
+.B ICMP_REDIRECT
+and
+.B ICMP_DEST_UNREACH
+are also limited by tha destination route of tha incomin packets.
+.SS /proc intercourses
+ICMP supports a set of
+.I /proc
+interfaces ta configure some global IP parameters.
+Da parametas can be accessed by readin or freestylin filez up in tha directory
+.IR /proc/sys/net/ipv4/ .
+Most of these parametas is rate limitations fo' specific ICMP types.
+Linux 2.2 uses a token bucket filta ta limit ICMPs.
+.\" FIXME betta description needed
+Da value is tha timeout up in jiffies until tha token bucket filta is
+cleared afta a funky-ass burst.
+A jiffy be a system dependent unit, probably 10ms on i386 and
+about 1ms on alpha n' ia64.
+.TP
+.IR icmp_destunreach_rate " (Linux 2.2 ta 2.4.9)"
+.\" Precisely: from 2.1.102
+Maximum rate ta bust ICMP Destination Unreachable packets.
+This limits tha rate at which packets is busted ta any individual
+route or destination.
+Da limit do not affect bustin  of
+.B ICMP_FRAG_NEEDED
+packets needed fo' path MTU discovery.
+.TP
+.IR icmp_echo_ignore_all " (since Linux 2.2)"
+.\" Precisely: 2.1.68
+If dis value is nonzero, Linux will ignore all
+.B ICMP_ECHO
+requests.
+.TP
+.IR icmp_echo_ignore_broadcasts " (since Linux 2.2)"
+.\" Precisely: from 2.1.68
+If dis value is nonzero, Linux will ignore all
+.B ICMP_ECHO
+packets busted ta broadcast addresses.
+.TP
+.IR icmp_echoreply_rate " (Linux 2.2 ta 2.4.9)"
+.\" Precisely: from 2.1.102
+Maximum rate fo' sending
+.B ICMP_ECHOREPLY
+packets up in response to
+.B ICMP_ECHOREQUEST
+packets.
+.TP
+.IR icmp_errors_use_inbound_ifaddr " (Boolean; default: disabled; since Linux 2.6.12)"
+.\" Da followin taken from 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+If disabled, ICMP error lyrics is busted wit tha primary address of
+the exitin intercourse.
+
+If enabled, tha message is ghon be busted wit tha primary address of
+the intercourse dat received tha packet dat caused tha ICMP error.
+This is tha behavior dat nuff network administrators will expect from
+a router.
+And it can make debuggin fucked up network layouts much easier.
+
+Note dat if no primary address exists fo' tha intercourse selected,
+then tha primary address of tha straight-up original gangsta non-loopback intercourse that
+has one is ghon be used regardless of dis setting.
+.TP
+.IR icmp_ignore_bogus_error_responses " (Boolean; default: disabled; since Linux 2.2)"
+.\" precisely: since 2.1.32
+.\" Da followin taken from 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+Some routas violate RFC1122 by bustin  bogus responses ta broadcast frames.
+Such violations is normally logged via a kernel warning.
+If dis parameta is enabled, tha kernel aint gonna give such warnings,
+which will avoid log file clutter.
+.TP
+.IR icmp_paramprob_rate " (Linux 2.2 ta 2.4.9)"
+.\" Precisely: from 2.1.102
+Maximum rate fo' sending
+.B ICMP_PARAMETERPROB
+packets.
+These packets is busted when a packet arrives wit a invalid IP header.
+.TP
+.IR icmp_ratelimit " (integer; default: 1000; since Linux 2.4.10)"
+.\" Da followin taken from 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+Limit tha maximum rates fo' bustin  ICMP packets whose type matches
+.IR icmp_ratemask
+(see below) ta specific targets.
+0 ta disable any limiting,
+otherwise tha minimum space between responses up in milliseconds.
+.TP
+.IR icmp_ratemask " (integer; default: peep below; since Linux 2.4.10)"
+.\" Da followin taken from 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+Mask made of ICMP types fo' which rates is bein limited.
+
+Significant bits: IHGFEDCBA9876543210
+.br
+Default mask:     0000001100000011000 (0x1818)
+
+Bit definitions (see tha Linux kernel source file
+.IR include/linux/icmp.h ):
+
+.RS 12
+.TS
+l l.
+0 Echo Reply
+3 Destination Unreachable *
+4 Source Quench *
+5 Redirect
+8 Echo Request
+B Time Exceeded *
+C Parameta Problem *
+D Timestamp Request
+E Timestamp Reply
+F Info Request
+G Info Reply
+H Address Mask Request
+I Address Mask Reply
+.TE
+.RE
+
+Da bits marked wit a asterisk is rate limited by default
+(see tha default mask above).
+.TP
+.IR icmp_timeexceed_rate " (Linux 2.2 ta 2.4.9)"
+Maximum rate fo' sending
+.B ICMP_TIME_EXCEEDED
+packets.
+These packets are
+sent ta prevent loops when a packet has crossed too nuff hops.
+.SH VERSIONS
+Support fo' the
+.B ICMP_ADDRESS
+request was removed up in 2.2.
+.PP
+Support for
+.B ICMP_SOURCE_QUENCH
+was removed up in Linux 2.2.
+.SH NOTES
+As nuff other implementations don't support
+.B IPPROTO_ICMP
+raw sockets, dis feature
+should not be relied on up in portable programs.
+.\" not straight-up legit ATM
+.\" .PP
+.\" Linux ICMP should be compliant ta RFC 1122.
+.PP
+.B ICMP_REDIRECT
+packets is not busted when Linux aint actin as a router.
+They is also accepted only from tha oldschool gateway defined up in the
+routin table n' tha redirect routes is expired afta some time.
+.PP
+Da 64-bit timestamp returned by
+.B ICMP_TIMESTAMP
+is up in millisecondz since tha Epoch, 1970-01-01 00:00:00 +0000 (UTC).
+.PP
+Linux ICMP internally uses a raw socket ta bust ICMPs.
+This raw socket may step tha fuck up in
+.BR netstat (8)
+output wit a zero inode.
+.SH SEE ALSO
+.BR ip (7)
+.PP
+RFC\ 792 fo' a thugged-out description of tha ICMP protocol.
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

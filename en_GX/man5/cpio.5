@@ -1,0 +1,325 @@
+.\" Copyright (c) 2007 Slim Tim Kientzle
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd December 23, 2011
+.Dt CPIO 5
+.Os
+.Sh NAME
+.Nm cpio
+.Nd format of cpio archive files
+.Sh DESCRIPTION
+The
+.Nm
+archive format collects any number of files, directories, n' other
+file system objects (symbolic links, thang nodes, etc.) tha fuck into a single
+stream of bytes.
+.Ss General Format
+Each file system object up in a
+.Nm
+archive comprises a header record wit basic numeric metadata
+followed by tha full pathname of tha entry n' tha file data.
+Da header record stores a seriez of integer joints dat generally
+follow tha fieldz in
+.Va struct stat .
+(See
+.Xr stat 2
+for details.)
+Da variants differ primarily up in how tha fuck they store dem integers
+(binary, octal, or hexadecimal).
+Da header is followed by tha pathname of the
+entry (the length of tha pathname is stored up in tha header)
+and any file data.
+Da end of tha archive is indicated by a special record with
+the pathname
+.Dq TRAILER!!! .
+.Ss PWB format
+XXX Any documentation of tha original gangsta PWB/UNIX 1.0 format, biatch? XXX
+.Ss Oldskool Binary Format
+Da oldschool binary
+.Nm
+format stores numbers as 2-byte n' 4-byte binary joints.
+Each entry begins wit a header up in tha followin format:
+.Bd -literal -offset indent
+struct header_old_cpio {
+        unsigned short   c_magic;
+        unsigned short   c_dev;
+        unsigned short   c_ino;
+        unsigned short   c_mode;
+        unsigned short   c_uid;
+        unsigned short   c_gid;
+        unsigned short   c_nlink;
+        unsigned short   c_rdev;
+	unsigned short   c_mtime[2];
+        unsigned short   c_namesize;
+	unsigned short   c_filesize[2];
+};
+.Ed
+.Pp
+The
+.Va unsigned short
+fieldz here is 16-bit integer joints; the
+.Va unsigned int
+fieldz is 32-bit integer joints.
+Da fieldz is as bigs up
+.Bl -tag -width indent
+.It Va magic
+Da integer value octal 070707.
+This value can be used ta determine whether dis archive is
+written wit lil-endian or big-endian integers.
+.It Va dev , Va ino
+Da thang n' inode numbers from tha disk.
+These is used by programs dat read
+.Nm
+archives ta determine when two entries refer ta tha same file.
+Programs dat synthesize
+.Nm
+archives should be careful ta set these ta distinct joints fo' each entry.
+.It Va mode
+Da mode specifies both tha regular permissions n' tha file type.
+It consistz of nuff muthafuckin bit fieldz as bigs up:
+.Bl -tag -width "MMMMMMM" -compact
+.It 0170000
+This masks tha file type bits.
+.It 0140000
+File type value fo' sockets.
+.It 0120000
+File type value fo' symbolic links.
+For symbolic links, tha link body is stored as file data.
+.It 0100000
+File type value fo' regular files.
+.It 0060000
+File type value fo' block special devices.
+.It 0040000
+File type value fo' directories.
+.It 0020000
+File type value fo' characta special devices.
+.It 0010000
+File type value fo' named pipes or FIFOs.
+.It 0004000
+SUID bit.
+.It 0002000
+SGID bit.
+.It 0001000
+Sticky bit.
+On some systems, dis modifies tha behavior of executablez and/or directories.
+.It 0000777
+Da lower 9 bits specify read/write/execute permissions
+for ghetto, group, n' user followin standard POSIX conventions.
+.El
+.It Va uid , Va gid
+Da numeric user id n' crew id of tha baller.
+.It Va nlink
+Da number of links ta dis file.
+Directories always gotz a value of at least two here.
+Note dat hardlinked filez include file data wit every last muthafuckin copy up in tha archive.
+.It Va rdev
+For block special n' characta special entries,
+this field gotz nuff tha associated thang number.
+For all other entry types, it should be set ta zero by writers
+and ignored by readers.
+.It Va mtime
+Modification time of tha file, indicated as tha number
+of secondz since tha start of tha epoch,
+00:00:00 UTC January 1, 1970.
+Da four-byte integer is stored wit da most thugged-out-significant 16 bits first
+followed by tha least-significant 16 bits.
+Each of tha two 16 bit joints is stored up in machine-natizzle byte order.
+.It Va namesize
+Da number of bytes up in tha pathname dat bigs up tha header.
+This count includes tha trailin NUL byte.
+.It Va filesize
+Da size of tha file.
+Note dat dis archive format is limited to
+four gigabyte file sizes.
+See
+.Va mtime
+above fo' a thugged-out description of tha storage of four-byte integers.
+.El
+.Pp
+Da pathname immediately bigs up tha fixed header.
+If the
+.Cm namesize
+is odd, a additionizzle NUL byte be added afta tha pathname.
+Da file data is then appended, padded wit NUL
+bytes ta a even length.
+.Pp
+Hardlinked filez is not given special treatment;
+the full file contents is included wit each copy of the
+file.
+.Ss Portable ASCII Format
+.St -susv2
+standardized a ASCII variant dat is portable across all
+platforms.
+It be commonly known as the
+.Dq oldschool character
+format or as the
+.Dq odc
+format.
+It stores tha same ol' dirty numeric fieldz as tha oldschool binary format yo, but
+represents dem as 6-characta or 11-characta octal joints.
+.Bd -literal -offset indent
+struct cpio_odc_header {
+        char    c_magic[6];
+        char    c_dev[6];
+        char    c_ino[6];
+        char    c_mode[6];
+        char    c_uid[6];
+        char    c_gid[6];
+        char    c_nlink[6];
+        char    c_rdev[6];
+        char    c_mtime[11];
+        char    c_namesize[6];
+        char    c_filesize[11];
+};
+.Ed
+.Pp
+Da fieldz is identical ta dem up in tha oldschool binary format.
+Da name n' file body follow tha fixed header.
+Unlike tha oldschool binary format, there is no additionizzle padding
+afta tha pathname or file contents.
+If tha filez bein archived is theyselves entirely ASCII, then
+the resultin archive is ghon be entirely ASCII, except fo' the
+NUL byte dat terminates tha name field.
+.Ss New ASCII Format
+Da "new" ASCII format uses 8-byte hexadecimal fieldz for
+all numbers n' separates thang numbers tha fuck into separate fields
+for major n' minor numbers.
+.Bd -literal -offset indent
+struct cpio_newc_header {
+        char    c_magic[6];
+        char    c_ino[8];
+        char    c_mode[8];
+        char    c_uid[8];
+        char    c_gid[8];
+        char    c_nlink[8];
+        char    c_mtime[8];
+        char    c_filesize[8];
+        char    c_devmajor[8];
+        char    c_devminor[8];
+        char    c_rdevmajor[8];
+        char    c_rdevminor[8];
+        char    c_namesize[8];
+        char    c_check[8];
+};
+.Ed
+.Pp
+Except as specified below, tha fieldz here match dem specified
+for tha oldschool binary format above.
+.Bl -tag -width indent
+.It Va magic
+Da string
+.Dq 070701 .
+.It Va check
+This field be always set ta zero by writas n' ignored by readers.
+See tha next section fo' mo' details.
+.El
+.Pp
+Da pathname is followed by NUL bytes so dat tha total size
+of tha fixed header plus pathname be a multiple of four.
+Likewise, tha file data is padded ta a multiple of four bytes.
+Note dat dis format supports only 4 gigabyte filez (unlike the
+olda ASCII format, which supports 8 gigabyte files).
+.Pp
+In dis format, hardlinked filez is handled by settin the
+filesize ta zero fo' each entry except tha last one that
+appears up in tha archive.
+.Ss New CRC Format
+Da CRC format is identical ta tha freshly smoked up ASCII format busted lyrics about
+in tha previous section except dat tha magic field is set
+to
+.Dq 070702
+and the
+.Va check
+field is set ta tha sum of all bytes up in tha file data.
+This sum is computed treatin all bytes as unsigned joints
+and rockin unsigned arithmetic.
+Only tha least-significant 32 bitz of tha sum is stored.
+.Ss HP variants
+The
+.Nm cpio
+implementation distributed wit HPUX used XXXX but stored
+device numbers differently XXX.
+.Ss Other Extensions n' Variants
+Sun Solaris uses additionizzle file types ta store extended file
+data, includin ACLs n' extended attributes, as special
+entries up in cpio archives.
+.Pp
+XXX Others, biatch? XXX
+.Sh SEE ALSO
+.Xr cpio 1 ,
+.Xr tar 5
+.Sh STANDARDS
+The
+.Nm cpio
+utilitizzle is no longer a part of POSIX or tha Single Unix Standard.
+It last rocked up in
+.St -susv2 .
+It has been supplanted up in subsequent standardz by
+.Xr pax 1 .
+Da portable ASCII format is currently part of tha justification fo' the
+.Xr pax 1
+utility.
+.Sh HISTORY
+Da original gangsta cpio utilitizzle was freestyled by Dick Haight
+while hustlin up in AT&Tz Unix Support Group.
+It rocked up in 1977 as part of PWB/UNIX 1.0, the
+.Dq Programmerz Work Bench
+derived from
+.At v6
+that was used internally at AT&T.
+Both tha oldschool binary n' oldschool characta formats was up in use
+by 1980, accordin ta tha System Pt III source busted out
+by SCO under their
+.Dq Ancient Unix
+license.
+Da characta format was adopted as part of
+.St -p1003.1-88 .
+XXX when did "newc" appear, biatch?  Dum diddy-dum, here I come biaaatch! Who tha fuck invented it, biatch?  When did HP come up wit they variant, biatch?  When did Sun introduce ACLs n' extended attributes, biatch? XXX
+.Sh BUGS
+The
+.Dq CRC
+format is mis-named, as it uses a simple checksum and
+not a cold-ass lil cyclic redundancy check.
+.Pp
+Da oldschool binary format is limited ta 16 bits fo' user id,
+group id, device, n' inode numbers.
+It be limited ta 4 gigabyte file sizes.
+.Pp
+Da oldschool ASCII format is limited ta 18 bits for
+the user id, crew id, device, n' inode numbers.
+It be limited ta 8 gigabyte file sizes.
+.Pp
+Da freshly smoked up ASCII format is limited ta 4 gigabyte file sizes.
+.Pp
+None of tha cpio formats store user or crew names,
+which is essential when movin filez between systems with
+dissimilar user or crew numbering.
+.Pp
+Especially when freestylin olda cpio variants, it may be necessary
+to map actual device/inode joints ta synthesized joints that
+fit tha available fields.
+With straight-up big-ass filesystems, dis may be necessary even for
+the newer formats.

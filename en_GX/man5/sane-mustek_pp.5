@@ -1,0 +1,490 @@
+.TH sane\-mustek_pp 5 "13 Jul 2008"
+.de EX
+.sp
+.nf
+.ft CW
+..
+.de EE
+.ft R
+.fi
+.sp
+..
+.IX sane\-mustek_pp
+.SH NAME
+sane\-mustek_pp \- SANE backend fo' Mustek parallel port flatbed scanners
+.SH DESCRIPTION
+The
+.B sane\-mustek_pp
+library implements a SANE (Scanner Access Now Easy) backend that
+provides access ta Mustek parallel port flatbed scanners n' OEM versions.
+
+There is 2 classez of Mustek parallel port scanners: regular 
+.B CCD
+(cold cathode device) scanners n' 
+.B CIS 
+(contact image sensor) scanners.
+.P
+Da current version of dis backend supports both CCD type scanners and
+CIS type scanners.
+.P
+Da followin scanners might work wit dis backend:
+
+.SS "CCD scanners" 
+
+.EX
+Model:                  ASIC ID:        CCD Type:       works:
+--------------------------------------------------------------
+SE 6000 P               1013            00              yes
+SM 4800 P               1013/1015       04/01           yes
+SE 1200 ED Plus         1015            01              no
+SM 1200 ED Plus         1015            01              no
+SE 12000 P              1505            05              no
+600 Pt III EP Plus         1013/1015       00/01           yes
+SE 600 SEP              1013            ?, biatch?              yes
+600 Pt II EP               ???, biatch?            ?, biatch?              no
+MD9848                  1015            00              yes
+Gallery 4800            ???, biatch?            ?, biatch?              yes
+Viviscan Compact Pt II     1013            00              yes
+.EE
+.SS CIS scanners
+.EX
+Model:                  ASIC ID:        works:
+-----------------------------------------------
+Mustek 600 CP & 96 CP   1015            yeaaaa (*)
+Mustek 1200 CP          1015            yes
+Mustek 1200 CP+         1015            yes
+.EE
+
+.EX
+OEM versions            Original Gangsta        works 
+--------------------------------------------------
+Medion/LifeTec/Tevion
+   MD/LT 9350/9351      1200 CP         yes
+   MD/LT 9850/9851      1200 CP         maybe (**)
+   MD/LT 9858           1200 CP         probably
+   MD/LT 9890/9891      1200 CP         yes
+Targa 
+   Funline TS12EP       1200 CP         yes
+   Funline TS6EP        600 CP          yes
+Trust
+   Easy Connect 9600+   600 CP          yes
+Cybercom 
+   9352                 1200 CP         yeaaaa (***)
+.EE
+.HP 
+(*)    Calibration  problems existed wit earlier version of
+this driver n' shit. They seem ta be solved now, nahmeean?
+.HP 
+(**)   Problems done been reported up in tha past fo' the
+MD/LT9850 type (striped scans, head movin up in wrong
+direction at some resolutions). Well shiiiit, it aint known whether
+the current version of tha driver still has these problems.
+.PP
+.B  IF YOU HEAR LOUD CLICKING NOISES, IMMEDIATELY UNPLUG THE SCANNER !
+(This holdz fo' any type of scanner).
+.HP 
+(***)  Possibly, tha engine_delay parameta has ta be set ta 1 ms
+for accurate engine movements.
+.PP
+Please note dat dis backend is still under construction. I aint talkin' bout chicken n' gravy biatch. Certain models
+are currently not supported n' some may never be cuz tha communication
+protocol is still unknown (eg., SE 12000 P).
+.PP
+Some scanners work fasta when 
+.B EPP/ECP
+is enabled up in tha BIOS. EPP mode however may lead ta hard-locks on some Linux
+systems. If dat is tha case fo' you, you can either disable ECP/EPP up in your
+BIOS or disable it up in tha backend itself (see GLOBAL OPTIONS).
+.PP
+Note dat tha backend need ta run as root or has ta have appropriate access
+rights ta /dev/parport* if libieee1284 support is compiled in. I aint talkin' bout chicken n' gravy biatch. To allow user 
+access ta tha scanner run tha backend all up in tha network intercourse (See 
+saned(8) n' sane\-net(5)). Note also dat tha backend
+.I do not
+support
+.IR "parport sharing" ,
+i.e. if you try printin while scanning, yo' computa may crash. To enable
+parport sharing, you gotta enable libieee1284 at compile time. This backend
+also conflicts wit the
+.I sane\-musteka4s2
+backend yo, but it ain't no stoppin cause I be still poppin'. Yo ass can only enable one of dem up in yo' dll.conf. But fuck dat shiznit yo, tha word on tha street is dat you have
+to enable tha backend explicitly up in yo' dll.conf, just remove tha hash mark
+in tha line "mustek_pp".
+
+.SH "DEVICE DEFINITION"
+This backend allows multiple devices bein defined n' configured via tha 
+.B mustek_pp.conf
+file (even simultaneously, provided dat they is connected ta different
+parallel ports). Please make shizzle ta edit dis file
+.B before
+you use tha backend.
+.PP
+A thang can be defined as bigs up:
+.PP
+.RS
+.I scanner <name> <port name> <driver>
+.RE
+.PP
+where
+.HP
+.B <name>
+is a arbitrary name fo' tha device, optionally enclosed by double quotes,
+for instizzle "LifeTec 9350".
+.HP
+.B <port name>
+is tha name of tha parallel port ta which tha thang is connected. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. In case
+libieee1284 is used fo' communication wit tha port
+.I (default 
+.IR setup) , 
+valid port names is 
+.BR parport0 , 
+.BR parport1 , 
+and
+.BR parport2 .
+.PP
+In case tha backend is configured fo' raw IO
+.I (old 
+.IR setup) ,
+port addresses gotta be used instead of port names:
+.BR 0x378 ,
+.BR 0x278 , 
+or
+.BR 0x3BC .
+Da mappin of parallel ports (lp0, lp1, n' lp2) ta these addresses 
+can be different fo' different Linux kernel versions. For instance,
+if yo ass is rockin a Kernel 2.2.x or betta n' you have only one
+parallel port, dis port is named lp0 regardless of tha base address yo. However,
+this backend requires tha base address of yo' port. If yo ass is not shizzle which
+port yo' scanner is connected to, gotz a peep yo' /etc/conf.modules,
+/etc/modules.conf and/or /proc/ioports.
+.PP
+If yo ass is unsure which port ta use, you can use tha magic value
+.BR * 
+to probe fo' yo' scanner.
+.PP
+.HP
+.B <driver>
+is tha driver ta use fo' dis device. Currently available drivers are:
+.IP
+.BR cis600 "   : fo' 600 CP, 96 CP & OEM versions"
+.br
+.BR cis1200 "  : fo' 1200 CP & OEM versions"
+.br  
+.BR cis1200+ " : fo' 1200 CP+ & OEM versions"
+.br
+.BR ccd300 "   : fo' 600 Pt IIIE P & OEM version"
+.IP
+.B Choosin  tha  wack  driver  can  damage  yo' scanner!
+.br
+Especially, rockin tha 1200CP settings on a 600CP can be
+harmful naaahhmean, biatch? If tha scanner starts bustin a funky-ass bangin noise, turn
+it off immediately !!!
+.PP
+Usin tha cis600 driver on a 1200CP or a 1200CP+ is probably not
+dangerous. Da cis1200+ driver also works fo' tha 1200CP, n' using
+the cis1200 driver on a 1200CP+ will typically result up in scans that
+cover only half of tha width of tha scan area (also not dangerous).
+.PP
+If unsure bout tha exact model of yo' OEM version, check tha optical
+resolution up in tha manual or on tha box: tha 600CP has a maximum optical
+resolution of 300x600 DPI, whereas tha 1200CP n' 1200CP+ gotz a maximum 
+optical resolution of 600x1200 DPI. 
+.PP
+Examples:
+.PP
+.RS 
+scanner "LifeTec 9350" 0x378 cis1200
+.PP
+scanner Mustek_600CP 0x378 cis600
+.PP
+scanner Mustek_600IIIEP * ccd300
+.RE
+
+If up in doubt which port you gotta use, or whether yo' scanner is
+detected at all, you can use 
+.B sane\-find\-scanner \-p
+to probe all configured ports.
+
+.SH CONFIGURATION
+.PP
+Da contentz of the
+.B mustek_pp.conf
+file be a list of thang definitions n' thang options dat correspond ta 
+Mustek scanners.  Empty lines n' lines startin wit a hash mark (#) are
+ignored. Y'all KNOW dat shit, muthafucka! Options have tha followin format:
+.PP
+.RS
+.I option <name> [<value>]
+.RE
+.PP
+Dependin on tha nature of tha option, a value may or may not be present.
+Options always apply ta tha scanner definizzle dat precedes em. There
+are no global options. Options is also driver-specific: not all drivers
+support all possible options. 
+
+.SS Common options
+.TP
+.B bw <value>
+Black/white discrimination value ta be used durin lineart scanning. Pixel
+values below dis value is assumed ta be black, joints above are
+assumed ta be white. 
+.br
+Default value: 127
+.br 
+Minimum:         0
+.br 
+Maximum:       255
+.sp
+Example:  option bw 150
+
+.SS CIS driver options
+.TP
+.B top_adjust <value>
+Vertical adjustment of tha origin, expressed up in millimeta (floatin point). 
+This option can be used ta calibrate tha posizzle of tha origin, within
+certain limits, n' you can put dat on yo' toast. Note dat CIS scanners is probably temperature sensitive, and
+that a cold-ass lil certain inaccuracy may be hard ta avoid. Y'all KNOW dat shit, muthafucka! Differences up in offset between
+runs up in tha order of 1 ta 2 mm is not unusual.
+.br
+Default value: 0.0
+.br
+Minimum:      \-5.0
+.br
+Maximum:       5.0
+.br
+.sp
+Example:  option top_adjust \-2.5
+.TP
+.B slow_skip
+Turns fast skippin ta tha start of tha scan region off. When tha region to
+scan do not start all up in tha origin, tha driver will try ta move tha scanhead
+to tha start of tha scan area all up in tha fastest possible speed. Y'all KNOW dat shit, muthafucka! On some models,
+this may not work, resultin up in big-ass inaccuracies (up ta centimeters).
+By settin dis option, tha driver is forced ta use aiiight speed during
+skipping, which can circumvent tha accuracy problems. Currently, there be 
+no models fo' which these inaccuracy problems is known ta occur.
+.sp
+By default, fast skippin is used.
+.sp
+Example:  option slow_skip
+.TP
+.B engine_delay <value>
+Under aiiight circumstances, it is sufficient fo' tha driver ta wait fo' the
+scanner signalin dat tha engine is stable, before a freshly smoked up engine command can
+be transmitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. In rare cases, certain scanners and/or parallel port chipsets
+appear ta prevent reliable detection of tha engine state fo' realz. As a result, engine
+commandz is transmitted too soon n' tha movement of tha scanner head becomes
+unreliable. Inaccuracies rangin up ta 10 cm over tha whole vertical scan
+range done been reported. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. To work round dis problem, tha engine_delay option
+can be set. If it is set, tha driver waits a additionizzle amount of time after
+every engine command, equal ta tha engine_delay parameter, expressed in
+milliseconds. Well shiiiit, it practice a engine_delay of 1 ms is probably sufficient. The
+maximum delay is 100 ms.
+.sp
+Note dat every last muthafuckin additionizzle mz of delay can add up ta 14 secondz ta tha total
+scannin time (highest resolution), so a as lil' small-ass as possible value is
+preferred.
+.sp
+Default value:   0
+.br
+Minimum:         0
+.br
+Maximum:       100
+.sp
+Example:  option engine_delay 1
+
+.SS CCD driver options
+.TP
+.B top <value>
+Number of scanlines ta skip ta tha start of tha scan area. Da number can
+be any positizzle integer n' shit. Values known ta me is 47 n' 56.
+.sp
+Default value: 47
+.br
+Minimum:       0
+.br
+Maximum:       none
+.br
+.sp
+Example:  option top 56
+.TP
+.B waitbank <value>
+Da number of usecs ta wait fo' a funky-ass bank chizzle. Yo ass should not bust a nut on this
+value actually. May be any positizzle integer
+.sp
+Default value: 700
+.br
+Minimum:       0
+.br
+Maximum:       none
+.sp
+Example:  option waitbank 700
+.PP
+A sample configuration file is shown below:
+.PP
+.EX
+#
+# LifeTec/Medion 9350 on port 0x378
+#
+scanner "LifeTec 9350" 0x378 cis1200
+
+# Some calibration options (examples!).
+option bw 127
+option top_skip \-0.8
+
+#
+# A Mustek 600CP on port 0x3BC
+#
+scanner "Mustek 600CP" 0x3BC cis600
+
+# Some calibration options (examples!).
+option bw 120
+option top_skip 1.2
+
+#
+# A Mustek 1200CP+ on port 0x278
+#
+scanner "Mustek 1200CP plus" 0x278 cis1200+
+
+# Some calibration options (examples!).
+option bw 130
+option top_skip 0.2
+
+#
+# A Mustek 600 Pt III EPP on port parport0
+#
+scanner "Mustek 600 Pt III EPP" parport0 ccd300
+
+# Some calibration options (examples!).
+option bw 130
+option top 56
+.EE
+
+.SH GLOBAL OPTIONS
+.PP
+Yo ass can control tha overall behaviour of tha mustek_pp backend by global
+options which precede any scanner definizzle up in tha mustek_pp.conf file.
+.sp
+Currently, there is only one global option:
+
+.SS Global options
+.TP
+.B no_epp
+Disable parallel port mode EPP: works round a known bug up in tha Linux parport
+code. Enable dis option, if tha backend hangs when tryin ta access the
+parallel port up in EPP mode.
+.sp
+Default value: use EPP
+.sp
+Example:  option no_epp
+
+.SH FILES
+.TP
+.I /etc/sane.d/mustek_pp.conf
+Da backend configuration file (see also description of
+.B SANE_CONFIG_DIR
+below).
+.TP
+.I /usr/lib64/sane/libsane\-mustek_pp.a
+Da static library implementin dis backend.
+.TP
+.I /usr/lib64/sane/libsane\-mustek_pp.so
+Da shared library implementin dis backend (present on systems that
+support dynamic loading).
+
+.SH ENVIRONMENT
+.TP
+.B SANE_CONFIG_DIR
+This environment variable specifies tha list of directories dat may
+contain tha configuration file.  Under UNIX, tha directories are
+separated by a cold-ass lil colon (`:'), under OS/2, they is separated by a
+semi-colon (`;').  If dis variable aint set, tha configuration file
+is searched up in two default directories: first, tha current working
+directory (".") n' then up in /etc/sane.d. Y'all KNOW dat shit, muthafucka!  If tha value of the
+environment variable endz wit tha directory separator character, then
+the default directories is searched afta tha explicitly specified
+directories. Put ya muthafuckin choppers up if ya feel dis!  For example, setting
+.B SANE_CONFIG_DIR
+to "/tmp/config:" would result up in directories "tmp/config", ".", and
+"/etc/sane.d" bein searched (in dis order).
+.TP
+.B SANE_DEBUG_MUSTEK_PP
+If tha library was compiled wit debug support enabled, this
+environment variable controls tha debug level fo' dis backend yo, but it ain't no stoppin cause I be still poppin'.  E.g.,
+a value of 128 requests all debug output ta be printed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Smaller
+levels reduce verbosity.
+.EX
+level   debug output
+--------------------------------------
+ 0      nothing
+ 1      errors
+ 2      warnings & minor errors
+ 3      additionizzle shiznit
+ 4      debug shiznit
+ 5      code flow (not supported yet)
+ 6      special debug shiznit
+.EE
+.TP
+.B SANE_DEBUG_SANEI_PA4S2
+This variable sets tha debug level fo' tha SANE intercourse fo' tha Mustek
+chipset A4S2. Note dat enablin dis will spam yo' terminal wit some
+mazillion linez of debug output.
+.EX
+level   debug output
+----------------------------
+ 0      nothing
+ 1      errors
+ 2      warnings
+ 3      thangs sick ta know
+ 4      code flow
+ 5      detailed code flow
+ 6      every last muthafuckin thang
+.EE
+
+.SH "SEE ALSO"
+sane(7), sane\-mustek(5), sane\-net(5), saned(8), sane\-find\-scanner(1)
+
+.TP
+For sickest fuckin bug fixes n' shiznit see
+.I http://www.penguin\-breeder.org/sane/mustek_pp/
+
+.TP
+For additionizzle shiznit on tha CIS driver, see
+.I http://home.scarlet.be/eddy_de_greef/
+
+.SH AUTHORS
+.nf
+Jochen Eisinger <jochen at penguin\-breeder dot org> 
+Eddy De Greef <eddy_de_greef at scarlet dot be>
+.fi
+
+.SH BUGS
+Too many... please bust bug reports ta 
+.I sane\-devel@lists.alioth.debian.org
+(note dat you gotta subscribe first ta tha list before you can send
+emails... peep http://www.sane\-project.org/mailing\-lists.html)
+
+.SH BUG REPORTS
+If suttin' don't work, please hollar at our asses (Jochen fo' tha CCD scanners,
+Eddy fo' tha CIS scanners). But we need some shiznit about
+your scanner ta be able ta help yo thugged-out ass...
+
+.TP
+.I SANE version
+run "scanimage \-V" ta determine this
+.TP
+.I tha backend version n' yo' scanner hardware
+run "SANE_DEBUG_MUSTEK_PP=128 scanimage \-L" as root. If you don't git any output
+from tha mustek_pp backend, make shizzle a line "mustek_pp" is included into
+your /etc/sane.d/dll.conf.
+If yo' scanner aint detected, make shizzle you've defined tha right port address
+in yo' mustek_pp.conf.
+.TP
+.I tha name of yo' scanner/vendor
+also a worthy shiznit. I aint talkin' bout chicken n' gravy biatch. Please also include tha optical resolution n' lamp type of yo' scanner, both can be found up in tha manual of yo' scanner.
+.TP
+.I any further comments
+if you have comments bout tha documentation (what could be done better), or you
+think I should know something, please include dat shit.
+.TP
+.I some sick greetings

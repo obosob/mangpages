@@ -1,0 +1,569 @@
+.\"	$Id: dhcp-eval.5,v 1.29.24.4 2012/05/17 15:51:20 sar Exp $
+.\"
+.\" Copyright (c) 2009-2012,2014 by Internizzle Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 2004,2007 by Internizzle Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 1996-2003 by Internizzle Software Consortium
+.\"
+.\" Permission ta use, copy, modify, n' distribute dis software fo' any
+.\" purpose wit or without fee is hereby granted, provided dat tha above
+.\" copyright notice n' dis permission notice step tha fuck up in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+.\" OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\"   Internizzle Systems Consortium, Inc.
+.\"   950 Charta Street
+.\"   Redwood City, CA 94063
+.\"   <info@isc.org>
+.\"   https://www.isc.org/
+.\"
+.\" Support n' other skillz is available fo' ISC shizzle - see
+.\" https://www.isc.org fo' mo' shiznit or ta learn mo' bout ISC.
+.\"
+.TH dhcp-eval 5
+.SH NAME
+dhcp-eval - ISC DHCP conditionizzle evaluation
+.SH DESCRIPTION
+Da Internizzle Systems Consortium DHCP client n' server both provide
+the mobilitizzle ta big-ass up conditionizzle behavior dependin on tha contents
+of packets they receive.  Da syntax fo' specifyin dis conditional
+behaviour is documented here.
+.SH REFERENCE: CONDITIONAL BEHAVIOUR
+Conditionizzle behaviour may be  specified rockin tha if statement n' tha else
+or elsif statements or tha switch n' case statements.
+A conditionizzle statement can step tha fuck up anywhere
+that a regular statement (e.g., a option statement) can appear, and
+can enclose one or mo' such statements.
+.PP
+.B CONDITIONAL BEHAVIOUR: IF
+.PP
+A typical conditionizzle if statement up in a server might be:
+.PP
+.nf
+if option dhcp-user-class = "accounting" {
+  max-lease-time 17600;
+  option domain-name "accounting.example.org";
+  option domain-name-servers ns1.accounting.example.org,
+			     ns2.accounting.example.org;
+} elsif option dhcp-user-class = "sales" {
+  max-lease-time 17600;
+  option domain-name "sales.example.org";
+  option domain-name-servers ns1.sales.example.org,
+			     ns2.sales.example.org;
+} elsif option dhcp-user-class = "engineering" {
+  max-lease-time 17600;
+  option domain-name "engineering.example.org";
+  option domain-name-servers ns1.engineering.example.org,
+			     ns2.engineering.example.org;
+} else {
+  max-lease-time 600;
+  option domain-name "misc.example.org";
+  option domain-name-servers ns1.misc.example.org,
+			     ns2.misc.example.org;
+}
+.fi
+.PP
+On tha client side, a example of conditionizzle evaluation might be:
+.PP
+.nf
+# example.org filtas DNS at its firewall, so we gotta use they DNS
+# servers when we connect ta they network.  If we is not at
+# example.org, prefer our own DNS server.
+if not option domain-name = "example.org" {
+  prepend domain-name-servers 127.0.0.1;
+}
+.fi
+.PP
+The
+.B if
+statement n' the
+.B elsif
+continuation statement both take boolean expressions as their
+arguments, n' you can put dat on yo' toast.  That is, they take expressions that, when evaluated,
+produce a funky-ass boolean result.  If tha expression evaluates ta true, then
+the statements enclosed up in braces followin the
+.B if
+statement is executed, n' all subsequent
+.B elsif
+and
+.B else
+clauses is skipped. Y'all KNOW dat shit, muthafucka!  Otherwise, each subsequent 
+.B elsif
+clausez expression is checked, until a elsif clause is encountered
+whose test evaluates ta true.  If such a cold-ass lil clause is found, the
+statements up in braces followin it is executed, n' then any
+subsequent
+.B elsif
+and
+.B else
+clauses is skipped. Y'all KNOW dat shit, muthafucka!  If all tha 
+.B if
+and
+.B elsif
+clauses is checked but none
+of they expressions evaluate true, then if there be an
+.B else
+clause, tha statements enclosed up in braces followin the
+.B else
+are evaluated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Boolean expressions dat evaluate ta null are
+treated as false up in conditionals.
+.PP
+.B CONDITIONAL BEHAVIOUR: SWITCH
+.PP
+Da above example can be rewritten rockin a switch construct as well.
+.PP
+.nf
+switch (option dhcp-user-class) {
+  case "accounting":
+    max-lease-time 17600;
+    option domain-name "accounting.example.org";
+    option domain-name-servers ns1.accounting.example.org,
+			       ns2.accounting.example.org;
+  case "sales":
+    max-lease-time 17600;
+    option domain-name "sales.example.org";
+    option domain-name-servers ns1.sales.example.org,
+			       ns2.sales.example.org;
+    break;
+  case "engineering":
+    max-lease-time 17600;
+    option domain-name "engineering.example.org";
+    option domain-name-servers ns1.engineering.example.org,
+			       ns2.engineering.example.org;
+    break;
+  default:
+    max-lease-time 600;
+    option domain-name "misc.example.org";
+    option domain-name-servers ns1.misc.example.org,
+			       ns2.misc.example.org;
+    break;
+}
+.fi
+.PP
+The
+.B switch
+statement n' the
+.B case
+statements can both be data expressions or numeric expressions.  Within
+a switch statement they all must be tha same type.  Da server 
+evaluates tha expression from tha switch statement n' then it evaluates
+the expressions from tha case statements until it findz a match.
+.PP
+If it findz a match it starts executin statements from dat case
+until tha next break statement.  If it don't find a match it
+starts from tha default statement n' again n' again n' again proceedz ta tha next
+break statement.  If there is no match n' no default it do nothing.
+.PP
+.SH BOOLEAN EXPRESSIONS
+Da followin is tha current list of boolean expressions dat are
+supported by tha DHCP distribution.
+.PP
+.I data-expression-1 \fB=\fR \fIdata-expression-2\fR
+.RS 0.25i
+.PP
+Da \fB=\fR operator compares tha jointz of two data expressions,
+returnin legit if they is tha same, false if they is not.  If
+either tha left-hand side or tha right-hand side is null, the
+result be also null.
+.RE
+.PP
+.I data-expression-1 \fB~=\fR \fIdata-expression-2\fR
+.I data-expression-1 \fB~~\fR \fIdata-expression-2\fR
+.RS 0.25i
+.PP
+Da \fB~=\fR n' \fB~~\fR operators (not available on all systems) perform
+extended regex(7) matchin of tha jointz of two data expressions, returning
+true if \fIdata-expression-1\fR matches against tha regular expression
+evaluated by \fIdata-expression-2\fR, or false if it do not match or
+encountas some error. Shiiit, dis aint no joke.  If either tha left-hand side or tha right-hand side
+are null or empty strings, tha result be also false.  Da \fB~~\fR operator
+differs from tha \fB~=\fR operator up in dat it is case-insensitive.
+.RE
+.PP
+.I boolean-expression-1 \fBand\fR \fIboolean-expression-2\fR
+.PP
+.RS 0.25i
+Da \fBand\fR operator evaluates ta legit if tha boolean expression on
+the left-hand side n' tha boolean expression on tha right-hand side
+both evaluate ta true.  Otherwise, it evaluates ta false.  If either
+the expression on tha left-hand side or tha expression on the
+right-hand side is null, tha result is null.
+.RE
+.PP
+.I boolean-expression-1 \fBor\fR \fIboolean-expression-2\fR
+.PP
+.RS 0.25i
+Da \fBor\fR operator evaluates ta legit if either tha boolean
+expression on tha left-hand side or tha boolean expression on the
+right-hand side evaluate ta true.  Otherwise, it evaluates ta false.
+If either tha expression on tha left-hand side or tha expression on
+the right-hand side is null, tha result is null.
+.RE
+.PP
+.B not \fIboolean-expression
+.PP
+.RS 0.25i
+Da \fBnot\fR operator evaluates ta legit if \fIboolean-expression\fR
+evaluates ta false, n' returns false if \fIboolean-expression\fR evaluates
+to true.  If \fIboolean-expression\fR evaluates ta null, tha result
+is also null.
+.RE
+.PP
+.B exists \fIoption-name\fR
+.PP
+.RS 0.25i
+Da \fBexists\fR expression returns legit if tha specified option
+exists up in tha incomin DHCP packet bein processed.
+.RE
+.B known
+.PP
+.RS 0.25i
+Da \fBknown\fR expression returns legit if tha client whose request is
+currently bein processed is known - dat is, if there be a a host
+declaration fo' dat shit.
+.RE
+.B static
+.PP
+.RS 0.25i
+Da \fBstatic\fR expression returns legit if tha lease assigned ta the
+client whose request is currently bein processed is derived from a static
+address assignment.
+.RE
+.SH DATA EXPRESSIONS
+Several of tha boolean expressions above depend on tha thangs up in dis biatch of
+evaluatin data expressions.  A list of these expressions is provided
+here.
+.PP
+.B substrin (\fIdata-expr\fB, \fIoffset\fB, \fIlength\fB)\fR
+.PP
+.RS 0.25i
+Da \fBsubstring\fR operator evaluates tha data expression n' returns
+the substrin of tha result of dat evaluation dat starts
+\fIoffset\fR bytes from tha beginning, continuin fo' \fIlength\fR
+bytes.  \fIOffset\fR n' \fIlength\fR is both numeric expressions.
+If \fIdata-expr\fR, \fIoffset\fR or \fIlength\fR evaluate ta null,
+then tha result be also null.  If \fIoffset\fR is pimped outa than or
+equal ta tha length of tha evaluated data, then a zero-length data
+strin is returned. Y'all KNOW dat shit, muthafucka!  If \fIlength\fI is pimped outa then tha remaining
+length of tha evaluated data afta \fIoffset\fR, then a thugged-out data string
+containin all data from \fIoffset\fR ta tha end of tha evaluated data
+is returned.
+.RE
+.PP
+.B suffix (\fIdata-expr\fB, \fIlength\fB)\fR
+.PP
+.RS 0.25i
+Da \fBsuffix\fR operator evaluates \fIdata-expr\fR n' returns the
+last \fIlength\fR bytez of tha result of dat evaluation. I aint talkin' bout chicken n' gravy biatch.  \fILength\fR
+is a numeric expression. I aint talkin' bout chicken n' gravy biatch.  If \fIdata-expr\fR or \fIlength\fR evaluate
+to null, then tha result be also null.  If \fIsuffix\fR evaluates ta a
+number pimped outa than tha length of tha evaluated data, then the
+evaluated data is returned.
+.RE
+.PP
+.B lcase (\fIdata-expr\fB)\fR
+.PP
+.RS 0.25i
+Da \fBlcase\fR function returns tha result of evaluating
+\fIdata-expr\fR converted ta lower case.  If \fIdata-expr\fR evaluates
+to null, then tha result be also null.
+.RE
+.PP
+.B ucase (\fIdata-expr\fB)\fR
+.PP
+.RS 0.25i
+Da \fBucase\fR function returns tha result of evaluating
+\fIdata-expr\fR converted ta upper case.  If \fIdata-expr\fR evaluates
+to null, then tha result be also null.
+.RE
+.PP
+.B option \fIoption-name\fR
+.PP
+.RS 0.25i
+Da \fBoption\fR operator returns tha contentz of tha specified option in
+the packet ta which tha server is responding.
+.RE
+.PP
+.B config-option \fIoption-name\fR
+.PP
+.RS 0.25i
+Da \fBconfig-option\fR operator returns tha value fo' tha specified option
+that tha DHCP client or server has been configured ta send.
+.RE
+.PP
+.B gethostname()
+.PP
+.RS 0.25i
+Da \fBgethostname()\fR function returns a thugged-out data strang whose contents is a
+characta string, tha thangs up in dis biatch of callin gethostname() on tha local
+system wit a size limit of 255 bytes (not includin NULL terminator).  This
+can be used fo' example ta configure dhclient ta bust tha local hostname
+without knowin tha local hostname all up in tha time dhclient.conf is written.
+.RE
+.PP
+.B hardware
+.PP
+.RS 0.25i
+Da \fBhardware\fR operator returns a thugged-out data strang whose first element
+is tha type of network intercourse indicated up in packet bein considered,
+and whose subsequent elements is clientz link-layer address.  If
+there is no packet, or if tha RFC2131 \fIhlen\fR field is invalid,
+then tha result is null.  Hardware types include ethernet (1),
+token-rin (6), n' fddi (8).  Hardware types is specified by the
+IETF, n' details on how tha fuck tha type numbers is defined can be found in
+RFC2131 (in tha ISC DHCP distribution, dis is included up in tha doc/
+subdirectory).
+.RE
+.PP
+.B packet (\fIoffset\fB, \fIlength\fB)\fR
+.PP
+.RS 0.25i
+Da \fBpacket\fR operator returns tha specified portion of tha packet
+bein considered, or null up in contexts where no packet is being
+considered. Y'all KNOW dat shit, muthafucka!  \fIOffset\fR n' \fIlength\fR is applied ta the
+contents packet as up in tha \fBsubstring\fR operator.
+.RE
+.PP
+.I string
+.PP
+.RS 0.25i
+A string, enclosed up in quotes, may be specified as a thugged-out data expression,
+and returns tha text between tha quotes, encoded up in ASCII.  The
+backslash ('\\') characta is treated specially, as up in C programming: '\\t'
+means TAB, '\\r' means carriage return, '\\n' means newline, n' '\\b' means
+bell.  Any octal value can be specified wit '\\nnn', where nnn be any
+positizzle octal number less than 0400.  Any hexadecimal value can be
+specified wit '\\xnn', where nn be any positizzle hexadecimal number less
+than or equal ta 0xff.
+.RE
+.PP
+.I colon-separated hexadecimal list
+.PP
+.RS 0.25i
+A list of hexadecimal octet joints, separated by colons, may be
+specified as a thugged-out data expression.
+.RE
+.PP
+.B concat (\fIdata-expr1\fB, ..., \fIdata-exprN\fB)\fR
+.RS 0.25i
+Da expressions is evaluated, n' tha thangs up in dis biatch of each evaluation are
+concatenated up in tha sequence dat tha subexpressions is listed. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If
+any subexpression evaluates ta null, tha result of tha concatenation
+is null.
+.RE
+.PP
+.B reverse (\fInumeric-expr1\fB, \fIdata-expr2\fB)\fR
+.RS 0.25i
+Da two expressions is evaluated, n' then tha result of evaluating
+the data expression is reversed up in place, rockin hunkz of tha size
+specified up in tha numeric expression. I aint talkin' bout chicken n' gravy biatch.  For example, if tha numeric
+expression evaluates ta four, n' tha data expression evaluates to
+twelve bytez of data, then tha reverse expression will evaluate to
+twelve bytez of data, consistin of tha last four bytez of the
+input data, followed by tha middle four bytes, followed by tha first
+four bytes.
+.RE
+.PP
+.B leased-address
+.RS 0.25i
+In any context where tha client whose request is bein processed has
+been assigned a IP address, dis data expression returns dat IP
+address.  In any context where tha client whose request is being
+processed has not been assigned a ip address, if dis data expression
+is found up in executable statements executed on dat clientz behalf,
+a log message indicatin "there is no lease associated wit dis client"
+is syslogged ta tha debug level (this is considered dhcpd.conf debugging
+information).
+.RE
+.PP
+.B binary-to-ascii (\fInumeric-expr1\fB, \fInumeric-expr2\fB,
+.B \fIdata-expr1\fB,\fR \fIdata-expr2\fB)\fR
+.RS 0.25i
+Converts tha result of evaluatin data-expr2 tha fuck into a text string
+containin one number fo' each element of tha result of evaluating
+data-expr2.  Each number is separated from tha other by tha result of
+evaluatin data-expr1.  Da result of evaluatin numeric-expr1
+specifies tha base (2 all up in 16) tha fuck into which tha numbers should be
+converted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da result of evaluatin numeric-expr2 specifies the
+width up in bitz of each number, which may be either 8, 16 or 32.
+.PP
+As a example of tha precedin three typez of expressions, ta produce
+the name of a PTR record fo' tha IP address bein assigned ta a
+client, one could write tha followin expression:
+.RE
+.PP
+.nf
+        concat (binary-to-ascii (10, 8, ".",
+                                 reverse (1, leased-address)),
+                ".in-addr.arpa.");
+
+.fi
+.RE
+.PP
+.B encode-int (\fInumeric-expr\fB, \fIwidth\fB)\fR
+.RS 0.25i
+Numeric-expr is evaluated n' encoded as a thugged-out data strang of the
+specified width, up in network byte order (most dope byte first).
+If tha numeric expression evaluates ta tha null value, tha result is
+also null.
+.RE
+.PP
+.B pick-first-value (\fIdata-expr1\fR [ ... \fIexpr\fRn ] \fB)\fR
+.RS 0.25i
+Da pick-first-value function takes any number of data expressions as
+its arguments, n' you can put dat on yo' toast.  Each expression is evaluated, startin wit tha first
+in tha list, until a expression is found dat do not evaluate ta a
+null value.  That expression is returned, n' none of tha subsequent
+expressions is evaluated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  If all expressions evaluate ta a null
+value, tha null value is returned.
+.RE
+.PP
+.B host-decl-name
+.RS 0.25i
+Da host-decl-name function returns tha name of tha host declaration
+that matched tha client whose request is currently bein processed, if
+any.  If no host declaration matched, tha result is tha null value.
+.RE
+.SH NUMERIC EXPRESSIONS
+Numeric expressions is expressions dat evaluate ta a integer n' shit.  In
+general, tha maximum size of such a integer should not be assumed to
+be representable up in fewer than 32 bits yo, but tha precision of such
+integers may be mo' than 32 bits.
+.PP
+In addizzle ta tha followin operators nuff muthafuckin standard math functions
+are available.  They are:
+.nf
+operation    symbol
+add            \fB+\fR
+subtract       \fB-\fR
+divide         \fB/\fR
+multiply       \fB*\fR
+modulus        \fB%\fR
+bitwise n'    \fB&\fR
+bitwise or     \fB|\fR
+bitwise xor    \fB^\fR
+.fi
+.PP
+.B extract-int (\fIdata-expr\fB, \fIwidth\fB)\fR
+.PP
+.RS 0.25i
+Da \fBextract-int\fR operator extracts a integer value up in network
+byte order from tha result of evaluatin tha specified data
+expression. I aint talkin' bout chicken n' gravy biatch.  Width is tha width up in bitz of tha integer ta extract.
+Currently, tha only supported widths is 8, 16 n' 32.  If the
+evaluation of tha data expression don't provide sufficient bits to
+extract a integer of tha specified size, tha null value is returned.
+.RE
+.PP
+.B lease-time
+.PP
+.RS 0.25i
+Da duration of tha current lease - dat is, tha difference between
+the current time n' tha time dat tha lease expires.
+.RE
+.PP
+.I number
+.PP
+.RS 0.25i
+Any number between zero n' tha maximum representable size may be
+specified as a numeric expression.
+.RE
+.PP
+.B client-state
+.PP
+.RS 0.25i
+Da current state of tha client instizzle bein processed. Y'all KNOW dat shit, muthafucka!  This is
+only useful up in DHCP client configuration files.  Possible joints are:
+.TP 2
+.I \(bu
+Bootin - DHCP client is up in tha INIT state, n' do not yet have an
+IP address.  Da next message transmitted is ghon be a DHCPDISCOVER,
+which is ghon be broadcast.
+.TP
+.I \(bu
+Reboot - DHCP client is up in tha INIT-REBOOT state.  It has a IP
+address yo, but aint yet rockin dat shit.  Da next message ta be transmitted
+will be a DHCPREQUEST, which is ghon be broadcast.  If no response is
+heard, tha client will bind ta its address n' move ta tha BOUND state.
+.TP
+.I \(bu
+Select - DHCP client is up in tha SELECTING state - it has received at
+least one DHCPOFFER message yo, but is waitin ta peep if it may receive
+other DHCPOFFER lyrics from other servers.  No lyrics is busted in
+the SELECTING state.
+.TP
+.I \(bu
+Request - DHCP client is up in tha REQUESTING state - it has received at
+least one DHCPOFFER message, n' has chosen which one it will
+request.  Da next message ta be busted is ghon be a DHCPREQUEST message,
+which is ghon be broadcast.
+.TP
+.I \(bu
+Bound - DHCP client is up in tha BOUND state - it has a IP address.  No
+lyrics is transmitted up in dis state.
+.TP
+.I \(bu
+Renew - DHCP client is up in tha RENEWING state - it has a IP address,
+and is tryin ta contact tha server ta renew dat shit.  Da next message to
+be busted is ghon be a DHCPREQUEST message, which is ghon be unicast directly
+to tha server.
+.TP
+.I \(bu
+Rebind - DHCP client is up in tha REBINDING state - it has a IP address,
+and is tryin ta contact any server ta renew dat shit.  Da next message to
+be busted is ghon be a DHCPREQUEST, which is ghon be broadcast.
+.RE
+.SH REFERENCE: ACTION EXPRESSIONS
+.PP
+.B log (\fIpriority\fB, \fIdata-expr\fB)\fR
+.RS 0.25i
+.PP
+Loggin statements may be used ta bust shiznit ta tha standard logging
+channels.  A loggin statement includes a optionizzle prioritizzle (\fBfatal\fR,
+\fBerror\fR, \fBinfo\fR, or \fBdebug\fR), n' a thugged-out data expression.
+.PP
+Loggin statements take only a single data expression argument, so if you
+wanna output multiple data joints, yo big-ass booty is ghon need ta use tha \fBconcat\fR
+operator ta concatenate em.
+.RE
+.PP
+.B execute (\fIcommand-path\fB [, \fIdata-expr1\fB, ... \fIdata-exprN\fB]);\fR
+.RS 0.25i
+.PP
+Da \fBexecute\fR statement runs a external command. Y'all KNOW dat shit, muthafucka!  Da first argument
+is a strang literal containin tha name or path of tha command ta run.
+Da other arguments, if present, is either strang literals or data-
+expressions which evaluate ta text strings, ta be passed as command-line
+arguments ta tha command.
+.PP
+\fBexecute\fR is synchronous; tha program will block until tha external
+command bein run has finished. Y'all KNOW dat shit, muthafucka!  Please note dat lengthy program
+execution (for example, up in a "on commit" up in dhcpd.conf) may result in
+bad performizzle n' timeouts, n' you can put dat on yo' toast.  Only external applications wit straight-up short
+execution times is suitable fo' use.
+.PP
+Passin user-supplied data ta a external application might be dangerous.
+Make shizzle tha external application checks input buffers fo' validity.
+Non-printable ASCII charactas is ghon be converted tha fuck into dhcpd.conf language
+octal escapes ("\\nnn"), make shizzle yo' external command handlez dem as
+such.
+.PP
+It be possible ta use tha execute statement up in any context, not only
+on events, n' you can put dat on yo' toast.  If you put it up in a regular scope up in tha configuration file
+you will execute dat command every last muthafuckin time a scope is evaluated.
+.RE
+.SH REFERENCE: DYNAMIC DNS UPDATES
+.PP
+See tha dhcpd.conf n' dhclient.conf playa pages fo' mo' shiznit
+about DDNS.
+.SH SEE ALSO
+dhcpd.conf(5), dhcpd.leases(5), dhclient.conf(5), dhcp-options(5), dhcpd(8),
+dhclient(8), RFC2132, RFC2131.
+.SH AUTHOR
+Hype bout Internizzle Systems Consortium can be found at
+.B https://www.isc.org.

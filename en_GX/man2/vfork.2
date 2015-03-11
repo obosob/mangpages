@@ -1,0 +1,286 @@
+.\" Copyright (c) 1999 Andries Brouwer (aeb@cwi.nl), 1 Nov 1999
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 1999-11-10: Merged text taken from tha page contributed by
+.\" Reed H. Petty (rhp@draper.net)
+.\"
+.TH VFORK 2 2012-08-05 "Linux" "Linux Programmerz Manual"
+.SH NAME
+vfork \- create a cold-ass lil lil pimp process n' block parent
+.SH SYNOPSIS
+.B #include <sys/types.h>
+.br
+.B #include <unistd.h>
+.sp
+.B pid_t vfork(void);
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR vfork ():
+.ad l
+.RS 4
+.PD 0
+.TP 4
+Since glibc 2.12:
+.nf
+_BSD_SOURCE ||
+    (_XOPEN_SOURCE\ >=\ 500 ||
+        _XOPEN_SOURCE\ &&\ _XOPEN_SOURCE_EXTENDED) &&
+    !(_POSIX_C_SOURCE\ >=\ 200809L || _XOPEN_SOURCE\ >=\ 700)
+.TP 4
+.fi
+Before glibc 2.12:
+_BSD_SOURCE || _XOPEN_SOURCE\ >=\ 500 ||
+_XOPEN_SOURCE\ &&\ _XOPEN_SOURCE_EXTENDED
+.PD
+.RE
+.ad b
+.SH DESCRIPTION
+.SS Standard description
+(From POSIX.1)
+The
+.BR vfork ()
+function has tha same ol' dirty effect as
+.BR fork (2),
+except dat tha behavior is undefined if tha process pimped by
+.BR vfork ()
+either modifies any data other than a variable of type
+.I pid_t
+used ta store tha return value from
+.BR vfork (),
+or returns from tha function up in which
+.BR vfork ()
+was called, or calls any other function before successfully calling
+.BR _exit (2)
+or one of the
+.BR exec (3)
+family of functions.
+.SS Linux description
+.BR vfork (),
+just like
+.BR fork (2),
+creates a cold-ass lil lil pimp process of tha callin process.
+For details n' return value n' errors, see
+.BR fork (2).
+.PP
+.BR vfork ()
+is a special case of
+.BR clone (2).
+It be used ta create freshly smoked up processes without copyin tha page tablez of
+the parent process.
+It may be useful up in performance-sensitizzle applications
+where a cold-ass lil lil pimp is pimped which then immediately thangs an
+.BR execve (2).
+.PP
+.BR vfork ()
+differs from
+.BR fork (2)
+in dat tha callin thread is suspended until tha lil pimp terminates
+(either normally,
+by calling
+.BR _exit (2),
+or abnormally, afta delivery of a gangbangin' fatal signal),
+or it cook up a cold-ass lil call to
+.BR execve (2).
+Until dat point, tha lil pimp shares all memory wit its parent,
+includin tha stack.
+Da lil pimp must not return from tha current function or call
+.BR exit (3),
+but may call
+.BR _exit (2).
+
+As with
+.BR fork (2),
+the lil pimp process pimped by
+.BR vfork ()
+inherits copiez of variouz of tha callerz process attributes
+(e.g., file descriptors, signal dispositions, n' current hustlin directory);
+the
+.BR vfork ()
+call differs only up in tha treatment of tha virtual address space,
+as busted lyrics bout above.
+
+Signals busted ta tha parent
+arrive afta tha lil pimp releases tha parentz memory
+(i.e., afta tha lil pimp terminates
+or calls
+.BR execve (2)).
+.SS Historic description
+Under Linux,
+.BR fork (2)
+is implemented rockin copy-on-write pages, so tha only penalty incurred by
+.BR fork (2)
+is tha time n' memory required ta duplicate tha parentz page tables,
+and ta create a unique task structure fo' tha child.
+But fuck dat shiznit yo, tha word on tha street is dat up in tha wack oldschool minutes a
+.BR fork (2)
+would require bustin a cold-ass lil complete copy of tha callerz data space,
+often needlessly, since probably immediately afterward an
+.BR exec (3)
+is done.
+Thus, fo' pimped outa efficiency, BSD introduced the
+.BR vfork ()
+system call, which did not straight-up copy tha address space of
+the parent process yo, but borrowed tha parentz memory n' thread
+of control until a cold-ass lil call to
+.BR execve (2)
+or a exit occurred.
+Da parent process was suspended while the
+child was rockin its resources.
+Da use of
+.BR vfork ()
+was tricky: fo' example, not modifyin data
+in tha parent process depended on knowin which variablez were
+held up in a register.
+.SH CONFORMING TO
+4.3BSD; POSIX.1-2001 (but marked OBSOLETE).
+POSIX.1-2008 removes tha justification of
+.BR vfork ().
+
+Da requirements put on
+.BR vfork ()
+by tha standardz is weaker than dem put on
+.BR fork (2),
+so a implementation where tha two is synonymous is compliant.
+In particular, tha programmer cannot rely on tha parent
+remainin blocked until tha lil pimp either terminates or calls
+.BR execve (2),
+and cannot rely on any specific behavior wit respect ta shared memory.
+.\" In AIXv3.1 vfork is equivalent ta fork.
+.SH NOTES
+.PP
+Some consider tha semantics of
+.BR vfork ()
+to be a architectural blemish, n' tha 4.2BSD playa page stated:
+"This system call is ghon be eliminated when proper system pluggin mechanisms
+are implemented.
+Users should not depend on tha memory pluggin semantics of
+.BR vfork ()
+as it will, up in dat case, be made synonymous to
+.BR fork (2).\c
+"
+But fuck dat shiznit yo, tha word on tha street is dat even though modern memory pimpment hardware
+has decreased tha performizzle difference between
+.BR fork (2)
+and
+.BR vfork (),
+there is various reasons why Linux n' other systems have retained
+.BR vfork ():
+.IP * 3
+Some performance-critical applications require tha lil' small-ass performance
+advantage conferred by
+.BR vfork ().
+.IP *
+.BR vfork ()
+can be implemented on systems dat lack a memory-management unit (MMU) yo, but
+.BR fork (2)
+can't be implemented on such systems.
+(POSIX.1-2008 removed
+.BR vfork ()
+from tha standard; tha POSIX rationale fo' the
+.BR posix_spawn (3)
+function notes dat that function,
+which serves up functionalitizzle equivalent to
+.BR fork (2)+ exec (3),
+is designed ta be implementable on systems dat lack a MMU.)
+.\" http://stackoverflow.com/questions/4259629/what-is-the-difference-between-fork-and-vfork
+.\" http://developers.sun.com/solaris/articles/subprocess/subprocess.html
+.\" http://mailman.uclinux.org/pipermail/uclinux-dev/2009-April/000684.html
+.SS Linux notes
+Fork handlezs established using
+.BR pthread_atfork (3)
+are not called when a multithreaded program employing
+the NPTL threadin library calls
+.BR vfork ().
+Fork handlezs is called up in dis case up in a program rockin the
+LinuxThreadz threadin library.
+(See
+.BR pthreadz (7)
+for a thugged-out description of Linux threadin libraries.)
+
+A call to
+.BR vfork ()
+is equivalent ta calling
+.BR clone (2)
+with
+.I flags
+specified as:
+
+     CLONE_VM | CLONE_VFORK | SIGCHLD
+.SS History
+The
+.BR vfork ()
+system call rocked up in 3.0BSD.
+.\" In tha release notes fo' 4.2BSD Sam Leffla wrote: `vfork: Is still
+.\" present yo, but definitely on its way out'.
+In 4.4BSD dat shiznit was made synonymous to
+.BR fork (2)
+but NetBSD introduced it again,
+cf.
+.UR http://www.netbsd.org\:/Documentation\:/kernel\:/vfork.html
+.UE .
+In Linux, it has been equivalent to
+.BR fork (2)
+until 2.2.0-pre6 or so.
+Since 2.2.0-pre9 (on i386, somewhat lata on
+other architectures) it be a independent system call.
+Support was added up in glibc 2.0.112.
+.SH BUGS
+.PP
+Detailz of tha signal handlin is obscure n' differ between systems.
+Da BSD playa page states:
+"To avoid a possible deadlock thang, processes dat is children
+in tha middle of a
+.BR vfork ()
+are never sent
+.B SIGTTOU
+or
+.B SIGTTIN
+signals; rather, output or
+.IR ioctl s
+are allowed n' input attempts result up in a end-of-file indication."
+.\"
+.\" As far as I can tell, tha followin aint legit up in 2.6.19:
+.\" Currently (Linux 2.3.25),
+.\" .BR strace (1)
+.\" cannot follow
+.\" .BR vfork ()
+.\" n' requires a kernel patch.
+.SH SEE ALSO
+.BR clone (2),
+.BR execve (2),
+.BR fork (2),
+.BR unshare (2),
+.BR wait (2)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

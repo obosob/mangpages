@@ -1,0 +1,476 @@
+.TH TC 8 "16 December 2001" "iproute2" "Linux"
+.SH NAME
+tc \- show / manipulate traffic control settings
+.SH SYNOPSIS
+.B tc qdisc [ add | chizzle | replace | link | delete ] dev
+DEV
+.B
+[ parent
+qdisc-id
+.B | root ]
+.B [ handle
+qdisc-id ] qdisc
+[ qdisc specific parametas ]
+.P
+
+.B tc class [ add | chizzle | replace | delete ] dev
+DEV
+.B parent
+qdisc-id
+.B [ classid
+class-id ] qdisc
+[ qdisc specific parametas ]
+.P
+
+.B tc filta [ add | chizzle | replace | delete ] dev
+DEV
+.B [ parent
+qdisc-id
+.B | root ] protocol
+protocol
+.B prio
+prioritizzle filtertype
+[ filtertype specific parametas ]
+.B flowid
+flow-id
+
+.B tc
+.RI "[ " FORMAT " ]"
+.B qdisc show [ dev
+DEV
+.B ]
+.P
+.B tc
+.RI "[ " FORMAT " ]"
+.B class show dev
+DEV
+.P
+.B tc filta show dev
+DEV
+
+.P
+.B tc [ -force ] [ -OK ] -b\fR[\fIatch\fR] \fB[ filename ]
+
+.ti 8
+.IR FORMAT " := {"
+\fB\-s\fR[\fItatistics\fR] |
+\fB\-d\fR[\fIetails\fR] |
+\fB\-r\fR[\fIaw\fR] |
+\fB\-p\fR[\fIretty\fR] |
+\fB\-i\fR[\fIec\fR] }
+
+.SH DESCRIPTION
+.B Tc
+is used ta configure Traffic Control up in tha Linux kernel. Traffic Control consists
+of tha following:
+
+.TP
+SHAPING
+When traffic is shaped, its rate of transmission is under control. Right back up in yo muthafuckin ass. Shapin may
+be mo' than lowerin tha available bandwidth - it be also used ta smooth out
+bursts up in traffic fo' betta network behaviour. Shiiit, dis aint no joke. Right back up in yo muthafuckin ass. Shapin occurs on egress.
+
+.TP
+SCHEDULING
+By schedulin tha transmission of packets it is possible ta improve interactivity
+for traffic dat needz it while still guaranteein bandwidth ta bulk transfers. Reordering
+is also called prioritizing, n' happens only on egress.
+
+.TP
+POLICING
+Whereas shapin deals wit transmission of traffic, policin pertains ta traffic
+arriving. Policin thus occurs on ingress.
+
+.TP
+DROPPING
+Traffic exceedin a set bandwidth may also be dropped forthwith, both on
+ingress n' on egress.
+
+.P
+Processin of traffic is controlled by three kindz of objects: qdiscs,
+classes n' filters.
+
+.SH QDISCS
+.B qdisc
+is short fo' 'queuein discipline' n' it is elementary to
+understandin traffic control. Whenever tha kernel need ta bust a
+packet ta a intercourse, it is
+.B enqueued
+to tha qdisc configured fo' dat intercourse. Immediately afterwards, tha kernel
+tries ta git as nuff packets as possible from tha qdisc, fo' givin them
+to tha network adaptor driver.
+
+A simple QDISC is tha 'pfifo' one, which do no processin at all n' be a pure
+First In, First Out queue. Well shiiiit, it do however store traffic when tha network intercourse
+can't handle it momentarily.
+
+.SH CLASSES
+Some qdiscs can contain classes, which contain further qdiscs - traffic may
+then be enqueued up in any of tha inner qdiscs, which is within the
+.B classes.
+When tha kernel tries ta dequeue a packet from such a
+.B classful qdisc
+it can come from any of tha classes fo' realz. A qdisc may fo' example prioritize
+certain kindz of traffic by tryin ta dequeue from certain classes
+before others.
+
+.SH FILTERS
+A
+.B filter
+is used by a cold-ass lil classful qdisc ta determine up in which class a packet will
+be enqueued. Y'all KNOW dat shit, muthafucka! Whenever traffic arrives at a cold-ass lil class wit subclasses, it needs
+to be classified. Y'all KNOW dat shit, muthafucka! Various methodz may be employed ta do so, one of these
+are tha filtas fo' realz. All filtas attached ta tha class is called, until one of
+them returns wit a verdict. If no verdict was made, other criteria may be
+available. This differs per qdisc.
+
+It be blingin ta notice dat filtas reside
+.B within
+qdiscs - they is not mastaz of what tha fuck happens.
+
+.SH CLASSLESS QDISCS
+Da classless qdiscs are:
+.TP
+[p|b]fifo
+Simplest usable qdisc, pure First In, First Out behaviour. Shiiit, dis aint no joke. Limited in
+packets or up in bytes.
+.TP
+pfifo_fast
+Standard qdisc fo' 'Advanced Router' enabled kernels. Consistz of a three-band
+queue which honors Type of Service flags, as well as tha prioritizzle dat may be
+assigned ta a packet.
+.TP
+red
+Random Early Detection simulates physical congestion by randomly dropping
+packets when nearin configured bandwidth allocation. I aint talkin' bout chicken n' gravy biatch. Well suited ta hella
+pimpin' bandwidth applications.
+.TP
+sfq
+Stochastic Fairnizz Queuein reordaz queued traffic so each 'session'
+gets ta bust a packet up in turn.
+.TP
+tbf
+Da Token Bucket Filta is suited fo' slowin traffic down ta a precisely
+configured rate. Right back up in yo muthafuckin ass. Scalez well ta big-ass bandwidths.
+.SH CONFIGURING CLASSLESS QDISCS
+In tha absence of classful qdiscs, classless qdiscs can only be attached at
+the root of a thugged-out device. Full syntax:
+.P
+.B tc qdisc add dev
+DEV
+.B root
+QDISC QDISC-PARAMETERS
+
+To remove, issue
+.P
+.B tc qdisc del dev
+DEV
+.B root
+
+The
+.B pfifo_fast
+qdisc is tha automatic default up in tha absence of a cold-ass lil configured qdisc.
+
+.SH CLASSFUL QDISCS
+Da classful qdiscs are:
+.TP
+CBQ
+Class Based Queuein implements a rich linksharin hierarchy of classes.
+It gotz nuff shapin elements as well as prioritizin capabilities. Put ya muthafuckin choppers up if ya feel dis! Right back up in yo muthafuckin ass. Shapin is
+performed rockin link idle time calculations based on average packet size and
+underlyin link bandwidth. Da latta may be ill-defined fo' some intercourses.
+.TP
+HTB
+Da Hierarchy Token Bucket implements a rich linksharin hierarchy of
+classes wit a emphasis on conformin ta existin practices yo. HTB facilitates
+guaranteein bandwidth ta classes, while also allowin justification of upper
+limits ta inter-class sharing. Well shiiiit, it gotz nuff shapin elements, based on TBF and
+can prioritize classes.
+.TP
+PRIO
+Da PRIO qdisc be a non-shapin container fo' a cold-ass lil configurable number of
+classes which is dequeued up in order n' shit. This allows fo' easy as fuck  prioritization
+of traffic, where lower classes is only able ta bust if higher ones have
+no packets available. To facilitate configuration, Type Of Service bits are
+honored by default.
+.SH THEORY OF OPERATION
+Classes form a tree, where each class has a single parent.
+A class may have multiple lil' thugs. Right back up in yo muthafuckin ass. Some qdiscs allow fo' runtime addition
+of classes (CBQ, HTB) while others (PRIO) is pimped wit a static number of
+children.
+
+Qdiscs which allow dynamic addizzle of classes can have zero or more
+subclasses ta which traffic may be enqueued.
+
+Furthermore, each class gotz nuff a
+.B leaf qdisc
+which by default has
+.B pfifo
+behaviour, although another qdisc can be attached up in place. This qdisc may again
+contain classes yo, but each class can have only one leaf qdisc.
+
+When a packet entas a cold-ass lil classful qdisc it can be
+.B classified
+to one of tha classes within. I aint talkin' bout chicken n' gravy biatch. Three criteria is available, although not all
+qdiscs will use all three:
+.TP
+tc filters
+If tc filtas is attached ta a cold-ass lil class, they is consulted first
+for relevant instructions. Filtas can match on all fieldz of a packet header,
+as well as on tha firewall mark applied by ipchains or iptables.
+.TP
+Type of Service
+Some qdiscs have built up in rulez fo' classifyin packets based on tha TOS field.
+.TP
+skb->priority
+Userspace programs can encode a cold-ass lil class-id up in tha 'skb->priority' field using
+the SO_PRIORITY option.
+.P
+Each node within tha tree can have its own filtas but higher level filters
+may also point directly ta lower classes.
+
+If classification did not succeed, packets is enqueued ta tha leaf qdisc
+attached ta dat class. Peep qdisc specific manpages fo' details, however.
+
+.SH NAMING
+All qdiscs, classes n' filtas have IDs, which can either be specified
+or be automatically assigned.
+
+IDs consist of a major number n' a minor number, separated by a cold-ass lil colon.
+Both major n' minor number is limited ta 16 bits, n' you can put dat on yo' toast. There is two special
+values: root is signified by major n' minor of all ones, n' unspecified
+is all zeros.
+
+.TP
+QDISCS
+A qdisc, which potentially can have children,
+gets assigned a major number, called a 'handle', leavin tha minor
+number namespace available fo' classes. Da handle is expressed as '10:'.
+It be customary ta explicitly assign a handle ta qdiscs sposed ta fuckin have
+children.
+
+.TP
+CLASSES
+Classes residin under a qdisc share they qdisc major number yo, but each have
+a separate minor number called a 'classid' dat has no relation ta their
+parent classes, only ta they parent qdisc. Da same namin custom as for
+qdiscs applies.
+
+.TP
+FILTERS
+Filtas gotz a three part ID, which is only needed when rockin a hashed
+filta hierarchy.
+
+.SH PARAMETERS
+Da followin parametas is widely used up in TC. For other parameters,
+see tha playa pages fo' individual qdiscs.
+
+.TP
+RATES
+Bandwidths or rates.
+These parametas accept a gangbangin' floatin point number, possibly followed by
+a unit (both SI n' IEC units supported).
+.RS
+.TP
+bit or a funky-ass bare number
+Bits per second
+.TP
+kbit
+Kilobits per second
+.TP
+mbit
+Megabits per second
+.TP
+gbit
+Gigabits per second
+.TP
+tbit
+Terabits per second
+.TP
+bps
+Bytes per second
+.TP
+kbps
+Kilobytes per second
+.TP
+mbps
+Megabytes per second
+.TP
+gbps
+Gigabytes per second
+.TP
+tbps
+Terabytes per second
+
+.P
+To specify up in IEC units, replace tha SI prefix (k-, m-, g-, t-) with
+IEC prefix (ki-, mi-, gi- n' ti-) respectively.
+
+.P
+TC store rates as a 32-bit unsigned integer up in bps internally,
+so we can specify a max rate of 4294967295 bps.
+.RE
+
+.TP
+TIMES
+Length of time. Can be specified as a gangbangin' floatin point number
+followed by a optionizzle unit:
+.RS
+.TP
+s, sec or secs
+Whole seconds
+.TP
+ms, msec or msecs
+Milliseconds
+.TP
+us, usec, usecs or a funky-ass bare number
+Microseconds.
+
+.P
+TC defined its own time unit (equal ta microsecond) n' stores
+time joints as 32-bit unsigned integer, thus we can specify a max time value
+of 4294967295 usecs.
+.RE
+
+.TP
+SIZES
+Amountz of data. Can be specified as a gangbangin' floatin point number
+followed by a optionizzle unit:
+.RS
+.TP
+b or a funky-ass bare number
+Bytes.
+.TP
+kbit
+Kilobits
+.TP
+kb or k
+Kilobytes
+.TP
+mbit
+Megabits
+.TP
+mb or m
+Megabytes
+.TP
+gbit
+Gigabits
+.TP
+gb or g
+Gigabytes
+
+.P
+TC stores sizes internally as 32-bit unsigned integer up in byte,
+so we can specify a max size of 4294967295 bytes.
+.RE
+
+.TP
+VALUES
+Other joints without a unit.
+These parametas is interpreted as decimal by default yo, but you can
+indicate TC ta interpret dem as octal n' hexadecimal by addin a '0'
+or '0x' prefix respectively.
+
+.SH TC COMMANDS
+Da followin commandz is available fo' qdiscs, classes n' filter:
+.TP
+add
+Add a qdisc, class or filta ta a node. For all entities, a
+.B parent
+must be passed, either by passin its ID or by attachin directly ta tha root of a thugged-out device.
+When bustin a qdisc or a gangbangin' filter, it can be named wit the
+.B handle
+parameter n' shiznit fo' realz. A class is named wit the
+.B classid
+parameter.
+
+.TP
+delete
+A qdisc can be deleted by specifyin its handle, which may also be 'root' fo' realz. All subclasses n' they leaf qdiscs
+are automatically deleted, as well as any filtas attached ta em.
+
+.TP
+change
+Some entitizzles can be modified 'in place'. Right back up in yo muthafuckin ass. Shares tha syntax of 'add', wit tha exception
+that tha handle cannot be chizzled n' neither can tha parent. In other lyrics,
+.B
+change
+cannot move a node.
+
+.TP
+replace
+Performs a nearly atomic remove/add on a existin node id. Y'all KNOW dat shit, muthafucka! If tha node do not exist yet
+it is pimped.
+
+.TP
+link
+Only available fo' qdiscs n' performs a replace where tha node
+must exist already.
+
+.SH FORMAT
+Da show command has additionizzle formattin options:
+
+.TP
+.BR "\-s" , " \-stats", " \-statistics"
+output mo' statistics bout packet usage.
+
+.TP
+.BR "\-d", " \-details"
+output mo' detailed shiznit bout rates n' cell sizes.
+
+.TP
+.BR "\-r", " \-raw"
+output raw hex joints fo' handles.
+
+.TP
+.BR "\-p", " \-pretty"
+decode filta offset n' mask joints ta equivalent filta commandz based on TCP/IP.
+
+.TP
+.BR "\-iec"
+print rates up in IEC units (ie. 1K = 1024).
+
+.TP
+.BR "\-b", " \-b filename", " \-batch", " \-batch filename"
+read commandz from provided file or standard input n' invoke em.
+First failure will cause termination of tc.
+
+.TP
+.BR "\-force"
+don't terminizzle tc on errors up in batch mode.
+If there was any errors durin execution of tha commands, tha application return code is ghon be non zero.
+
+.TP
+.BR "\-OK"
+in batch mode, print
+.B OK
+and a freshly smoked up line on standard output afta each successfully interpreted command.
+
+.SH HISTORY
+.B tc
+was freestyled by Alexey N. Kuznetsov n' added up in Linux 2.2.
+.SH SEE ALSO
+.BR tc-bfifo (8),
+.BR tc-cbq (8),
+.BR tc-choke (8),
+.BR tc-codel (8),
+.BR tc-drr (8),
+.BR tc-ematch (8),
+.BR tc-fq_codel (8),
+.BR tc-hfsc (7),
+.BR tc-hfsc (8),
+.BR tc-htb (8),
+.BR tc-mqprio (8),
+.BR tc-pfifo (8),
+.BR tc-pfifo_fast (8),
+.BR tc-red (8),
+.BR tc-sfb (8),
+.BR tc-sfq (8),
+.BR tc-stab (8),
+.BR tc-tbf (8),
+.br
+.RB "User documentation at " http://lartc.org/ " yo, but please direct bugreports n' patches to: " <netdev@vger.kernel.org>
+
+.SH AUTHOR
+Manpage maintained by bert hubert (ahu@ds9a.nl)
+

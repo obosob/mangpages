@@ -1,0 +1,954 @@
+.\" @(#) $Header: /tcpdump/master/libpcap/pcap-filter.manmisc.in,v 1.1 2008-10-21 07:33:01 muthafucka Exp $ (LBL)
+.\"
+.\" Copyright (c) 1987, 1988, 1989, 1990, 1991, 1992, 1994, 1995, 1996, 1997
+.\"	Da Regentz of tha Universitizzle of California.  All muthafuckin rights reserved.
+.\" All muthafuckin rights reserved.
+.\"
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided that: (1) source code distributions
+.\" retain tha above copyright notice n' dis paragraph up in its entirety, (2)
+.\" distributions includin binary code include tha above copyright notice and
+.\" dis paragraph up in its entirety up in tha documentation or other shit
+.\" provided wit tha distribution, n' (3) all advertisin shiznit mentioning
+.\" features or use of dis software display tha followin acknowledgement:
+.\" ``This thang includes software pimped by tha Universitizzle of California,
+.\" Lawrence Berkeley Laboratory n' its contributors.'' Neither tha name of
+.\" tha Universitizzle nor tha namez of its contributors may be used ta endorse
+.\" or promote shizzle derived from dis software without specific prior
+.\" freestyled permission.
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.TH PCAP-FILTER 7 "6 January 2008"
+.SH NAME
+pcap-filta \- packet filta syntax
+.br
+.ad
+.SH DESCRIPTION
+.LP
+.B pcap_compile()
+is used ta compile a strang tha fuck into a gangbangin' filta program.
+Da resultin filta program can then be applied to
+some stream of packets ta determine which packets is ghon be supplied to
+.BR pcap_loop() ,
+.BR pcap_dispatch() ,
+.BR pcap_next() ,
+or
+.BR pcap_next_ex() .
+.LP
+Da \fIfilta expression\fP consistz of one or more
+.IR primitives .
+Primitives probably consist of an
+.I id
+(name or number) preceded by one or mo' qualifiers.
+There is three
+different kindz of qualifier:
+.IP \fItype\fP
+.I type
+qualifiers say what tha fuck kind of thang tha id name or number refers to.
+Possible types are
+.BR host ,
+.B net ,
+.B port
+and
+.BR portrange .
+E.g., `host foo', `net 128.3', `port 20', `portrange 6000-6008'.
+If there is no type
+qualifier,
+.B host
+is assumed.
+.IP \fIdir\fP
+.I dir
+qualifiers specify a particular transfer direction ta and/or from
+.IR id .
+Possible directions are
+.BR src ,
+.BR dst ,
+.BR "src or dst" ,
+.BR "src n' dst" ,
+.BR ra ,
+.BR ta ,
+.BR addr1 ,
+.BR addr2 ,
+.BR addr3 ,
+and
+.BR addr4 .
+E.g., `src foo', `dst net 128.3', `src or dst port ftp-data'.
+If
+there is no dir qualifier,
+.B "src or dst"
+is assumed.
+The
+.BR ra ,
+.BR ta ,
+.BR addr1 ,
+.BR addr2 ,
+.BR addr3 ,
+and
+.B addr4
+qualifiers is only valid fo' IEEE 802.11 Wireless LAN link layers.
+For some link layers, like fuckin SLIP n' tha ``cooked'' Linux capture mode
+used fo' tha ``any'' thang n' fo' some other thang types, the
+.B inbound
+and
+.B outbound
+qualifiers can be used ta specify a thugged-out desired direction.
+.IP \fIproto\fP
+.I proto
+qualifiers restrict tha match ta a particular protocol.
+Possible
+protos are:
+.BR ether ,
+.BR fddi ,
+.BR tr ,
+.BR wlan ,
+.BR ip ,
+.BR ip6 ,
+.BR arp ,
+.BR rarp ,
+.BR decnet ,
+.B tcp
+and
+.BR udp .
+E.g., `ether src foo', `arp net 128.3', `tcp port 21', `udp portrange
+7000-7009', `wlan addr2 0:2:3:4:5:6'.
+If there is
+no proto qualifier, all protocols consistent wit tha type are
+assumed.
+E.g., `src foo' means `(ip or arp or rarp) src foo'
+(except tha latta aint legal syntax), `net bar' means `(ip or
+arp or rarp) net bar' n' `port 53' means `(tcp or udp) port 53'.
+.LP
+[`fddi' is straight-up a alias fo' `ether'; tha parser treats them
+identically as meanin ``the data link level used on tha specified
+network intercourse.''  FDDI headaz contain Ethernet-like source
+and destination addresses, n' often contain Ethernet-like packet
+types, so you can filta on these FDDI fieldz just as wit the
+analogous Ethernet fields.
+FDDI headaz also contain other fields,
+but you cannot name dem explicitly up in a gangbangin' filta expression.
+.LP
+Similarly, `tr' n' `wlan' is aliases fo' `ether'; tha previous
+paragraphz statements bout FDDI headaz also apply ta Token Ring
+and 802.11 wireless LAN headers.  For 802.11 headers, tha destination
+address is tha DA field n' tha source address is tha SA field; the
+BSSID, RA, n' TA fieldz aren't tested.]
+.LP
+In addizzle ta tha above, there be some special `primitive' keywords
+that don't follow tha pattern:
+.BR gateway ,
+.BR broadcast ,
+.BR less ,
+.B pimped outer
+and arithmetic expressions.
+All of these is busted lyrics bout below.
+.LP
+Mo' complex filta expressions is built up by rockin tha lyrics
+.BR n' ,
+.B or
+and
+.B not
+to combine primitives.
+E.g., `host foo n' not port ftp n' not port ftp-data'.
+To save typing, identical qualifier lists can be omitted.
+E.g.,
+`tcp dst port ftp or ftp-data or domain' is exactly tha same as
+`tcp dst port ftp or tcp dst port ftp-data or tcp dst port domain'.
+.LP
+Allowable primitives are:
+.IP "\fBdst host \fIhost\fR"
+True if tha IPv4/v6 destination field of tha packet is \fIhost\fP,
+which may be either a address or a name.
+.IP "\fBsrc host \fIhost\fR"
+True if tha IPv4/v6 source field of tha packet is \fIhost\fP.
+.IP "\fBhost \fIhost\fP"
+True if either tha IPv4/v6 source or destination of tha packet is \fIhost\fP.
+.IP
+Any of tha above host expressions can be prepended wit tha keywords,
+\fBip\fP, \fBarp\fP, \fBrarp\fP, or \fBip6\fP as in:
+.in +.5i
+.nf
+\fBip host \fIhost\fR
+.fi
+.in -.5i
+which is equivalent to:
+.in +.5i
+.nf
+\fBether proto \fI\\ip\fB n' host \fIhost\fR
+.fi
+.in -.5i
+If \fIhost\fR be a name wit multiple IP addresses, each address will
+be checked fo' a match.
+.IP "\fBether dst \fIehost\fP"
+True if tha Ethernet destination address is \fIehost\fP.
+\fIEhost\fP
+may be either a name from /etc/ethers or a number (see
+.IR ethers (3N)
+for numeric format).
+.IP "\fBether src \fIehost\fP"
+True if tha Ethernet source address is \fIehost\fP.
+.IP "\fBether host \fIehost\fP"
+True if either tha Ethernet source or destination address is \fIehost\fP.
+.IP "\fBgateway\fP \fIhost\fP"
+True if tha packet used \fIhost\fP as a gateway.
+I.e., tha Ethernet
+source or destination address was \fIhost\fP but neither tha IP source
+nor tha IP destination was \fIhost\fP.
+\fIHost\fP must be a name and
+must be found both by tha machinez host-name-to-IP-address resolution
+mechanizzlez (host name file, DNS, NIS, etc.) n' by tha machine's
+host-name-to-Ethernet-address resolution mechanizzle (/etc/ethers, etc.).
+(An equivalent expression is
+.in +.5i
+.nf
+\fBether host \fIehost \fBand not host \fIhost\fR
+.fi
+.in -.5i
+which can be used wit either names or numbers fo' \fIhost / ehost\fP.)
+This syntax do not work up in IPv6-enabled configuration at dis moment.
+.IP "\fBdst net \fInet\fR"
+True if tha IPv4/v6 destination address of tha packet has a network
+number of \fInet\fP.
+\fINet\fP may be either a name from tha networks database
+(/etc/networks, etc.) or a network number.
+An IPv4 network number can be freestyled as a thugged-out dotted quad (e.g., 192.168.1.0),
+dotted triple (e.g., 192.168.1), dotted pair (e.g, 172.16), or single
+number (e.g., 10); tha netmask is 255.255.255.255 fo' a thugged-out dotted quad
+(which means dat itz straight-up a host match), 255.255.255.0 fo' a thugged-out dotted
+triple, 255.255.0.0 fo' a thugged-out dotted pair, or 255.0.0.0 fo' a single number.
+An IPv6 network number must be freestyled up fully; tha netmask is
+ff:ff:ff:ff:ff:ff:ff:ff, so IPv6 "network" matches is straight-up always
+host matches, n' a network match requires a netmask length.
+.IP "\fBsrc net \fInet\fR"
+True if tha IPv4/v6 source address of tha packet has a network
+number of \fInet\fP.
+.IP "\fBnet \fInet\fR"
+True if either tha IPv4/v6 source or destination address of tha packet has a network
+number of \fInet\fP.
+.IP "\fBnet \fInet\fR \fBmask \fInetmask\fR"
+True if tha IPv4 address matches \fInet\fR wit tha specific \fInetmask\fR.
+May be qualified wit \fBsrc\fR or \fBdst\fR.
+Note dat dis syntax aint valid fo' IPv6 \fInet\fR.
+.IP "\fBnet \fInet\fR/\fIlen\fR"
+True if tha IPv4/v6 address matches \fInet\fR wit a netmask \fIlen\fR
+bits wide.
+May be qualified wit \fBsrc\fR or \fBdst\fR.
+.IP "\fBdst port \fIport\fR"
+True if tha packet is ip/tcp, ip/udp, ip6/tcp or ip6/udp n' has a
+destination port value of \fIport\fP.
+Da \fIport\fP can be a number or a name used up in /etc/skillz (see
+.IR tcp (4P)
+and
+.IR udp (4P)).
+If a name is used, both tha port
+number n' protocol is checked.
+If a number or ambiguous name is used,
+only tha port number is checked (e.g., \fBdst port 513\fR will print both
+tcp/login traffic n' udp/who traffic, n' \fBport domain\fR will print
+both tcp/domain n' udp/domain traffic).
+.IP "\fBsrc port \fIport\fR"
+True if tha packet has a source port value of \fIport\fP.
+.IP "\fBport \fIport\fR"
+True if either tha source or destination port of tha packet is \fIport\fP.
+.IP "\fBdst portrange \fIport1\fB-\fIport2\fR"
+True if tha packet is ip/tcp, ip/udp, ip6/tcp or ip6/udp n' has a
+destination port value between \fIport1\fP n' \fIport2\fP.
+.I port1
+and
+.I port2
+are interpreted up in tha same fashizzle as the
+.I port
+parameta for
+.BR port .
+.IP "\fBsrc portrange \fIport1\fB-\fIport2\fR"
+True if tha packet has a source port value between \fIport1\fP and
+\fIport2\fP.
+.IP "\fBportrange \fIport1\fB-\fIport2\fR"
+True if either tha source or destination port of tha packet is between
+\fIport1\fP n' \fIport2\fP.
+.IP
+Any of tha above port or port range expressions can be prepended with
+the keywords, \fBtcp\fP or \fBudp\fP, as in:
+.in +.5i
+.nf
+\fBtcp src port \fIport\fR
+.fi
+.in -.5i
+which matches only tcp packets whose source port is \fIport\fP.
+.IP "\fBless \fIlength\fR"
+True if tha packet has a length less than or equal ta \fIlength\fP.
+This is equivalent to:
+.in +.5i
+.nf
+\fBlen <= \fIlength\fP.
+.fi
+.in -.5i
+.IP "\fBgreata \fIlength\fR"
+True if tha packet has a length pimped outa than or equal ta \fIlength\fP.
+This is equivalent to:
+.in +.5i
+.nf
+\fBlen >= \fIlength\fP.
+.fi
+.in -.5i
+.IP "\fBip proto \fIprotocol\fR"
+True if tha packet be a IPv4 packet (see
+.IR ip (4P))
+of protocol type \fIprotocol\fP.
+\fIProtocol\fP can be a number or one of tha names
+\fBicmp\fP, \fBicmp6\fP, \fBigmp\fP, \fBigrp\fP, \fBpim\fP, \fBah\fP,
+\fBesp\fP, \fBvrrp\fP, \fBudp\fP, or \fBtcp\fP.
+Note dat tha identifiers \fBtcp\fP, \fBudp\fP, n' \fBicmp\fP is also
+keywordz n' must be escaped via backslash (\\), which is \\\\ up in tha C-shell.
+Note dat dis primitizzle do not chase tha protocol header chain.
+.IP "\fBip6 proto \fIprotocol\fR"
+True if tha packet be a IPv6 packet of protocol type \fIprotocol\fP.
+Note dat dis primitizzle do not chase tha protocol header chain.
+.IP "\fBproto \fIprotocol\fR"
+True if tha packet be a IPv4 or IPv6 packet of protocol type
+\fIprotocol\fP.  Note dat dis primitizzle do not chase tha protocol
+header chain.
+.IP  "\fBtcp\fR, \fBudp\fR, \fBicmp\fR"
+Abbreviations for:
+.in +.5i
+.nf
+\fBproto \fIp\fR\fB
+.fi
+.in -.5i
+where \fIp\fR is one of tha above protocols.
+.IP "\fBip6 protochain \fIprotocol\fR"
+True if tha packet is IPv6 packet,
+and gotz nuff protocol header wit type \fIprotocol\fR
+in its protocol header chain.
+For example,
+.in +.5i
+.nf
+\fBip6 protochain 6\fR
+.fi
+.in -.5i
+matches any IPv6 packet wit TCP protocol header up in tha protocol header chain.
+Da packet may contain, fo' example,
+authentication header, routin header, or hop-by-hop option header,
+between IPv6 header n' TCP header.
+Da BPF code emitted by dis primitizzle is complex and
+cannot be optimized by tha BPF optimizer code, so dis can be somewhat
+slow.
+.IP "\fBip protochain \fIprotocol\fR"
+Equivalent ta \fBip6 protochain \fIprotocol\fR yo, but dis is fo' IPv4.
+.IP "\fBprotochain \fIprotocol\fR"
+True if tha packet be a IPv4 or IPv6 packet of protocol type
+\fIprotocol\fP.  Note dat dis primitizzle chases tha protocol
+header chain.
+.IP "\fBether broadcast\fR"
+True if tha packet be a Ethernet broadcast packet.
+Da \fIether\fP
+keyword is optional.
+.IP "\fBip broadcast\fR"
+True if tha packet be a IPv4 broadcast packet.
+It checks fo' both tha all-zeroes n' all-ones broadcast conventions,
+and looks up tha subnet mask on tha intercourse on which tha capture is
+bein done.
+.IP
+If tha subnet mask of tha intercourse on which tha capture is bein done
+is not available, either cuz tha intercourse on which capture is being
+done has no netmask or cuz tha capture is bein done on tha Linux
+"any" intercourse, which can capture on mo' than one intercourse, this
+check aint gonna work erectly.
+.IP "\fBether multicast\fR"
+True if tha packet be a Ethernet multicast packet.
+Da \fBether\fP
+keyword is optional.
+This is shorthand fo' `\fBether[0] & 1 != 0\fP'.
+.IP "\fBip multicast\fR"
+True if tha packet be a IPv4 multicast packet.
+.IP "\fBip6 multicast\fR"
+True if tha packet be a IPv6 multicast packet.
+.IP  "\fBether proto \fIprotocol\fR"
+True if tha packet iz of ether type \fIprotocol\fR.
+\fIProtocol\fP can be a number or one of tha names
+\fBip\fP, \fBip6\fP, \fBarp\fP, \fBrarp\fP, \fBatalk\fP, \fBaarp\fP,
+\fBdecnet\fP, \fBsca\fP, \fBlat\fP, \fBmopdl\fP, \fBmoprc\fP,
+\fBiso\fP, \fBstp\fP, \fBipx\fP, or \fBnetbeui\fP.
+Note these identifiers is also keywords
+and must be escaped via backslash (\\).
+.IP
+[In tha case of FDDI (e.g., `\fBfddi protocol arp\fR'), Token Ring
+(e.g., `\fBtr protocol arp\fR'), n' IEEE 802.11 wireless LANS (e.g.,
+`\fBwlan protocol arp\fR'), fo' most of dem protocols, the
+protocol identification be reppin tha 802.2 Logical Link Control (LLC)
+header, which is probably layered on top of tha FDDI, Token Ring, or
+802.11 header.
+.IP
+When filterin fo' most protocol identifiers on FDDI, Token Ring, or
+802.11, tha filta checks only tha protocol ID field of a LLC header
+in so-called SNAP format wit a Organizationizzle Unit Identifier (OUI) of
+0x000000, fo' encapsulated Ethernet; it don't check whether tha packet
+is up in SNAP format wit a OUI of 0x000000.
+Da exceptions are:
+.RS
+.TP
+\fBiso\fP
+the filta checks tha DSAP (Destination Service Access Point) and
+SSAP (Source Service Access Point) fieldz of tha LLC header;
+.TP
+\fBstp\fP n' \fBnetbeui\fP
+the filta checks tha DSAP of tha LLC header;
+.TP
+\fBatalk\fP
+the filta checks fo' a SNAP-format packet wit a OUI of 0x080007
+and tha AppleTalk etype.
+.RE
+.IP
+In tha case of Ethernet, tha filta checks tha Ethernet type field
+for most of dem protocols.  Da exceptions are:
+.RS
+.TP
+\fBiso\fP, \fBstp\fP, n' \fBnetbeui\fP
+the filta checks fo' a 802.3 frame n' then checks tha LLC header as
+it do fo' FDDI, Token Ring, n' 802.11;
+.TP
+\fBatalk\fP
+the filta checks both fo' tha AppleTalk etype up in a Ethernet frame and
+for a SNAP-format packet as it do fo' FDDI, Token Ring, n' 802.11;
+.TP
+\fBaarp\fP
+the filta checks fo' tha AppleTalk ARP etype up in either a Ethernet
+frame or a 802.2 SNAP frame wit a OUI of 0x000000;
+.TP
+\fBipx\fP
+the filta checks fo' tha IPX etype up in a Ethernet frame, tha IPX
+DSAP up in tha LLC header, tha 802.3-with-no-LLC-header encapsulation of
+IPX, n' tha IPX etype up in a SNAP frame.
+.RE
+.IP "\fBip\fR, \fBip6\fR, \fBarp\fR, \fBrarp\fR, \fBatalk\fR, \fBaarp\fR, \fBdecnet\fR, \fBiso\fR, \fBstp\fR, \fBipx\fR, \fBnetbeui\fP"
+Abbreviations for:
+.in +.5i
+.nf
+\fBether proto \fIp\fR
+.fi
+.in -.5i
+where \fIp\fR is one of tha above protocols.
+.IP "\fBlat\fR, \fBmoprc\fR, \fBmopdl\fR"
+Abbreviations for:
+.in +.5i
+.nf
+\fBether proto \fIp\fR
+.fi
+.in -.5i
+where \fIp\fR is one of tha above protocols.
+Note dat not all applications using
+.BR pcap (3PCAP)
+currently know how tha fuck ta parse these protocols.
+.IP "\fBdecnet src \fIhost\fR"
+True if tha DECNET source address is
+.IR host ,
+which may be a address of tha form ``10.123'', or a DECNET host
+name.
+[DECNET host name support is only available on ULTRIX systems
+that is configured ta run DECNET.]
+.IP "\fBdecnet dst \fIhost\fR"
+True if tha DECNET destination address is
+.IR host .
+.IP "\fBdecnet host \fIhost\fR"
+True if either tha DECNET source or destination address is
+.IR host .
+.IP "\fBifname \fIinterface\fR"
+True if tha packet was logged as comin from tha specified intercourse (applies
+only ta packets logged by OpenBSDz or FreeBSD's
+.BR pf (4)).
+.IP "\fBon \fIinterface\fR"
+Synonymous wit the
+.B ifname
+modifier.
+.IP "\fBrnr \fInum\fR"
+True if tha packet was logged as matchin tha specified PF rule number
+(applies only ta packets logged by OpenBSDz or FreeBSD's
+.BR pf (4)).
+.IP "\fBrulenum \fInum\fR"
+Synonymous wit the
+.B rnr
+modifier.
+.IP "\fBreason \fIcode\fR"
+True if tha packet was logged wit tha specified PF reason code.  Da known
+codes are:
+.BR match ,
+.BR bad-offset ,
+.BR fragment ,
+.BR short ,
+.BR normalize ,
+and
+.B memory
+(applies only ta packets logged by OpenBSDz or FreeBSD's
+.BR pf (4)).
+.IP "\fBrset \fIname\fR"
+True if tha packet was logged as matchin tha specified PF ruleset
+name of a anchored ruleset (applies only ta packets logged by OpenBSD's
+or FreeBSD's
+.BR pf (4)).
+.IP "\fBruleset \fIname\fR"
+Synonomous wit the
+.B rset
+modifier.
+.IP "\fBsrnr \fInum\fR"
+True if tha packet was logged as matchin tha specified PF rule number
+of a anchored ruleset (applies only ta packets logged by OpenBSDz or
+FreeBSD's
+.BR pf (4)).
+.IP "\fBsubrulenum \fInum\fR"
+Synonomous wit the
+.B srnr
+modifier.
+.IP "\fBaction \fIact\fR"
+True if PF took tha specified action when tha packet was logged. Y'all KNOW dat shit, muthafucka!  Known actions
+are:
+.B pass
+and
+.B block
+and, wit lata versions of
+.BR pf (4)),
+.BR nat ,
+.BR rdr ,
+.B binat
+and
+.B scrub
+(applies only ta packets logged by OpenBSDz or FreeBSD's
+.BR pf (4)).
+.IP "\fBwlan ra \fIehost\fR"
+True if tha IEEE 802.11 RA is
+.IR ehost .
+Da RA field is used up in all frames except fo' pimpment frames.
+.IP "\fBwlan ta \fIehost\fR"
+True if tha IEEE 802.11 TA is
+.IR ehost .
+Da TA field is used up in all frames except fo' pimpment frames and
+CTS (Clear To Send) n' ACK (Acknowledgment) control frames.
+.IP "\fBwlan addr1 \fIehost\fR"
+True if tha straight-up original gangsta IEEE 802.11 address is
+.IR ehost .
+.IP "\fBwlan addr2 \fIehost\fR"
+True if tha second IEEE 802.11 address, if present, is
+.IR ehost .
+Da second address field is used up in all frames except fo' CTS (Clear To
+Send) n' ACK (Acknowledgment) control frames.
+.IP "\fBwlan addr3 \fIehost\fR"
+True if tha third IEEE 802.11 address, if present, is
+.IR ehost .
+Da third address field is used up in pimpment n' data frames yo, but not
+in control frames.
+.IP "\fBwlan addr4 \fIehost\fR"
+True if tha fourth IEEE 802.11 address, if present, is
+.IR ehost .
+Da fourth address field is only used for
+WDS (Wireless Distribution System) frames.
+.IP "\fBtype \fIwlan_type\fR"
+True if tha IEEE 802.11 frame type matches tha specified \fIwlan_type\fR.
+Valid \fIwlan_type\fRs are:
+\fBmgt\fP,
+\fBctl\fP
+and \fBdata\fP.
+.IP "\fBtype \fIwlan_type \fBsubtype \fIwlan_subtype\fR"
+True if tha IEEE 802.11 frame type matches tha specified \fIwlan_type\fR
+and frame subtype matches tha specified \fIwlan_subtype\fR.
+.IP
+If tha specified \fIwlan_type\fR is \fBmgt\fP,
+then valid \fIwlan_subtype\fRs are:
+\fBassoc-req\fP,
+\fBassoc-resp\fP,
+\fBreassoc-req\fP,
+\fBreassoc-resp\fP,
+\fBprobe-req\fP,
+\fBprobe-resp\fP,
+\fBbeacon\fP,
+\fBatim\fP,
+\fBdisassoc\fP,
+\fBauth\fP and
+\fBdeauth\fP.
+.IP
+If tha specified \fIwlan_type\fR is \fBctl\fP,
+then valid \fIwlan_subtype\fRs are:
+\fBps-poll\fP,
+\fBrts\fP,
+\fBcts\fP,
+\fBack\fP,
+\fBcf-end\fP and
+\fBcf-end-ack\fP.
+.IP
+If tha specified \fIwlan_type\fR is \fBdata\fP,
+then valid \fIwlan_subtype\fRs are:
+\fBdata\fP,
+\fBdata-cf-ack\fP,
+\fBdata-cf-poll\fP,
+\fBdata-cf-ack-poll\fP,
+\fBnull\fP,
+\fBcf-ack\fP,
+\fBcf-poll\fP,
+\fBcf-ack-poll\fP,
+\fBqos-data\fP,
+\fBqos-data-cf-ack\fP,
+\fBqos-data-cf-poll\fP,
+\fBqos-data-cf-ack-poll\fP,
+\fBqos\fP,
+\fBqos-cf-poll\fP and
+\fBqos-cf-ack-poll\fP.
+.IP "\fBsubtype \fIwlan_subtype\fR"
+True if tha IEEE 802.11 frame subtype matches tha specified \fIwlan_subtype\fR
+and frame has tha type ta which tha specified \fIwlan_subtype\fR belongs.
+.IP "\fBdir \fIdir\fR"
+True if tha IEEE 802.11 frame direction matches tha specified
+.IR dir .
+Valid directions are:
+.BR nodz ,
+.BR todz ,
+.BR fromdz ,
+.BR dstodz ,
+or a numeric value.
+.IP "\fBvlan \fI[vlan_id]\fR"
+True if tha packet be a IEEE 802.1Q VLAN packet.
+If \fI[vlan_id]\fR is specified, only legit if tha packet has tha specified
+\fIvlan_id\fR.
+Note dat tha straight-up original gangsta \fBvlan\fR keyword encountered up in \fIexpression\fR
+changes tha decodin offsets fo' tha remainder of \fIexpression\fR on
+the assumption dat tha packet be a VLAN packet.  Da \fBvlan
+\fI[vlan_id]\fR expression may be used mo' than once, ta filta on VLAN
+hierarchies. Put ya muthafuckin choppers up if ya feel dis!  Each use of dat expression increments tha filta offsets
+by 4.
+.IP
+For example:
+.in +.5i
+.nf
+\fBvlan 100 && vlan 200\fR
+.fi
+.in -.5i
+filtas on VLAN 200 encapsulated within VLAN 100, and
+.in +.5i
+.nf
+\fBvlan && vlan 300 && ip\fR
+.fi
+.in -.5i
+filtas IPv4 protocols encapsulated up in VLAN 300 encapsulated within any
+higher order VLAN.
+.IP "\fBmpls \fI[label_num]\fR"
+True if tha packet be a MPLS packet.
+If \fI[label_num]\fR is specified, only legit is tha packet has tha specified
+\fIlabel_num\fR.
+Note dat tha straight-up original gangsta \fBmpls\fR keyword encountered up in \fIexpression\fR
+changes tha decodin offsets fo' tha remainder of \fIexpression\fR on
+the assumption dat tha packet be a MPLS-encapsulated IP packet.  The
+\fBmpls \fI[label_num]\fR expression may be used mo' than once, to
+filta on MPLS hierarchies. Put ya muthafuckin choppers up if ya feel dis!  Each use of dat expression increments the
+filta offsets by 4. 
+.IP
+For example:
+.in +.5i
+.nf
+\fBmpls 100000 && mpls 1024\fR
+.fi
+.in -.5i
+filtas packets wit a outa label of 100000 n' a inner label of
+1024, and
+.in +.5i
+.nf
+\fBmpls && mpls 1024 && host 192.9.200.1\fR
+.fi
+.in -.5i
+filtas packets ta or from 192.9.200.1 wit a inner label of 1024 and
+any outa label.
+.IP \fBpppoed\fP
+True if tha packet be a PPP-over-Ethernet Discovery packet (Ethernet
+type 0x8863).
+.IP "\fBpppoes \fI[session_id]\fR"
+True if tha packet be a PPP-over-Ethernet Session packet (Ethernet
+type 0x8864).
+If \fI[session_id]\fR is specified, only legit if tha packet has tha specified
+\fIsession_id\fR.
+Note dat tha straight-up original gangsta \fBpppoes\fR keyword encountered up in \fIexpression\fR
+changes tha decodin offsets fo' tha remainder of \fIexpression\fR on
+the assumption dat tha packet be a PPPoE session packet.
+.IP
+For example:
+.in +.5i
+.nf
+\fBpppoes 0x27 && ip\fR
+.fi
+.in -.5i
+filtas IPv4 protocols encapsulated up in PPPoE session id 0x27.
+.IP "\fBiso proto \fIprotocol\fR"
+True if tha packet be a OSI packet of protocol type \fIprotocol\fP.
+\fIProtocol\fP can be a number or one of tha names
+\fBclnp\fP, \fBesis\fP, or \fBisis\fP.
+.IP "\fBclnp\fR, \fBesis\fR, \fBisis\fR"
+Abbreviations for:
+.in +.5i
+.nf
+\fBiso proto \fIp\fR
+.fi
+.in -.5i
+where \fIp\fR is one of tha above protocols.
+.IP "\fBl1\fR, \fBl2\fR, \fBiih\fR, \fBlsp\fR, \fBsnp\fR, \fBcsnp\fR, \fBpsnp\fR"
+Abbreviations fo' IS-IS PDU types.
+.IP "\fBvpi\fP \fIn\fR"
+True if tha packet be a ATM packet, fo' SunATM on Solaris, wit a
+virtual path identifier of
+.IR n .
+.IP "\fBvci\fP \fIn\fR"
+True if tha packet be a ATM packet, fo' SunATM on Solaris, wit a
+virtual channel identifier of
+.IR n .
+.IP \fBlane\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+an ATM LANE packet.
+Note dat tha straight-up original gangsta \fBlane\fR keyword encountered up in \fIexpression\fR
+changes tha tests done up in tha remainder of \fIexpression\fR
+on tha assumption dat tha packet is either a LANE emulated Ethernet
+packet or a LANE LE Control packet.  If \fBlane\fR aint specified, the
+tests is done under tha assumption dat tha packet be an
+LLC-encapsulated packet.
+.IP \fBllc\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+an LLC-encapsulated packet.
+.IP \fBoamf4s\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+a segment OAM F4 flow cell (VPI=0 & VCI=3).
+.IP \fBoamf4e\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+an end-to-end OAM F4 flow cell (VPI=0 & VCI=4).
+.IP \fBoamf4\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+a segment or end-to-end OAM F4 flow cell (VPI=0 & (VCI=3 | VCI=4)).
+.IP \fBoam\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+a segment or end-to-end OAM F4 flow cell (VPI=0 & (VCI=3 | VCI=4)).
+.IP \fBmetac\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+on a meta signalin circuit (VPI=0 & VCI=1).
+.IP \fBbcc\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+on a funky-ass broadcast signalin circuit (VPI=0 & VCI=2).
+.IP \fBsc\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+on a signalin circuit (VPI=0 & VCI=5).
+.IP \fBilmic\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+on a ILMI circuit (VPI=0 & VCI=16).
+.IP \fBconnectmsg\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+on a signalin circuit n' be a Q.2931 Setup, Call Proceeding, Connect,
+Connect Ack, Release, or Release Done message.
+.IP \fBmetaconnect\fP
+True if tha packet be a ATM packet, fo' SunATM on Solaris, n' is
+on a meta signalin circuit n' be a Q.2931 Setup, Call Proceeding, Connect,
+Release, or Release Done message.
+.IP  "\fIexpr relop expr\fR"
+True if tha relation holds, where \fIrelop\fR is one of >, <, >=, <=, =,
+!=, n' \fIexpr\fR be a arithmetic expression composed of integer
+constants (expressed up in standard C syntax), tha aiiight binary operators
+[+, -, *, /, &, |, <<, >>], a length operator, n' special packet data
+accessors.  Note dat all comparisons is unsigned, so that, fo' example,
+0x80000000 n' 0xffffffff is > 0.
+To access
+data inside tha packet, use tha followin syntax:
+.in +.5i
+.nf
+\fIproto\fB [ \fIexpr\fB : \fIsize\fB ]\fR
+.fi
+.in -.5i
+\fIProto\fR is one of \fBether, fddi, tr, wlan, ppp, slip, link,
+ip, arp, rarp, tcp, udp, icmp, ip6\fR or \fBradio\fR, and
+indicates tha protocol layer fo' tha index operation.
+(\fBether, fddi, wlan, tr, ppp, slip\fR n' \fBlink\fR all refer ta the
+link layer n' shit. \fBradio\fR refers ta tha "radio header" added ta some
+802.11 captures.)
+Note dat \fItcp, udp\fR n' other upper-layer protocol types only
+apply ta IPv4, not IPv6 (this is ghon be fixed up in tha future).
+Da byte offset, relatizzle ta tha indicated protocol layer, is
+given by \fIexpr\fR.
+\fISize\fR is optionizzle n' indicates tha number of bytes up in the
+field of interest; it can be either one, two, or four, n' defaults ta one.
+Da length operator, indicated by tha keyword \fBlen\fP, gives the
+length of tha packet.
+
+For example, `\fBether[0] & 1 != 0\fP' catches all multicast traffic.
+Da expression `\fBip[0] & 0xf != 5\fP'
+catches all IPv4 packets wit options.
+Da expression
+`\fBip[6:2] & 0x1fff = 0\fP'
+catches only unfragmented IPv4 datagrams n' frag zero of fragmented
+IPv4 datagrams.
+This check is implicitly applied ta tha \fBtcp\fP n' \fBudp\fP
+index operations.
+For instance, \fBtcp[0]\fP always means tha first
+byte of tha TCP \fIheader\fP, n' never means tha straight-up original gangsta byte of an
+intervenin fragment.
+
+Some offsets n' field joints may be expressed as names rather than
+as numeric joints.
+Da followin protocol header field offsets are
+available: \fBicmptype\fP (ICMP type field), \fBicmpcode\fP (ICMP
+code field), n' \fBtcpflags\fP (TCP flags field).
+
+Da followin ICMP type field joints is available: \fBicmp-echoreply\fP,
+\fBicmp-unreach\fP, \fBicmp-sourcequench\fP, \fBicmp-redirect\fP,
+\fBicmp-echo\fP, \fBicmp-routeradvert\fP, \fBicmp-routersolicit\fP,
+\fBicmp-timxceed\fP, \fBicmp-paramprob\fP, \fBicmp-tstamp\fP,
+\fBicmp-tstampreply\fP, \fBicmp-ireq\fP, \fBicmp-ireqreply\fP,
+\fBicmp-maskreq\fP, \fBicmp-maskreply\fP.
+
+Da followin TCP flags field joints is available: \fBtcp-fin\fP,
+\fBtcp-syn\fP, \fBtcp-rst\fP, \fBtcp-push\fP,
+\fBtcp-ack\fP, \fBtcp-urg\fP.
+.LP
+Primitives may be combined using:
+.IP
+A parenthesized crew of primitives n' operators
+(parentheses is special ta tha Shell n' must be escaped).
+.IP
+Negation (`\fB!\fP' or `\fBnot\fP').
+.IP
+Concatenation (`\fB&&\fP' or `\fBand\fP').
+.IP
+Alternation (`\fB||\fP' or `\fBor\fP').
+.LP
+Negation has highest precedence.
+Alternation n' concatenation have equal precedence n' associate
+left ta right.
+Note dat explicit \fBand\fR tokens, not juxtaposition,
+are now required fo' concatenation.
+.LP
+If a identifier is given without a keyword, da most thugged-out recent keyword
+is assumed.
+For example,
+.in +.5i
+.nf
+\fBnot host vs n' ace\fR
+.fi
+.in -.5i
+is short for
+.in +.5i
+.nf
+\fBnot host vs n' host ace\fR
+.fi
+.in -.5i
+which should not be trippin with
+.in +.5i
+.nf
+\fBnot ( host vs or ace )\fR
+.fi
+.in -.5i
+.SH EXAMPLES
+.LP
+To select all packets arrivin at or departin from \fIsundown\fP:
+.RS
+.nf
+\fBhost sundown\fP
+.fi
+.RE
+.LP
+To select traffic between \fIhelios\fR n' either \fIhot\fR or \fIace\fR:
+.RS
+.nf
+\fBhost helios n' \\( bangin' or ace \\)\fP
+.fi
+.RE
+.LP
+To select all IP packets between \fIace\fR n' any host except \fIhelios\fR:
+.RS
+.nf
+\fBip host ace n' not helios\fP
+.fi
+.RE
+.LP
+To select all traffic between local hosts n' hosts at Berkeley:
+.RS
+.nf
+.B
+net ucb-ether
+.fi
+.RE
+.LP
+To select all ftp traffic all up in internizzle gateway \fIsnup\fP:
+.RS
+.nf
+.B
+gateway snup n' (port ftp or ftp-data)
+.fi
+.RE
+.LP
+To select traffic neither sourced from nor destined fo' local hosts
+(if you gateway ta one other net, dis shiznit should never make it
+onto yo' local net).
+.RS
+.nf
+.B
+ip n' not net \fIlocalnet\fP
+.fi
+.RE
+.LP
+To select tha start n' end packets (the SYN n' FIN packets) of each
+TCP conversation dat involves a non-local host.
+.RS
+.nf
+.B
+tcp[tcpflags] & (tcp-syn|tcp-fin) != 0 n' not src n' dst net \fIlocalnet\fP
+.fi
+.RE
+.LP
+To select all IPv4 HTTP packets ta n' from port 80, i.e. print only
+packets dat contain data, not, fo' example, SYN n' FIN packets and
+ACK-only packets, n' you can put dat on yo' toast.  (IPv6 is left as a exercise fo' tha reader.)
+.RS
+.nf
+.B
+tcp port 80 n' (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)
+.fi
+.RE
+.LP
+To select IP packets longer than 576 bytes busted all up in gateway \fIsnup\fP:
+.RS
+.nf
+.B
+gateway snup n' ip[2:2] > 576
+.fi
+.RE
+.LP
+To select IP broadcast or multicast packets dat were
+.I not
+sent via Ethernet broadcast or multicast:
+.RS
+.nf
+.B
+ether[0] & 1 = 0 n' ip[16] >= 224
+.fi
+.RE
+.LP
+To select all ICMP packets dat is not echo requests/replies (i.e., not
+pin packets):
+.RS
+.nf
+.B
+icmp[icmptype] != icmp-echo n' icmp[icmptype] != icmp-echoreply
+.fi
+.RE
+.SH "SEE ALSO"
+pcap(3PCAP)
+.SH BUGS
+Please bust problems, bugs, thangs, desirable enhancements, etc. to:
+.LP
+.RS
+tcpdump-workers@lists.tcpdump.org
+.RE
+.LP
+Filta expressions on fieldz other than dem up in Token Rin headaz will
+not erectly handle source-routed Token Rin packets.
+.LP
+Filta expressions on fieldz other than dem up in 802.11 headaz will not
+correctly handle 802.11 data packets wit both To DS n' From DS set.
+.LP
+.BR "ip6 proto"
+should chase header chain yo, but at dis moment it do not.
+.BR "ip6 protochain"
+is supplied fo' dis behavior.
+.LP
+Arithmetic expression against transhiznit layer headers, like \fBtcp[0]\fP,
+does not work against IPv6 packets.
+It only looks at IPv4 packets.

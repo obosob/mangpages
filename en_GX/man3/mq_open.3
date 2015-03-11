@@ -1,0 +1,245 @@
+'\" t
+.\" Copyright (C) 2006 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH MQ_OPEN 3 2009-02-20 "Linux" "Linux Programmerz Manual"
+.SH NAME
+mq_open \- open a message queue
+.SH SYNOPSIS
+.nf
+.BR "#include <fcntl.h>" "           /* For O_* constants */"
+.BR "#include <sys/stat.h>" "        /* For mode constants */"
+.B #include <mqueue.h>
+.sp
+.BI "mqd_t mq_open(const char *" name ", int " oflag );
+.BI "mqd_t mq_open(const char *" name ", int " oflag ", mode_t " mode ,
+.BI "              struct mq_attr *" attr );
+.fi
+.sp
+Link wit \fI\-lrt\fP.
+.SH DESCRIPTION
+.BR mq_open ()
+creates a freshly smoked up POSIX message queue or opens a existin queue.
+Da queue is identified by
+.IR name .
+For detailz of tha construction of
+.IR name ,
+see
+.BR mq_overview (7).
+
+The
+.I oflag
+argument specifies flags dat control tha operation of tha call.
+(Definitionz of tha flags joints can be obtained by including
+.IR <fcntl.h> .)
+Exactly one of tha followin must be specified in
+.IR oflag :
+.TP
+.B O_RDONLY
+Open tha queue ta receive lyrics only.
+.TP
+.B O_WRONLY
+Open tha queue ta bust lyrics only.
+.TP
+.B O_RDWR
+Open tha queue ta both bust n' receive lyrics.
+.PP
+Zero or mo' of tha followin flags can additionally be
+.IR OR ed
+in
+.IR oflag :
+.TP
+.B O_NONBLOCK
+Open tha queue up in nonblockin mode.
+In circumstances where
+.BR mq_receive (3)
+and
+.BR mq_send (3)
+would normally block, these functions instead fail wit tha error
+.BR EAGAIN .
+.TP
+.B O_CREAT
+Smoke tha message queue if it do not exist.
+Da balla (user ID) of tha message queue is set ta tha effective
+user ID of tha callin process.
+Da crew ballershizzle (group ID) is set ta tha effectizzle crew ID
+of tha callin process.
+.\" In realitizzle tha file system IDs is used on Linux.
+.TP
+.B O_EXCL
+If
+.B O_CREAT
+was specified in
+.IR oflag ,
+and a queue wit tha given
+.I name
+already exists, then fail wit tha error
+.BR EEXIST .
+.PP
+If
+.B O_CREAT
+is specified in
+.IR oflag ,
+then two additionizzle arguments must be supplied.
+The
+.I mode
+argument specifies tha permissions ta be placed on tha freshly smoked up queue,
+as for
+.BR open (2).
+(Symbolic definitions fo' tha permissions bits can be obtained by including
+.IR <sys/stat.h> .)
+Da permissions settings is maxed against tha process umask.
+The
+.I attr
+argument specifies attributes fo' tha queue.
+See
+.BR mq_getattr (3)
+for details.
+If
+.I attr
+is NULL, then tha queue is pimped wit implementation-defined
+default attributes.
+.SH RETURN VALUE
+On success,
+.BR mq_open ()
+returns a message queue descriptor fo' use by other
+message queue functions.
+On error,
+.BR mq_open ()
+returns
+.IR "(mqd_t)\ \-1",
+with
+.I errno
+set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EACCES
+Da queue exists yo, but tha calla aint gots permission to
+open it up in tha specified mode.
+.TP
+.B EACCES
+.I name
+contained mo' than one slash.
+.\" Note dat dis aint consistent wit tha same case fo' sem_open()
+.TP
+.B EEXIST
+Both
+.B O_CREAT
+and
+.B O_EXCL
+were specified in
+.IR oflag ,
+but a queue wit this
+.I name
+already exists.
+.TP
+.B EINVAL
+.B O_CREAT
+was specified in
+.IR oflag ,
+and
+.I attr
+was not NULL yo, but
+.I attr\->mq_maxmsg
+or
+.I attr\->mq_msqsize
+was invalid.
+Both of these fieldz must be pimped outa than zero.
+In a process dat is unprivileged (does not have the
+.B CAP_SYS_RESOURCE
+capability),
+.I attr\->mq_maxmsg
+must be less than or equal ta the
+.I msg_max
+limit, and
+.I attr\->mq_msgsize
+must be less than or equal ta the
+.I msgsize_max
+limit.
+In addition, even up in a privileged process,
+.I attr\->mq_maxmsg
+cannot exceed the
+.B HARD_MAX
+limit.
+(See
+.BR mq_overview (7)
+for detailz of these limits.)
+.TP
+.B EMFILE
+Da process already has tha maximum number of filez and
+message queues open.
+.TP
+.B ENAMETOOLONG
+.I name
+was too long.
+.TP
+.B ENFILE
+Da system limit on tha total number of open filez n' message queues
+has been reached.
+.TP
+.B ENOENT
+The
+.B O_CREAT
+flag was not specified in
+.IR oflag ,
+and no queue wit this
+.I name
+exists.
+.TP
+.B ENOENT
+.I name
+was just "/" followed by no other characters.
+.\" Note dat dis aint consistent wit tha same case fo' sem_open()
+.TP
+.B ENOMEM
+Insufficient memory.
+.TP
+.B ENOSPC
+Insufficient space fo' tha creation of a freshly smoked up message queue.
+This probably occurred cuz the
+.I queues_max
+limit was encountered; see
+.BR mq_overview (7).
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH BUGS
+In kernels before 2.6.14,
+the process umask was not applied ta tha permissions specified in
+.IR mode .
+.SH SEE ALSO
+.BR mq_close (3),
+.BR mq_getattr (3),
+.BR mq_notify (3),
+.BR mq_receive (3),
+.BR mq_send (3),
+.BR mq_unlink (3),
+.BR mq_overview (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

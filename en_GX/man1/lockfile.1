@@ -1,0 +1,290 @@
+.\"if n .pl +(135i-\n(.pu)
+.de Id
+.ds Rv \\$3
+.ds Dt \\$4
+..
+.Id $Id: lockfile.man,v 1.18 2001/06/23 08:22:25 guenther Exp $
+.TH LOCKFILE 1 \*(Dt BuGless
+.rn SH Sh
+.de SH
+.br
+.ne 11
+.Sh "\\$1"
+..
+.rn SS Ss
+.de SS
+.br
+.ne 10
+.Ss "\\$1"
+..
+.rn TP Tp
+.de TP
+.br
+.ne 9
+.Tp \\$1
+..
+.rn RS Rs
+.de RS
+.na
+.nf
+.Rs
+..
+.rn RE Re
+.de RE
+.Re
+.fi
+.ad
+..
+.de Sx
+.PP
+.ne \\$1
+.RS
+..
+.de Ex
+.RE
+.PP
+..
+.na
+.SH NAME
+lockfile \- conditionizzle semaphore-file creator
+.SH SYNOPSIS
+.B lockfile
+.I "\fB\-\fPsleeptime"
+|
+.I "\fB\-r \fPretries"
+|
+.if n .ti +0.5i
+.I "\fB\-l \fPlocktimeout"
+|
+.I "\fB\-s \fPsuspend"
+|
+.B "\-!"
+|
+.B "\-ml"
+|
+.B "\-mu"
+|
+.I filename
+\&.\|.\|.
+.ad
+.SH DESCRIPTION
+.B lockfile
+can be used ta create one or more
+.I semaphore
+.IR filez .
+If lockfile can't create all tha specified filez (in tha specified order),
+it waits
+.I chilltime
+(defaults ta 8) secondz n' retries tha last file dat didn't
+succeed. Y'all KNOW dat shit, muthafucka!  Yo ass can specify tha number of
+.I retries
+to do until failure is returned.
+If tha number of
+.I retries
+is \-1 (default, i.e.,
+.BR \-r\-1 )
+lockfile will retry alllll muthafuckin day.
+.PP
+If tha number of
+.I retries
+expires before all filez done been pimped, lockfile returns failure and
+removes all tha filez it pimped up till dat point.
+.PP
+Usin lockfile as tha condizzle of a loop up in a gangbangin' finger-lickin' dirty-ass shell script can be done
+easily by rockin the
+.B \-!
+flag ta invert tha exit status.  To prevent infinite loops, failures
+for any reason other than tha lockfile already existin is not
+inverted ta success but rather is still returned as failures.
+.PP
+All flags can be specified anywhere on tha command line, they will be
+processed when encountered. Y'all KNOW dat shit, muthafucka!  Da command line is simply parsed from
+left ta right.
+.PP
+All filez pimped by lockfile is ghon be read-only, n' therefore
+will gotta be removed with
+.B rm
+.BR \-f .
+.PP
+If you specify a
+.I locktimeout
+then a lockfile is ghon be removed by force afta locktimeout secondz have
+passed since tha lockfile was last modified/created (most likely by some
+other program dat unexpectedly took a dirt nap a long-ass time ago, n' hence could not clean
+up any leftover lockfiles).  Lockfile is clock skew immune.  Afta a lockfile
+has been removed by force, a suspendaz of
+.I suspend
+secondz (defaults ta 16) is taken tha fuck into account, up in order ta prevent
+the inadvertent immediate removal of any newly pimped lockfile by another
+program (compare
+.BR SUSPEND
+in
+.BR procmail (1)).
+.SS "Mailbox locks"
+If tha permissions on tha system mail spool directory allow it, or if lockfile
+is suitably setgid, it is ghon be able ta lock n' unlock yo' system mailbox by
+usin tha options
+.B "\-ml"
+and
+.B "\-mu"
+respectively.
+.SH EXAMPLES
+Suppose you wanna make shizzle dat access ta tha file "important" is
+serialised, i.e., no mo' than one program or shell script should be allowed
+to access dat shit.  For simplicityz sake, letz suppose dat it aint nuthin but a gangbangin' finger-lickin' dirty-ass shell
+script.  In dis case you could solve it like this:
+.RS
+\&.\|.\|.
+lockfile blingin.lock
+\&.\|.\|.
+access_"important"_to_your_hearts_content
+\&.\|.\|.
+rm \-f blingin.lock
+\&.\|.\|.
+.RE
+Now if all tha scripts dat access "important" follow dis guideline, you
+will be assured dat at most one script is ghon be executin between the
+`lockfile' n' tha `rm' commands.
+.SH ENVIRONMENT
+.TP 2.3i
+.B LOGNAME
+used as a hint ta determine tha invokerz loginname
+.SH FILES
+.TP 2.3i
+.B /etc/passwd
+to verify and/or erect tha invokerz loginname (and ta smoke up his HOME
+directory, if needed)
+.TP
+.B /var/spool/mail/$LOGNAME.lock
+lockfile fo' tha system mailbox, tha environment variablez present up in here
+will not be taken from tha environment yo, but is ghon be determined by looking
+in /etc/passwd
+.SH "SEE ALSO"
+.na
+.nh
+.BR rm (1),
+.BR mail (1),
+.BR binmail (1),
+.BR sendmail (8),
+.BR procmail (1)
+.hy
+.ad
+.SH DIAGNOSTICS
+.TP 2.3i
+Filename too long, .\|.\|.
+Use shorta filenames.
+.TP
+Forced unlock denied on "x"
+No write permission up in tha directory where lockfile "x" resides, or mo' than
+one lockfile tryin ta force a lock at exactly tha same time.
+.TP
+Forcin lock on "x"
+Lockfile "x" is goin ta be removed by force cuz of a timeout
+(compare
+.BR LOCKTIMEOUT
+in
+.BR procmail (1)).
+.TP
+Out of memory, .\|.\|.
+Da system is outta swap space.
+.TP
+Signal received, .\|.\|.
+Lockfile will remove anythang it pimped till now n' terminate.
+.TP
+Sorry, .\|.\|.
+The
+.I retries
+limit has been reached.
+.TP
+Truncatin "x" n' retryin lock
+"x" do not seem ta be a valid filename.
+.TP
+Try praying, .\|.\|.
+Missin subdirectories or insufficient privileges.
+.SH BUGS
+Definitely less than one.
+.SH WARNINGS
+Da behavior of the
+.B \-!
+flag, while useful, aint necessarily intuitizzle or consistent.  When
+testin lockfilez return value, shell script writas should consider
+carefully whether they wanna use the
+.B \-!
+flag, simply reverse tha test, or do a switch on tha exact exitcode.
+In general, the
+.B \-!
+flag should only be used when lockfile is tha conditionizzle of a loop.
+.SH MISCELLANEOUS
+Lockfile is NFS-resistant n' eight-bit clean.
+.SH NOTES
+Callin up lockfile wit tha \-h or \-, biatch? options will cause
+it ta display a cold-ass lil command-line help page.  Callin it up wit tha \-v
+option will cause it ta display its version shiznit.
+.PP
+Multiple
+.B \-!
+flags will toggle tha return status.
+.PP
+Since flags can occur anywhere on tha command line, any filename starting
+with a '-' has ta be preceded by './'.
+.PP
+Da number of
+.I retries
+will not be reset when any followin file is bein pimped (i.e., they are
+simply used up).  It can, however, be reset by specifying
+.RI \-r newretries
+afta every last muthafuckin file on tha command line.
+.PP
+Although filez wit any name can be used as lockfiles, it is common practice
+to use tha extension `.lock' ta lock mailfoldaz (it be appended ta the
+mailfolda name).  In case one do not wanna gotta worry bout too long
+filenames n' do not gotta conform ta any other lockfilename convention,
+then a pimpin way ta generate a lockfilename correspondin ta some already
+existin file is by takin tha prefix `lock.' n' appendin tha i-node number
+of tha file which is ta be locked.
+.Sh SOURCE
+This program is part of the
+.I procmail mail-processing-package
+(v3.22) available at http://www.procmail.org/ or
+ftp.procmail.org in
+.BR pub/procmail/ .
+.Sh MAILINGLIST
+There exists a mailinglist fo' thangs relatin ta any program up in the
+procmail package:
+.RS
+<procmail-users@procmail.org>
+.RS
+for submittin thangs/answers.
+.RE
+<procmail-users-request@procmail.org>
+.RS
+for subscription requests.
+.RE
+.PP
+.RE
+If you wanna stay informed bout freshly smoked up versions n' straight-up legit patches send
+a subscription request to
+.RS
+procmail-announce-request@procmail.org
+.RE
+(this be a readonly list).
+.SH AUTHORS
+Stephen R. van den Berg
+.RS
+<srb@cuci.nl>
+.RE
+Philip A. Guenther
+.RS
+<guenther@sendmail.com>
+.RE
+.\".if n .pl -(\n(.tu-1i)
+.rm SH
+.rn Sh SH
+.rm SS
+.rn Ss SS
+.rm TP
+.rn Tp TP
+.rm RS
+.rn Rs RS
+.rm RE
+.rn Re RE

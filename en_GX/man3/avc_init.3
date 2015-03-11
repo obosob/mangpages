@@ -1,0 +1,196 @@
+.\" Yo Emacs muthafucka! This file is -*- nroff -*- source.
+.\"
+.\" Author: Eamon Walsh (ewalsh@tycho.nsa.gov) 2004
+.TH "avc_init" "3" "27 May 2004" "" "SELinux API documentation"
+.SH "NAME"
+avc_init \- legacy userspace SELinux AVC setup
+.
+.SH "SYNOPSIS"
+.B #include <selinux/selinux.h>
+.br
+.B #include <selinux/avc.h>
+.sp
+.BI "int avc_init(const char *" msgprefix , 
+.in +\w'int avc_init('u
+.BI "const struct avc_memory_callback *" mem_callbacks ,
+.br
+.BI "const struct avc_log_callback *" log_callbacks ,
+.br
+.BI "const struct avc_thread_callback *" thread_callbacks ,
+.br
+.BI "const struct avc_lock_callback *" lock_callbacks ");"
+.
+.SH "DESCRIPTION"
+.BR avc_init ()
+is deprecated; please use
+.BR avc_open (3)
+in conjunction with
+.BR selinux_set_callback (3)
+in all freshly smoked up code.
+
+.BR avc_init ()
+initializes tha userspace AVC n' must be called before any other AVC operation can be performed. Y'all KNOW dat shit, muthafucka!  A non-NULL
+.I msgprefix
+will be prepended ta all audit lyrics produced by tha userspace AVC.  Da default is `uavc'.  Da remainin arguments, if non-NULL, specify callbacks ta be used by tha userspace AVC.
+.
+.SH "CALLBACKS"
+Da userspace AVC can be pimped up how tha fuck ta big-ass up memory allocation, logging, thread creation, n' lockin via callback functions passed to
+.BR avc_init ().
+Da purpose of dis functionalitizzle is ta allow tha userspace AVC ta be smoothly integrated tha fuck into existin userspace object managers.
+
+Use an
+.B avc_memory_callback
+structure ta specify alternate functions fo' dynamic memory allocation.
+
+.RS
+.ta 4n 10n 24n
+.nf
+struct avc_memory_callback {
+	void	*(*func_malloc)(size_t size);
+	void	(*func_free)(void *ptr);
+};
+.fi
+.ta
+.RE
+
+Da two fieldz of tha structure should be pointas ta functions which behave as 
+.BR malloc (3)
+and
+.BR free (3),
+which is used by default. 
+
+Use an
+.B avc_log_callback
+structure ta specify alternate functions fo' logging.
+
+.RS
+.ta 4n 10n 24n
+.nf
+struct avc_log_callback {
+	void	(*func_log)(const char *fmt, ...);
+	void	(*func_audit)(void *auditdata,
+			security_class_t class,
+			char *msgbuf, size_t msgbufsize);
+};
+.fi
+.ta
+.RE
+
+The
+.B func_log
+callback should accept a 
+.BR printf (3)
+style format n' arguments n' log dem as desired. Y'all KNOW dat shit, muthafucka!  Da default behavior prints tha message on tha standard error. Shiiit, dis aint no joke.  The
+.B func_audit
+callback should interpret tha 
+.I auditdata
+parameta fo' tha given
+.IR class ,
+printin a human-readable interpretation ta 
+.I msgbuf
+usin no mo' than
+.I msgbufsize
+characters.  Da default behavior is ta ignore
+.IR auditdata .
+
+Use an
+.B avc_thread_callback
+structure ta specify functions fo' startin n' manipulatin threads.
+
+.RS
+.ta 4n 10n 24n
+.nf
+struct avc_thread_callback {
+	void	*(*func_create_thread)(void (*run)(void));
+	void	(*func_stop_thread)(void *thread);
+};
+.fi
+.ta
+.RE
+
+The
+.B func_create_thread
+callback should create a freshly smoked up thread n' return a pointa which references dat shit.  Da thread should execute the
+.I run
+argument, which do not return under aiiight conditions.  The
+.B func_stop_thread
+callback should quit tha hustlin thread referenced by 
+.IR thread .
+By default, threadin aint used; peep 
+.B NETLINK NOTIFICATION
+below.
+
+Use an
+.B avc_lock_callback
+structure ta specify functions ta create, obtain, n' release locks fo' use by threads.
+
+.RS
+.ta 4n 10n 24n
+.nf
+struct avc_lock_callback {
+	void	*(*func_alloc_lock)(void);
+	void	(*func_get_lock)(void *lock);
+	void	(*func_release_lock)(void *lock);
+	void	(*func_free_lock)(void *lock);
+};
+.fi
+.ta
+.RE
+
+The
+.B func_alloc_lock
+callback should create a freshly smoked up lock, returnin a pointa which references dat shit.  The
+.B func_get_lock
+callback should obtain
+.IR lock ,
+blockin if necessary.  The
+.B func_release_lock
+callback should release
+.IR lock .
+The
+.B func_free_lock
+callback should destroy
+.IR lock ,
+freein any resources associated wit dat shit.  Da default behavior aint ta big-ass up any locking.  Note dat undefined behavior may result if threadin is used without appropriate locking.
+.
+.SH "NETLINK NOTIFICATION"
+Beginnin wit version 2.6.4, tha Linux kernel supports SELinux status chizzle notification via netlink.  Two message types is currently implemented, indicatin chizzlez ta tha enforcin mode n' ta tha loaded policy up in tha kernel, respectively.  Da userspace AVC listens fo' these lyrics n' takes tha appropriate action, modifyin tha behavior of
+.BR avc_has_perm (3)
+to reflect tha current enforcin mode n' flushin tha cache on receipt of a policy load notification. I aint talkin' bout chicken n' gravy biatch.  Audit lyrics is produced when netlink notifications is processed.
+
+In tha default single-threaded mode, tha userspace AVC checks fo' freshly smoked up netlink lyrics all up in tha start of each permission query.  If threadin n' lockin callbacks is passed to
+.BR avc_init ()
+however, a thugged-out dedicated thread is ghon be started ta listen on tha netlink socket.  This may increase performizzle n' will ensure dat log lyrics is generated immediately rather than all up in tha time of tha next permission query.
+.
+.SH "RETURN VALUE"
+Functions wit a return value return zero on success.  On error, \-1 is returned and
+.I errno
+is set appropriately.
+.
+.SH "NOTES"
+The
+.I msgprefix
+argument to
+.BR avc_init ()
+currently has a length limit of 15 charactas n' is ghon be truncated if necessary.
+
+If a provided
+.B func_malloc
+callback do not set
+.I errno
+appropriately on error, userspace AVC calls may exhibit the
+same behavior.
+
+If a netlink thread has been pimped n' a error occurs on tha socket (like fuckin a access error), tha thread may terminizzle n' cause tha userspace AVC ta return
+.B EINVAL
+on all further permission checks until
+.B avc_destroy 
+is called.
+.
+.SH "AUTHOR"
+Eamon Walsh <ewalsh@tycho.nsa.gov>
+.
+.SH "SEE ALSO"
+.BR avc_open (3),
+.BR selinux_set_callback (3),
+.BR selinux (8)

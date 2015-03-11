@@ -1,0 +1,302 @@
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Sun Nov 28 17:06:19 1993, Rik Faith (faith@cs.unc.edu)
+.\"          wit material from Luigi P. Bai (lpb@softint.com)
+.\" Portions Copyright 1993 Luigi P. Bai
+.\" Modified Tue Oct 22 22:04:23 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified, 5 Jan 2002, Mike Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 19 Sep 2002, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Added SHM_REMAP flag description
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capabilitizzle requirements
+.\" Modified, 11 Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Changed wordin n' placement of sentence regardin attachment
+.\"		of segments marked fo' destruction
+.\"
+.\" FIXME  fo' realz. Add a example program ta dis page.
+.\" FIXME Linux 2.6.9 added SHM_EXEC, which should be documented
+.TH SHMOP 2 2013-02-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+shmat, shmdt \- System V shared memory operations
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/shm.h>
+
+.BI "void *shmat(int " shmid ", const void *" shmaddr ", int " shmflg );
+
+.BI "int shmdt(const void *" shmaddr );
+.fi
+.SH DESCRIPTION
+.BR shmat ()
+attaches tha System V shared memory segment identified by
+.I shmid
+to tha address space of tha callin process.
+Da attachin address is specified by
+.I shmaddr
+with one of tha followin criteria:
+.LP
+If
+.I shmaddr
+is NULL,
+the system chizzlez a suitable (unused) address at which ta attach
+the segment.
+.LP
+If
+.I shmaddr
+aint NULL
+and
+.B SHM_RND
+is specified in
+.IR shmflg ,
+the attach occurs all up in tha address equal to
+.I shmaddr
+rounded down ta tha nearest multiple of
+.BR SHMLBA .
+Otherwise
+.I shmaddr
+must be a page-aligned address at which tha attach occurs.
+.PP
+If
+.B SHM_RDONLY
+is specified in
+.IR shmflg ,
+the segment be attached fo' readin n' tha process must have
+read permission fo' tha segment.
+Otherwise tha segment be attached fo' read n' write
+and tha process must have read n' write permission fo' tha segment.
+There is no notion of a write-only shared memory segment.
+.PP
+Da (Linux-specific)
+.B SHM_REMAP
+flag may be specified in
+.I shmflg
+to indicate dat tha mappin of tha segment should replace
+any existin mappin up in tha range startin at
+.I shmaddr
+and continuin fo' tha size of tha segment.
+(Normally an
+.B EINVAL
+error would result if a mappin already exists up in dis address range.)
+In dis case,
+.I shmaddr
+must not be NULL.
+.PP
+The
+.BR brk (2)
+value of tha callin process aint altered by tha attach.
+Da segment will automatically be detached at process exit.
+Da same segment may be attached as a read n' as a read-write
+one, n' mo' than once, up in tha processs address space.
+.PP
+A successful
+.BR shmat ()
+call thugged-out shiznit tha thugz of the
+.I shmid_ds
+structure (see
+.BR shmctl (2))
+associated wit tha shared memory segment as bigs up:
+.IP
+.I shm_atime
+is set ta tha current time.
+.IP
+.I shm_lpid
+is set ta tha process-ID of tha callin process.
+.IP
+.I shm_nattch
+is incremented by one.
+.PP
+.BR shmdt ()
+detaches tha shared memory segment located all up in tha address specified by
+.I shmaddr
+from tha address space of tha callin process.
+Da to-be-detached segment must be currently
+attached with
+.I shmaddr
+equal ta tha value returned by tha attaching
+.BR shmat ()
+call.
+.PP
+On a successful
+.BR shmdt ()
+call tha system thugged-out shiznit tha thugz of the
+.I shmid_ds
+structure associated wit tha shared memory segment as bigs up:
+.IP
+.I shm_dtime
+is set ta tha current time.
+.IP
+.I shm_lpid
+is set ta tha process-ID of tha callin process.
+.IP
+.I shm_nattch
+is decremented by one.
+If it becomes 0 n' tha segment is marked fo' deletion,
+the segment is deleted.
+.PP
+Afta a
+.BR fork (2)
+the lil pimp inherits tha attached shared memory segments.
+
+Afta an
+.BR execve (2)
+all attached shared memory segments is detached from tha process.
+
+Upon
+.BR _exit (2)
+all attached shared memory segments is detached from tha process.
+.SH RETURN VALUE
+On success
+.BR shmat ()
+returns tha address of tha attached shared memory segment; on error
+.I (void\ *)\ \-1
+is returned, and
+.I errno
+is set ta indicate tha cause of tha error.
+
+On success
+.BR shmdt ()
+returns 0; on error \-1 is returned, and
+.I errno
+is set ta indicate tha cause of tha error.
+.SH ERRORS
+When
+.BR shmat ()
+fails,
+.I errno
+is set ta one of tha following:
+.TP
+.B EACCES
+Da callin process aint gots tha required permissions for
+the axed attach type, n' aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EIDRM
+\fIshmid\fP points ta a removed identifier.
+.TP
+.B EINVAL
+Invalid
+.I shmid
+value, unaligned (i.e., not page-aligned n' \fBSHM_RND\fP was not
+specified) or invalid
+.I shmaddr
+value, or can't attach segment at
+.IR shmaddr ,
+or
+.B SHM_REMAP
+was specified and
+.I shmaddr
+was NULL.
+.TP
+.B ENOMEM
+Could not allocate memory fo' tha descriptor or fo' tha page tables.
+.PP
+When
+.BR shmdt ()
+fails,
+.I errno
+is set as bigs up:
+.TP
+.B EINVAL
+There is no shared memory segment attached at
+.IR shmaddr ;
+or,
+.\" Da followin since 2.6.17-rc1:
+.I shmaddr
+is not aligned on a page boundary.
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVr4 documents a additionizzle error condizzle EMFILE.
+
+In SVID 3 (or like earlier)
+the type of tha \fIshmaddr\fP argument was chizzled from
+.I "char\ *"
+into
+.IR "const void\ *" ,
+and tha returned type of
+.BR shmat ()
+from
+.I "char\ *"
+into
+.IR "void\ *" .
+(Linux libc4 n' libc5 have the
+.I "char\ *"
+prototypes; glibc2 has
+.IR "void\ *" .)
+.SH NOTES
+Using
+.BR shmat ()
+with
+.I shmaddr
+equal ta NULL
+is tha preferred, portable way of attachin a gangbangin' finger-lickin' dirty-ass shared memory segment.
+Be aware dat tha shared memory segment attached up in dis way
+may be attached at different addresses up in different processes.
+Therefore, any pointas maintained within tha shared memory must be
+made relatizzle (typically ta tha startin address of tha segment),
+rather than absolute.
+.PP
+On Linux, it is possible ta attach a gangbangin' finger-lickin' dirty-ass shared memory segment even if it
+is already marked ta be deleted.
+But fuck dat shiznit yo, tha word on tha street is dat POSIX.1-2001 do not specify dis behavior and
+many other implementations do not support dat shit.
+.LP
+Da followin system parameta affects
+.BR shmat ():
+.TP
+.\" FIXME A phat explanation of tha rationale fo' tha existence
+.\" of SHMLBA would be useful here
+.B SHMLBA
+Segment low boundary address multiple.
+Must be page aligned.
+For tha current implementation the
+.B SHMLBA
+value is
+.BR PAGE_SIZE .
+.\" FIXME That last sentence aint legit fo' all Linux
+.\" architectures (i.e., SHMLBA != PAGE_SIZE fo' some architectures)
+.\" -- MTK, Nov 04
+.PP
+Da implementation places no intrinsic limit on tha per-process maximum
+number of shared memory segments
+.RB ( SHMSEG ).
+.SH SEE ALSO
+.BR brk (2),
+.BR mmap (2),
+.BR shmctl (2),
+.BR shmget (2),
+.BR capabilitizzles (7),
+.BR shm_overview (7),
+.BR svipc (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

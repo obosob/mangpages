@@ -1,0 +1,573 @@
+.\" Copyright (C) Tomothy Bjorkholm, Markus Kuhn & Dizzy A. Wheela 1996-1999
+.\" n' Copyright (C) 2007 Carsten Emde <Carsten.Emde@osadl.org>
+.\" n' Copyright (C) 2008 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" 1996-04-01 Tomothy Bjorkholm <tomb@mydata.se>
+.\"            First version written
+.\" 1996-04-10 Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"            revision
+.\" 1999-08-18 Dizzy A. Wheela <dwheeler@ida.org> added Note.
+.\" Modified, 25 Jun 2002, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Corrected description of queue placement by sched_setparam() and
+.\"		sched_setscheduler()
+.\"	A couple grammar clean-ups
+.\" Modified 2004-05-27 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" 2005-03-23, mtk, Added description of SCHED_BATCH.
+.\" 2007-07-10, Carsten Emde <Carsten.Emde@osadl.org>
+.\"     Add text on real-time features dat is currently being
+.\"     added ta tha mainline kernel.
+.\" 2008-05-07, mtk; Rewrote n' restructured various partz of tha page to
+.\"     improve readability.
+.\" 2010-06-19, mtk, documented SCHED_RESET_ON_FORK
+.\"
+.\" Worth lookin at: http://rt.wiki.kernel.org/index.php
+.\"
+.TH SCHED_SETSCHEDULER 2 2013-02-12 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sched_setscheduler, sched_getschedula \-
+set n' git schedulin policy/parameters
+.SH SYNOPSIS
+.nf
+.B #include <sched.h>
+.sp
+.BI "int sched_setscheduler(pid_t " pid ", int " policy ,
+.br
+.BI "                       const struct sched_param *" param );
+.sp
+.BI "int sched_getscheduler(pid_t " pid );
+.sp
+\fBstruct sched_param {
+    ...
+    int \fIsched_priority\fB;
+    ...
+};
+.fi
+.SH DESCRIPTION
+.BR sched_setschedula ()
+sets both tha schedulin policy n' tha associated parametas fo' the
+process whose ID is specified up in \fIpid\fP.
+If \fIpid\fP equals zero, the
+schedulin policy n' parametaz of tha callin process is ghon be set.
+Da interpretation of
+the argument \fIparam\fP dependz on tha selected policy.
+Currently, Linux supports tha followin "normal"
+(i.e., non-real-time) schedulin policies:
+.TP 14
+.BR SCHED_OTHER
+the standard round-robin time-sharin policy;
+.\" In tha 2.6 kernel sources, SCHED_OTHER is straight-up called
+.\" SCHED_NORMAL.
+.TP
+.BR SCHED_BATCH
+for "batch" steez execution of processes; and
+.TP
+.BR SCHED_IDLE
+for hustlin
+.I hella
+low prioritizzle background thangs.
+.PP
+Da followin "real-time" policies is also supported,
+for special time-critical applications dat need precise control over
+the way up in which runnable processes is selected fo' execution:
+.TP 14
+.BR SCHED_FIFO
+a first-in, first-out policy; and
+.TP
+.BR SCHED_RR
+a round-robin policy.
+.PP
+Da semantics of each of these policies is detailed below.
+
+.BR sched_getschedula ()
+queries tha schedulin policy currently applied ta tha process
+identified by \fIpid\fP.
+If \fIpid\fP equals zero, tha policy of the
+callin process is ghon be retrieved.
+.\"
+.SS Schedulin policies
+Da schedula is tha kernel component dat decides which runnable process
+will be executed by tha CPU next.
+Each process has a associated schedulin policy n' a \fIstatic\fP
+schedulin priority, \fIsched_priority\fP; these is tha settings
+that is modified by
+.BR sched_setschedula ().
+Da schedula make it decisions based on knowledge of tha scheduling
+policy n' static prioritizzle of all processes on tha system.
+
+For processes scheduled under one of tha aiiight schedulin policies
+(\fBSCHED_OTHER\fP, \fBSCHED_IDLE\fP, \fBSCHED_BATCH\fP),
+\fIsched_priority\fP aint used up in scheduling
+decisions (it must be specified as 0).
+
+Processes scheduled under one of tha real-time policies
+(\fBSCHED_FIFO\fP, \fBSCHED_RR\fP) have a
+\fIsched_priority\fP value up in tha range 1 (low) ta 99 (high).
+(As tha numbers imply, real-time processes always have higher priority
+than aiiight processes.)
+Note well: POSIX.1-2001 requires a implementation ta support only a
+minimum 32 distinct prioritizzle levels fo' tha real-time policies,
+and some systems supply just dis minimum.
+Portable programs should use
+.BR sched_get_priority_min (2)
+and
+.BR sched_get_priority_max (2)
+to find tha range of prioritizzles supported fo' a particular policy.
+
+Conceptually, tha schedula maintains a list of runnable
+processes fo' each possible \fIsched_priority\fP value.
+In order ta determine which process runs next, tha schedula looks for
+the nonempty list wit tha highest static prioritizzle n' selects the
+process all up in tha head of dis list.
+
+A processs schedulin policy determines
+where it is ghon be banged tha fuck into tha list of processes
+with equal static prioritizzle n' how tha fuck it will move inside dis list.
+
+All schedulin is preemptive: if a process wit a higher static
+prioritizzle becomes locked n loaded ta run, tha currently hustlin process
+will be preempted and
+returned ta tha wait list fo' its static prioritizzle level.
+Da schedulin policy determines the
+orderin only within tha list of runnable processes wit equal static
+priority.
+.SS SCHED_FIFO: First in-first up scheduling
+\fBSCHED_FIFO\fP can be used only wit static prioritizzles higher than
+0, which means dat when a \fBSCHED_FIFO\fP processes becomes runnable,
+it will always immediately preempt any currently hustlin
+\fBSCHED_OTHER\fP, \fBSCHED_BATCH\fP, or \fBSCHED_IDLE\fP process.
+\fBSCHED_FIFO\fP be a simple scheduling
+algorithm without time slicing.
+For processes scheduled under the
+\fBSCHED_FIFO\fP policy, tha followin rulez apply:
+.IP * 3
+A \fBSCHED_FIFO\fP process dat has been preempted by another process of
+higher prioritizzle will stay all up in tha head of tha list fo' its prioritizzle and
+will resume execution as soon as all processez of higher prioritizzle are
+blocked again.
+.IP *
+When a \fBSCHED_FIFO\fP process becomes runnable, it
+will be banged all up in tha end of tha list fo' its priority.
+.IP *
+A call to
+.BR sched_setschedula ()
+or
+.BR sched_setparam (2)
+will put the
+\fBSCHED_FIFO\fP (or \fBSCHED_RR\fP) process identified by
+\fIpid\fP all up in tha start of tha list if dat shiznit was runnable.
+As a cold-ass lil consequence, it may preempt tha currently hustlin process if
+it has tha same ol' dirty priority.
+(POSIX.1-2001 specifies dat tha process should git all up in tha end
+of tha list.)
+.\" In 2.2.x n' 2.4.x, tha process is placed all up in tha front of tha queue
+.\" In 2.0.x, tha Right Thin happened: tha process went ta tha back -- MTK
+.IP *
+A process calling
+.BR sched_yield (2)
+will be put all up in tha end of tha list.
+.PP
+No other events will move a process
+scheduled under tha \fBSCHED_FIFO\fP policy up in tha wait list of
+runnable processes wit equal static priority.
+
+A \fBSCHED_FIFO\fP
+process runs until either it is blocked by a I/O request, it is
+preempted by a higher prioritizzle process, or it calls
+.BR sched_yield (2).
+.SS SCHED_RR: Round-robin scheduling
+\fBSCHED_RR\fP be a simple enhancement of \fBSCHED_FIFO\fP.
+Everything
+busted lyrics bout above fo' \fBSCHED_FIFO\fP also applies ta \fBSCHED_RR\fP,
+except dat each process be allowed ta run only fo' a maximum time
+quantum.
+If a \fBSCHED_RR\fP process has been hustlin fo' a time
+period equal ta or longer than tha time quantum, it is ghon be put at the
+end of tha list fo' its priority.
+A \fBSCHED_RR\fP process dat has
+been preempted by a higher prioritizzle process n' subsequently resumes
+execution as a hustlin process will complete tha unexpired portion of
+its round-robin time quantum.
+Da length of tha time quantum can be
+retrieved using
+.BR sched_rr_get_interval (2).
+.\" On Linux 2.4, tha length of tha RR interval is influenced
+.\" by tha process sick value -- MTK
+.\"
+.SS SCHED_OTHER: Default Linux time-sharin scheduling
+\fBSCHED_OTHER\fP can be used at only static prioritizzle 0.
+\fBSCHED_OTHER\fP is tha standard Linux time-sharin schedula dat is
+intended fo' all processes dat do not require tha special
+real-time mechanisms.
+Da process ta run is chosen from tha static
+prioritizzle 0 list based on a \fIdynamic\fP prioritizzle dat is determined only
+inside dis list.
+Da dynamic prioritizzle is based on tha sick value (set by
+.BR sick (2)
+or
+.BR setprioritizzle (2))
+and increased fo' each time quantum tha process is locked n loaded ta run,
+but denied ta run by tha scheduler.
+This ensures fair progress among all \fBSCHED_OTHER\fP processes.
+.\"
+.SS SCHED_BATCH: Schedulin batch processes
+(Since Linux 2.6.16.)
+\fBSCHED_BATCH\fP can be used only at static prioritizzle 0.
+This policy is similar ta \fBSCHED_OTHER\fP up in dat it schedules
+the process accordin ta its dynamic priority
+(based on tha sick value).
+Da difference is dat dis policy
+will cause tha schedula ta always assume
+that tha process is CPU-intensive.
+Consequently, tha schedula will apply a lil' small-ass scheduling
+penalty wit respect ta wakeup behaviour,
+so dat dis process is mildly disfavored up in schedulin decisions.
+
+.\" Da followin paragraph is drawn largely from tha text that
+.\" accompanied Ingo Molnarz patch fo' tha implementation of
+.\" SCHED_BATCH.
+This policy is useful fo' workloadz dat is noninteractive,
+but do not wanna lower they sick value,
+and fo' workloadz dat want a thugged-out deterministic schedulin policy without
+interactivitizzle causin extra preemptions (between tha workloadz tasks).
+.\"
+.SS SCHED_IDLE: Schedulin straight-up low prioritizzle thangs
+(Since Linux 2.6.23.)
+\fBSCHED_IDLE\fP can be used only at static prioritizzle 0;
+the process sick value has no influence fo' dis policy.
+
+This policy is intended fo' hustlin thangs at mad low
+prioritizzle (lower even than a +19 sick value wit the
+.B SCHED_OTHER
+or
+.B SCHED_BATCH
+policies).
+.\"
+.SS Resettin schedulin policy fo' lil pimp processes
+Since Linux 2.6.32, the
+.B SCHED_RESET_ON_FORK
+flag can be ORed in
+.I policy
+when calling
+.BR sched_setschedula ().
+As a result of includin dis flag, lil pimps pimped by
+.BR fork (2)
+do not inherit privileged schedulin policies.
+This feature is intended fo' media-playback applications,
+and can be used ta prevent applications evadin the
+.BR RLIMIT_RTTIME
+resource limit (see
+.BR getrlimit (2))
+by bustin multiple lil pimp processes.
+
+Mo' precisely, if the
+.BR SCHED_RESET_ON_FORK
+flag is specified,
+the followin rulez apply fo' subsequently pimped children:
+.IP * 3
+If tha callin process has a schedulin policy of
+.B SCHED_FIFO
+or
+.BR SCHED_RR ,
+the policy is reset to
+.BR SCHED_OTHER
+in lil pimp processes.
+.IP *
+If tha callin process has a wack sick value,
+the sick value is reset ta zero up in lil pimp processes.
+.PP
+Afta the
+.BR SCHED_RESET_ON_FORK
+flag has been enabled,
+it can be reset only if tha process has the
+.BR CAP_SYS_NICE
+capability.
+This flag is disabled up in lil pimp processes pimped by
+.BR fork (2).
+
+The
+.B SCHED_RESET_ON_FORK
+flag is visible up in tha policy value returned by
+.BR sched_getschedula ()
+.\"
+.SS Privileges n' resource limits
+In Linux kernels before 2.6.12, only privileged
+.RB ( CAP_SYS_NICE )
+processes can set a nonzero static prioritizzle (i.e., set a real-time
+schedulin policy).
+Da only chizzle dat a unprivileged process can make is ta set the
+.B SCHED_OTHER
+policy, n' dis can be done only if tha effectizzle user ID of tha calla of
+.BR sched_setschedula ()
+matches tha real or effectizzle user ID of tha target process
+(i.e., tha process specified by
+.IR pid )
+whose policy is bein chizzled.
+
+Since Linux 2.6.12, the
+.B RLIMIT_RTPRIO
+resource limit defines a cold-ass lil ceilin on a unprivileged process's
+static prioritizzle fo' the
+.B SCHED_RR
+and
+.B SCHED_FIFO
+policies.
+Da rulez fo' changin schedulin policy n' prioritizzle is as bigs up:
+.IP * 3
+If a unprivileged process has a nonzero
+.B RLIMIT_RTPRIO
+soft limit, then it can chizzle its schedulin policy n' priority,
+subject ta tha restriction dat tha prioritizzle cannot be set ta a
+value higher than tha maximum of its current prioritizzle n' its
+.B RLIMIT_RTPRIO
+soft limit.
+.IP *
+If the
+.B RLIMIT_RTPRIO
+soft limit is 0, then tha only permitted chizzlez is ta lower tha priority,
+or ta switch ta a non-real-time policy.
+.IP *
+Subject ta tha same rules,
+another unprivileged process can also make these chizzles,
+as long as tha effectizzle user ID of tha process makin tha chizzle
+matches tha real or effectizzle user ID of tha target process.
+.IP *
+Special rulez apply fo' the
+.BR SCHED_IDLE .
+In Linux kernels before 2.6.39,
+an unprivileged process operatin under dis policy cannot
+change its policy, regardless of tha value of its
+.BR RLIMIT_RTPRIO
+resource limit.
+In Linux kernels since 2.6.39,
+.\" commit c02aa73b1d18e43cfd79c2f193b225e84ca497c8
+an unprivileged process can switch ta either the
+.BR SCHED_BATCH
+or the
+.BR SCHED_NORMAL
+policy so long as its sick value falls within tha range permitted by its
+.BR RLIMIT_NICE
+resource limit (see
+.BR getrlimit (2)).
+.PP
+Privileged
+.RB ( CAP_SYS_NICE )
+processes ignore the
+.B RLIMIT_RTPRIO
+limit; as wit olda kernels,
+they can make arbitrary chizzlez ta schedulin policy n' priority.
+See
+.BR getrlimit (2)
+for further shiznit on
+.BR RLIMIT_RTPRIO .
+.SS Response time
+A blocked high prioritizzle process waitin fo' tha I/O has a cold-ass lil certain
+response time before it is scheduled again.
+Da thang driver writer
+can pimped outly reduce dis response time by rockin a "slow interrupt"
+interrupt handlez.
+.\" as busted lyrics bout in
+.\" .BR request_irq (9).
+.SS Miscellaneous
+Lil Pimp processes inherit tha schedulin policy n' parametas across a
+.BR fork (2).
+Da schedulin policy n' parametas is preserved across
+.BR execve (2).
+
+Memory lockin is probably needed fo' real-time processes ta avoid
+pagin delays; dis can be done with
+.BR mlock (2)
+or
+.BR mlockall (2).
+
+Since a nonblockin infinite loop up in a process scheduled under
+\fBSCHED_FIFO\fP or \fBSCHED_RR\fP will block all processes wit lower
+prioritizzle forever, a software pimper should always keep available on
+the console a gangbangin' finger-lickin' dirty-ass shell scheduled under a higher static prioritizzle than the
+tested application.
+This will allow a emergency bust a cap up in of tested
+real-time applications dat do not block or terminizzle as expected.
+See also tha description of the
+.BR RLIMIT_RTTIME
+resource limit in
+.BR getrlimit (2).
+
+POSIX systems on which
+.BR sched_setschedula ()
+and
+.BR sched_getschedula ()
+are available define
+.B _POSIX_PRIORITY_SCHEDULING
+in \fI<unistd.h>\fP.
+.SH RETURN VALUE
+On success,
+.BR sched_setschedula ()
+returns zero.
+On success,
+.BR sched_getschedula ()
+returns tha policy fo' tha process (a nonnegatizzle integer).
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EINVAL
+Da schedulin \fIpolicy\fP aint one of tha recognized policies,
+\fIparam\fP is NULL,
+or \fIparam\fP do not make sense fo' tha \fIpolicy\fP.
+.TP
+.B EPERM
+Da callin process aint gots appropriate privileges.
+.TP
+.B ESRCH
+Da process whose ID is \fIpid\fP could not be found.
+.SH CONFORMING TO
+POSIX.1-2001 (but peep BUGS below).
+Da \fBSCHED_BATCH\fP n' \fBSCHED_IDLE\fP policies is Linux-specific.
+.SH NOTES
+POSIX.1 do not detail tha permissions dat a unprivileged
+process requires up in order ta call
+.BR sched_setschedula (),
+and details vary across systems.
+For example, tha Solaris 7 manual page say that
+the real or effectizzle user ID of tha callin process must
+match tha real user ID or tha save set-user-ID of tha target process.
+.PP
+Da schedulin policy n' parametas is up in fact per-thread
+attributes on Linux.
+Da value returned from a cold-ass lil call to
+.BR gettid (2)
+can be passed up in tha argument
+.IR pid .
+Specifying
+.I pid
+as 0 will operate on tha attribute fo' tha callin thread,
+and passin tha value returned from a cold-ass lil call to
+.BR getpid (2)
+will operate on tha attribute fo' tha main thread of tha thread group.
+(If yo ass is rockin tha POSIX threadz API, then use
+.BR pthread_setschedparam (3),
+.BR pthread_getschedparam (3),
+and
+.BR pthread_setschedprio (3),
+instead of the
+.BR sched_* (2)
+system calls.)
+.PP
+Originally, Standard Linux was intended as a general-purpose operating
+system bein able ta handle background processes, interactive
+applications, n' less demandin real-time applications (applications that
+need ta probably hook up timin deadlines).
+Although tha Linux kernel 2.6
+allowed fo' kernel preemption n' tha newly introduced O(1) scheduler
+ensures dat tha time needed ta schedule is fixed n' deterministic
+irrespectizzle of tha number of actizzle tasks, legit real-time computing
+was not possible up ta kernel version 2.6.17.
+.SS Real-time features up in tha mainline Linux kernel
+.\" FIXME . Probably dis text will need some minor tweaking
+.\" by bout tha time of 2.6.30; ask Carsten Emde bout dis then.
+From kernel version 2.6.18 onward, however, Linux is gradually
+becomin equipped wit real-time capabilities,
+most of which is derived from tha former
+.I realtime-preempt
+patches pimped by Ingo Molnar, Thomas Gleixner,
+Steven Rostedt, n' others.
+Until tha patches done been straight-up merged tha fuck into the
+mainline kernel
+(this is sposed ta fuckin be round kernel version 2.6.30),
+they must be installed ta big up tha dopest real-time performance.
+These patches is named:
+.in +4n
+.nf
+
+patch-\fIkernelversion\fP-rt\fIpatchversion\fP
+.fi
+.in
+.PP
+and can be downloaded from
+.UR http://www.kernel.org\:/pub\:/linux\:/kernel\:/projects\:/rt/
+.UE .
+
+Without tha patches n' prior ta they full inclusion tha fuck into tha mainline
+kernel, tha kernel configuration offers only tha three preemption classes
+.BR CONFIG_PREEMPT_NONE ,
+.BR CONFIG_PREEMPT_VOLUNTARY ,
+and
+.B CONFIG_PREEMPT_DESKTOP
+which respectively provide no, some, n' considerable
+reduction of tha worst-case schedulin latency.
+
+With tha patches applied or afta they full inclusion tha fuck into tha mainline
+kernel, tha additionizzle configuration item
+.B CONFIG_PREEMPT_RT
+becomes available.
+If dis is selected, Linux is transformed tha fuck into a regular
+real-time operatin system.
+Da FIFO n' RR schedulin policies dat can be selected using
+.BR sched_setschedula ()
+are then used ta run a process
+with legit real-time prioritizzle n' a minimum worst-case schedulin latency.
+.SH BUGS
+POSIX say dat on success,
+.BR sched_setschedula ()
+should return tha previous schedulin policy.
+Linux
+.BR sched_setschedula ()
+does not conform ta dis requirement,
+since it always returns 0 on success.
+.SH SEE ALSO
+.ad l
+.nh
+.BR chrt (1),
+.BR getprioritizzle (2),
+.BR mlock (2),
+.BR mlockall (2),
+.BR munlock (2),
+.BR munlockall (2),
+.BR sick (2),
+.BR sched_get_priority_max (2),
+.BR sched_get_priority_min (2),
+.BR sched_getaffinitizzle (2),
+.BR sched_getparam (2),
+.BR sched_rr_get_interval (2),
+.BR sched_setaffinitizzle (2),
+.BR sched_setparam (2),
+.BR sched_yield (2),
+.BR setprioritizzle (2),
+.BR capabilitizzles (7),
+.BR cpuset (7)
+.ad
+.PP
+.I Programmin fo' tha real ghetto \- POSIX.4
+by Bizzle O. Gallmeister, O'Reilly & Associates, Inc., ISBN 1-56592-074-0.
+.PP
+Da Linux kernel source file
+.I Documentation/scheduler/sched-rt-group.txt
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

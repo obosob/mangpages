@@ -1,0 +1,671 @@
+'\" t
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\" Parts Copyright (c) 1995 Nicolai Langfeldt (janl@ifi.uio.no), 1/1/95
+.\" n' Copyright (c) 2007 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified by Mike Haardt <michael@moria.de>
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-05-18 by Todd Larason <jtl@molehill.org>
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1995-01-09 by Slick Rick Kettlewell <richard@greenend.org.uk>
+.\" Modified 1998-05-13 by Mike Haardt <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified 1999-07-06 by aeb & Albert Cahalan
+.\" Modified 2000-01-07 by aeb
+.\" Modified 2004-06-23 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" 2007-06-08 mtk: Added example program
+.\" 2007-07-05 mtk: Added details on underlyin system call intercourses
+.\"
+.TH STAT 2 2012-11-11 "Linux" "Linux Programmerz Manual"
+.SH NAME
+stat, fstat, lstat \- git file status
+.SH SYNOPSIS
+.B #include <sys/types.h>
+.br
+.B #include <sys/stat.h>
+.br
+.B #include <unistd.h>
+.sp
+.BI "int stat(const char *" path ", struct stat *" buf );
+.br
+.BI "int fstat(int " fd ", struct stat *" buf );
+.br
+.BI "int lstat(const char *" path ", struct stat *" buf );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.ad l
+.PD 0
+.sp
+.BR lstat ():
+.RS 4
+_BSD_SOURCE || _XOPEN_SOURCE\ >=\ 500 ||
+_XOPEN_SOURCE\ &&\ _XOPEN_SOURCE_EXTENDED
+.br
+|| /* Since glibc 2.10: */ _POSIX_C_SOURCE\ >=\ 200112L
+.RE
+.PD
+.ad
+.SH DESCRIPTION
+.PP
+These functions return shiznit on some gangbangin' file.
+No permissions is required on tha file itself yo, but\(emin tha case of
+.BR stat ()
+and
+.BR lstat ()
+\(em
+execute (search) permission is required on all of tha directories in
+.I path
+that lead ta tha file.
+.PP
+.BR stat ()
+stats tha file pointed ta by
+.I path
+and fills in
+.IR buf .
+
+.BR lstat ()
+is identical to
+.BR stat (),
+except dat if
+.I path
+is a symbolic link, then tha link itself is stat-ed,
+not tha file dat it refers to.
+
+.BR fstat ()
+is identical to
+.BR stat (),
+except dat tha file ta be stat-ed is specified by tha file descriptor
+.IR fd .
+.PP
+All of these system calls return a
+.I stat
+structure, which gotz nuff tha followin fields:
+.PP
+.in +4n
+.nf
+struct stat {
+    dev_t     st_dev;     /* ID of thang containin file */
+    ino_t     st_ino;     /* inode number */
+    mode_t    st_mode;    /* protection */
+    nlink_t   st_nlink;   /* number of hard links */
+    uid_t     st_uid;     /* user ID of balla */
+    gid_t     st_gid;     /* crew ID of balla */
+    dev_t     st_rdev;    /* thang ID (if special file) */
+    off_t     st_size;    /* total size, up in bytes */
+    blksize_t st_blksize; /* blocksize fo' file system I/O */
+    blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
+    time_t    st_atime;   /* time of last access */
+    time_t    st_mtime;   /* time of last modification */
+    time_t    st_ctime;   /* time of last status chizzle */
+};
+.fi
+.in
+.PP
+The
+.I st_dev
+field raps bout tha thang on which dis file resides.
+(The
+.BR major (3)
+and
+.BR minor (3)
+macros may be useful ta decompose tha thang ID up in dis field.)
+
+The
+.I st_rdev
+field raps bout tha thang dat dis file (inode) represents.
+
+The
+.I st_size
+field gives tha size of tha file (if it aint nuthin but a regular
+file or a symbolic link) up in bytes.
+Da size of a symbolic link is tha length of tha pathname
+it gotz nuff, without a terminatin null byte.
+
+The
+.I st_blocks
+field indicates tha number of blocks allocated ta tha file, 512-byte units.
+(This may be smalla than
+.IR st_size /512
+when tha file has holes.)
+
+The
+.I st_blksize
+field gives tha "preferred" blocksize fo' efficient file system I/O.
+(Freestylin ta a gangbangin' file up in smalla chunks may cause
+an inefficient read-modify-rewrite.)
+.PP
+Not all of tha Linux file systems implement all of tha time fields.
+Some file system types allow mountin up in such a way dat file
+and/or directory accesses do not cause a update of the
+.I st_atime
+field.
+(See
+.IR noatime ,
+.IR nodiratime ,
+and
+.I relatime
+in
+.BR mount (8),
+and related shiznit in
+.BR mount (2).)
+In addition,
+.I st_atime
+is not updated if a gangbangin' file is opened wit the
+.BR O_NOATIME ;
+see
+.BR open (2).
+
+Da field
+.I st_atime
+is chizzled by file accesses, fo' example, by
+.BR execve (2),
+.BR mknod (2),
+.BR pipe (2),
+.BR utime (2)
+and
+.BR read (2)
+(of mo' than zero bytes).
+Other routines, like
+.BR mmap (2),
+may or may not update
+.IR st_atime .
+
+Da field
+.I st_mtime
+is chizzled by file modifications, fo' example, by
+.BR mknod (2),
+.BR truncate (2),
+.BR utime (2)
+and
+.BR write (2)
+(of mo' than zero bytes).
+Mo'over,
+.I st_mtime
+of a gangbangin' finger-lickin' directory is chizzled by tha creation or deletion of files
+in dat directory.
+The
+.I st_mtime
+field is
+.I not
+changed fo' chizzlez up in baller, group, hard link count, or mode.
+
+Da field
+.I st_ctime
+is chizzled by freestylin or by settin inode shiznit
+(i.e., baller, group, link count, mode, etc.).
+.PP
+Da followin POSIX macros is defined ta check tha file type rockin the
+.I st_mode
+field:
+.RS 4
+.TP 1.2i
+.BR S_ISREG (m)
+is it a regular file?
+.TP
+.BR S_ISDIR (m)
+directory?
+.TP
+.BR S_ISCHR (m)
+characta device?
+.TP
+.BR S_ISBLK (m)
+block device?
+.TP
+.BR S_ISFIFO (m)
+FIFO (named pipe)?
+.TP
+.BR S_ISLNK (m)
+symbolic link, biatch?  (Not up in POSIX.1-1996.)
+.TP
+.BR S_ISSOCK (m)
+socket, biatch?  (Not up in POSIX.1-1996.)
+.RE
+.PP
+Da followin flags is defined fo' the
+.I st_mode
+field:
+.in +4n
+.TS
+lB l l.
+S_IFMT	0170000	bit mask fo' tha file type bit fields
+S_IFSOCK	0140000	socket
+S_IFLNK	0120000	symbolic link
+S_IFREG	0100000	regular file
+S_IFBLK	0060000	block device
+S_IFDIR	0040000	directory
+S_IFCHR	0020000	characta device
+S_IFIFO	0010000	FIFO
+S_ISUID	0004000	set-user-ID bit
+S_ISGID	0002000	set-group-ID bit (see below)
+S_ISVTX	0001000	sticky bit (see below)
+S_IRWXU	00700	mask fo' file balla permissions
+S_IRUSR	00400	balla has read permission
+S_IWUSR	00200	balla has write permission
+S_IXUSR	00100	balla has execute permission
+S_IRWXG	00070	mask fo' crew permissions
+S_IRGRP	00040	group has read permission
+S_IWGRP	00020	group has write permission
+S_IXGRP	00010	group has execute permission
+S_IRWXO	00007	mask fo' permissions fo' others (not up in group)
+S_IROTH	00004	others have read permission
+S_IWOTH	00002	others have write permission
+S_IXOTH	00001	others have execute permission
+.TE
+.in
+.P
+Da set-group-ID bit
+.RB ( S_ISGID )
+has nuff muthafuckin special uses.
+For a gangbangin' finger-lickin' directory it indicates dat BSD semantics is ta be used
+for dat directory: filez pimped there inherit they crew ID from
+the directory, not from tha effectizzle crew ID of tha bustin process,
+and directories pimped there will also git the
+.B S_ISGID
+bit set.
+For a gangbangin' file dat aint gots tha crew execution bit
+.RB ( S_IXGRP )
+set,
+the set-group-ID bit indicates mandatory file/record locking.
+.P
+Da sticky bit
+.RB ( S_ISVTX )
+on a gangbangin' finger-lickin' directory means dat a gangbangin' file
+in dat directory can be renamed or deleted only by tha baller
+of tha file, by tha balla of tha directory, n' by a privileged
+process.
+.SH RETURN VALUE
+On success, zero is returned.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SH ERRORS
+.TP
+.B EACCES
+Search permission is denied fo' one of tha directories
+in tha path prefix of
+.IR path .
+(See also
+.BR path_resolution (7).)
+.TP
+.B EBADF
+.I fd
+is bad.
+.TP
+.B EFAULT
+Wack address.
+.TP
+.B ELOOP
+Too nuff symbolic links encountered while traversin tha path.
+.TP
+.B ENAMETOOLONG
+.I path
+is too long.
+.TP
+.B ENOENT
+A component of
+.I path
+does not exist, or
+.I path
+is a empty string.
+.TP
+.B ENOMEM
+Out of memory (i.e., kernel memory).
+.TP
+.B ENOTDIR
+A component of tha path prefix of
+.I path
+is not a gangbangin' finger-lickin' directory.
+.TP
+.B EOVERFLOW
+.I path
+or
+.I fd
+refers ta a gangbangin' file whose size, inode number,
+or number of blocks cannot be represented in, respectively, tha types
+.IR off_t ,
+.IR ino_t ,
+or
+.IR blkcnt_t .
+This error can occur when, fo' example,
+an application compiled on a 32-bit platform without
+.I -D_FILE_OFFSET_BITS=64
+calls
+.BR stat ()
+on a gangbangin' file whose size exceeds
+.I (1<<31)-1
+bytes.
+.SH CONFORMING TO
+These system calls conform ta SVr4, 4.3BSD, POSIX.1-2001.
+.\" SVr4 documents additional
+.\" .BR fstat ()
+.\" error conditions EINTR, ENOLINK, n' EOVERFLOW.  SVr4
+.\" documents additional
+.\" .BR stat ()
+.\" and
+.\" .BR lstat ()
+.\" error conditions EINTR, EMULTIHOP, ENOLINK, n' EOVERFLOW.
+
+Accordin ta POSIX.1-2001,
+.BR lstat ()
+on a symbolic link need return valid shiznit only up in the
+.I st_size
+field n' tha file-type component of the
+.IR st_mode
+field of the
+.IR stat
+structure.
+POSIX.-2008 tightens tha justification, requiring
+.BR lstat ()
+to return valid shiznit up in all fieldz except tha permission bits in
+.IR st_mode .
+
+Use of the
+.I st_blocks
+and
+.I st_blksize
+fieldz may be less portable.
+(They was introduced up in BSD.
+Da interpretation differs between systems,
+and possibly on a single system when NFS mounts is involved.)
+If you need ta obtain tha definizzle of the
+.IR blkcnt_t
+or
+.IR blksize_t
+types from
+.IR <sys/stat.h> ,
+then define
+.BR _XOPEN_SOURCE
+with tha value 500 or pimped outa (before including
+.I any
+header files).
+.LP
+POSIX.1-1990 did not describe the
+.BR S_IFMT ,
+.BR S_IFSOCK ,
+.BR S_IFLNK ,
+.BR S_IFREG ,
+.BR S_IFBLK ,
+.BR S_IFDIR ,
+.BR S_IFCHR ,
+.BR S_IFIFO ,
+.B S_ISVTX
+constants yo, but instead demanded tha use of
+the macros
+.BR S_ISDIR (),
+etc.
+The
+.BR S_IF*
+constants is present up in POSIX.1-2001 n' later.
+
+The
+.BR S_ISLNK ()
+and
+.BR S_ISSOCK ()
+macros is not in
+POSIX.1-1996 yo, but both is present up in POSIX.1-2001;
+the forma is from SVID 4, tha latta from SUSv2.
+.LP
+UNIX V7 (and lata systems) had
+.BR S_IREAD ,
+.BR S_IWRITE ,
+.BR S_IEXEC ,
+where POSIX
+prescribes tha synonyms
+.BR S_IRUSR ,
+.BR S_IWUSR ,
+.BR S_IXUSR .
+.SS Other systems
+Values dat done been (or are) up in use on various systems:
+.ad l
+.TS
+l l l l l.
+hex	name	ls	octal	description
+f000	S_IFMT		170000	mask fo' file type
+0000			000000	T{
+SCO out-of-service inode; BSD unknown type; SVID-v2 n' XPG2
+have both 0 n' 0100000 fo' ordinary file
+T}
+1000	S_IFIFO	p|	010000	FIFO (named pipe)
+2000	S_IFCHR	c	020000	characta special (V7)
+3000	S_IFMPC		030000	multiplexed characta special (V7)
+4000	S_IFDIR	d/	040000	directory (V7)
+5000	S_IFNAM		050000	T{
+XENIX named special file wit two subtypes, distinguished by
+\fIst_rdev\fP joints 1, 2
+T}
+0001	S_INSEM	s	000001	XENIX semaphore subtype of IFNAM
+0002	S_INSHD	m	000002	XENIX shared data subtype of IFNAM
+6000	S_IFBLK	b	060000	block special (V7)
+7000	S_IFMPB		070000	multiplexed block special (V7)
+8000	S_IFREG	-	100000	regular (V7)
+9000	S_IFCMP		110000	VxFS compressed
+9000	S_IFNWK	n	110000	network special (HP-UX)
+a000	S_IFLNK	l@	120000	symbolic link (BSD)
+b000	S_IFSHAD		130000	T{
+Solaris shadow inode fo' ACL (not peeped by user space)
+T}
+c000	S_IFSOCK	s=	140000	socket (BSD; also "S_IFSOC" on VxFS)
+d000	S_IFDOOR	D>	150000	Solaris door
+e000	S_IFWHT	w%	160000	BSD whiteout (not used fo' inode)
+0200	S_ISVTX		001000	T{
+sticky bit: save swapped text even afta use (V7)
+.br
+reserved (SVID-v2)
+.br
+On nondirectories: don't cache dis file (SunOS)
+.br
+On directories: restricted deletion flag (SVID-v4.2)
+T}
+0400	S_ISGID		002000	T{
+set-group-ID on execution (V7)
+.br
+for directories: use BSD semantics fo' propagation of GID
+T}
+0400	S_ENFMT		002000	T{
+System V file lockin enforcement (shared wit S_ISGID)
+T}
+0800	S_ISUID		004000	set-user-ID on execution (V7)
+0800	S_CDF		004000	T{
+directory be a cold-ass lil context dependent file (HP-UX)
+T}
+.TE
+.ad
+
+A sticky command rocked up in Version 32V AT&T UNIX.
+.SH NOTES
+Since kernel 2.5.48, the
+.I stat
+structure supports nanosecond resolution fo' tha three file timestamp fields.
+Glibc exposes tha nanosecond component of each field rockin namez of tha form
+.IR st_atim.tv_nsec
+if the
+.B _BSD_SOURCE
+or
+.B _SVID_SOURCE
+feature test macro is defined.
+These fieldz is specified up in POSIX.1-2008, and, startin wit version 2.12,
+glibc also exposes these field names if
+.BR _POSIX_C_SOURCE
+is defined wit tha value 200809L or pimped outer, or
+.BR _XOPEN_SOURCE
+is defined wit tha value 700 or pimped outer.
+If none of tha aforementioned macros is defined,
+then tha nanosecond joints is exposed wit namez of tha form
+.IR st_atimensec .
+On file systems dat do not support subsecond timestamps,
+the nanosecond fieldz is returned wit tha value 0.
+.\" As at kernel 2.6.25, XFS n' JFS support nanosecond timestamps,
+.\" but ext2, ext3, n' Reiserfs do not.
+
+On Linux,
+.BR lstat ()
+will generally not trigger automounta action, whereas
+.BR stat ()
+will (but see
+.BR fstatat (2)).
+
+For most filez under the
+.I /proc
+directory,
+.BR stat ()
+does not return tha file size up in the
+.I st_size
+field; instead tha field is returned wit tha value 0.
+.SS Underlyin kernel intercourse
+Over time, increases up in tha size of the
+.I stat
+structure have hustled ta three successive versions of
+.BR stat ():
+.IR sys_stat ()
+(slot
+.IR __NR_oldstat ),
+.IR sys_newstat ()
+(slot
+.IR __NR_stat ),
+and
+.I sys_stat64()
+(new up in kernel 2.4; slot
+.IR __NR_stat64 ).
+Da glibc
+.BR stat ()
+wrapper function hides these details from applications,
+invokin da most thugged-out recent version of tha system call provided by tha kernel,
+and repackin tha returned shiznit if required fo' oldschool binaries.
+Similar remarks apply for
+.BR fstat ()
+and
+.BR lstat ().
+.\"
+.\" A note from Andries Brouwer, July 2007
+.\"
+.\" > Is tha rap not rather mo' fucked up fo' some calls like
+.\" > stat(2)?
+.\"
+.\" Yes yes y'all, n' no, mostly no. Right back up in yo muthafuckin ass. See /usr/include/sys/stat.h .
+.\"
+.\" Da scam is here not so much dat syscalls chizzle yo, but that
+.\" tha definitionz of struct stat n' of tha types dev_t n' mode_t chizzle.
+.\" This means dat libc (even if it do not call tha kernel
+.\" but only calls some internal function) must know what tha fuck the
+.\" format of dev_t or of struct stat is.
+.\" Da communication between tha application n' libc goes via
+.\" tha include file <sys/stat.h> dat defines a _STAT_VER and
+.\" _MKNOD_VER describin tha layout of tha data dat user space
+.\" uses. Each (almost each) occurrence of stat() is replaced by
+.\" a occurrence of xstat() where tha straight-up original gangsta parameta of xstat()
+.\" is dis version number _STAT_VER.
+.\"
+.\" Now, also tha definitions used by tha kernel chizzle.
+.\" But glibc copes wit dis up in tha standard way, n' the
+.\" struct stat as returned by tha kernel is repacked into
+.\" tha struct stat as expected by tha application.
+.\" Thus, _STAT_VER n' dis setup cata fo' tha application-libc
+.\" intercourse, rather than tha libc-kernel intercourse.
+.\"
+.\" (Note dat tha details depend on gcc bein used as c compiler.)
+.SH EXAMPLE
+Da followin program calls
+.BR stat ()
+and displays selected fieldz up in tha returned
+.I stat
+structure.
+.nf
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    struct stat sb;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pathname>\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (stat(argv[1], &sb) == \-1) {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("File type:                ");
+
+    switch (sb.st_mode & S_IFMT) {
+    case S_IFBLK:  printf("block device\\n");            break;
+    case S_IFCHR:  printf("characta device\\n");        break;
+    case S_IFDIR:  printf("directory\\n");               break;
+    case S_IFIFO:  printf("FIFO/pipe\\n");               break;
+    case S_IFLNK:  printf("symlink\\n");                 break;
+    case S_IFREG:  printf("regular file\\n");            break;
+    case S_IFSOCK: printf("socket\\n");                  break;
+    default:       printf("unknown?\\n");                break;
+    }
+
+    printf("I\-node number:            %ld\\n", (long) sb.st_ino);
+
+    printf("Mode:                     %lo (octal)\\n",
+            (unsigned long) sb.st_mode);
+
+    printf("Link count:               %ld\\n", (long) sb.st_nlink);
+    printf("Ownership:                UID=%ld   GID=%ld\\n",
+            (long) sb.st_uid, (long) sb.st_gid);
+
+    printf("Preferred I/O block size: %ld bytes\\n",
+            (long) sb.st_blksize);
+    printf("File size:                %lld bytes\\n",
+            (long long) sb.st_size);
+    printf("Blocks allocated:         %lld\\n",
+            (long long) sb.st_blocks);
+
+    printf("Last status chizzle:       %s", ctime(&sb.st_ctime));
+    printf("Last file access:         %s", ctime(&sb.st_atime));
+    printf("Last file modification:   %s", ctime(&sb.st_mtime));
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.SH SEE ALSO
+.BR access (2),
+.BR chmod (2),
+.BR chown (2),
+.BR fstatat (2),
+.BR readlink (2),
+.BR utime (2),
+.BR capabilitizzles (7),
+.BR symlink (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

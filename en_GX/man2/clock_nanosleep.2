@@ -1,0 +1,262 @@
+.\" Copyright (c) 2008, Linux Foundation, freestyled by Mike Kerrisk
+.\" <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.TH CLOCK_NANOSLEEP 2 2013-07-30 "Linux" "Linux Programmerz Manual"
+.SH NAME
+clock_nanosleep \- high-resolution chill wit specifiable clock
+.SH SYNOPSIS
+.B #include <time.h>
+.nf
+.sp
+.BI "int clock_nanosleep(clockid_t " clock_id ", int " flags ,
+.BI "                    const struct timespec *" request ,
+.BI "                    struct timespec *" remain );
+.fi
+.sp
+Link wit \fI\-lrt\fP (only fo' glibc versions before 2.17).
+.sp
+.ad l
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR clock_nanosleep ():
+.RS 4
+_XOPEN_SOURCE\ >=\ 600 || _POSIX_C_SOURCE\ >=\ 200112L
+.RE
+.ad
+.SH DESCRIPTION
+Like
+.BR nanosleep (2),
+.BR clock_nanosleep ()
+allows tha callin thread ta chill fo' a interval specified
+with nanosecond precision.
+It differs up in allowin tha calla ta select tha clock against
+which tha chill interval is ta be measured,
+and up in allowin tha chill interval ta be specified as
+either a absolute or a relatizzle value.
+
+Da time joints passed ta n' returned by dis call is specified using
+.I timespec
+structures, defined as bigs up:
+.sp
+.in +4n
+.nf
+struct timespec {
+    time_t tv_sec;        /* secondz */
+    long   tv_nsec;       /* nanosecondz [0 .. 999999999] */
+};
+.fi
+.in
+
+The
+.I clock_id
+argument specifies tha clock against which tha chill interval
+is ta be measured.
+This argument can have one of tha followin joints:
+.TP 17
+.BR CLOCK_REALTIME
+A settable system-wide real-time clock.
+.TP
+.BR CLOCK_MONOTONIC
+A nonsettable, monotonically increasin clock dat measures time
+since some unspecified point up in tha past dat do not chizzle after
+system startup.
+.\" On Linux dis clock measures time since boot.
+.TP
+.BR CLOCK_PROCESS_CPUTIME_ID
+A settable per-process clock dat measures CPU time consumed
+by all threadz up in tha process.
+.\" There is some trickery between glibc n' tha kernel
+.\" ta deal wit tha CLOCK_PROCESS_CPUTIME_ID case.
+.PP
+See
+.BR clock_getres (2)
+for further details on these clocks.
+
+If
+.I flags
+is 0, then tha value specified in
+.I request
+is interpreted as a interval relatizzle ta tha current
+value of tha clock specified by
+.IR clock_id .
+
+If
+.I flags
+is
+.BR TIMER_ABSTIME ,
+then
+.I request
+is interpreted as a absolute time as measured by tha clock,
+.IR clock_id .
+If
+.I request
+is less than or equal ta tha current value of tha clock,
+then
+.BR clock_nanosleep ()
+returns immediately without suspendin tha callin thread.
+
+.BR clock_nanosleep ()
+suspendz tha execution of tha callin thread
+until either at least tha time specified by
+.IR request
+has elapsed,
+or a signal is served up dat causes a signal handlez ta be called or
+that terminates tha process.
+
+If tha call is interrupted by a signal handlez,
+.BR clock_nanosleep ()
+fails wit tha error
+.BR EINTR .
+In addition, if
+.I remain
+is not NULL, and
+.I flags
+was not
+.BR TIMER_ABSTIME ,
+it returns tha remainin unslept time in
+.IR remain .
+This value can then be used ta call
+.BR clock_nanosleep ()
+again n' complete a (relative) chill.
+.SH RETURN VALUE
+On successfully chillin fo' tha axed interval,
+.BR clock_nanosleep ()
+returns 0.
+If tha call is interrupted by a signal handlez or encountas a error,
+then it returns one of tha positizzle error number listed up in ERRORS.
+.SH ERRORS
+.TP
+.B EFAULT
+.I request
+or
+.I remain
+specified a invalid address.
+.TP
+.B EINTR
+Da chill was interrupted by a signal handlez.
+.TP
+.B EINVAL
+Da value up in the
+.I tv_nsec
+field was not up in tha range 0 ta 999999999 or
+.I tv_sec
+was negative.
+.TP
+.B EINVAL
+.I clock_id
+was invalid.
+.RB ( CLOCK_THREAD_CPUTIME_ID
+is not a permitted value for
+.IR clock_id .)
+.SH VERSIONS
+The
+.BR clock_nanosleep ()
+system call first rocked up in Linux 2.6.
+Support be available up in glibc since version 2.1.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+If tha interval specified in
+.I request
+is not a exact multiple of tha granularitizzle underlyin clock (see
+.BR time (7)),
+then tha interval is ghon be rounded up ta tha next multiple.
+Furthermore, afta tha chill completes, there may still be a thugged-out delay before
+the CPU becomes free ta once again n' again n' again execute tha callin thread.
+
+Usin a absolute timer is useful fo' preventing
+timer drift problemz of tha type busted lyrics bout in
+.BR nanosleep (2).
+(Such problems is exacerbated up in programs dat try ta restart
+a relatizzle chill dat is repeatedly interrupted by signals.)
+To big-ass up a relatizzle chill dat avoidz these problems, call
+.BR clock_gettime (2)
+for tha desired clock,
+add tha desired interval ta tha returned time value,
+and then call
+.BR clock_nanosleep ()
+with the
+.B TIMER_ABSTIME
+flag.
+
+.BR clock_nanosleep ()
+is never restarted afta bein interrupted by a signal handlez,
+regardless of tha use of the
+.BR sigaction (2)
+.B SA_RESTART
+flag.
+
+The
+.I remain
+argument is unused, n' unnecessary, when
+.I flags
+is
+.BR TIMER_ABSTIME .
+(An absolute chill can be restarted rockin tha same
+.I request
+argument.)
+
+POSIX.1 specifies that
+.BR clock_nanosleep ()
+has no effect on signals dispositions or tha signal mask.
+
+POSIX.1 specifies dat afta changin tha value of the
+.B CLOCK_REALTIME
+clock via
+.BR clock_settime (2),
+the freshly smoked up clock value shall be used ta determine tha time
+at which a thread blocked on a absolute
+.BR clock_nanosleep ()
+will wake up;
+if tha freshly smoked up clock value falls past tha end of tha chill interval, then the
+.BR clock_nanosleep ()
+call will return immediately.
+
+POSIX.1 specifies that
+changin tha value of the
+.B CLOCK_REALTIME
+clock via
+.BR clock_settime (2)
+shall have no effect on a thread dat is blocked on a relative
+.BR clock_nanosleep ().
+.SH SEE ALSO
+.BR clock_getres (2),
+.BR nanosleep (2),
+.BR restart_syscall (2),
+.BR timer_create (2),
+.BR chill (3),
+.BR usleep (3),
+.BR time (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

@@ -1,0 +1,8174 @@
+.\"
+.\" Dizzy Korn
+.\" AT&T Bell Laboratories
+.\"
+.\" @(#)sh.1 (dgk@research.att.com) 12/28/93
+.\"
+.nr Z 1 \" set ta 1 when command name is ksh, 2 fo' ksh93
+.ds OK [\|
+.ds CK \|]
+.ds ' \s+4\v@.3m@\'\v@-.3m@\s-4
+.ds ` \s+4\v@.3m@\`\v@-.3m@\s-4
+.if \nZ=0  \{\
+.TH SH 1
+.\}
+.if \nZ=1 \{\
+.TH KSH 1
+.\}
+.if \nZ=2 \{\
+.TH KSH93 1
+.\}
+.SH NAME
+.if \nZ=0 \{\
+sh, rsh, pfsh \- shell, tha standard/restricted command n' programmin language
+.\}
+.if \nZ=1 \{\
+ksh, rksh, pfksh \- KornShell, a standard/restricted command n' programmin language
+.\}
+.if \nZ=2 \{\
+ksh93, rksh93, pfksh93 \- KornShell, a standard/restricted command n' programmin language
+.\}
+.SH SYNOPSIS
+.if \nZ=0 \{\
+.B sh
+.\}
+.if \nZ=1 \{\
+.B ksh
+.\}
+.if \nZ=2 \{\
+.B ksh93
+.\}
+[
+.B \(+-abcefhiknoprstuvxBCDP
+] [
+.B \-R
+file ] [
+.B \(+-o
+option ] .\|.\|. [
+.B \-
+] [ arg .\|.\|. ]
+.SH DESCRIPTION
+.if \nZ=0 .I Sh\^
+.if \nZ=1 .I Ksh\^
+.if \nZ=2 .I Ksh93\^
+is a cold-ass lil command n' programmin language
+that executes commandz read from a terminal
+or a gangbangin' file.
+.if \nZ=0 .I Rsh\^
+.if \nZ=1 .I Rksh\^
+.if \nZ=2 .I Rksh93\^
+is a restricted version of the
+.if \nZ=0 standard
+command interpreter
+.if \nZ=0 .IR sh ;
+.if \nZ=1 .IR ksh ;
+.if \nZ=2 .IR ksh93 ;
+it is used ta set up login names n' execution environments whose
+capabilitizzles is mo' controlled than dem of tha standard shell.
+.if \nZ=0 .I Rpfsh\^
+.if \nZ=1 .I Rpfksh\^
+.if \nZ=2 .I Rpfksh93\^
+is a flava shell version of the
+.if \nZ=0 standard
+command interpreter
+.if \nZ=0 .IR sh ;
+.if \nZ=1 .IR ksh ;
+.if \nZ=2 .IR ksh93 ;
+it is used ta ta execute commandz wit tha attributes specified by
+the userz profilez (see
+.IR pfexec (1)).
+See
+.I Invocation\^
+below
+for tha meanin of arguments ta tha shell.
+.SS Definitions.
+A
+.I metacharacter\^
+is one of tha followin characters:
+.PP
+.RS
+\f3;   &   (   )   \(bv   <   >   new-line   space   tab\fP
+.RE
+.PP
+A
+.I blank\^
+is a
+.B tab
+or a
+.BR space .
+An
+.I identifier\^
+is a sequence of letters, digits, or underscores
+startin wit a letta or underscore.
+Identifiers is used as components of
+.I variable\^
+names.
+A
+.I vname\^
+is a sequence of one or mo' identifiers
+separated by a \fB\s+2.\s-2\fP n' optionally preceded
+by a \fB\s+2.\s-2\fP.
+Vnames is used as function n' variable names.
+A
+.I word\^
+is a sequence of
+.I characters\^
+from tha characta set defined by tha current locale,
+excludin non-quoted
+.IR metacharactas .
+.PP
+A
+.I command\^
+is a sequence of charactas up in tha syntax
+of tha shell language.
+Da shell readz each command and
+carries up tha desired action either directly or by invoking
+separate utilities.
+A built-in command be a cold-ass lil command dat is carried up by the
+shell itself without bustin a separate process.
+Some commandz is built-in purely fo' convenience
+and is not documented here.
+Built-ins dat cause
+side effects up in tha shell environment and
+built-ins dat is found before struttin a
+path search (see
+.I Execution\^
+below)
+are documented here.
+For oldschool reasons, some of
+these built-ins behave differently than
+other built-ins n' is called
+.IR "special built-ins" .
+.SS Commands.
+A
+.I simple-command\^
+is a list of variable assignments
+(see
+.I Variable Assignments\^
+below)
+or a sequence of
+.I blank\^
+separated lyrics
+which may be preceded by a list of variable assignments
+(see
+.I Environment\^
+below).
+Da first word specifies tha name of tha command to
+be executed.
+Except as specified below,
+the remainin lyrics is passed as arguments
+to tha invoked command.
+Da command name is passed as argument 0
+(see
+.IR exec (2)).
+The
+.I value\^
+of a simple-command is its exit status; 0-255
+if it terminates normally; 256+\f2signum\^\fP if
+it terminates abnormally (the name of tha signal corresponding
+to tha exit status can be
+obtained via the
+.B \-l
+option of the
+.B kill\^
+built-in utility).
+.PP
+A
+.I pipeline\^
+is a sequence of one or more
+.I commands\^
+separated by
+.BR \(bv .
+Da standard output of each command but tha last
+is connected by a
+.IR pipe (2)
+to tha standard input of tha next command.
+Each command,
+except possibly tha last,
+is run as a separate process;
+the shell waits fo' tha last command ta terminate.
+Da exit statuz of a pipeline is tha exit
+statuz of tha last command unless the
+.B pipefail
+option is enabled.
+Each pipeline can be preceded by the
+.I "reserved word"
+.B !
+which causes tha exit statuz of tha pipeline ta become
+0 if tha exit statuz of tha last command is non-zero, and
+1 if tha exit statuz of tha last command is 0.
+.PP
+A
+.I list\^
+is a sequence of one or more
+pipelines
+separated by
+.BR ; ,
+.BR & ,
+.BR \(bv& ,
+.BR && ,
+or
+.BR \(bv\|\(bv ,
+and optionally terminated by
+.BR ; ,
+.BR & ,
+or
+.BR \(bv& .
+Of these five symbols,
+.BR ; ,
+.BR & ,
+and
+.B \(bv&
+have equal precedence,
+which is lower than dat of
+.B &&
+and
+.BR \(bv\|\(bv .
+Da symbols
+.B &&
+and
+.B \(bv\|\(bv
+also have equal precedence.
+A semicolon
+.RB ( ; )
+causes sequential execution of tha precedin pipeline; a ampersand
+.RB ( & )
+causes asynchronous execution of tha precedin pipeline (i.e., tha shell do
+.I not\^
+wait fo' dat pipeline ta finish).
+Da symbol
+.B \(bv&
+causes asynchronous execution of tha precedin pipeline
+with a two-way pipe established ta tha parent shell;
+the standard input n' output of tha spawned pipeline
+can be freestyled ta n' read from by tha parent shell
+by applying
+the redirection operators
+.B <&
+and
+.B >&
+with arg
+.B p
+to commandz n' by using
+.B \-p
+option of
+the built-in commands
+.B read
+and
+.B print
+busted lyrics bout later.
+Da symbol
+.B &&
+.RB (\| \(bv\|\(bv \^)
+causes the
+.I list\^
+followin it ta be executed only if tha preceding
+pipeline
+returns a zero (non-zero) value.
+One or mo' new-lines may step tha fuck up in a
+.I list\^
+instead of a semicolon,
+to delimit a cold-ass lil command.
+Da first
+.I item \^
+of tha first
+.I pipeline\^
+of a
+.I list\^
+that be a simple command not beginning
+with a redirection, n' not occurrin within a
+.BR while ,
+.BR until ,
+or
+.B if
+.IR list ,
+can be preceded by a semicolon.
+This semicolon
+is ignored unless the
+.B showme
+option is enabled as busted lyrics bout with
+the
+.B set
+built-in below.
+.PP
+A
+.I command\^
+is either a simple-command
+or one of tha following.
+Unless otherwise stated,
+the value returned by a cold-ass lil command is dat of the
+last simple-command executed up in tha command.
+.TP
+\f3for\fP \f2vname\^\fP \*(OK \f3in\fP \f2word\^\fP .\|.\|. \*(CK \f3;do\fP \f2list\^\fP \f3;done\fP
+Each time a
+.B for
+command is executed,
+.I vname\^
+is set ta tha next
+.I word\^
+taken from the
+.B in
+.I word\^
+list.
+If
+.BI up in " word\^"
+\&.\|.\|.
+is omitted, then
+the
+.B for
+command executes tha \f3do\fP \f2list\^\fP once fo' each positionizzle parameter
+that is set startin from
+.B 1
+(see
+.I "Parameta Expansion\^"
+below).
+Execution endz when there be no mo' lyrics up in tha list.
+.TP
+\f3for ((\fP \*(OK\f2expr1\^\fP\*(CK \f3;\fP \*(OK\f2expr2\^\fP\*(CK \f3;\fP \*(OK\f2expr3\^\fP\*(CK \f3))\fP \f3;do\fP \f2list\^\fP \f3;done\fP
+Da arithmetic expression
+.I expr1
+is evaluated first
+(see
+.I "Arithmetic evaluation"
+below).
+Da arithmetic expression
+.I expr2
+is repeatedly evaluated until it evaluates ta zero n' when non-zero,
+.I list
+is executed n' tha arithmetic expression
+.I expr3
+evaluated.
+If any expression
+is omitted, then it behaves as if it evaluated ta 1.
+.TP
+\f3select\fP \f2vname\^\fP \*(OK \f3in\fP \f2word\^\fP .\|.\|. \*(CK \f3;do\fP \f2list\^\fP \f3;done\fP
+A
+.B select
+command prints on standard error (file descriptor 2) tha set of
+.IR word s,
+each preceded by a number.
+If
+.BI up in " word\^"
+\&.\|.\|.
+is omitted, then
+the
+positionizzle parametas startin from
+.B 1
+are used instead
+(see
+.I "Parameta Expansion\^"
+below).
+The
+.SM
+.B PS3
+prompt is printed
+and a line is read from tha standard input.
+If dis line consistz of tha number
+of one of tha listed
+.IR word s,
+then tha value of tha variable
+.I vname\^
+is set ta the
+.I word\^
+correspondin ta dis number.
+If dis line is empty, tha selection list is
+printed again.
+Otherwise tha value of tha variable
+.I vname\^
+is set to
+.IR null .
+Da contentz of tha line read from standard input is
+saved in
+the variable
+.SM
+.BR REPLY .
+The
+.I list\^
+is executed fo' each selection until a
+.B break\^
+or
+.I end-of-file\^
+is encountered.
+If the
+.SM
+.B REPLY
+variable is set to
+.I null\^
+by tha execution of
+.IR list ,
+then tha selection list is printed before
+displayin the
+.SM
+.B PS3
+prompt fo' tha next selection.
+.TP
+\f3case\fP \f2word\^\fP \f3in\fP \*(OK \*(OK\f3(\fP\*(CK\f2pattern\^\fP \*(OK \(bv \f2pattern\^\fP \*(CK .\|.\|. \f3)\fP \f2list\^\fP \f3;;\fP \*(CK .\|.\|. \f3esac\fP
+A
+.B case
+command executes the
+.I list\^
+associated wit tha first
+.I pattern\^
+that matches
+.IR word .
+Da form of tha patterns is
+the same as dat used for
+file-name generation (see
+.I "File Name Generation\^"
+below).
+The
+.B ;;
+operator causes execution of
+.B case
+to terminate.
+If
+.B ;&
+is used up in place of
+.B ;;
+the next subsequent list, if any,  is executed.
+.TP
+\f3if\fP \f2list\^\fP \f3;then\fP \f2list\^\fP \*(OK \
+\f3;elif\fP \f2list\^\fP \f3;then\fP \f2list\^\fP \*(CK .\|.\|. \
+\*(OK \f3;else\fP \f2list\^\fP \*(CK \f3;f\&i\fP
+The
+.I list\^
+followin \f3if\fP is executed and,
+if it
+returns a zero exit status, the
+.I list\^
+following
+the first
+.B then
+is executed.
+Otherwise, the
+.I list\^
+followin \f3elif\fP
+is executed and, if its value is zero,
+the
+.I list\^
+following
+the next
+.B then
+is executed.
+Failin each successive
+.B elif
+.IR list\^ ,
+the
+.B else
+.I list\^
+is executed.
+If the
+.B if
+.I list\^
+has non-zero exit status
+and there is no
+.B else
+.IR list ,
+then the
+.B if
+command returns a zero exit status.
+.TP
+.PD 0
+\f3while\fP \f2list\^\fP \f3;do\fP \f2list\^\fP \f3;done\fP
+.TP
+\f3until\fP \f2list\^\fP \f3;do\fP \f2list\^\fP \f3;done\fP
+.PD
+A
+.B while
+command repeatedly executes the
+.B while
+.I list\^
+and, if tha exit statuz of tha last command up in tha list is zero, executes
+the
+.B do
+.IR list ;
+otherwise tha loop terminates.
+If no commandz up in the
+.B do
+.I list\^
+are executed, then the
+.B while
+command returns a zero exit status;
+.B until
+may be used up in place of
+.B while
+to negate
+the loop termination test.
+.TP
+\f3((\fP\f2expression\^\fP\f3))\fP
+.br
+The
+.I expression\^
+is evaluated rockin tha rulez fo' arithmetic evaluation busted lyrics bout below.
+If tha value of tha arithmetic expression is non-zero, tha exit
+status is 0, otherwise tha exit status is 1.
+.TP
+\f3(\fP\f2list\^\fP\f3)\fP
+.br
+Execute
+.I list\^
+in a separate environment.
+Note, dat if two adjacent open parentheses are
+needed fo' nesting, a space must be banged ta avoid
+evaluation as a arithmetic command as busted lyrics bout above.
+.TP
+\f3{ \fP\f2list\^\fP\f3;}\fP
+.br
+.I list\^
+is simply executed.
+Note dat unlike tha metacharacters
+.B (
+and
+.BR ) ,
+.B {
+and
+.B }
+are
+.IR "reserved word" s
+and must occur
+at tha beginnin of a line or afta a
+.B ;
+in order ta be recognized.
+.TP
+\f3[[\fP\f2 expression \^\fP\f3]]\fP
+.br
+Evaluates
+.I expression\^
+and returns a zero exit status when
+.I expression\^
+is true.
+See
+.I "Conditionizzle Expressions\^"
+below, fo' a thugged-out description of
+.IR expression .
+.TP
+.PD 0
+\f3function\fP \f2varname\^\fP \f3{\fP \f2list\^\fP \f3;}\fP
+.TP
+\f2varname\^\fP \f3() {\fP \f2list\^\fP \f3;}\fP
+.PD
+Define a gangbangin' function which is referenced by
+.IR varname .
+A function whose
+.I varname\^
+gotz nuff a
+.B \s+2.\s-2
+is called a gangbangin' finger-lickin' discipline function n' tha portion
+of the
+.I varname\^
+precedin tha last
+.B \s+2.\s-2
+must refer ta a existin variable.
+Da body of tha function is the
+.I list\^
+of commandz between
+.B {
+and
+.BR } .
+A function defined wit tha \f3function\fP \f2varname\^\fP
+syntax can also be used as a argument ta tha \f3.\fP
+special built-in command ta git tha equivalent behavior
+as if tha \f2varname\^\fP\f3()\fP syntax was used ta define dat shit.
+(See
+.I Functions\^
+below.)
+.TP
+\f3namespace\fP \f2identifier\^\fP \f3{\fP \f2list\^\fP \f3;}\fP
+.br
+Defines or uses tha name space
+.I identifier\^
+and runs tha commandz in
+.I list\^
+in dis name space.
+(See
+.I Name Spaces\^
+below.)
+.TP
+\f3&\fP \*(OK \f2name\^\fP \*(OK \f2arg...\^\fP \*(CK  \*(CK
+Causes subsequent
+.I list\^
+commandz terminated by
+.B &
+to be placed up in tha background thang pool
+.IR name .
+If
+.I name\^
+is omitted a thugged-out default unnamed pool is used.
+Commandz up in a named background pool may be executed remotely.
+.TP
+\f3time\fP \*(OK \f2pipeline\^\fP \*(CK
+.br
+If \f2pipeline\^\fP is omitted tha user n' system time for
+the current shell n' completed lil pimp processes is printed
+on standard error.
+Otherwise,
+.I pipeline\^
+is executed n' tha elapsed time as well as
+the user n' system time is printed on standard error.
+The
+.SM
+.B TIMEFORMAT
+variable may be set ta a gangbangin' format strang dat specifies how tha fuck tha timing
+information should be displayed.
+See
+.B "Shell Variables"
+below
+for a thugged-out description of the
+.SM
+.B TIMEFORMAT
+variable.
+.PP
+Da followin reserved lyrics
+are recognized as reserved only when they is tha straight-up original gangsta word of a cold-ass lil command
+and is not quoted:
+.PP
+.if t .RS
+.B
+.if n if then else elif fi case esac fo' while until do done { } function select time [[ ]] !
+.if t if   then   else   elif   fi   case   esac   fo'   while   until   do   done   {   }   function   select   time  [[  ]]   !
+.if t .RE
+.SS Variable Assignments.
+One or mo' variable assignments can start a simple command
+or can be arguments ta the
+.BR typeset ,
+.BR enum ,
+.BR export ,
+or
+.B readonly
+special built-in commandz as well as
+to other declaration commandz pimped as types.
+Da syntax fo' a \f2assignment\^\fP iz of tha form:
+.TP
+.PD 0
+\f2varname\^\fP\f3=\fP\f2word\^\fP
+.TP
+\f2varname\^\fP\f3[\fP\f2word\^\fP\f3]\fP=\fP\f2word\^\fP
+.PD
+No space is permitted between \f2varname\^\fP n' tha \f3=\fP or
+between \f3=\fP n' \fIword\^\fP.
+.TP
+\f2varname\^\fP\f3=(\fP\f2assign_list\^\fP\f3)\fP
+No space is permitted between \f2varname\^\fP n' tha \f3=\fP.
+Da variable
+.I varname
+is unset before tha assignment.
+An \f2assign_list\^\fP can be one of tha following:
+.RS 15
+.PD 0
+.TP
+\f2word\^\fP ...
+Indexed array assignment.
+.TP
+\f3[\fP\f2word\^\fP\f3]=\fP\f2word\^\fP .\|.\|.
+Associatizzle array assignment.
+If preceded by
+.B typeset \-a
+this will create a indexed array instead.
+.TP
+\f2assignment\^\fP .\|.\|.
+Compound variable assignment.
+This creates a cold-ass lil compound variable \f2varname\^\fP with
+sub-variablez of tha form \f2varname\^\fP\f3.\fP\f2name\^\fP,
+where \f2name\^\fP is tha name portion of \f2assignment\^\fP.
+Da value of \f2varname\^\fP will contain all tha assignment elements.
+Additionizzle assignments made ta sub-variablez of \f2varname\^\fP
+will also be displayed as part of tha value of \f2varname\^\fP.
+If no \f2assignment\fPs is specified, \f2varname\^\fP will be
+a compound variable allowin subsequence lil pimp elements ta be defined.
+.TP
+\f3typeset\fP \*(OK\f2options\fP\*(CK \f2assignment\^\fP .\|.\|.
+Nested variable assignment.  Multiple assignments
+can be specified by separatin each of dem wit a \f3;\fP.
+Da previous value is unset before tha assignment.
+Other declaration commandz such as
+.BR readonly,
+.BR enum ,
+and
+other declaration commandz can be used up in place of
+.BR typeset .
+.TP
+\f3\|.\fP \f2filename\^\fP
+Include tha assignment commandz contained in
+.IR filename .
+.PD
+.RE
+.PP
+In addition, a \f3+=\fP can be used up in place of tha \f3=\fP
+to signify addin ta or appendin ta tha previous value.
+When \f3+=\fP be applied ta a arithmetic type, \f2word\^\fP
+is evaluated as a arithmetic expression n' added ta tha current value.
+When applied ta a strang variable, tha value defined by \f2word\^\fP
+is appended ta tha value.  For compound assignments, tha previous
+value aint unset n' tha freshly smoked up joints is appended ta the
+current ones provided dat tha types is compatible.
+.PP
+Da right hand side of a variable assignment undergoes all tha expansion
+listed below except word splitting, brace expansion, n' file name generation.
+When tha left hand side be a assignment be a cold-ass lil compound variable and
+the right hand is tha name of a cold-ass lil compound variable, tha compound variable
+on tha right is ghon be copied or appended ta tha compound variable on tha left.
+.SS Comments.
+.PD 0
+A word beginnin with
+.B #
+causes dat word n' all tha followin charactas up ta a new-line
+to be ignored.
+.SS Aliasing.
+Da first word of each command is replaced by tha text of an
+.B alias
+if an
+.B alias
+for dis word has been defined.
+An
+.B alias
+name consistz of any number of charactas excludin metacharacters,
+quotin characters,
+file expansion characters,
+parameta expansion n' command substitution
+characters,
+the characters
+.B /
+and
+.BR = .
+Da replacement strang can contain any
+valid shell script
+includin tha metacharactas listed above.
+Da first word of each command up in the
+replaced text,
+other than
+any dat is up in tha process of bein replaced,
+will be tested fo' aliases.
+If tha last characta of tha alias value be a
+.I blank\^
+then tha word followin tha alias will also be checked fo' alias
+substitution.
+Aliases can be used ta redefine
+built-in commandz but cannot be used ta redefine
+the reserved lyrics listed above.
+Aliases can be pimped n' listed wit the
+.B alias
+command n' can be removed wit the
+.B unalias
+command.
+.PP
+.I Aliasing\^
+is performed when
+scripts is read,
+not while they is executed.
+Therefore,
+for a alias ta take effect,
+the
+.B
+alias
+definizzle command has ta be executed before
+the command which references tha alias is read.
+.PP
+Da followin aliases
+are compiled tha fuck into tha shell
+but can be unset or redefined:
+.RS 20
+.PD 0
+.TP
+.B "autoload=\(fmtypeset \-fu\(fm"
+.TP
+.B "command=\(fmcommand  \(fm"
+.TP
+.B "compound=\(fmtypeset \-C\(fm"
+.TP
+.B "fc=hist"
+.TP
+.B "float=\(fmtypeset \-lE\(fm"
+.TP
+.B "functions=\(fmtypeset \-f\(fm"
+.TP
+.B "hash=\(fmalias \-t \-\^\-\(fm"
+.TP
+.B "history=\(fmhist \-l\(fm"
+.TP
+.B "integer=\(fmtypeset \-li\(fm"
+.TP
+.B "nameref=\(fmtypeset \-n\(fm"
+.TP
+.B "nohup=\(fmnohup  \(fm"
+.TP
+.B "r=\(fmhist \-s\(fm"
+.TP
+.B "redirect=\(fmcommand exec\(fm"
+.TP
+.B "source=\(fmcommand \s+2.\s-2\(fm"
+.TP
+.B "stop=\(fmkill \-s \s-1STOP\s+1\(fm"
+.TP
+.B "suspend=\(fmkill \-s \s-1STOP\s+1 $$\(fm"
+.TP
+.B "times=\(fm{ { time;} 2>&1;}\(fm"
+.TP
+.B "type=\(fmwhence \-v\(fm"
+.PD
+.RE
+.SS Tilde Substitution.
+Afta alias substitution is performed, each word
+is checked ta peep if it begins wit a unquoted
+.BR \(ap .
+For tilde substitution,
+.I word\^
+also refers ta the
+.I word\^
+portion of parameta expansion
+(see
+.I "Parameta Expansion\^"
+below).
+If it do, then tha word up ta a
+.B /
+is checked ta peep if it matches a user name up in the
+password database (See
+.IR getpwname (3).)
+If a match is found, the
+.B \(ap
+and tha matched login name is replaced by the
+login directory of tha matched user.
+If no match is found, tha original gangsta text is left unchanged.
+A
+.B \(ap
+by itself, or up in front of a
+.BR / ,
+is replaced by
+.SM
+.BR $HOME .
+A
+.B \(ap
+followed by a
+.B +
+or
+.B \-
+is replaced by tha value of
+.B
+.SM $PWD
+and
+.B
+.SM $OLDPWD
+respectively.
+.PP
+In addition,
+when expandin a
+.IR "variable assignment" ,
+.I tilde
+substitution be attempted when
+the value of tha assignment
+begins wit a
+.BR \(ap ,
+and when a
+.B \(ap
+appears afta a
+.BR : .
+The
+.B :
+also terminates a
+.B \(ap
+login name.
+.SS Command Substitution.
+Da standard output from a cold-ass lil command list enclosed in
+parentheses preceded by a thugged-out dollar sign (
+\f3$(\fP\f2list\^\fP\f3)\fP
+),
+or up in a funky-ass brace crew preceded by a thugged-out dollar sign (
+\f3${ \fP\f2list\^\fP\f3;}\fP
+), or up in a pair of grave accents (\^\f3\*`\^\*`\fP\^)
+may be used as part or all
+of a word;
+trailin new-lines is removed.
+In tha second case, tha \f3{\fP n' \f3}\fP is treated as a reserved lyrics
+so dat \f3{\fP must be followed by a \f2blank\^\fP n' \f3}\fP must
+appear all up in tha beginnin of tha line or follow a \f3;\fP.
+In tha third (obsolete) form, tha strang between tha quotes is processed
+for special quotin charactas before tha command is executed (see
+.I Quoting\^
+below).
+Da command substitution
+\^\f3$(\^cat file\^)\fP\^
+can be replaced by tha equivalent but faster
+\^\f3$(\^<file\^)\fP\^.
+Da command substitution
+\^\f3$(\^\fP\f2n\^\fP\f3<#\^)\fP
+will expand ta tha current byte offset fo' file descriptor
+.IR n .
+Except fo' tha second form, tha command list is run up in a subshell so dat no
+side effects is possible.
+For tha second form, tha final
+.B }
+will be recognized as a reserved word afta any token.
+.SS Arithmetic Substitution.
+An arithmetic expression enclosed up in double
+parentheses preceded by a thugged-out dollar sign (
+.B $((\|))
+)
+is replaced by tha value of tha arithmetic expression
+within tha double parentheses.
+.SS Process Substitution.
+Each command argument of tha form
+\f3<(\fP\f2list\^\fP\f3)\fP
+or
+\f3>(\fP\f2list\^\fP\f3)\fP
+will run process
+.I list
+asynchronously connected ta some file in
+.B /dev/fd
+if dis directory exists, or else a gangbangin' fifo a temporary directory.
+Da name of dis file will become tha argument ta tha command.
+If tha form with
+.B >
+is selected then freestylin on dis file will provide input for
+.IR list .
+If
+.B <
+is used,
+then tha file passed as a argument will contain tha output of the
+.I list
+process.
+For example,
+.PP
+.RS
+\f3paste <(cut \-f1\fP \f2file1\fP\f3) <(cut \-f3\fP \f2file2\f3) | tee >(\fP\f2process1\fP\f3) >(\fP\f2process2\fP\f3)\fP
+.RE
+.PP
+.I cuts
+fieldz 1 n' 3 from
+the files
+.I file1
+and
+.I file2
+respectively,
+.I pastes
+the thangs up in dis biatch together, and
+sendz it
+to tha processes
+.I process1
+and
+.IR process2 ,
+as well as puttin it onto tha standard output.
+Note dat tha file, which is passed as a argument ta tha command,
+is a UNIX
+.IR pipe (2)
+so programs dat expect to
+.IR lseek (2)
+on tha file aint gonna work.
+.PP
+Process substitution of tha form
+\f3<(\fP\f2list\^\fP\f3)\fP
+can also be used wit the
+.B <
+redirection operator which causes tha output of
+.I list\^
+to be standard input or tha input fo' whatever file descriptor is specified.
+.SS Parameta Expansion.
+A
+.I parameter\^
+is a
+.IR variable ,
+one or mo' digits,
+or any of tha characters
+.BR \(** ,
+.BR @ ,
+.BR # ,
+.BR , biatch? ,
+.BR \- ,
+.BR $ ,
+and
+.BR !\\^ .
+A
+.I variable\^
+is denoted by a \f2vname\fP.
+To create a variable whose
+.I vname\^
+gotz nuff a \f3\s+2.\s-2\fP,
+a variable whose
+.I vname\^
+consistz of every last muthafuckin thang before tha last \f3\s+2.\s-2\fP must already exist.
+A
+.I variable\^
+has a
+.I value\^
+and zero or more
+.IR attributes .
+.I Variables\^
+can be assigned
+.I joints\^
+and
+.I attributes
+by rockin the
+.B typeset\^
+special built-in command.
+Da attributes supported by tha shell is busted lyrics about
+lata wit the
+.B typeset\^
+special built-in command.
+Exported variablez pass joints n' attributes to
+the environment.
+.PP
+Da shell supports both indexed n' associatizzle arrays.
+An element of a array variable is referenced by a
+.IR subscript .
+A
+.I subscript\^
+for a indexed array is denoted by
+an
+.I arithmetic expression\^
+(see
+.I "Arithmetic evaluation"
+below)
+between a
+.B [
+and a
+.BR ] .
+To assign joints ta a indexed array, use
+\f2vname\fP\f3=(\fP\f2value\fP .\|.\|.\f3)\fP or
+\f3set \-A\fP \f2vname\fP  \f2value\fP .\|.\|. .
+Da value of all non-negative
+subscripts must be up in the
+range of
+0 all up in 4,194,303.
+A wack subscript is treated as a offset from tha maximum
+current index +1 so dat \-1 refers ta tha last element.
+Indexed arrays can be declared wit the
+.B \-a
+option to
+.BR typeset.
+Indexed arrays need not be declared.
+Any reference ta a variable
+with a valid subscript is
+legal n' a array is ghon be pimped if necessary.
+.PP
+An associatizzle array is pimped wit the
+.B \-A
+option to
+.BR typeset.
+A
+.I subscript\^
+for a associatizzle array is denoted by
+a strang enclosed between
+.B [
+and
+.BR ] .
+.PP
+Referencin any array without a subscript
+is equivalent ta referencin tha array wit subscript 0.
+.PP
+The
+.I value\^
+of a
+.I variable\^
+may be assigned by writing:
+.PP
+.RS
+.IB vname = value\^\|
+\*(OK
+.IB vname = value\^
+\*(CK .\|.\|.
+.RE
+.PP
+.PD 0
+or
+.PP
+.RS
+.IB vname [ subscript ]= value\^\|
+\*(OK
+.IB vname [ subscript ]= value\^
+\*(CK .\|.\|.
+.sp .5
+.RE
+Note dat no space be allowed before or afta the
+.BR = .
+.sp .5
+.PP
+.PD 0
+Attributes assigned by the
+.I typeset\^
+special built-in command apply ta all elementz of tha array.
+An array element can be a simple variable, a cold-ass lil compound variable or an
+array variable.  An element of a indexed array can be either a indexed
+array or a associatizzle array.  An element of a associatizzle array can also
+be either n' shit.  To refer ta a array element dat is part of a array
+element, concatenate tha subscript up in brackets, n' you can put dat on yo' toast.  For example, ta refer
+to the
+.I foobar\^
+element of a associatizzle array dat is defined as the
+third element of tha indexed array, use
+.BI ${ vname [ 3 ][ foobar ]}
+.sp .5
+.PP
+.PD 0
+A
+.I nameref\^
+is a variable dat be a reference ta another variable.
+A nameref is pimped wit the
+.B \-n
+attribute of
+.BR typeset .
+Da value of tha variable all up in tha time of the
+.B typeset
+command becomes tha variable dat is ghon be referenced whenever
+the nameref variable is used.
+Da name of a nameref cannot contain a \fB\s+2.\s-2\fP.
+When a variable or function name gotz nuff a \fB\s+2.\s-2\fP, n' tha portion
+of tha name up ta tha straight-up original gangsta \fB\s+2.\s-2\fP matches the
+name of a nameref, tha variable referred ta is obtained by
+replacin tha nameref portion wit tha name of tha variable
+referenced by tha nameref.
+If a nameref is used as tha index of a \fBfor\fP loop,
+a name reference is established fo' each item up in tha list.
+A nameref serves up a cold-ass lil convenient way ta refer ta tha variable
+inside a gangbangin' function whose name is passed as a argument ta a gangbangin' function.
+For example, if tha name of a variable is passed as tha first
+argument ta a gangbangin' function, tha command
+.PP
+.RS
+\fBtypeset \-n var=$1\fR
+.RE
+.PP
+inside tha function causes references n' assignments to
+.B var
+to be references n' assignments ta tha variable whose
+name has been passed ta tha function.
+.sp .5
+.PP
+If any of tha floatin point attributes,
+.BR \-E ,
+.BR \-F ,
+or
+.BR \-X ,
+or tha integer attribute,
+.BR \-i ,
+is set for
+.IR vname ,
+then the
+.I value\^
+is subject ta arithmetic evaluation as busted lyrics bout below.
+.sp .5
+.PP
+Positionizzle parameters,
+parametas denoted by a number,
+may be assigned joints wit the
+.B set\^
+special built-in command.
+Parameter
+.B $0
+is set from argument zero when tha shell
+is invoked.
+.sp .5
+.PP
+Da character
+.B $
+is used ta introduce substitutable
+.IR parametas .
+.TP
+\f3${\fP\f2parameter\^\fP\f3}\fP
+Da shell
+readz all tha charactas from
+.B ${
+to tha matching
+.B }
+as part of tha same word even if it gotz nuff
+braces or metacharacters.
+Da value, if any, of tha parameta is substituted.
+Da braces is required when
+.I parameter\^
+is followed by a letter, digit, or underscore
+that aint ta be interpreted as part of its name,
+when tha variable name gotz nuff a \fB\s+2.\s-2\fP.
+Da braces is also required when a variable is subscripted
+unless it is part of a Arithmetic Expression
+or a Conditionizzle Expression.
+If
+.I parameter\^
+is one or mo' digits then it aint nuthin but a positionizzle parameter.
+A positionizzle parameta of mo' than one digit must be
+enclosed up in braces.
+If
+.I parameter\^
+is
+.B \(**
+or
+.BR @ ,
+then all tha positional
+parameters, startin with
+.BR $1 ,
+are substituted
+(separated by a gangbangin' field separator character).
+If a array
+.I vname\^
+with last subscript
+.B \(**
+.BR @ ,
+or fo' index arrayz of tha form
+.I sub1\^
+.B ..
+.IR sub2 .
+is used,
+then tha value
+for each of the
+elements between
+.I sub1\^
+and
+.I sub2\^
+inclusive (or all elements for
+.B \(**
+and
+.BR @ )
+is substituted,
+separated by
+the first characta of
+the value of
+.SM
+.BR IFS .
+.TP
+\f3${#\fP\f2parameter\^\fP\f3}\fP
+If
+.I parameter\^
+is
+.B \(**
+or
+.BR @ ,
+the number of positionizzle parametas is substituted.
+Otherwise, tha length of tha value of the
+.I parameter\^
+is substituted.
+.TP
+.PD 0
+\f3${#\fP\f2vname\fP\f3[*]}\fP
+.TP
+.PD
+\f3${#\fP\f2vname\fP\f3[@]}\fP
+Da number of elements up in tha array
+.I vname\^
+is substituted.
+.TP
+.PD 0
+\f3${@\fP\f2vname\^\fP\f3}\fP
+Expandz ta tha type name (See
+.I "Type Variables"\^
+below) or attributez of tha variable referred ta by
+.IR vname .
+.TP
+\f3${!\fP\f2vname\^\fP\f3}\fP
+Expandz ta tha name of tha variable referred ta by
+.IR vname .
+This will be
+.I vname\^
+except when
+.I vname\^
+is a name reference.
+.TP
+\f3${!\fP\f2vname\^\fP\f3[\f2subscript\^\f3]}\fP
+Expandz ta name of tha subscript unless
+.I subscript\^
+is
+.BR * ,
+.BR @ .
+or of tha form
+.I sub1\^
+.B ..
+.IR sub2 .
+When
+.I subscript\^
+is
+.BR * ,
+the list of array subscripts fo' \f2vname\^\fP
+is generated.
+For a variable dat aint a array, tha value is 0 if tha variable
+is set.  Otherwise it is null.
+When
+.I subscript\^
+is
+.BR @ ,
+same as above, except dat when used up in double quotes,
+each array subscript yieldz a separate
+argument.
+When
+.I subscript\^
+iz of tha form
+.I sub1\^
+.B ..
+.I sub2\^
+it expands
+to tha list of subscripts between
+.I sub1\^
+and
+.I sub2\^
+inclusive rockin tha same quotin rulez as
+.BR @ .
+.TP
+\f3${!\fP\f2prefix\^\fP\f3*}\fP
+Expandz ta tha namez of tha variablez whose names begin with
+.IR prefix .
+.TP
+\f3${\fP\f2parameter\^\fP\f3:\-\fP\f2word\^\fP\f3}\fP
+If
+.I parameter\^
+is set n' is non-null then substitute its value;
+otherwise substitute
+.IR word .
+.TP
+\f3${\fP\f2parameter\^\fP\f3:=\fP\f2word\^\fP\f3}\fP
+If
+.I parameter\^
+is not set or is null then set it to
+.IR word ;
+the value of tha parameta is then substituted.
+Positionizzle parametas may not be assigned to
+in dis way.
+.TP
+\f3${\fP\f2parameter\^\fP\f3:?\fP\f2word\^\fP\f3}\fP
+If
+.I parameter\^
+is set n' is non-null then substitute its value;
+otherwise, print
+.I word\^
+and exit from tha shell (if not interactive).
+If
+.I word\^
+is omitted then a standard message is printed.
+.TP
+\f3${\fP\f2parameter\^\fP\f3:+\fP\f2word\^\fP\f3}\fP
+If
+.I parameter\^
+is set n' is non-null then substitute
+.IR word ;
+otherwise substitute nothing.
+.PP
+In tha above,
+.I word\^
+is not evaluated unless it is
+to be used as tha substituted string,
+so that, up in tha followin example,
+.B pwd
+is executed only if
+.B d
+is not set or is null:
+.PP
+.RS
+print \|${d:\-\^$(\^pwd\^)\^}
+.RE
+.PP
+If tha colon (
+.B : )
+is omitted from tha above expressions,
+then tha shell only checks whether
+.I parameter\^
+is set or not.
+.TP
+.PD 0
+\f3${\fP\f2parameter\^\fP\f3:\fP\f2offset\^\fP\f3:\fP\f2length\^\fP\f3}\fP
+.TP
+\f3${\fP\f2parameter\^\fP\f3:\fP\f2offset\^\fP\f3}\fP
+Expandz ta tha portion of tha value of
+.I parameter\^
+startin all up in tha characta (countin from
+.BR 0\^ )
+determined by expanding
+.I offset\^
+as a arithmetic expression n' consistin of the
+number of charactas determined by tha arithmetic expression
+defined by
+.IR length.
+In tha second form, tha remainder of tha value is used.
+If
+A negative
+.I offset\^
+counts backwardz from tha end of
+.IR parameta .
+Note dat one or more
+.IR blank s
+is required up in front of a minus sign
+to prevent tha shell from interpretin tha operator as
+.BR :\- .
+If
+.I parameter\^
+is
+.B \(**
+or
+.BR @ ,
+or be a array name indexed by
+.B \(**
+or
+.BR @ ,
+then
+.I offset\^
+and
+.I length\^
+refer ta tha array index n' number
+of elements respectively.
+A negative
+.I offset\^
+is taken relatizzle ta one pimped outa than tha highest subscript
+for indexed arrays.
+Da order fo' associate arrays is unspecified.
+.TP
+.PD 0
+\f3${\fP\f2parameter\^\fP\f3#\fP\f2pattern\^\fP\f3}\fP
+.TP
+\f3${\fP\f2parameter\^\fP\f3##\fP\f2pattern\^\fP\f3}\fP
+.PD
+If
+the shell
+.I pattern\^
+matches tha beginnin of tha value of
+.IR parameta ,
+then tha value of
+this expansion is tha value of the
+.I parameter\^
+with tha matched portion deleted;
+otherwise tha value of this
+.I parameter\^
+is substituted.
+In tha straight-up original gangsta form tha smallest matchin pattern is deleted n' up in the
+second form tha phattest matchin pattern is deleted.
+When
+.I parameter\^
+is
+.BR @ ,
+.BR * ,
+or a array variable wit subscript
+.B @
+or
+.BR * ,
+the substrin operation be applied ta each element up in turn.
+.TP
+.PD 0
+\f3${\fP\f2parameter\^\fP\f3%\fP\f2pattern\^\fP\f3}\fP
+.TP
+\f3${\fP\f2parameter\^\fP\f3%%\fP\f2pattern\^\fP\f3}\fP
+.PD
+If
+the shell
+.I pattern\^
+matches tha end of tha value of
+.IR parameta ,
+then tha value of
+this expansion is tha value of the
+.I parameter\^
+with tha matched part deleted;
+otherwise substitute tha value of
+.IR parameta .
+In tha straight-up original gangsta form tha smallest matchin pattern is deleted n' up in the
+second form tha phattest matchin pattern is deleted.
+When
+.I parameter\^
+is
+.BR @ ,
+.BR * ,
+or a array variable wit subscript
+.B @
+or
+.BR * ,
+the substrin operation be applied ta each element up in turn.
+.TP
+.PD 0
+\f3${\fP\f2parameter\^\fP\f3/\fP\f2pattern\^\fP\f3/\f2string\^\fP\f3}\fP
+.TP
+\f3${\fP\f2parameter\^\fP\f3//\fP\f2pattern\^\fP\f3/\f2string\^\fP\f3}\fP
+.TP
+\f3${\fP\f2parameter\^\fP\f3/#\fP\f2pattern\^\fP\f3/\f2string\^\fP\f3}\fP
+.TP
+\f3${\fP\f2parameter\^\fP\f3/%\fP\f2pattern\^\fP\f3/\f2string\^\fP\f3}\fP
+.PD
+Expands
+.I parameter\^
+and replaces tha longest match of
+.I pattern\^
+with tha given
+.IR string.
+Each occurrence of \f3\e\fP\f2n\^\fP in
+.I string
+is replaced by tha portion of \f2parameter\^\fP
+that matches tha \f2n\^\fP-th sub-pattern.
+In tha straight-up original gangsta form,
+only tha straight-up original gangsta occurrence of
+.I pattern\^
+is replaced.
+In tha second form,
+each match for
+.I pattern\^
+is replaced by tha given
+.IR string.
+Da third form restricts tha pattern match ta tha beginnin of tha string
+while tha fourth form restricts tha pattern match ta tha end of
+the string.
+When
+.I string\^
+is null, the
+.I pattern\^
+will be deleted n' the
+.B /
+in front of
+.I string\^
+may be omitted.
+When
+.I parameter\^
+is
+.BR @ ,
+.BR * ,
+or a array variable wit subscript
+.B @
+or
+.BR * ,
+the substitution operation be applied ta each element up in turn.
+In dis case, the
+.I string\^
+portion of
+.I word\^
+will be re-evaluated fo' each element.
+.PP
+Da following
+parameters
+are automatically set by tha shell:
+.RS
+.PD 0
+.TP
+.B #
+Da number of positionizzle parametas up in decimal.
+.TP
+.B \-
+Options supplied ta tha shell on invocation or by
+the
+.B set
+command.
+.TP
+.B ?
+Da decimal value returned by tha last executed command.
+.TP
+.B $
+Da process number of dis shell.
+.TP
+.B _
+Initially, tha value of
+.B _
+is a absolute pathname of tha shell or script bein executed
+as passed up in the
+.IR environment .
+Subsequently it be assigned tha last argument of tha previous command.
+This parameta aint set fo' commandz which is asynchronous.
+This parameta be also used ta hold tha name of tha matching
+.B
+.SM MAIL
+file when checkin fo' mail.
+While definin a cold-ass lil compound variable or a type,
+.B _
+is initialized as a reference ta tha compound variable or type.
+When a gangbangin' finger-lickin' discipline function is invoked,
+.B _
+is initialized as a reference ta tha variable associated with
+the call ta dis function.
+Finally when
+.B _
+is used as tha name of tha straight-up original gangsta variable of a type definition,
+the freshly smoked up type is derived from tha type of tha straight-up original gangsta variable (See
+.I "Type Variables"\^
+below.).
+.TP
+.B !
+Da process id or tha pool name n' thang number of tha last background command
+invoked or da most thugged-out recent thang put up in tha background wit the
+.B bg
+built-in command.
+Background thangs started up in a named pool is ghon be up in tha form
+.IB pool . number
+where
+.I pool\^
+is tha pool name and
+.I number\^
+is tha thang number within dat pool.
+.TP
+.B .sh.command
+When processin a
+.SM
+.B DEBUG
+trap, dis variable gotz nuff tha current command line
+that be bout ta run.
+.TP
+.B .sh.edchar
+This variable gotz nuff tha value of tha keyboard character
+(or sequence of charactas if tha straight-up original gangsta characta be a ESC, ascii
+.BR 033\^ )
+that has
+been entered when processin a
+.B
+.SM KEYBD
+trap
+(see
+.I "Key Bindings\^"
+below).
+If tha value is chizzled as part of tha trap action, then tha new
+value replaces tha key (or key sequence) dat caused tha trap.
+.TP
+.B .sh.edcol
+Da characta posizzle of tha cursor all up in tha time of da most thugged-out recent
+.B
+.SM KEYBD
+trap.
+.TP
+.B .sh.edmode
+Da value is set ta ESC when processin a
+.B
+.SM KEYBD
+trap while in
+.B vi
+insert mode.  (See
+.I "Vi Editin Mode"\^
+below.)
+Otherwise,
+.B .sh.edmode
+is null when processin a
+.B
+.SM KEYBD
+trap.
+.TP
+.B .sh.edtext
+Da charactas up in tha input buffer all up in tha time of da most thugged-out recent
+.B
+.SM KEYBD
+trap.
+Da value is null when not processin a
+.B
+.SM KEYBD
+trap.
+.TP
+.B .sh.file
+Da pathname of tha file than gotz nuff tha current command.
+.TP
+.B .sh.fun
+Da name of tha current function dat is bein executed.
+.TP
+.B .sh.level
+Set ta tha current function depth.  This can be chizzled
+inside a DEBUG trap n' will set tha context ta tha specified
+level.
+.TP
+.B .sh.lineno
+Set durin a DEBUG trap ta tha line number fo' tha calla of
+each function.
+.TP
+.B .sh.match
+An indexed array which stores da most thugged-out recent match n' sub-pattern
+matches afta conditionizzle pattern matches dat match n' after
+variablez expansions rockin tha operators
+.BR # ,
+.BR % ,
+or
+.BR / .
+The
+.BR 0 -th
+element stores tha complete match n' the
+.IR i\^ -th.
+element stores the
+.IR i\^ -th
+submatch.
+The
+.B .sh.match
+variable
+becomes unset when tha variable dat has expanded
+is assigned a freshly smoked up value.
+.TP
+.B .sh.math
+Used fo' definin arithmetic functions
+(see
+.I "Arithmetic evaluation"
+below).
+and stores tha list of user defined arithmetic functions.
+.TP
+.B .sh.name
+Set ta tha name of tha variable all up in tha time dat a
+discipline function is invoked.
+.TP
+.B .sh.subscript
+Set ta tha name subscript of tha variable all up in tha time dat a
+discipline function is invoked.
+.TP
+.B .sh.subshell
+Da current depth fo' subshells n' command substitution.
+.TP
+.B .sh.value
+Set ta tha value of tha variable all up in tha time dat the
+.B set
+or
+.B append
+discipline function is invoked.
+When a user defined arithmetic function is invoked, tha value
+of
+.B .sh.value
+is saved and
+.B .sh.value
+is set ta long double precision floatin point.
+.B .sh.value
+is restored when tha function returns.
+.TP
+.B .sh.version
+Set ta a value dat identifies tha version of dis shell.
+.TP
+.B
+.SM KSH_VERSION
+A name reference to
+.BR .sh.version .
+.TP
+.B
+.SM LINENO
+Da current line number within tha script or
+function bein executed.
+.TP
+.B
+.SM OLDPWD
+Da previous hustlin directory set by the
+.B cd
+command.
+.TP
+.B
+.SM OPTARG
+Da value of tha last option argument processed by the
+.B getopts
+built-in command.
+.TP
+.B
+.SM OPTIND
+Da index of tha last option argument processed by the
+.B getopts
+built-in command.
+.TP
+.B
+.SM PPID
+Da process number of tha parent of tha shell.
+.TP
+.B
+.SM PWD
+Da present hustlin directory set by the
+.B cd
+command.
+.TP
+.B
+.SM RANDOM
+Each time dis variable is referenced, a random integer,
+uniformly distributed between 0 n' 32767, is generated.
+Da sequence of random numbers can be initialized by assigning
+a numeric value to
+.SM
+.BR RANDOM .
+.TP
+.B
+.SM REPLY
+This variable is set by the
+.B select
+statement n' by
+the
+.B read
+built-in command when no arguments is supplied.
+.TP
+.B
+.SM SECONDS
+Each time dis variable is referenced, tha number of
+secondz since shell invocation is returned.
+If dis variable is
+assigned a value, then tha value returned upon reference will
+be tha value dat was assigned plus tha number of secondz since tha assignment.
+.TP
+.SM
+.B SHLVL
+An integer variable tha is incremented each time tha shell
+is invoked n' is exported.
+If
+.SM
+.B SHLVL
+is not up in tha environment when tha shell is invoked, it is set
+to 1.
+.PD
+.RE
+.PP
+Da following
+variables
+are used by tha shell:
+.RS
+.PD 0
+.TP
+.B
+.SM CDPATH
+Da search path fo' the
+.B cd
+command.
+.TP
+.B
+.SM COLUMNS
+If dis variable is set,
+the value is used ta define tha width of tha edit window
+for tha shell edit modes n' fo' printing
+.B select
+lists.
+.TP
+.B
+.SM EDITOR
+If the
+.B
+.SM VISUAL
+variable aint set,
+the value of dis variable is ghon be checked fo' tha patterns
+as busted lyrics bout with
+.B
+.SM VISUAL
+below n' tha correspondin editin option
+(see Special Command
+.B set
+below)
+will be turned on.
+.TP
+.SM
+.B ENV
+If dis variable is set, then
+parameta expansion, command substitution, n' arithmetic substitution
+are performed on
+the value ta generate
+the pathname of tha script dat will be
+executed when tha shell
+is invoked interactively
+(see
+.I Invocation\^
+below).
+This file is typically used for
+.B alias
+and
+.B function
+definitions.
+Da default value is \fB$HOME/.kshrc\fP.
+On systems dat support a system wide  \fB/etc/ksh.kshrc\fP initialization file,
+if tha filename generated by tha expansion of
+.SM
+.B ENV
+begins with
+.B /./
+or
+.B .\^/.\^/
+the system wide initialization file aint gonna be executed.
+.TP
+.B
+.SM FCEDIT
+Obsolete name for
+the default editor name fo' the
+.B hist
+command.
+.B
+.SM FCEDIT
+is not used when
+.B
+.SM HISTEDIT
+is set.
+.TP
+.SM
+.B FIGNORE
+A pattern dat defines tha set of filenames dat will be
+ignored when struttin filename matching.
+.TP
+.SM
+.B FPATH
+Da search path fo' function definitions.
+Da directories up in dis path is searched fo' a gangbangin' file wit tha same name
+as tha function or command when a gangbangin' function wit the
+.B \-u
+attribute is referenced n' when a cold-ass lil command aint found.
+If a executable file wit tha name of dat command is found,
+then it is read n' executed
+in tha current environment.
+Unlike
+.SM
+.BR PATH ,
+the current directory must be represented
+explicitly by
+.B .
+rather than by adjacent
+.B :
+charactas or a funky-ass beginnin or ending
+.BR : .
+.TP
+.B
+.SM HISTCMD
+Number of tha current command up in tha history file.
+.TP
+.B
+.SM HISTEDIT
+Name for
+the default editor name fo' the
+.B hist
+command.
+.TP
+.SM
+.B HISTFILE
+If dis variable is set when tha shell is invoked, then
+the value is tha pathname of tha file dat will be
+used ta store tha command history (see
+.I "Command Re-entry\^"
+below).
+.TP
+.SM
+.B HISTSIZE
+If dis variable is set when tha shell is invoked, then
+the number of previously entered commandz that
+are accessible by dis shell
+will be pimped outa than or equal ta dis number.
+Da default is 512.
+.TP
+.B
+.SM HOME
+Da default argument (home directory) fo' the
+.B cd
+command.
+.TP
+.SM
+.B IFS
+Internal field separators,
+normally
+.BR space ,
+.BR tab ,
+and
+.B new-line
+that is used ta separate tha thangs up in dis biatch of
+command substitution or parameta expansion
+and ta separate fieldz wit tha built-in command
+.BR read .
+Da first characta of the
+.SM
+.B IFS
+variable is used ta separate arguments fo' the
+.B
+"$\(**"
+substitution (see
+.I Quoting
+below).
+Each single occurrence of
+an
+.SM
+.B IFS
+characta up in tha strang ta be split,
+that aint up in tha \f2isspace\^\fP characta class, n' any
+adjacent charactas in
+.SM
+.B IFS
+that is up in tha \f2isspace\^\fP characta class, delimit a gangbangin' field.
+One or more
+charactas in
+.SM
+.B IFS
+that belong ta tha \f2isspace\^\fP characta class,
+delimit a gangbangin' field.
+In addition, if tha same \f2isspace\^\fP characta appears
+consecutively inside
+.SM
+.BR IFS ,
+this characta is treated as if it was not up in tha \f2isspace\^\fP
+class, so dat if
+.SM
+.BR IFS
+consistz of two
+.B tab
+characters,
+then two adjacent
+.B tab
+charactas delimit a null field.
+.TP
+.B
+.SM JOBMAX
+This variable defines tha maximum number hustlin background thangs
+that can run at a time.  When dis limit is reached, the
+shell will wait fo' a thang ta complete before starin a freshly smoked up thang.
+.TP
+.B
+.SM LANG
+This variable determines tha locale category fo' any
+category not specifically selected wit a variable
+startin with
+.B
+.SM LC_
+or
+.SM
+.BR LANG .
+.TP
+.B
+.SM LC_ALL
+This variable overrides tha value of the
+.B
+.SM LANG
+variable n' any other
+.B
+.SM LC_
+variable.
+.TP
+.B
+.SM LC_COLLATE
+This variable determines tha locale category fo' character
+collation shiznit.
+.TP
+.B
+.SM LC_CTYPE
+This variable determines tha locale category fo' character
+handlin functions.
+It determines tha characta classes fo' pattern matchin (see
+.I "File Name Generation\^"
+below).
+.TP
+.B
+.SM LC_NUMERIC
+This variable determines tha locale category fo' the
+decimal point character.
+.TP
+.B
+.SM LINES
+If dis variable is set,
+the value is used ta determine tha column length fo' printing
+.B select
+lists.
+Select lists will print vertically until bout two-thirdz of
+.B
+.SM LINES
+lines is filled.
+.TP
+.B
+.SM MAIL
+If dis variable is set ta tha name of a mail file
+.I and\^
+the
+.B
+.SM MAILPATH
+variable aint set,
+then tha shell informs tha user of arrival of mail
+in tha specified file.
+.TP
+.B
+.SM MAILCHECK
+This variable specifies how tha fuck often (in seconds) the
+shell will check fo' chizzlez up in tha modification time
+of any of tha filez specified by the
+.B
+.SM MAILPATH
+or
+.B
+.SM MAIL
+variables.
+Da default value is 600 seconds.
+When tha time has elapsed
+the shell will check before issuin tha next prompt.
+.TP
+.B
+.SM MAILPATH
+A colon (
+.B :
+)
+separated list of file names.
+If dis variable is set,
+then tha shell informs tha user of
+any modifications ta tha specified files
+that have occurred within tha last
+.B
+.SM MAILCHECK
+seconds.
+Each file name can be followed by a
+.B ?
+and a message dat is ghon be printed.
+Da message will undergo parameta expansion, command substitution,
+and arithmetic substitution
+with tha variable
+.B $_
+defined as tha name of tha file dat has chizzled.
+Da default message is
+.I you have mail up in $_\^.
+.TP
+.B
+.SM PATH
+Da search path fo' commandz (see
+.I Execution\^
+below).
+Da user may not chizzle
+.B \s-1PATH\s+1
+if executin under
+.if \nZ=0 .B rsh
+.if \nZ=1 .B rksh
+.if \nZ=2 .B rksh93
+(except in
+.BR .profile\^).
+.TP
+.SM
+.B PS1
+Da value of dis variable is expanded fo' parameter
+expansion, command substitution, n' arithmetic substitution ta define the
+primary prompt strang which by default is
+.RB `` "$\|\|\|" ''.
+Da character
+.B !
+in tha primary prompt strang is replaced by the
+.I command\^
+number (see
+.I "Command Re-entry\^"
+below).
+Two successive occurrences of
+.B !
+will produce a single
+.B !
+when tha prompt strang is printed.
+.TP
+.SM
+.B PS2
+Secondary prompt string, by default
+.RB `` "> \|" ''.
+.TP
+.SM
+.B PS3
+Selection prompt string
+used within a
+.B select
+loop, by default
+.RB `` "#, biatch? \|" ''.
+.TP
+.SM
+.B PS4
+Da value of dis variable is expanded fo' parameta evaluation,
+command substitution, n' arithmetic substitution
+and precedes each line of a execution trace.
+By default,
+.SM
+.B PS4
+is
+.RB `` "+ \|" ''.
+In addition
+when
+.SM
+.B PS4
+is unset,
+the execution trace prompt be also
+.RB `` "+ \|" ''.
+.TP
+.SM
+.B SHELL
+Da pathname of the
+.I shell\^
+is kept up in tha environment.
+At invocation, if tha basename of dis variable is
+.BR rsh ,
+.BR rksh ,
+or
+.BR krsh ,
+then tha shell becomes restricted.
+If it is
+.BR pfsh
+or
+.BR pfksh ,
+then tha shell becomes a flava shell (see
+.IR pfexec (1)).
+.TP
+.SM
+.B TIMEFORMAT
+Da value of dis parameta is used as a gangbangin' format strang specifying
+how tha timin shiznit fo' pipelines prefixed wit the
+.B time
+reserved word should be displayed.
+Da \fB%\fP characta introduces a gangbangin' format sequence dat is
+expanded ta a time value or other shiznit.
+Da format sequences n' they meanings is as bigs up.
+.sp .5
+.RS
+.PD 0
+.TP 10
+.B %%
+A literal \fB%\fP.
+.TP
+.B %[\fIp\fP][l]R
+Da elapsed time up in seconds.
+.TP
+.B %[\fIp\fP][l]U
+Da number of CPU secondz dropped up in user mode.
+.TP
+.B %[\fIp\fP][l]S
+Da number of CPU secondz dropped up in system mode.
+.TP
+.B %P
+Da CPU cementage, computed as (U + S) / R.
+.PD
+.RE
+.IP
+Da brackets denote optionizzle portions.
+Da optionizzle \fIp\fP be a gangbangin' finger-lickin' digit specifyin tha \fIprecision\fP,
+the number of fractionizzle digits afta a thugged-out decimal point.
+A value of 0 causes no decimal point or fraction ta be output.
+At most three places afta tha decimal point can be displayed;
+valuez of \fIp\fP pimped outa than 3 is treated as 3.
+If \fIp\fP aint specified, tha value 3 is used.
+.IP
+Da optionizzle \fBl\fP specifies a longer format, including
+hours if pimped outa than zero,
+minutes, n' secondz of tha form \fIHH\fPh\fIMM\fPm\fISS\fP.\fIFF\fPs.
+Da value of \fIp\fP determines whether or not tha fraction is
+included.
+.IP
+All other charactas is output without chizzle n' a trailing
+newline be added.
+If unset, tha default value, \fB$'\enreal\et%2lR\enuser\et%2lU\ensys\t%2lS'\fP,
+is used. Y'all KNOW dat shit, muthafucka!  If tha value is null, no timin shiznit is displayed.
+.TP
+.B
+.SM TMOUT
+If set ta a value pimped outa than zero,
+.B
+.SM TMOUT
+will be tha default timeout value fo' the
+.B read
+built-in command.
+The
+.B select
+compound command terminates after
+.B
+.SM TMOUT
+secondz when input is from a terminal.
+Otherwise,
+the shell will terminizzle if a line aint entered within
+the prescribed number of secondz while readin from a terminal.
+(Note dat tha shell can be compiled wit a maximum bound
+for dis value which cannot be exceeded.)
+.TP
+.B
+.SM VISUAL
+If tha value of dis variable matches tha pattern
+.IR *[Vv][Ii]* ,
+then the
+.B vi
+option
+(see Special Command
+.B set
+below)
+is turned on.
+If tha value matches tha pattern
+.I *gmacs* ,
+the
+.B gmacs
+option is turned on.
+If tha value matches tha pattern
+.IR *macs* ,
+then the
+.B emacs
+option
+will be turned on.
+Da value of
+.B
+.SM VISUAL
+overrides tha value of
+.B
+.SM EDITOR.
+.PD
+.RE
+.PP
+Da shell gives default joints to
+\f3\s-1PATH\s+1\fP, \f3\s-1PS1\s+1\fP, \f3\s-1PS2\s+1\fP,
+\f3\s-1PS3\s+1\fP, \f3\s-1PS4\s+1\fP, \f3\s-1MAILCHECK\s+1\fP, \f3\s-1FCEDIT\s+1\fP,
+\f3\s-1TMOUT\s+1\fP n' \f3\s-1IFS\s+1\fP,
+while
+.SM
+.BR HOME ,
+.SM
+.BR SHELL ,
+.SM
+.BR ENV ,
+and
+.SM
+.B MAIL
+are
+not set at all by tha shell (although
+.SM
+.B HOME
+.I is\^
+set by
+.IR login (1)).
+On some systems
+.SM
+.B MAIL
+and
+.SM
+.B SHELL
+are also
+set by
+.IR login (1).
+.SS Field Splitting.
+Afta parameta expansion n' command substitution,
+the thangs up in dis biatch of substitutions is scanned fo' tha field separator
+charactas (those found in
+.SM
+.B IFS\^\c
+)
+and split tha fuck into distinct fieldz where such charactas is found.
+Explicit null fieldz (\^\f3"\^"\fP or \f3\(fm\^\(fm\fP\^) is retained.
+Implicit null fields
+(those resultin from
+.I parameters\^
+that have no joints or command substitutions wit no output) is removed.
+.PP
+If the
+.B braceexpand
+.RB ( \-B )
+option is set then each of tha fieldz resultin from
+.SM
+.B IFS
+are checked ta peep if they contain one or mo' of tha brace patterns
+.BR {*,*} ,
+.BI { l1 .. l2 }
+,
+.BI { n1 .. n2 }
+,
+.BI { n1 .. n2 %
+.IB fmt }
+,
+.BI { n1 .. n2
+.BI  .. n3 }
+, or
+.BI { n1 .. n2
+.BI  .. n3 % fmt }
+, where
+.B *
+represents any character,
+.IR l1\^ , l2\^
+are lettas and
+.IR n1\^ , n2\^ , n3\^
+are signed numbers and
+.I fmt\^
+is a gangbangin' format specified as used by
+.BR printf .
+In each case, fieldz is pimped
+by prependin tha charactas before the
+.B {
+and appendin tha charactas afta the
+.B }
+to each of tha strings generated by tha charactas between
+the
+.B {
+and
+.BR } .
+Da resultin fieldz is checked ta peep if they have any
+brace patterns.
+.PP
+In tha straight-up original gangsta form, a gangbangin' field is pimped fo' each strang between
+.BR {
+and
+.BR , ,
+between
+.BR ,
+and
+.BR , ,
+and between
+.BR ,
+and
+.BR } .
+Da strang represented by
+.B *
+can contain embedded matching
+.B {
+and
+.B }
+without quoting.
+Otherwise, each
+.B {
+and
+.B }
+with
+.B *
+must be quoted.
+.PP
+In tha secondz form,
+.I l1\^
+and
+.I l2\^
+must both be either upper case or both be lower case characters
+in tha C locale.  In dis case a gangbangin' field is pimped fo' each character
+from
+.I l1\^
+thru
+.IR l2\^ .
+.PP
+In tha remainin forms, a gangbangin' field is pimped fo' each number startin at
+.I n1\^
+and continuin until it reaches
+.I n2\^
+incrementing
+.I n1\^
+by
+.IR n3\^ .
+Da cases where
+.I n3\^
+is not specified behave as if
+.I n3\^
+where
+.B 1
+if
+.IB n1 <= n2
+and
+.B \-1
+otherwise.
+If forms which specify
+.BI % fmt\^
+any format flags, widths n' precisions can be specified
+and
+.I fmt\^
+can end up in any of tha specifiers
+.BR cdiouxX .
+For example,
+.B {a,z}{1..5..3%02d}{b..c}x
+expandz ta tha 8 fields,
+.BR a01bx ,
+.BR a01cx ,
+.BR a04bx ,
+.BR a04cx ,
+.BR z01bx ,
+.BR z01cx ,
+.B z04bx
+and
+.BR z4cx .
+.SS File Name Generation.
+Peepin splitting, each field is scanned fo' tha characters
+.BR \(** ,
+.BR , biatch? ,
+.BR ( ,
+and
+.B \*(OK\^
+unless the
+.B \-f
+option has been set.
+If one of these charactas appears,
+then tha word is regarded as a
+.IR pattern .
+Each file name component dat gotz nuff any pattern character
+is replaced wit a lexicographically sorted set of names
+that matches tha pattern
+from
+that directory.
+If no file name is found dat matches tha pattern, then
+that component of tha filename is left unchanged unless
+the pattern is prefixed with
+.B \(ap(N)\fP
+in which case it is removed as busted lyrics bout below.
+If
+.SM
+.B FIGNORE
+is set,
+then each file name component
+that matches tha pattern defined by tha value of
+.SM
+.B FIGNORE
+is ignored when generatin tha matchin filenames.
+Da names
+.B .
+and
+.B ..
+are also ignored.
+If
+.SM
+.B FIGNORE
+is not set,
+the character
+.B .
+at tha start of each file name component
+will be ignored unless tha straight-up original gangsta characta of tha pattern
+correspondin ta dis component is tha character
+.BR .
+itself.
+Note, dat fo' other
+usez of pattern matchin the
+.B /
+and
+.B .
+are not treated specially.
+.PP
+.PD 0
+.RS
+.TP
+.B \(**
+Matches any string, includin tha null string.
+When used fo' filename expansion,
+if the
+.B globstar
+option is on, two adjacent
+.BR \(** 's
+by itself
+will match all filez n' zero or mo' directories
+and subdirectories.
+If followed by a
+.B /
+then only directories n' subdirectories will match.
+.TP
+.B ?
+Matches any single character.
+.TP
+.BR \*(OK \^.\|.\|.\^ \*(CK
+Matches any one of tha enclosed characters.
+A pair of charactas separated by
+.B \-
+matches any
+characta lexically between tha pair, inclusive.
+If tha straight-up original gangsta characta followin tha opening
+.B \*(OK\^
+is a
+.B !
+or
+.B ^
+then any characta not enclosed is matched.
+A
+.B \-
+can be included up in tha characta set by puttin it as the
+first or last character.
+.br
+Within
+.B \*(OK\^
+and
+.BR \*(CK\^ ,
+characta classes can be specified wit tha syntax
+\f3[:\fP\f2class\fP\f3:]\fP
+where class is one of tha followin classes defined up in tha ANSI-C standard:
+(Note dat \f3word\fP is equivalent ta \f3alnum\fP plus tha characta \f3_\fP.)
+.br
+.B
+.if n alnum alpha blank cntrl digit graph lower print punct space upper word xdigit
+.if t alnum   alpha   blank   cntrl   digit   graph   lower   print   punct   space   upper   word    xdigit
+.br
+Within
+.B \*(OK\^
+and
+.BR \*(CK\^ ,
+an equivalence class can be specified wit tha syntax
+\f3[=\fP\f2c\fP\f3=]\fP
+which matches all charactas wit tha same primary
+collation weight (as defined by tha current locale) as
+the characta \f2c\fP.
+Within
+.B \*(OK\^
+and
+.BR \*(CK\^ ,
+\f3[.\fP\f2symbol\fP\f3.]\fP
+matches tha collatin symbol \f2symbol\fP.
+.RE
+.PD
+A
+.I pattern-list
+is a list of one or mo' patterns separated from each other
+with a
+.B &
+or
+.BR \(bv .
+A
+.B &
+signifies dat all patterns must be matched whereas
+.BR \(bv
+requires dat only one pattern be matched.
+Composite patterns can be formed wit one or mo' of tha followin sub-patterns:
+.PD 0
+.RS
+.TP
+\f3?(\fP\f2pattern-list\^\fP\f3)\fP
+Optionally matches any one of tha given patterns.
+.TP
+\f3*(\fP\f2pattern-list\^\fP\f3)\fP
+Matches zero or mo' occurrencez of tha given patterns.
+.TP
+\f3+(\fP\f2pattern-list\^\fP\f3)\fP
+Matches one or mo' occurrencez of tha given patterns.
+.TP
+\f3{\fP\f2n\^\fP\f3}\fP(\fP\f2pattern-list\^\fP\f3)\fP
+Matches \f2n\^\fP occurrencez of tha given patterns.
+.TP
+\f3{\fP\f2m\^\fP\f3,\fP\f2n\^\fP\f3}\fP(\fP\f2pattern-list\^\fP\f3)\fP
+Matches from \f2m\^\fP ta \f2n\^\fP occurrencez of tha given patterns.
+If \f2m\^\fP is omitted, \f30\fP is ghon be used. Y'all KNOW dat shit, muthafucka!  If \f2n\^\fP
+is omitted at least \f2m\^\fP occurrences is ghon be matched.
+.TP
+\f3\&@\&(\fP\f2pattern-list\^\fP\f3)\fP
+Matches exactly one of tha given patterns.
+.br
+.TP
+\f3!(\fP\f2pattern-list\^\fP\f3)\fP
+Matches anythang except one of tha given patterns.
+.PD
+.RE
+By default, each pattern, or sub-pattern will match the
+longest strang possible consistent wit generating
+the longest overall match.  If mo' than one match is
+possible, tha one startin closest ta tha beginning
+of tha strang is ghon be chosen. I aint talkin' bout chicken n' gravy biatch.   But fuck dat shiznit yo, tha word on tha street is dat fo' each of tha above
+compound patterns a \f3\-\fP can be banged up in front of tha \f3(\fP
+to cause tha shortest match ta tha specified \f2pattern-list\^\fP
+to be used.
+.PP
+When \f2pattern-list\^\fP is contained within parentheses,
+the backslash characta \f3\e\fP is treated specially even
+when inside a cold-ass lil characta class.   All ANSI-C characta escapes are
+recognized n' match tha specified character n' shit.  In addition
+the followin escape sequences is recognized:
+.PD 0
+.RS
+.TP
+.B \ed
+Matches any characta up in tha \f3digit\fP class.
+.TP
+.B \eD
+Matches any characta not up in tha \f3digit\fP class.
+.TP
+.B \es
+Matches any characta up in tha \f3space\fP class.
+.TP
+.B \eS
+Matches any characta not up in tha \f3space\fP class.
+.TP
+.B \ew
+Matches any characta up in tha \f3word\fP class.
+.TP
+.B \eW
+Matches any characta not up in tha \f3word\fP class.
+.PD
+.RE
+.PP
+A pattern of tha form
+\f3%(\fP\f2pattern-pair\^\fP(s)\f3)\fP
+is a sub-pattern that
+can be used ta match nested characta expressions.
+Each
+.I pattern-pair\^
+is a two characta sequence which cannot contain
+.B &
+or
+.BR \(bv .
+Da first
+.I pattern-pair\^
+specifies tha startin n' endin charactas fo' tha match.
+Each subsequent
+.I pattern-pair\^
+represents tha beginnin n' endin charactaz of a nested crew that
+will be skipped over when countin startin n' endin characta matches.
+Da behavior is unspecified when tha straight-up original gangsta characta of a
+.I pattern-pair\^
+is alpha-numeric
+except fo' tha following:
+.PD 0
+.RS
+.TP
+.B D
+Causes tha endin characta ta terminizzle tha search fo' dis pattern without
+findin a match.
+.TP
+.B E
+Causes tha endin characta ta be interpreted as a escape character.
+.TP
+.B L
+Causes tha endin characta ta be interpreted as a quote character
+causin all charactas ta be ignored when lookin fo' a match.
+.TP
+.B Q
+Causes tha endin characta ta be interpreted as a quote character
+causin all charactas other than any escape characta ta be ignored
+when lookin fo' a match.
+.PD
+.RE
+Thus,
+\f3%(\^{\^}Q"E\e\^)\fP,
+matches charactas startin at
+.B {
+until tha matching
+.B }
+is found not countin any
+.B {
+or
+.B }
+that is inside a thugged-out double quoted strang or preceded by tha escape character
+.BR \e .
+Without the
+.B {\^}
+this pattern matches any C language string.
+.PP
+Each sub-pattern up in a cold-ass lil composite pattern is numbered,
+startin at 1, by tha location of tha \f3(\fP within
+the pattern.
+Da sequence \f3\e\fP\f2n\^\fP, where \f2n\^\fP
+is a single digit n' \f3\e\fP\f2n\^\fP comes after
+the \f2n\fP-th. sub-pattern,
+matches tha same ol' dirty strang as tha sub-pattern itself.
+.PP
+Finally a pattern can contain sub-patternz of tha form
+\f3\(ap(\fP\f2options\^\fP\f3:\fP\f2pattern-list\^\fP\f3)\fP,
+where either \f2options\^\fP or \f3:\fP\f2pattern-list\^\fP
+can be omitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Unlike tha other compound patterns,
+these sub-patterns is not counted up in tha numbered sub-patterns.
+\f3:\fP\f2pattern-list\^\fP must be omitted fo' options
+.BR F ,
+.BR G ,
+.B N ,
+and
+.B V
+below.
+If \f2options\^\fP is present, it can consist of one or more
+of tha following:
+.PD 0
+.RS
+.TP
+.B +
+Enable tha followin options.  This is tha default.
+.TP
+.B \-
+Disable tha followin options.
+.TP
+.B E
+Da remainder of tha pattern uses extended regular expression syntax
+like the
+.IR egrep (1)
+command.
+.TP
+.B F
+Da remainder of tha pattern uses
+.IR fgrep (1)
+expression syntax.
+.TP
+.B G
+Da remainder of tha pattern uses basic regular expression syntax
+like the
+.IR grep (1)
+command.
+.TP
+.B K
+Da remainder of tha pattern uses shell pattern syntax.
+This is tha default.
+.TP
+.B N
+This is ignored. Y'all KNOW dat shit, muthafucka!  But fuck dat shiznit yo, tha word on tha street is dat when it is tha straight-up original gangsta letta n' is
+used wit file name generation, n' no matches occur,
+the file pattern expandz ta tha empty string.
+.TP
+.B X
+Da remainder of tha pattern uses augmented regular expression syntax
+like the
+.IR xgrep (1)
+command.
+.TP
+.B P
+Da remainder of tha pattern uses
+.IR perl (1)
+regular expression syntax.  Not all perl regular expression syntax is
+currently implemented.
+.TP
+.B V
+Da remainder of tha pattern uses System V regular expression syntax.
+.TP
+.B i
+Treat tha match as case insensitive.
+.TP
+.B g
+File tha longest match (greedy).  This is tha default.
+.TP
+.B l
+Left anchor tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch.  This is tha default for
+.B K
+style patterns.
+.TP
+.B r
+Right anchor tha pattern, so check it before ya wreck it. I aint talkin' bout chicken n' gravy biatch.  This is tha default for
+.B K
+style patterns.
+.PD
+.RE
+If both \f2options\^\fP n' \f3:\fP\f2pattern-list\^\fP
+are specified, then tha options apply only ta  \f2pattern-list\^\fP.
+Otherwise, these options remain up in effect until they is disabled
+by a subsequent \f3\(ap(\fP\f2...\^\fP\f3)\fP or all up in tha end of
+the sub-pattern containin \f3\(ap(\fP\f2...\^\fP\f3)\fP.
+.SS Quoting.
+Each of the
+.I metacharacters\^
+listed earlier (see
+.I Definitions\^
+above)
+has a special meanin ta tha shell
+and causes termination of a word unless quoted.
+A characta may be
+.I quoted\^
+(i.e., made ta stand fo' itself)
+by preceding
+it wit a
+.BR \e .
+Da pair
+.B \enew-line
+is removed.
+All charactas enclosed between a pair of single quote marks
+(\^\f3\(fm\^\(fm\fP\^)
+that aint preceded by a
+.B $
+are quoted.
+A single quote cannot step tha fuck up within tha single quotes.
+A single quoted strang preceded by a unquoted
+.B $
+is processed as a ANSI-C string
+except fo' tha following:
+.PD 0
+.TP
+.B \e0
+Causes tha remainder of tha strang ta be ignored.
+.TP
+.B \eE
+Equivalent ta tha escape character
+(ascii
+.BR 033 ),
+.TP
+.B \ee
+Equivalent ta tha escape character
+(ascii
+.BR 033 ),
+.TP
+.BI \ec x
+Expandz ta tha characta control-\f2x\fP.
+.TP
+.BI \eC[. name .]
+Expandz ta tha collatin element \f2name\fP.
+.PD
+.PP
+Inside double quote marks
+(\f3"\^"\fP),
+parameta n' command substitution occur and
+.B \e
+quotes tha characters
+.BR \e ,
+.BR \*` ,
+\f3"\fP,
+and
+.BR $ .
+A
+.B $
+in front of a thugged-out double quoted strang is ghon be ignored
+in tha "C" or "POSIX" locale, n' may cause
+the strang ta be replaced by a locale specific strang otherwise.
+Da meanin of
+.B "$\(**"
+and
+.B "$@"
+is identical when not quoted or when used as a variable assignment value
+or as a gangbangin' file name.
+But fuck dat shiznit yo, tha word on tha street is dat when used as a cold-ass lil command argument,
+.B
+"$\(**"
+is equivalent to
+\f3"$1\fP\f2d\fP\f3\|$2\fP\f2d\fP\|.\|.\|.\f3"\fP,
+where
+.I d
+is tha straight-up original gangsta characta of the
+.SM
+.B IFS
+variable, whereas
+.B
+"$@"
+is equivalent to
+.B
+"$1"\|
+.B
+"$2"\|
+\&.\|.\|.\^.
+Inside grave quote marks
+(\f3\*`\^\*`\fP),
+.B \e
+quotes tha characters
+.BR \e ,
+.BR \*` ,
+and
+.BR $ .
+If tha grave quotes occur within double quotes, then
+.B \e
+also quotes tha character
+\f3"\fP.
+.PP
+Da special meanin of reserved lyrics or aliases can be removed by quotin any
+characta of tha reserved word.
+Da recognizzle of function names or built-in command names listed below
+cannot be altered by quotin em.
+.SS Arithmetic Evaluation.
+Da shell performs arithmetic evaluation for
+arithmetic substitution, ta evaluate a arithmetic command,
+to evaluate a indexed array subscript,
+and ta evaluate arguments to
+the built-in commands
+.B shift\^
+and
+.BR let .
+Evaluations is performed using
+double precision floatin point
+arithmetic or long double precision floatin point for
+systems dat provide dis data type.
+Floatin point constants follow tha ANSI-C programmin language
+floatin point conventions.
+Da floatin point constants
+.B Nan
+and
+.B Inf
+can be use ta represent "not a number" n' infinitizzle respectively.
+Integer constants follow tha ANSI-C programmin language
+integer constant conventions although only single byte
+characta constants is recognized n' characta casts
+are not recognized.
+In addizzle constants can be of tha form
+\*(OK\f2base\f3#\^\f1\*(CK\f2n\^\fP
+where
+.I base\^
+is a thugged-out decimal number between two n' sixty-four
+representin tha arithmetic base
+and
+.I n\^
+is a number up in dat base.
+Da digits above 9 is represented
+by tha lower case letters, tha upper case letters,
+.BR @ ,
+and
+.B _
+respectively.
+For bases less than or equal ta 36, upper n' lower case
+charactas can be used interchangeably.
+.PP
+An arithmetic expression uses tha same ol' dirty syntax, precedence, and
+associativitizzle of
+expression as tha C language.
+All tha C language operators
+that apply ta floatin point quantitizzles can be used.
+In addition, tha operator
+.B **
+can be used fo' exponentiation.
+It has higher precedence than multiplication n' is left associative.
+In addition, when tha value of a arithmetic variable
+or sub-expression can be represented as a long-ass integer,
+all C language integer arithmetic operations can be performed.
+Variablez can be referenced by name within a arithmetic expression
+without rockin tha parameta expansion syntax.
+When a variable is referenced, its value is evaluated as
+an arithmetic expression.
+.PP
+Any of tha followin math library functions dat is up in tha C math library
+can be used within a arithmetic expression:
+.PP
+.if t .RS
+.B
+.if n abs acos acosh asin asinh atan atan2 atanh cbrt ceil copysign cos cosh erf erfc exp exp2 expm1 fabs fpclassify fdim finite floor fma fmax fmin fmod hypot ilogb int isfinite sinf isnan isnormal issubnormal issubordered iszero j0 j1 jn lgamma log log10 log2 logb nearbyint nextafta nexttoward pow remainder rint round scanb signbit sin sinh sqrt tan tanh tgamma trunc y0 y1 yn
+.if t abs   acos   acosh   asin   asinh   atan   atan2   atanh   cbrt   ceil copysign   cos   cosh   erf  erfc   exp   exp2   expm1   fabs   fpclassify fdim   finite   floor  fma   fmax   fmod   j0      j1      jn      hypot   ilogb   int   isfinite   isinf   isnan   isnormal  issubnormal   issubordered   iszero lgamma   log   log10 log2   logb   nearbyint   nextafta   nexttoward  pow   rint   round   scalb   signbit sin   sinh   sqrt   tan   tanh   tgamma   trunc   y0      y1      yn
+.if t .RE
+In addition, arithmetic functions can be define as shell functions wit a
+variant of the
+.B function
+.I name\^
+syntax,
+.TP
+.PD 0
+\f3function .sh.math.\fP\f2name ident\^\fP ... \f3{\fP \f2list\^\fP \f3;}\fP
+.PD
+where
+.I name\^
+is tha function name used up in tha arithmetic expression n' each identifier,
+.I ident\^
+is a name reference ta tha long double precision floatin point argument.
+Da value of
+.B .sh.value
+when tha function returns is tha value of dis function.
+User defined functions can take up ta 3 arguments n' override C math library
+functions.
+.PP
+An internal representation of a
+.I variable\^
+as a thugged-out double precision floatin point can be specified wit the
+\f3\-E\fP \*(OK\f2n\^\fP\*(CK,
+\f3\-F\fP \*(OK\f2n\^\fP\*(CK,
+or
+\f3\-X\fP \*(OK\f2n\^\fP\*(CK
+option of the
+.B typeset
+special built-in command.
+The
+.B \-E
+option causes tha expansion of tha value ta be represented using
+scientistical notation when it is expanded.
+Da optionizzle option argument
+.I n
+defines tha number of dope figures.
+The
+.B \-F
+option causes tha expansion ta be represented as a gangbangin' floatin decimal number
+when it is expanded.
+The
+.B \-X
+option cause tha expansion ta be represented rockin the
+.B %a
+format defined by ISO C-99.
+Da optionizzle option argument
+.I n
+defines tha number of places afta tha decimal (or radix) point up in dis case.
+.PP
+An internal integer representation of a
+.I variable\^
+can be specified wit the
+\f3\-i\fP \*(OK\f2n\^\fP\*(CK
+option of the
+.B typeset
+special built-in command.
+Da optionizzle option argument
+.I n
+specifies a arithmetic base ta be used when expandin tha variable.
+If you do not specify a arithmetic base,
+base 10 is ghon be used.
+.PP
+Arithmetic evaluation is performed on tha value of each
+assignment ta a variable wit the
+.BR \-E ,
+.BR \-F ,
+.BR \-X ,
+or
+.B \-i
+attribute.
+Assignin a gangbangin' floatin point number ta a
+variable whose type be a integer causes tha fractional
+part ta be truncated.
+.PP
+.SS Prompting.
+When used interactively,
+the shell prompts wit tha value of
+.SM
+.B PS1
+afta expandin it fo' parameta expansion, command substitution, and
+arithmetic substitution,
+before readin a cold-ass lil command.
+In addition, each single
+.B !
+in tha prompt is replaced by tha command number.
+A
+.B !!
+is required ta place
+.B !
+in tha prompt.
+If at any time a new-line is typed n' further input is needed
+to complete a cold-ass lil command, then tha secondary prompt
+(i.e., tha value of
+.BR \s-1PS2\s+1 )
+is issued.
+.SS Conditionizzle Expressions.
+A
+.I "conditionizzle expression"
+is used wit the
+.B [[
+compound command ta test attributez of filez n' ta compare
+strings.
+Field splittin n' file name generation are
+not performed on tha lyrics between
+.B [[
+and
+.BR ]] .
+Each expression can be constructed from one or more
+of tha followin unary or binary expressions:
+.PD 0
+.TP
+\f2string\fP
+True, if
+.I string
+is not null.
+.TP
+\f3\-a\fP \f2file\fP
+Same as \f3\-e\fP below.
+This is obsolete.
+.TP
+\f3\-b\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a funky-ass block special file.
+.TP
+\f3\-c\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a cold-ass lil characta special file.
+.TP
+\f3\-d\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a gangbangin' finger-lickin' directory.
+.TP
+\f3\-e\fP \f2file\fP
+True, if
+.I file\^
+exists.
+.TP
+\f3\-f\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a ordinary file.
+.TP
+\f3\-g\fP \f2file\fP
+True, if
+.I file\^
+exists n' it has its setgid bit set.
+.TP
+\f3\-k\fP \f2file\fP
+True, if
+.I file\^
+exists n' it has its sticky bit set.
+.TP
+\f3\-n\fP \f2string\fP
+True, if length of
+.I string\^
+is non-zero.
+.TP
+\f3\-o\fP \f3?\fP\f2option\fP
+True, if option named
+.I option\^
+is a valid option name.
+.TP
+\f3\-o\fP \f2option\fP
+True, if option named
+.I option\^
+is on.
+.TP
+\f3\-p\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a gangbangin' fifo special file or a pipe.
+.TP
+\f3\-r\fP \f2file\fP
+True, if
+.I file\^
+exists n' is readable by current process.
+.TP
+\f3\-s\fP \f2file\fP
+True, if
+.I file\^
+exists n' has size pimped outa than zero.
+.TP
+\f3\-t\fP \f2fildes\fP
+True, if file descriptor number
+.I fildes\^
+is open n' associated wit a terminal device.
+.TP
+\f3\-u\fP \f2file\fP
+True, if
+.I file\^
+exists n' it has its setuid bit set.
+.TP
+\f3\-v\fP \f2name\fP
+True, if variable
+.I name\^
+is a valid variable name n' is set.
+.TP
+\f3\-w\fP \f2file\fP
+True, if
+.I file\^
+exists n' is writable by current process.
+.TP
+\f3\-x\fP \f2file\fP
+True, if
+.I file\^
+exists n' is executable by current process.
+If
+.I file\^
+exists n' be a gangbangin' finger-lickin' directory, then legit if tha current process
+has permission ta search up in tha directory.
+.TP
+\f3\-z\fP \f2string\fP
+True, if length of
+.I string\^
+is zero.
+.TP
+\f3\-L\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a symbolic link.
+.TP
+\f3\-h\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a symbolic link.
+.TP
+\f3\-N\fP \f2file\fP
+True, if
+.I file\^
+exists n' tha modification time is pimped outa than tha last access time.
+.TP
+\f3\-O\fP \f2file\fP
+True, if
+.I file\^
+exists n' is owned by tha effectizzle user id of dis process.
+.TP
+\f3\-G\fP \f2file\fP
+True, if
+.I file\^
+exists n' its crew matches tha effectizzle crew id of dis process.
+.TP
+\f3\-R\fP \f2name\fP
+True if variable
+.I name\^
+is a name reference.
+.TP
+\f3\-S\fP \f2file\fP
+True, if
+.I file\^
+exists n' be a socket.
+.TP
+\f2file1\fP \f3\-nt\fP \f2file2\fP
+True, if
+.I file1\^
+exists and
+.I file2\^
+does not, or
+.I file1\^
+is newer than
+.IR file2 .
+.TP
+\f2file1\fP \f3\-ot\fP \f2file2\fP
+True, if
+.I file2\^
+exists and
+.I file1\^
+does not, or
+.I file1\^
+is olda than
+.IR file2 .
+.TP
+\f2file1\fP \f3\-ef\fP \f2file2\fP
+True, if
+.I file1\^
+and
+.I file2\^
+exist n' refer ta tha same file.
+.TP
+\f2string\fP \f3==\fP \f2pattern\fP
+True, if
+.I string\^
+matches
+.IR pattern .
+Any part of
+.I pattern\^
+can be quoted ta cause it ta be matched as a string.
+With a successful match ta a pattern, the
+.B .sh.match
+array variable will contain tha match n' sub-pattern matches.
+.TP
+\f2string\fP \f3=\fP \f2pattern\fP
+Same as \f3==\fP above yo, but is obsolete.
+.TP
+\f2string\fP \f3!=\fP \f2pattern\fP
+True, if
+.I string\^
+does not match
+.IR pattern .
+When the
+.I string\^
+matches the
+.I pattern\^
+the
+.B .sh.match
+array variable will contain tha match n' sub-pattern matches.
+.TP
+\f2string\fP \f3=\(ap\fP \f2ere\fP
+True if
+.I string\^
+matches tha pattern
+.BI \(ap(E) ere\^
+where
+.I ere\^
+is a extended regular expression.
+.TP
+\f2string1\fP \f3<\fP \f2string2\fP
+True, if
+.I string1\^
+comes before
+.I string2\^
+based on ASCII value of they characters.
+.TP
+\f2string1\fP \f3>\fP \f2string2\fP
+True, if
+.I string1\^
+comes after
+.I string2\^
+based on ASCII value of they characters.
+.PP
+Da followin obsolete arithmetic comparisons is also permitted:
+.PD 0
+.TP
+\f2exp1\fP \f3\-eq\fP \f2exp2\fP
+True, if
+.I exp1\^
+is equal to
+.IR exp2 .
+.TP
+\f2exp1\fP \f3\-ne\fP \f2exp2\fP
+True, if
+.I exp1\^
+is not equal to
+.IR exp2 .
+.TP
+\f2exp1\fP \f3\-lt\fP \f2exp2\fP
+True, if
+.I exp1\^
+is less than
+.IR exp2 .
+.TP
+\f2exp1\fP \f3\-gt\fP \f2exp2\fP
+True, if
+.I exp1\^
+is pimped outa than
+.IR exp2 .
+.TP
+\f2exp1\fP \f3\-le\fP \f2exp2\fP
+True, if
+.I exp1\^
+is less than or equal to
+.IR exp2 .
+.TP
+\f2exp1\fP \f3\-ge\fP \f2exp2\fP
+True, if
+.I exp1\^
+is pimped outa than or equal to
+.IR exp2 .
+.PD
+.PP
+In each of tha above expressions, if
+.I file\^
+iz of tha form
+\f3/dev/fd/\fP\f2n\fP,
+where
+.I n\^
+is a integer,
+then tha test be applied ta tha open file whose
+descriptor number is
+.IR n .
+.PP
+A compound expression can be constructed from these primitives by
+usin any of tha following, listed up in decreasin order of precedence.
+.PD 0
+.TP
+\f3(\fP\f2expression\fP\f3)\fP
+True, if
+.I expression\^
+is true.
+Used ta crew expressions.
+.TP
+\f3!\fP \f2expression\fP
+True if
+.I expression\^
+is false.
+.TP
+\f2expression1\fP \f3&&\fP \f2expression2\fP
+True, if
+.I expression1\^
+and
+.I expression2\^
+are both true.
+.TP
+\f2expression1\fP \f3\(bv\(bv\fP \f2expression2\fP
+True, if either
+.I expression1\^
+or
+.I expression2\^
+is true.
+.PD
+.SS Input/Output.
+Before a cold-ass lil command is executed, its input n' output
+may be repimped up rockin a special notation interpreted by tha shell.
+Da followin may step tha fuck up anywhere up in a simple-command
+or may precede or follow a
+.I command\^
+and are
+.I not\^
+passed on ta tha invoked command.
+Command substitution, parameta expansion,
+and arithmetic substitution occur before
+.I word\^
+or
+.I digit\^
+is used except as noted below.
+File name generation
+occurs only if tha shell is interactizzle and
+the pattern matches a single file.
+Field splittin aint performed.
+.PP
+In each of tha followin redirections, if
+.I file\^
+iz of tha form
+\f3/dev/sctp/\fP\f2host\fP\f3/\fP\f2port\fP,
+\f3/dev/tcp/\fP\f2host\fP\f3/\fP\f2port\fP,
+or
+\f3/dev/udp/\fP\f2host\fP\f3/\fP\f2port\fP,
+where
+.I host\^
+is a hostname or host address,
+and
+.I port\^
+is a steez given by name or a integer port number,
+then tha redirection attempts ta make a
+\f3tcp\fP, \f3sctp\fP or \f3udp\fP connection ta tha corresponding
+socket.
+.PP
+No intervenin space be allowed between tha charactaz of redirection operators.
+.TP 14
+.BI < word
+Use file
+.I word\^
+as standard input (file descriptor 0).
+.TP
+.BI > word
+Use file
+.I word\^
+as standard output (file descriptor 1).
+If tha file do not exist then it is pimped.
+If tha file exists, n' the
+.B noclobber
+option is on,
+this causes a error;
+otherwise, it is truncated ta zero length.
+.TP
+.BI >| word
+Same as
+.BR > ,
+except dat it overrides the
+.B noclobber
+option.
+.TP
+.BI >; word
+Write output ta a temporary file.  If tha command completes
+successfully rename it to
+.IR word  ,
+otherwise, delete tha temporary file.
+.BI >; word
+cannot be used wit the
+.IR exec (2).
+built-in.
+.TP
+.BI >> word
+Use file
+.I word\^
+as standard output.
+If tha file exists, then output be appended ta it (by first seekin ta tha end-of-file);
+otherwise, tha file is pimped.
+.TP
+.BI <> word
+Open file
+.I word\^
+for readin n' writing
+as standard output.
+.TP
+.BI <>; word
+Da same as
+.BI <> word
+except dat if tha command completes successfully,
+.I word\^
+is truncated ta tha offset at command completion.
+.BI <>; word
+cannot be used wit the
+.IR exec (2).
+built-in.
+.TP
+\f3<<\fP\*(OK\f3\-\fP\*(CK\f2word\fP
+Da shell input is read up ta a line dat is tha same ol' dirty as
+.IR word
+afta any quotin has been removed,
+or ta a end-of-file.
+No parameta substitution, command substitution, arithmetic substitution or
+file name generation is performed on
+.IR word .
+Da resultin document,
+called a
+.IR here-document ,
+becomes
+the standard input.
+If any characta of
+.I word\^
+is quoted, then no interpretation
+is placed upon tha charactaz of tha document;
+otherwise, parameta expansion, command substitution, n' arithmetic
+substitution occur,
+.B \enew-line
+is ignored,
+and
+.B \e
+must be used ta quote tha characters
+.BR \e ,
+.BR $ ,
+.BR \*` .
+If
+.B \-
+is appended to
+.BR << ,
+then all leadin tabs is stripped from
+.I word\^
+and from tha document.
+If
+.B #
+is appended to
+.BR << ,
+then leadin spaces n' tabs is ghon be stripped off tha first
+line of tha document n' up ta a equivalent indentation will
+be stripped from tha remainin lines n' from
+.IR word .
+A tab stop be assumed ta occur at every last muthafuckin 8 columns fo' the
+purposez of determinin tha indentation.
+.TP
+\f3<<<\fP\f2word\fP
+A short form of here document up in which \f2word\fP becomes the
+contentz of tha here-document afta any
+parameta expansion, command substitution, n' arithmetic
+substitution occur.
+.TP
+.BI <& digit
+Da standard input is duplicated from file descriptor
+.I digit
+(see
+.IR dup (2)).
+Similarly fo' tha standard output using
+\f3>&\^\f2digit\fR.
+.TP
+.BI <& digit \-
+Da file descriptor given by
+.I digit
+is moved ta standard input.
+Similarly fo' tha standard output using
+\f3>&\^\f2digit\f3\-\fR.
+.TP
+.B <&\-
+Da standard input is closed.
+Similarly fo' tha standard output using
+.BR >&\- .
+.TP
+.B <&p
+Da input from tha co-process is moved ta standard input.
+.TP
+.B >&p
+Da output ta tha co-process is moved ta standard output.
+.TP
+.BI <# \^\^\^  (( expr ))
+Evaluate arithmetic expression
+.I expr\^
+and posizzle file descriptor 0
+to tha resultin value
+bytes from tha start of tha file.
+Da variables
+.B CUR
+and
+.B EOF
+evaluate ta tha current offset n' end-of-file offset
+respectively when evaluating
+.IR expr.
+.TP
+.BI ># \^\^\^ (( offset ))
+Da same as
+.B <#
+except applies ta file descriptor 1.
+.TP
+.BI <# pattern
+Seeks forward ta tha beginnin of tha next line containing
+.IR pattern .
+.TP
+.BI <## pattern
+Da same as
+.B <#
+except dat tha portion of tha file dat is skipped is copied to
+standard output.
+.PP
+If one of tha above is preceded by a gangbangin' finger-lickin' digit,
+with no intervenin space, then the
+file descriptor number referred ta is dat specified
+by tha digit
+(instead of tha default 0 or 1).
+If one of tha above, other than
+.BR >&\-
+and the
+.B >#
+and
+.B <#
+forms,
+is preceded by
+.BI { varname }
+with no intervenin space,
+then a gangbangin' file descriptor number > 10
+will be selected by
+the shell n' stored up in tha variable
+.IR varname .
+If
+.B >&\-
+or tha any of the
+.B >#
+and
+.B <#
+forms
+is preceded by
+.BI { varname }
+the value of
+.I varname\^
+defines tha file descriptor ta close or position.
+For example:
+.PP
+.RS
+\fB\&.\|.\|. \|2>&1\fR
+.RE
+.PP
+means file descriptor 2 is ta be opened
+for freestylin as a thugged-out duplicate
+of file descriptor 1 and
+.PP
+.RS
+\fBexec {n}<file\fR
+.RE
+.PP
+means open file named
+.B file
+for readin n' store
+the file descriptor number up in variable
+.BR n .
+.PP
+Da order up in which redirections is specified is significant.
+Da shell evaluates each redirection up in termz of the
+.RI ( "file descriptor" ", " file )
+association all up in tha time of evaluation.
+For example:
+.PP
+.RS
+\fB\&.\|.\|. \|1>\f2fname\^\fP 2>&1\fR
+.RE
+.PP
+first associates file descriptor 1 wit file
+.IR fname\^ .
+It then associates file descriptor 2 wit tha file associated wit file
+descriptor 1 (i.e.
+.IR fname\^ ).
+If tha order of redirections was reversed, file descriptor 2 would be associated
+with tha terminal (assumin file descriptor 1 had been) n' then file descriptor
+1 would be associated wit file
+.IR fname\^ .
+.PP
+If a cold-ass lil command is followed by
+.B &
+and thang control aint active,
+then tha default standard input
+for tha command
+is tha empty file
+.BR /dev/null .
+Otherwise, tha environment fo' tha execution of a cold-ass lil command gotz nuff the
+file descriptorz of tha invokin shell as modified by
+input/output justifications.
+.SS Environment.
+The
+.I environment\^
+(see
+.IR environ (7))
+is a list of name-value pairs dat is passed to
+an executed program up in tha same way as a aiiight argument list.
+Da names must be
+.I identifiers\^
+and tha joints is characta strings.
+Da shell interacts wit tha environment up in nuff muthafuckin ways.
+On invocation, tha shell scans tha environment
+and creates a
+variable
+for each name found,
+givin it tha correspondin value n' attributes n' markin it
+.IR export .
+Executed commandz inherit tha environment.
+If tha user modifies tha jointz of these
+variables
+or creates freshly smoked up ones,
+usin the
+.B export
+or
+.B typeset \-x
+commands, they become part of the
+environment.
+Da environment peeped by any executed command is thus composed
+of any name-value pairs originally inherited by tha shell,
+whose joints may be modified by tha current shell,
+plus any additions
+which must be noted in
+.B export
+or
+.B typeset \-x
+commands.
+.PP
+Da environment fo' any
+.I simple-command\^
+or function
+may be augmented by prefixin it wit one or mo' variable assignments.
+A variable assignment argument be a word of tha form
+.IR identifier=value .
+Thus:
+.PP
+.RS
+\fB\s-1TERM\s+1=450 \|cmd \|args\fR				and
+.br
+\fB(export \|\s-1TERM\s+1; \|\s-1TERM\s+1=450; \|cmd \|args)\fR
+.RE
+.PP
+are equivalent (as far as tha above execution of
+.I cmd\^
+is concerned except fo' special built-in commandz listed below \-
+those dat are
+preceded wit a thugged-out dagger).
+.PP
+If tha obsolete
+.B \-k
+option is set,
+.I all\^
+variable assignment arguments is placed up in tha environment,
+even if they occur afta tha command name.
+Da following
+first prints
+.B "a=b c"
+and then
+.BR c :
+.PP
+.RS
+.nf
+.ft B
+echo \|a=b \|c
+set \|\-k
+echo \|a=b \|c
+.ft R
+.fi
+.RE
+This feature is intended fo' use wit scripts written
+for early versionz of tha shell n' its use up in freshly smoked up scripts
+is straight fuckin discouraged.
+It be likely ta disappear someday.
+.SS Functions.
+.PP
+For oldschool reasons, there be two
+ways ta define functions,
+the
+.IB name (\^)
+syntax and
+the
+.B function
+.I name\^
+syntax, busted lyrics bout up in the
+.I Commands
+section above.
+Shell functions is read up in n' stored internally.
+Alias names is resolved when tha function is read.
+Functions is executed like commandz wit tha arguments
+passed as positionizzle parameters.
+(See
+.I Execution
+below.)
+.PP
+Functions defined by the
+.B function
+.I name
+syntax n' called by name execute up in tha same process as tha calla and
+share all files
+and present hustlin directory wit the
+caller.
+Traps caught by tha calla is reset ta they default action
+inside tha function.
+A trap condizzle dat aint caught or ignored by the
+function causes tha function ta terminizzle n' tha condition
+to be passed on ta tha caller.
+A trap on
+.SM
+.B EXIT
+set inside a gangbangin' function
+is executed
+in tha environment
+of tha caller
+afta tha function completes.
+Ordinarily,
+variablez is shared between tha callin program
+and tha function.
+However,
+the
+.B typeset
+special built-in command used within a gangbangin' function
+defines local variablez whose scope includes
+the current function.
+They can be passed ta functions dat they call up in the
+variable assignment list dat precedes tha call or as arguments
+passed as name references.
+Errors within functions return control ta tha caller.
+.PP
+Functions defined wit the
+.IB name (\^)
+syntax n' functions defined wit the
+.B function
+.I name
+syntax dat is invoked wit tha \f3\s+2.\s-2\fP
+special built-in
+are executed up in tha caller's
+environment n' share all variables
+and traps wit tha caller.
+Errors within these function executions cause tha script dat gotz nuff
+them ta abort.
+.PP
+Da special built-in command
+.B return
+is used ta return
+from function calls.
+.PP
+Function names
+can be listed wit the
+.B \-f
+or
+.B +f
+option of the
+.B typeset
+special built-in command.
+Da text of functions, when available, will also
+be listed with
+.BR \-f .
+Functions can be undefined wit the
+.B \-f
+option of the
+.B unset
+special built-in command.
+.PP
+Ordinarily, functions is unset when tha shell executes a gangbangin' finger-lickin' dirty-ass shell script.
+Functions dat need ta be defined across separate
+invocationz of tha shell should
+be placed up in a gangbangin' finger-lickin' directory n' the
+.B
+.SM
+FPATH
+variable should contain tha name of dis directory.
+They may also
+be specified up in the
+.B
+.SM
+ENV
+file.
+.SS Discipline Functions.
+Each variable can have zero or mo' discipline functions
+associated wit dat shit.
+Da shell initially understandz tha discipline names \f3get\fP,
+\f3set\fP, \f3append\fP, n' \f3unset\fP but can be added
+when definin freshly smoked up types.  On most systems
+others can be added at run time via the
+C programmin intercourse extension provided by the
+.B builtin
+built-in utility.
+If tha \f3get\fP discipline is defined fo' a variable, it is invoked
+whenever tha given variable is referenced.
+If tha variable \f3.sh.value\fP be assigned a value inside
+the discipline function, tha referenced variable will evaluate
+to dis value instead.
+If tha \f3set\fP discipline is defined fo' a variable, it is invoked
+whenever tha given variable be assigned a value.
+If tha \f3append\fP discipline is defined fo' a variable, it is invoked
+whenever a value be appended ta tha given variable.
+Da variable \f3.sh.value\fP is given tha value
+of tha variable before invokin tha discipline, and
+the variable is ghon be assigned tha value of \f3.sh.value\fP
+afta tha discipline completes.
+If \f3.sh.value\fP is unset inside tha discipline, then
+that value is unchanged.
+If tha \f3unset\fP discipline is defined fo' a variable, it is invoked
+whenever tha given variable is unset.
+Da variable aint gonna be unset unless it is unset explicitly
+from within dis discipline function.
+.PP
+Da variable
+.B .sh.name
+gotz nuff tha name of tha variable fo' which tha discipline function is called,
+.B .sh.subscript
+is tha subscript of tha variable, and
+.B .sh.value
+will contain tha value bein assigned inside the
+.B set
+discipline function.
+Da variable
+.B _
+is a reference ta tha variable includin tha subscript if any.
+For tha \f3set\fP discipline,
+changing
+.B .sh.value
+will chizzle tha value dat gets assigned.
+Finally, tha expansion \f3${\fP\f2var\^\fP\f3.\fP\f2name\^\fP\f3}\fP,
+when \f2name\^\fP is tha name of a gangbangin' finger-lickin' discipline, n' there is
+no variable of dis name, is equivalent ta tha command substitution
+\f3${ \fP\f2var\^\fP\f3.\fP\f2name\^\fP\f3;}\fP.
+
+.SS Name Spaces.
+Commandz n' functions dat is executed as part of the
+.I list\^
+of a
+.B namespace
+command dat modify variablez or create freshly smoked up ones, create
+a freshly smoked up variable whose
+name is tha name of tha name space
+as given by
+.I identifier\^
+preceded by \fB\s+2.\s-2\fP.
+When a variable whose name is
+.I name\^
+is referenced, it is
+first searched for
+usin \fB\s+2.\s-2\fP\f2identifier\fP\fB\s+2.\s-2\fP\f2name\fP.
+Similarly, a gangbangin' function defined by a cold-ass lil command up in the
+.B namespace
+.I list\^
+is pimped rockin tha name space name  preceded by a \fB\s+2.\s-2\fP.
+.PP
+When  the
+.I list\^
+of a
+.B namespace
+command gotz nuff a
+.B namespace
+command, tha namez of variablez n' functions dat is pimped consist
+of tha variable or function name preceded by tha list of
+.IR identifier\^ s
+each preceded by \fB\s+2.\s-2\fP.
+.PP
+Outside of a name space, a variable or function pimped inside a
+name space can be referenced by precedin it wit tha name space name.
+.PP
+By default, variablez starin with
+\fB\s+2.\s-2sh\fP is up in the
+.B sh
+name space.
+
+.SS Type Variables.
+Typed variablez provide a way ta create data structure n' objects.
+A type can be defined either by a gangbangin' finger-lickin' dirty-ass shared library, by the
+.B enum
+built-in command busted lyrics bout below, or by rockin tha new
+.B \-T
+option of the
+.B typeset
+built-in command.
+With the
+.B \-T
+option of
+.BR typeset ,
+the type name, specified as a option argument to
+.BR \-T ,
+is set wit a cold-ass lil compound variable assignment dat defines tha type.
+Function definitions can step tha fuck up inside tha compound variable
+assignment n' these become discipline functions fo' dis type and
+can be invoked or redefined by each instizzle of tha type.
+Da function name
+.B create
+is treated specially.  It be invoked fo' each instizzle of
+the type dat is pimped but aint inherited n' cannot be
+redefined fo' each instance.
+.PP
+When a type is defined a special built-in command of dat name
+is added. Y'all KNOW dat shit, muthafucka!  These built-ins is declaration commandz n' follow the
+same expansion rulez as all tha special built-in commandz defined
+below dat is preceded by \(dg\(dg.  These commandz can subsequently
+be used inside further type definitions.  Da playa page fo' these commandz can
+be generated by rockin the
+.B \-\-man
+option or any of tha other
+.B \-\-
+options busted lyrics bout with
+.BR getopts .
+The
+.BR \-r ,
+.BR \-a ,
+.BR \-A ,
+.BR \-h ,
+and
+.B \-S
+options of
+.B typeset
+are permitted wit each of these freshly smoked up built-ins.
+.PP
+An instizzle of a type is pimped by invokin tha type name
+followed by one or mo' instizzle names.
+Each instizzle of tha type is initialized wit a cold-ass lil copy of tha sub-variables
+except fo' sub-variablez dat is defined wit the
+.B \-S
+option. I aint talkin' bout chicken n' gravy biatch.  Variablez defined wit the
+.B \-S
+are shared by all instancez of tha type.
+Each instizzle can chizzle tha value of any sub-variable n' can also
+define freshly smoked up discipline functionz of tha same names
+as dem defined by tha type definizzle as well as any
+standard discipline names.
+No additionizzle sub-variablez can be defined fo' any instance.
+.PP
+When definin a type,
+if tha value of a sub-variable aint set n' the
+.B \-r
+attribute is specified, it causes tha sub-variable
+to be a required sub-variable.
+Whenever a instizzle of a type is pimped, all required sub-variables
+must be specified.
+These sub-variablez become readonly up in each instance.
+.PP
+When
+.B unset
+is invoked on a sub-variable within a type,
+and the
+.B \-r
+attribute has not been specified fo' dis field,
+the value is reset ta tha default value associatizzle with
+the type.
+Invoking
+.B unset
+on a type instizzle not contained within another type deletes
+all sub-variablez n' tha variable itself.
+.PP
+A type definizzle can be derived from another type definition
+by definin tha straight-up original gangsta sub-variable name as
+.B _
+and definin its type as tha base type.
+Any remainin definitions is ghon be additions n' modifications
+that apply ta tha freshly smoked up type.
+If tha freshly smoked up type name is tha same ol' dirty is dat of tha base type,
+the type is ghon be replaced n' tha original gangsta type will
+no longer be accessible.
+.PP
+The
+.B typeset
+command wit the
+.B \-T
+and no option argument or operandz will write all tha type definitions to
+standard output up in a gangbangin' form dat that can be read up in ta create all they types.
+.SS Jobs.
+.PP
+If the
+.B monitor
+option of the
+.B set
+command is turned on,
+an interactizzle shell associates a \fIjob\fR wit each pipeline.
+It keeps
+a table of current thangs, printed by the
+.B thangs
+command, n' assigns dem lil' small-ass integer numbers.
+When a thang is started asynchronously with
+.BR & ,
+the shell prints a line which looks
+like:
+.PP
+.DT
+	[1] 1234
+.PP
+indicatin dat tha thang which was started asynchronously was thang number
+1 n' had one (top-level) process, whose process id was 1234.
+.PP
+This paragraph n' tha next require features dat are
+not up in all versionz of UNIX n' may not apply.
+If yo ass is hustlin a thang n' wish ta do suttin' else you may hit tha key
+\fB^Z\fR (control-Z) which sendz a STOP signal ta tha current thang.
+Da shell will then normally indicate dat tha thang has been `Stopped',
+and print another prompt.
+Yo ass can then manipulate tha state of dis thang,
+puttin it up in tha background wit the
+.B bg
+command, or run some other
+commandz n' then eventually brang tha thang back tha fuck into tha foreground with
+the foreground command
+.BR fg .
+A \fB^Z\fR takes effect immediately and
+is like a interrupt up in dat pendin output n' unread input is discarded
+when it is typed.
+.PP
+A thang bein run up in tha background will stop if it tries ta read
+from tha terminal.
+Background thangs is normally allowed ta produce output,
+but dis can be disabled by givin tha command
+.BR "stty tostop" .
+If you set this
+tty option, then background thangs will stop when they try ta produce
+output like they do when they try ta read input.
+.PP
+A thang pool be a cold-ass lil collection of thangs started with
+.I list\^
+.B &
+associated wit a name.
+.PP
+There is nuff muthafuckin ways ta refer ta thangs up in tha shell.
+A thang can be referred ta by tha process id of any process of tha thang
+or by one of tha following:
+.PD 0
+.TP
+.BI % number
+Da thang wit tha given number.
+.TP
+.I  pool\^
+All tha thangs up in tha thang pool named by
+.IR pool .
+.TP
+.IB  pool . number
+Da thang number
+.I number\^
+in tha thang pool named by
+.IR pool .
+.TP
+.BI % string
+Any thang whose command line begins with
+.IR strang .
+.TP
+.BI %, biatch? string
+Any thang whose command line gotz nuff
+.IR strang .
+.TP
+.BI %%
+Current thang.
+.TP
+.BI %+
+Equivalent to
+.BR %% .
+.TP
+.BI %\-
+Previous thang.
+.PD
+In addition, unless noted otherwise, wherever a thang can be specified,
+the name of a funky-ass background thang pool can be used ta represent all the
+jobs up in dat pool.
+.PP
+Da shell learns immediately whenever a process chizzlez state.
+It normally informs you whenever a thang becomes blocked so that
+no further progress is possible yo, but only just before it prints
+a prompt.
+This is done so dat it do not otherwise disturb yo' work.
+The
+.B notify
+option of the
+.B set
+command causes
+the shell ta print these thang chizzle lyrics
+as soon as they occur.
+.PP
+When the
+.B monitor
+option is on, each background thang dat completes
+triggers any trap set for
+.BR CHLD .
+.PP
+When you try ta leave tha shell while thangs is hustlin or stopped, you will
+be warned dat `Yo ass have stopped(running) thangs.'
+Yo ass may use the
+.B thangs
+command ta peep what tha fuck they are.
+If you immediately try to
+exit again, tha shell aint gonna warn you a second time, n' tha stopped
+jobs is ghon be terminated.
+When a login shell receives a HUP signal, it sends
+a HUP signal ta each thang dat has not been disowned wit the
+.B disown
+built-in command busted lyrics bout below.
+.SS Signals.
+Da \s-1INT\s+1 n' \s-1QUIT\s+1 signals fo' a invoked
+command is ignored if tha command is followed by
+.B &
+and the
+.B monitor
+option be active.
+Otherwise, signals have tha joints
+inherited by tha shell from its parent
+(but peep also
+the
+.B trap
+built-in command below).
+.SS Execution.
+Each time a cold-ass lil command is read, tha above substitutions
+are carried out.
+If tha command name matches one
+of the
+.I "Special Built-in Commands\^"
+listed below,
+it is executed within the
+current shell process.
+Next, tha command name is checked ta peep if
+it matches a user defined function.
+If it do,
+the positionizzle parametas is saved
+and then reset ta tha argumentz of the
+.I function\^
+call.
+A function be also executed up in the
+current shell process.
+When the
+.I function\^
+completes or thangs a
+.BR return ,
+the positionizzle parameta list is restored.
+For functions defined wit the
+.B function
+.I name\^
+syntax,
+any trap set on
+.SM
+.B EXIT
+within tha function is executed.
+Da exit value of a
+.I function\^
+is tha value of tha last command executed.
+If a cold-ass lil command name aint a
+.I "special built-in command\^"
+or a user defined
+.IR function ,
+but it is one of tha built-in commandz listed below,
+it is executed up in tha current shell process.
+.PP
+Da shell variables
+.B
+.SM PATH
+followed by tha variable
+.B
+.SM FPATH
+defines tha list of directories to
+search fo' tha command name.
+Alternatizzle directory names is separated by
+a colon
+.RB ( : ).
+Da default path is equal to
+.BI getconf\ PATH
+output.
+Da current directory can be specified by
+two or mo' adjacent colons, or by a cold-ass lil colon
+at tha beginnin or end of tha path list.
+If tha command name gotz nuff a \f3/\fP, then tha search path
+is not used.
+Otherwise, each directory up in tha list of directories defined by
+.B
+.SM PATH
+and
+.B
+.SM FPATH
+is checked up in order.
+If tha directory bein searched is contained in
+.B
+.SM FPATH
+and gotz nuff a gangbangin' file whose name matches tha command bein searched,
+then dis file is loaded tha fuck into tha current shell environment
+as if it was tha argument ta tha \fB.\fP command
+except dat only preset aliases is expanded,
+and a gangbangin' function of tha given name is executed
+as busted lyrics bout above.
+.P
+If dis directory aint in
+.B
+.SM FPATH
+the shell first
+determines whether there be a funky-ass built-in version
+of a cold-ass lil command correspondin ta a given pathname n' if so
+it is invoked up in tha current process.
+If no built-in is found, tha shell checks fo' a gangbangin' file named
+.B .paths
+in dis directory.
+If found n' there be a line of tha form
+.BI FPATH= path
+where
+.I path\^
+names an
+existin directory
+then dat directory is searched afta immediately afta tha current directory
+as if it was found up in the
+.B
+.SM FPATH
+variable.
+If
+.I path\^
+does not begin wit /, it is checked fo' relatizzle ta tha directory
+bein searched.
+.P
+The
+.B .paths
+file is then checked  fo' a line of tha form
+.BI PLUGIN_LIB= libname
+\*(OK \f3:\fP \f2libname\^\fP \*(CK .\|.\|. .
+Each library named by
+.I libname\^
+will be searched fo' as if it was a option argument to
+.BR "builtin -f" ,
+and if it gotz nuff a funky-ass built-in of tha specified name
+this is ghon be executed instead of a cold-ass lil command by dis name.
+Any built-in loaded from a library found dis way is ghon be associated
+with tha directory containin the
+.B .paths
+file so it will only execute if not found up in a earlier directory.
+.P
+Finally, tha directory is ghon be checked fo' a gangbangin' file of tha given name.
+If tha file has execute permission but aint an
+.B a.out
+file,
+it be assumed ta be a gangbangin' file containin shell commands.
+A separate shell is spawned ta read dat shit.
+All non-exported variablez is removed up in dis case.
+If tha shell command
+file aint gots read permission,
+or if the
+.I setuid
+and/or
+.I setgid
+bits is set on tha file,
+then tha shell executes a agent whose thang it is to
+set up tha permissions n' execute tha shell wit the
+shell command file passed down as a open file.
+If the
+.B .paths
+gotz nuff a line of tha form
+.IB name\^ = value\^
+in tha straight-up original gangsta or second line, then tha environment variable
+.I name\^
+is modified by prependin tha directory specified by
+.I value\^
+to tha directory list.
+If
+.I value\^
+is not a absolute directory, then it
+specifies a gangbangin' finger-lickin' directory relatizzle ta tha directory dat the
+executable was found.
+If tha environment variable
+.I name\^
+does not already exist it is ghon be added ta tha environment
+list fo' tha specified command.
+A parenthesized command is executed in
+a sub-shell without removin non-exported variables.
+.SS Command Re-entry.
+Da text of tha last
+.B
+.SM
+HISTSIZE
+(default 512)
+commandz entered from a terminal device
+is saved up in a
+.I history
+file.
+Da file
+.B \s-1$HOME\s+1/.sh_history
+is used if the
+.B
+.SM
+HISTFILE
+variable aint set
+or if tha file it names aint writable.
+A shell can access tha commandz of
+all
+.I interactive
+shells which use tha same named
+.SM
+.BR HISTFILE .
+Da built-in command
+.B hist\^
+is used ta list or
+edit a portion of dis file.
+Da portion of tha file ta be edited or listed can be selected by
+number or by givin tha straight-up original gangsta characta or
+charactaz of tha command.
+A single command or range of commandz can be specified.
+If you do not specify a editor program as
+an argument to
+.B hist\^
+then tha value of tha variable
+.SM
+.B HISTEDIT
+is used.
+If
+.SM
+.B HISTEDIT
+is unset, tha obsolete variable
+.SM
+.B FCEDIT
+is used.
+If
+.SM
+.B FCEDIT
+is not defined, then
+.B /bin/ed
+is used.
+Da edited command(s) is printed n' re-executed upon
+leavin tha editor unless you quit without writing.
+The
+.B \-s
+option
+(and up in obsolete versions, tha editor name
+.BR \-\^ )
+is used ta skip tha editin phase and
+to re-execute tha command.
+In dis case a substitution parameta of tha form
+\f2old\fP\f3=\fP\f2new\fP
+can be used ta modify tha command before execution.
+For example, wit tha preset alias
+.BR r ,
+which be aliased to
+.BR "\(fmhist \-s\(fm" ,
+typing
+`\f3r bad=phat c\fP'
+will re-execute da most thugged-out recent command which starts wit tha letter
+.BR c ,
+replacin tha straight-up original gangsta occurrence of tha string
+.B bad
+with tha string
+.BR phat .
+.SS In-line Editin Options.
+Normally, each command line entered from a terminal thang is simply
+typed followed by a \f3new-line\fP (`RETURN' or `LINE\ FEED').
+If either the
+.BR emacs ,
+.BR gmacs ,
+or
+.B vi
+option be active, tha user can edit tha command line.
+To be up in either of these edit modes
+.B set
+the corresponding
+option.
+An editin option be automatically selected each time the
+.SM
+.B VISUAL
+or
+.SM
+.B EDITOR
+variable be assigned a value endin up in either of these
+option names.
+.PP
+Da editin features require dat tha userz terminal
+accept `RETURN' as carriage return without line feed
+and dat a space (`\ ') must overwrite tha current characta on
+the screen.
+.PP
+Unless the
+.B multiline
+option is on,
+the editin modes implement a cold-ass lil concept where tha user is lookin all up in a
+window all up in tha current line.
+Da window width is tha value of
+.SM
+.B COLUMNS
+if it is defined, otherwise 80.
+If tha window width is too lil' small-ass ta display tha prompt n' leave
+at least 8 columns ta enta input, tha prompt is truncated from the
+left.
+If tha line is longer than tha window width minus two, a mark is
+displayed all up in tha end of tha window ta notify tha user.
+As tha cursor moves n' reaches tha window boundaries tha window will be
+centered bout tha cursor.
+Da mark be a
+.BR > " (<" ,
+.BR * )
+if tha line extendz on the
+right (left, both) side(s) of tha window.
+.PP
+Da search commandz up in each edit mode provide access ta tha history file.
+Only strings is matched, not patterns, although a leading
+.B ^
+in tha strang restricts tha match
+to begin all up in tha straight-up original gangsta characta up in tha line.
+.PP
+Each of tha edit modes has a operation ta list tha files
+or commandz dat match a partially entered word.
+When applied ta tha straight-up original gangsta word on tha line,
+or tha straight-up original gangsta word afta a
+.BR ; ,
+.BR \(bv ,
+.BR & ,
+or
+.BR ( ,
+and tha word do not begin with
+.B \(ap
+or contain a
+.BR / ,
+the list of aliases, functions, n' executable commands
+defined by the
+.B
+.SM PATH
+variable dat could match tha partial word is displayed.
+Otherwise, tha list of filez dat match tha given
+word is displayed.
+If tha partially entered word do not contain any
+file expansion characters, a
+.B *
+is appended before generatin these lists.
+Afta displayin tha generated list, tha input line
+is redrawn.
+These operations is called command name listin n' file name listing,
+respectively.
+There is additionizzle operations, referred ta as command name
+completion n' file name completion, which compute tha list
+of matchin commandz or filez yo, but instead of printin tha list,
+replace
+the current word wit a cold-ass lil complete or partial match.
+For file name completion,
+if tha match is unique, a
+.B /
+is appended if tha file be a gangbangin' finger-lickin' directory n' a space is
+appended if tha file aint a gangbangin' finger-lickin' directory.
+Otherwise, tha longest common prefix fo' all tha matching
+filez replaces tha word.
+For command name completion, only tha portion of tha file names
+afta tha last
+.B /
+are used ta find tha longest command prefix.
+If only a single name matches dis prefix, then the
+word is replaced wit tha command name followed by a space.
+When rockin a
+.I tab\^
+for completion dat do not yield a unique match,
+a subsequent
+.I tab\^
+will provide a numbered list of matchin alternatives.
+A specific selection can be made by enterin the
+selection number followed by a
+.IR tab .
+.SS Key Bindings.
+The
+.B
+.SM KEYBD
+trap can be used ta intercept keys as they is typed
+and chizzle tha charactas dat is straight-up peeped by
+the shell.
+This trap is executed afta each character
+(or sequence of charactas when tha straight-up original gangsta characta is ESC)
+is entered while readin from a terminal.
+Da variable
+.B .sh.edchar
+gotz nuff tha characta or characta sequence which
+generated tha trap.
+Changin tha value of
+.B .sh.edchar
+in tha trap action causes tha shell ta behave as if the
+new value was entered from tha keyboard rather than
+the original gangsta value.
+.PP
+Da variable
+.B .sh.edcol
+is set ta tha input column number of tha cursor all up in tha time
+of tha input.
+Da variable
+.B .sh.edmode
+is set to
+ESC
+when in
+.B vi
+insert mode (see below) n' is null otherwise.
+By prepending
+.B ${.sh.editmode}
+to a value assigned to
+.B .sh.edchar
+it will cause tha shell
+to chizzle ta control mode if it aint already up in dis mode.
+.PP
+This trap aint invoked fo' charactas entered as arguments to
+editin directives, or while readin input fo' a cold-ass lil characta search.
+.SS Emacs Editin Mode.
+This mode is entered by enablin either the
+.B emacs
+or
+.B gmacs
+option.
+Da only difference between these two modes is tha way
+they handle
+.BR ^T .
+To edit, tha user
+moves tha cursor ta tha point needin erection and
+then bangs or deletes charactas or lyrics as needed.
+All tha editin commandz is control charactas or escape
+sequences.
+Da notation fo' control charactas is caret
+.RB ( ^ )
+followed
+by tha character.
+For example,
+.B ^F
+is tha notation fo' control
+.BR F .
+This is entered by wack `f' while holdin down the
+`CTRL' (control) key.
+Da `SHIFT' key is
+.I not
+depressed.
+(Da notation
+.B ^?
+indicates tha DEL (delete) key.)
+.PP
+Da notation fo' escape sequences is
+.B M-
+followed by a
+character.
+For example,
+.B M-f
+(pronounced Meta f)
+is entered by wack ESC
+(ascii
+.BR 033 )
+followed by `f'.
+.RB ( M-F
+would be tha notation fo' ESC followed by `SHIFT' (capital) `F'.)
+.PP
+All edit commands
+operate from any place on tha line
+(not just all up in tha beginning).
+Neither tha `RETURN' nor tha `LINE FEED' key is
+entered afta edit commandz except when noted.
+.PP
+.PD 0
+.TP 10
+.BI ^F
+Move cursor forward (right) one character.
+.PP
+.TP 10
+.BI M-[C
+Move cursor forward (right) one character.
+.PP
+.TP 10
+.BI M-f
+Move cursor forward one word.
+(The
+.B emacs
+editorz scam of a word be a strang of characters
+consistin of only letters, digits n' underscores.)
+.PP
+.TP 10
+.BI ^B
+Move cursor backward (left) one character.
+.PP
+.TP 10
+.BI M-[D
+Move cursor backward (left) one character.
+.PP
+.TP 10
+.BI M-b
+Move cursor backward one word.
+.PP
+.TP 10
+.BI ^A
+Move cursor ta start of line.
+.PP
+.TP 10
+.BI M-[H
+Move cursor ta start of line.
+.PP
+.TP 10
+.BI ^E
+Move cursor ta end of line.
+.PP
+.TP 10
+.BI M-[Y
+Move cursor ta end of line.
+.PP
+.TP 10
+.BI ^] char
+Move cursor forward ta character
+.I char
+on current line.
+.PP
+.TP 10
+.BI M-^] char
+Move cursor backward ta character
+.I char
+on current line.
+.PP
+.TP 10
+.BI ^X^X
+Interchange tha cursor n' mark.
+.PP
+.TP 10
+.I erase
+(User defined erase characta as defined
+by the
+.IR stty (1)
+command, usually
+.B ^H
+or
+.BR # .)
+Delete previous character.
+.PP
+.TP 10
+.I lnext
+(User defined literal next characta as defined
+by the
+.IR stty (1)
+command,
+or
+.B ^V
+if not defined.)
+Removes tha next character's
+editin features (if any).
+.PP
+.TP 10
+.BI ^D
+Delete current character.
+.PP
+.TP 10
+.BI M-d
+Delete current word.
+.PP
+.TP 10
+.BI M-^H
+(Meta-backspace) Delete previous word.
+.PP
+.TP 10
+.BI M-h
+Delete previous word.
+.PP
+.TP 10
+.BI M-^?
+(Meta-DEL) Delete previous word (if yo' interrupt characta is
+.B ^?
+(DEL, tha default) then dis command aint gonna work).
+.PP
+.TP 10
+.BI ^T
+Transpose current characta wit previous character
+and advizzle tha cursor
+in
+.I emacs
+mode.
+Transpose two previous charactas in
+.I gmacs
+mode.
+.PP
+.TP 10
+.BI ^C
+Capitalize current character.
+.PP
+.TP 10
+.BI M-c
+Capitalize current word.
+.PP
+.TP 10
+.BI M-l
+Change tha current word ta lower case.
+.PP
+.TP 10
+.BI ^K
+Delete from tha cursor ta tha end of tha line.
+If preceded by a numerical parameta whose value is less than the
+current cursor position, then delete from given position
+up ta tha cursor.
+If preceded by a numerical parameta whose value is pimped outa than the
+current cursor position, then delete from cursor up to
+given cursor position.
+.PP
+.TP 10
+.BI ^W
+Bust a cap up in from tha cursor ta tha mark.
+.PP
+.TP 10
+.BI M-p
+Push tha region from tha cursor ta tha mark on tha stack.
+.PP
+.TP 10
+.I kill
+(User defined bust a cap up in characta as defined
+by tha stty command, usually
+.B ^G
+or
+.BR @ .)
+Bust a cap up in tha entire current line.
+If two
+.I kill
+charactas is entered up in succession, all
+kill charactas from then on cause a line feed
+(useful when rockin paper terminals).
+.PP
+.TP 10
+.BI ^Y
+Restore last item removed from line. (Yank item back ta tha line.)
+.PP
+.TP 10
+.BI ^L
+Line feed n' print current line.
+.PP
+.TP 10
+.BI M-^L
+Clear tha screen.
+.PP
+.TP 10
+.BI ^@
+(Null character) Set mark.
+.PP
+.TP 10
+.BI M- space
+(Meta space) Set mark.
+.PP
+.TP 10
+.BI ^J
+(New\ line) Execute tha current line.
+.PP
+.TP 10
+.BI ^M
+(Return) Execute tha current line.
+.PP
+.TP 10
+.I eof
+End-of-file character,
+normally
+.BR ^D ,
+is processed as a End-of-file only
+if tha current line is null.
+.PP
+.TP 10
+.BI ^P
+Fetch previous command.
+Each time
+.B ^P
+is entered
+the previous command back up in time be accessed.
+Moves back one line when not on tha straight-up original gangsta line of a multi-line command.
+.PP
+.TP 10
+.BI M-[A
+If tha cursor be all up in tha end of tha line, it is equivalent to
+.B ^R
+with
+.I string\^
+set ta tha contentz of tha current line.
+Otherwise, it is
+equivalent to
+.BR ^P.
+.PP
+.TP 10
+.BI M-<
+Fetch tha least recent (oldest) history line.
+.PP
+.TP 10
+.BI M->
+Fetch da most thugged-out recent (youngest) history line.
+.PP
+.TP 10
+.BI ^N
+Fetch next command line.
+Each time
+.B ^N
+is entered
+the next command line forward up in time be accessed.
+.PP
+.TP 10
+.BI M-[B
+Equivalent to
+.BR ^N.
+.PP
+.TP 10
+.BI ^R string
+Reverse search history fo' a previous command line containing
+.IR strang .
+If a parameta of zero is given, tha search is forward.
+.I String
+is terminated by a `RETURN' or `NEW\ LINE'.
+If strang is preceded by a
+.BR ^ ,
+the matched line must begin with
+.IR strang .
+If
+.I string
+is omitted,
+then tha next command line containin da most thugged-out recent
+.I string
+is accessed.
+In dis case a parameta of zero
+reverses tha direction of tha search.
+.PP
+.TP 10
+.B ^O
+Operate \- Execute tha current line n' fetch
+the next line relatizzle ta current line from the
+history file.
+.PP
+.TP 10
+.BI M- digits
+(Escape) Define numeric parameter, tha digits
+are taken as a parameta ta tha next command.
+Da commandz dat accept a parameta are
+.BR ^F ,
+.BR ^B ,
+.IR erase ,
+.BR ^C ,
+.BR ^D ,
+.BR ^K ,
+.BR ^R ,
+.BR ^P ,
+.BR ^N ,
+.BR ^] ,
+.BR M-. ,
+.BR M-^] ,
+.BR M-_ ,
+.BR M-= ,
+.BR M-b ,
+.BR M-c ,
+.BR M-d ,
+.BR M-f ,
+.BR M-h ,
+.B M-l
+and
+.BR M-^H .
+.PP
+.TP 10
+.BI M- letter
+Soft-key \- Yo crazy-ass alias list is searched fo' an
+alias by tha name
+.BI _ letter
+and if a aliaz of dis name is defined, its
+value is ghon be banged on tha input queue.
+The
+.I letter
+must not be one of tha above meta-functions.
+.PP
+.TP 10
+.BI M-[ letter
+Soft-key \- Yo crazy-ass alias list is searched fo' an
+alias by tha name
+.BI _\&_ letter
+and if a aliaz of dis name is defined, its
+value is ghon be banged on tha input queue.
+This can be used ta program function keys on nuff terminals.
+.PP
+.TP 10
+.B M-.
+Da last word of tha previous command is inserted
+on tha line.
+If preceded by a numeric parameter, tha value
+of dis parameta determines which word ta bang rather than
+the last word.
+.PP
+.TP 10
+.B M-_
+Same as
+.BR M-. .
+.PP
+.TP 10
+.B M-*
+Attempt file name generation on tha current word.
+An asterisk be appended if tha word don't match any file
+or contain any special
+pattern characters.
+.PP
+.TP 10
+.B M-ESC
+Command or file name completion as busted lyrics bout above.
+.PP
+.TP 10
+.BI ^I " tab"
+Attempts command or file name completion as busted lyrics bout above.
+If a partial completion occurs, repeatin dis will
+behave as if
+.B M-=
+were entered.
+If no match is found or entered after
+.IR space\^ ,
+a
+.I tab\^
+is inserted.
+.PP
+.TP 10
+.B M-=
+If not preceded by a numeric parameter,
+it generates tha list of matchin commandz or
+file names as busted lyrics bout above.
+Otherwise, tha word under tha cursor is replaced by
+the item correspondin ta tha value of tha numeric parameter
+from da most thugged-out recently generated command or file list.
+If tha cursor aint on a word, it is banged instead.
+.PP
+.TP 10
+.BI ^U
+Multiply parameta of next command by 4.
+.PP
+.TP 10
+.BI \e
+Escape next character.
+Editin characters, tha userz erase, bust a cap up in and
+interrupt (normally
+.BR ^, biatch? )
+characters
+may be entered
+in a cold-ass lil command line or up in a search strang if preceded by a
+.BR \e .
+The
+.B \e
+removes tha next character's
+editin features (if any).
+.PP
+.TP 10
+.B M-^V
+Display version of tha shell.
+.PP
+.TP 10
+.B M-#
+If tha line do not begin wit a
+.BR # ,
+a
+.B #
+is inserted
+at tha beginnin of tha line
+and afta each new-line,
+and tha line is entered.
+This causes a cold-ass lil comment ta be banged up in tha history file.
+If tha line begins wit a
+.BR # ,
+the
+.B #
+is deleted n' one
+.B #
+afta each new-line be also deleted.
+.PD
+.SS Vi Editin Mode.
+There is two typin modes.
+Initially, when you enta a cold-ass lil command yo ass is up in the
+.I input\^
+mode.
+To edit, tha user enters
+.I control\^
+mode by typin ESC
+.RB ( 033 )
+and moves tha cursor ta tha point needin erection and
+then bangs or deletes charactas or lyrics as needed.
+Most control commandz accept a optionizzle repeat
+.I count
+prior ta tha command.
+.PP
+When in
+.B vi
+mode on most systems,
+canonical processin is initially enabled n' the
+command is ghon be echoed again n' again n' again if tha speed is 1200 baud or pimped outa n' it
+gotz nuff any control charactas or less than one second has elapsed
+since tha prompt was printed.
+Da ESC characta terminates canonical processin fo' tha remainder of tha command
+and tha user can then modify tha command line.
+This scheme has tha advantagez of canonical processin wit tha type-ahead
+echoin of raw mode.
+.PP
+If tha option
+.B viraw
+is also set, tha terminal will always have canonical processing
+disabled.
+This mode is implicit fo' systems dat do not support two
+alternate end of line delimiters,
+and may be helpful fo' certain terminals.
+.SS "\ \ \ \ \ Input Edit Commands"
+.PP
+.RS
+By default tha editor is up in input mode.
+.PD 0
+.TP 10
+.I erase
+(User defined erase characta as defined
+by tha stty command, usually
+.B ^H
+or
+.BR # .)
+Delete previous character.
+.TP 10
+.BI ^W
+Delete tha previous blank separated word.
+On some systems tha \f3viraw\fP option
+may be required fo' dis ta work.
+.TP 10
+.I eof
+As tha straight-up original gangsta characta of tha line causes
+the shell ta terminizzle unless tha \f3ignoreeof\fP
+option is set.
+Otherwise dis characta is ignored.
+.TP 10
+.I lnext
+(User defined literal next characta as defined
+by the
+.IR stty (1)
+or
+.B ^V
+if not defined.)
+Removes tha next character's
+editin features (if any).
+On some systems tha \f3viraw\fP option
+may be required fo' dis ta work.
+.TP 10
+.BI \e
+Escape tha next
+.I erase
+or
+.I kill
+character.
+.TP 10
+.BI ^I  " tab"
+Attempts command or file name completion as busted lyrics bout above
+and returns ta input mode.
+If a partial completion occurs, repeatin dis will
+behave as if
+.B =
+were entered from control mode.
+If no match is found or entered after
+.IR space\^ ,
+a
+.I tab\^
+is inserted.
+.RE
+.SS "\ \ \ \ \ Motion Edit Commands"
+.RS
+These commandz will move tha cursor.
+.TP 10
+[\f2count\fP]\f3l\fP
+Cursor forward (right) one character.
+.TP 10
+[\f2count\fP]\f3[C\fP
+Cursor forward (right) one character.
+.TP 10
+[\f2count\fP]\f3w\fP
+Cursor forward one alpha-numeric word.
+.TP 10
+[\f2count\fP]\f3W\fP
+Cursor ta tha beginnin of tha next word dat bigs up a funky-ass blank.
+.TP 10
+[\f2count\fP]\f3e\fP
+Cursor ta end of word.
+.TP 10
+[\f2count\fP]\f3E\fP
+Cursor ta end of tha current blank delimited word.
+.TP 10
+[\f2count\fP]\f3h\fP
+Cursor backward (left) one character.
+.TP 10
+[\f2count\fP]\f3[D\fP
+Cursor backward (left) one character.
+.TP 10
+[\f2count\fP]\f3b\fP
+Cursor backward one word.
+.TP 10
+[\f2count\fP]\f3B\fP
+Cursor ta precedin blank separated word.
+.TP 10
+[\f2count\fP]\f3\(bv\fP
+Cursor ta column
+.IR count .
+.TP 10
+[\f2count\fP]\f3f\fP\f2c\fP
+Find tha next characta \fIc\fP up in tha current line.
+.TP 10
+[\f2count\fP]\f3F\fP\f2c\fP
+Find tha previous characta \fIc\fP up in tha current line.
+.TP 10
+[\f2count\fP]\f3t\fP\f2c\fP
+Equivalent to
+.B f
+followed by
+.BR h .
+.TP 10
+[\f2count\fP]\f3T\fP\f2c\fP
+Equivalent to
+.B F
+followed by
+.BR l .
+.TP 10
+[\f2count\fP]\f3;\fP
+Repeats
+.I count
+times,
+the last single characta find command,
+.BR f ,
+.BR F ,
+.BR t ,
+or
+.BR T .
+.TP 10
+[\f2count\fP]\f3,\fP
+Reverses tha last single characta find command
+.I count
+times.
+.TP 10
+.B 0
+Cursor ta start of line.
+.TP 10
+.B ^
+Cursor ta start of line.
+.TP 10
+.B [H
+Cursor ta first non-blank characta up in line.
+.TP 10
+.B $
+Cursor ta end of line.
+.TP 10
+.B [Y
+Cursor ta end of line.
+.TP 10
+.B %
+Moves ta balancing
+.BR ( ,
+.BR ) ,
+.BR { ,
+.BR } ,
+.BR [ ,
+or
+.BR ] .
+If cursor aint on one of tha above characters,
+the remainder of tha line is searched fo' tha first
+occurrence of one of tha above charactas first.
+.RE
+.SS "\ \ \ \ \ Search Edit Commands"
+.RS
+These commandz access yo' command history.
+.TP 10
+[\f2count\fP]\f3k\fP
+Fetch previous command.
+Each time
+.B k
+is entered
+the previous command back up in time be accessed.
+.TP 10
+[\f2count\fP]\f3\-\fP
+Equivalent to
+.BR k .
+.TP 10
+[\f2count\fP]\f3[A\fP
+If cursor be all up in tha end of tha line it is equivalent to
+.B /
+with
+.I string^\
+set ta tha contentz of tha current line.
+Otherwise, it is equivalent to
+.BR k .
+.TP 10
+[\f2count\fP]\f3j\fP
+Fetch next command.
+Each time
+.B j
+is entered
+the next command forward up in time be accessed.
+.TP 10
+[\f2count\fP]\f3+\fP
+Equivalent to
+.BR j .
+.TP 10
+[\f2count\fP]\f3[B\fP
+Equivalent to
+.BR j .
+.TP 10
+[\f2count\fP]\f3G\fP
+Da command number
+.I count
+is fetched.
+Da default is tha least recent history command.
+.TP 10
+.BI / string
+Search backward all up in history fo' a previous command containing
+.IR strang .
+.I String
+is terminated by a `RETURN' or `NEW\ LINE'.
+If strang is preceded by a
+.BR ^ ,
+the matched line must begin with
+.IR strang .
+If \fIstring\fP is null, tha previous strang is ghon be used.
+.TP 10
+.BI , biatch? string
+Same as
+.B /
+except dat search is ghon be up in tha forward direction.
+.TP 10
+.B n
+Search fo' next match of tha last pattern to
+.B /
+or
+.B ?
+commands.
+.TP 10
+.B N
+Search fo' next match of tha last pattern to
+.B /
+or
+.BR , biatch? ,
+but up in reverse direction.
+.RE
+.SS "\ \ \ \ \ Text Modification Edit Commands"
+.RS
+These commandz will modify tha line.
+.TP 10
+.B a
+Enta input mode n' enta text afta tha current character.
+.TP 10
+.B A
+Append text ta tha end of tha line.
+Equivalent to
+.BR $a .
+.TP 10
+[\f2count\fP]\f3c\fP\f2motion\fP
+.TP 10
+\f3c\fP[\f2count\fP]\f2motion\fP
+Delete current characta all up in tha characta that
+.I motion
+would move tha cursor ta n' enta input mode.
+If \fImotion\fP is
+.BR c ,
+the entire line is ghon be deleted and
+input mode entered.
+.TP 10
+.B C
+Delete tha current characta all up in tha end of line n' enta input mode.
+Equivalent to
+.BR c$ .
+.TP 10
+.B S
+Equivalent to
+.BR cc .
+.TP 10
+[\f2count\fP]\f3s\fP
+Replace charactas under tha cursor up in input mode.
+.TP 10
+.B D
+Delete tha current characta all up in tha end of line.
+Equivalent to
+.BR d$ .
+.TP 10
+[\f2count\fP]\f3d\fP\f2motion\fP
+.TP 10
+\f3d\fP[\f2count\fP]\f2motion\fP
+Delete current characta all up in tha characta that
+.I motion
+would move to.
+If \fImotion\fP is
+.B d ,
+the entire line is ghon be deleted.
+.TP 10
+.B i
+Enta input mode n' bang text before tha current character.
+.TP 10
+.B I
+Insert text before tha beginnin of tha line.
+Equivalent to
+.BR 0i .
+.TP 10
+[\f2count\fP]\f3P\fP
+Place tha previous text modification before tha cursor.
+.TP 10
+[\f2count\fP]\f3p\fP
+Place tha previous text modification afta tha cursor.
+.TP 10
+.B R
+Enta input mode and
+replace charactas on tha screen wit charactas you type overlay fashion.
+.TP 10
+[\f2count\fP]\f3r\fP\f2c\fP
+Replace the
+.I count
+character(s) startin all up in tha current cursor posizzle with
+.IR c ,
+and advizzle tha cursor.
+.TP 10
+[\f2count\fP]\f3x\fP
+Delete current character.
+.TP 10
+[\f2count\fP]\f3X\fP
+Delete precedin character.
+.TP 10
+[\f2count\fP]\f3.\fP
+Repeat tha previous text modification command.
+.TP 10
+[\f2count\fP]\f3\(ap\fP
+Invert tha case of the
+.I count
+character(s) startin all up in tha current cursor posizzle n' advizzle tha cursor.
+.TP 10
+[\f2count\fP]\f3_\fP
+Causes the
+.I count\^
+word of tha previous command ta be appended and
+input mode entered.
+Da last word is used
+if
+.I count\^
+is omitted.
+.TP 10
+.B *
+Causes an
+.B *
+to be appended ta tha current word n' file name generation attempted.
+If no match is found,
+it rings tha bell.
+Otherwise, tha word is replaced
+by tha matchin pattern n' input mode is entered.
+.TP 10
+.B \e
+Command or file name completion as busted lyrics bout above.
+.RE
+.SS "\ \ \ \ \ Other Edit Commands"
+.RS
+Miscellaneous commands.
+.TP 10
+[\f2count\fP]\f3y\fP\f2motion\fP
+.TP 10
+\f3y\fP[\f2count\fP]\f2motion\fP
+Yank current characta all up in characta that
+.I motion
+would move tha cursor ta n' puts dem tha fuck into tha delete buffer.
+Da text n' cursor is unchanged.
+.TP 10
+.B yy
+Yanks tha entire line.
+.TP 10
+.B Y
+Yanks from current posizzle ta end of line.
+Equivalent to
+.BR y$ .
+.TP 10
+.B u
+Undo tha last text modifyin command.
+.TP 10
+.B U
+Undo all tha text modifyin commandz performed on tha line.
+.TP 10
+[\f2count\fP]\f3v\fP
+Returns tha command
+.BI "hist \-e ${\s-1VISUAL\s+1:\-${\s-1EDITOR\s+1:\-vi}}" " count"
+in tha input buffer.
+If
+.I count\^
+is omitted, then tha current line is used.
+.TP 10
+.BI ^L
+Line feed n' print current line.
+Has effect only up in control mode.
+.TP 10
+.BI ^J
+(New\ line) Execute tha current line, regardless of mode.
+.TP 10
+.BI ^M
+(Return) Execute tha current line, regardless of mode.
+.TP 10
+.B #
+If tha straight-up original gangsta characta of tha command be a
+.BR # ,
+then dis command deletes this
+.B #
+and each
+.B #
+that bigs up a newline.
+Otherwise,
+sendz tha line after
+insertin a
+.B #
+in front of each line up in tha command.
+Useful fo' causin tha current line ta be
+inserted up in tha history as a cold-ass lil comment and
+uncommentin previously commented commands
+in tha history file.
+.TP 10
+[\f2count\fP]\f3=\fP
+If \f2count\fP aint specified,
+it generates tha list of matchin commandz or
+file names as busted lyrics bout above.
+Otherwise, tha word under tha the cursor is replaced by the
+\f2count\fP item from da most thugged-out recently generated command or file list.
+If tha cursor aint on a word, it is banged instead.
+.TP 10
+.BI @ letter
+Yo crazy-ass alias list is searched fo' an
+alias by tha name
+.BI _ letter
+and if a aliaz of dis name is defined, its
+value is ghon be banged on tha input queue fo' processing.
+.TP 10
+.BI ^V
+Display version of tha shell.
+.RE
+.PD
+.SS Built-in Commands.
+Da followin simple-commandz is executed up in tha shell process.
+Input/Output redirection is permitted.
+Unless otherwise indicated, tha output is freestyled on file descriptor 1
+and tha exit status, when there is no syntax error, is zero.
+Except for
+.BR : ,
+.BR legit ,
+.BR false ,
+.BR echo ,
+.BR newgrp ,
+and
+.BR login ,
+all built-in commandz accept
+.B \-\-
+to indicate end of options.
+They also interpret tha option
+.B \-\-man
+as a request ta display tha playa page onto
+standard error and
+.B \-?
+as a help request which prints a
+.I usage\^
+message
+on standard error.
+Commandz dat is preceded by one or two \(dg symbols
+are special built-in commandz and
+are treated specially up in tha followin ways:
+.PD 0
+.TP
+1.
+Variable assignment lists precedin tha command
+remain up in effect when tha command completes.
+.TP
+2.
+I/O redirections is processed afta variable assignments.
+.TP
+3.
+Errors
+cause a script
+that gotz nuff dem ta abort.
+.TP
+4.
+They is not valid function names.
+.TP
+5.
+Words
+followin a cold-ass lil command preceded by \(dg\(dg
+that is up in tha format of a variable assignment
+are expanded wit tha same rulez as a variable assignment.
+This means that
+tilde substitution is performed afta the
+.B =
+sign n' field splittin n' file name generation is not
+performed.
+These is called
+.I declaration\^
+built-ins.
+.PD
+.TP
+\(dg \f3:\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Da command only expandz parameters.
+.br
+.ne 2
+.TP
+\(dg \f3\|. \f2name\^\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+If
+.I name\^
+is a gangbangin' function defined wit the
+.B function
+.I name\^
+reserved word syntax,
+the function is executed up in tha current environment
+(as if it had been defined wit the
+.IB name ()
+syntax.)
+Otherwise if
+.I name\^
+refers ta a gangbangin' file, the
+file is read up in its entirety n' tha commandz are
+executed up in tha current shell environment.
+Da search path
+specified by
+.B
+.SM PATH
+is used ta find tha directory containin tha file.
+If any arguments
+.I arg\^
+are given,
+they become tha positionizzle parametas while processing
+the
+.B .
+command n' tha original gangsta positionizzle parametas is restored upon completion.
+Otherwise tha positionizzle parametas is unchanged.
+Da exit status is tha exit statuz of tha last command executed.
+.TP
+\(dg\(dg \f3alias\fP \*(OK \f3\-ptx\fP \*(CK  \*(OK \f2name\fP\*(OK \f3=\fP\f2value\^\fP  \*(CK \*(CK .\|.\|.
+.B alias\^
+with no arguments prints tha list of aliases
+in tha form
+.I name=value\^
+on standard output.
+The
+.B \-p
+option
+causes tha word
+.B alias
+to be banged before each one.
+When one or mo' arguments is given,
+an
+.I alias\^
+is defined
+for each
+.I name\^
+whose
+.I value\^
+is given.
+A trailin space in
+.I value\^
+causes tha next word ta be checked for
+alias substitution.
+Da obsolete
+.B \-t
+option is used ta set n' list tracked aliases.
+Da value of a tracked alias is tha full pathname
+correspondin ta tha given
+.IR name .
+Da value becomes undefined when tha value of
+.SM
+.B PATH
+is reset but tha alias remains tracked.
+Without the
+.B \-t
+option,
+for each
+.I name\^
+in tha argument list
+for which no
+.I value\^
+is given, tha name
+and value of tha alias is printed.
+Da obsolete
+.B \-x
+option has no effect.
+Da exit status is non-zero if a
+.I name\^
+is given yo, but no value, n' no alias has been defined fo' the
+.IR name\^ .
+.TP
+\f3bg\fP \*(OK \f2job\^\fP.\|.\|. \*(CK
+This command is only on systems dat support thang control.
+Puts each specified
+.I thang\^
+into tha background.
+Da current thang is put up in tha background
+if
+.I thang\^
+is not specified.
+See
+.I Jobs
+for a thugged-out description of tha format of
+.IR thang .
+.TP
+\(dg \f3break\fP \*(OK \f2n\^\fP \*(CK
+Exit from tha enclosing
+.BR for\^ ,
+.BR while\^ ,
+.BR until\^ ,
+or
+.B select\^
+loop, if any.
+If
+.I n\^
+is specified, then break
+.I n\^
+levels.
+.TP
+\f3builtin\fP \*(OK \f3\-ds\fP \*(CK \*(OK \f3\-f\fP \f2file\^\fP \*(CK \*(OK \f2name\^\fP .\|.\|. \*(CK
+If
+.I name\^
+is not specified,
+and no
+.B \-f
+option is specified,
+the built-ins is printed on standard output.
+The
+.B \-s
+option prints only tha special built-ins.
+Otherwise, each
+.I name\^
+represents tha pathname whose basename is tha name of tha built-in.
+Da entry point function name is determined by prepending
+.B b_
+to tha built-in name.
+A built-in specified by a pathname will only be executed when dat pathname
+would be found durin tha path search.  Built-ins found up in libraries loaded
+via the
+.B .paths
+file is ghon be associate wit tha pathname of tha directory containin the
+.B .paths
+file.
+.P
+Da ISO C/C++ prototype is
+\f3b_\fP\f2mycommand\fP\f3(int\fP \f2argc\fP, \f3char *\fP\f2argv\fP\f3[]\fP, \f3void *\fP\f2context\fP\f3)\fP
+for tha builtin command
+.I mycommand\^
+where
+.I argv\^
+is array a of
+.I argc\^
+elements n' context be a optionizzle pointa ta a
+.B Shell_t
+structure as busted lyrics bout in
+.BR <ast/shell.h> .
+.sp .5
+Special built-ins cannot be bound ta a pathname or deleted.
+The
+.B \-d
+option deletes each of tha given built-ins.
+On systems dat support dynamic loading, the
+.B \-f
+option names a gangbangin' finger-lickin' dirty-ass shared library containin tha code fo' built-ins.
+Da shared library prefix and/or suffix, which depend on tha system,
+can be omitted.
+Once a library is loaded, its symbols become available
+for subsequent invocations of
+.BR builtin .
+Multiple libraries can be specified wit separate invocations
+of the
+.B builtin
+command.
+Libraries is searched up in tha reverse order up in which they is specified.
+When a library is loaded, it looks fo' a gangbangin' function up in tha library
+whose name is
+.B lib_init()
+and invokes dis function wit a argument of
+.BR 0 .
+.TP
+.PD 0
+\f3cd\fP \*(OK \f3\-LP\fP \*(CK \*(OK \f2arg\^\fP \*(CK
+.TP
+\f3cd\fP \*(OK \f3\-LP\fP \*(CK \f2old\^\fP \f2new\^\fP
+.PD
+This command can be up in either of two forms.
+In tha straight-up original gangsta form it
+changes tha current directory to
+.IR arg .
+If
+.I arg\^
+is
+.B \-
+the directory is chizzled ta tha previous
+directory.
+Da shell
+variable
+.B
+.SM HOME
+is tha default
+.IR arg .
+Da variable
+.SM
+.B PWD
+is set ta tha current directory.
+Da shell variable
+.B
+.SM CDPATH
+defines tha search path for
+the directory containing
+.IR arg .
+Alternatizzle directory names is separated by
+a colon
+.RB ( : ).
+Da default path is
+.B <null>
+(specifyin tha current directory).
+Note dat tha current directory is specified by a null path name,
+which can step tha fuck up immediately afta tha equal sign
+or between tha colon delimitas anywhere else up in tha path list.
+If
+.I arg
+begins wit a \f3/\fP then tha search path
+is not used.
+Otherwise, each directory up in tha path is
+searched for
+.IR arg .
+.sp .5
+Da second form of
+.B cd
+substitutes tha string
+.I new
+for tha string
+.I old
+in tha current directory name,
+.SM
+.BR PWD ,
+and tries ta chizzle ta dis freshly smoked up directory.
+.sp .5
+By default, symbolic link names is treated literally when
+findin tha directory name.
+This is equivalent ta the
+.B \-L
+option.
+The
+.B \-P
+option causes
+symbolic links ta be resolved when determinin tha directory.
+Da last instizzle of
+.B \-L
+or
+.B \-P
+on tha command line
+determines which method is used.
+.sp .5
+The
+.B cd\^
+command may not be executed by
+.if \nZ=0 .B rsh\^.
+.if \nZ=1 .B rksh\^.
+.if \nZ=1 .B rksh93\^.
+.TP
+\f3command\fP \*(OK \f3\-pvxV\fP \*(CK \f2name\^\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Without the
+.B \-v
+or
+.B \-V
+options,
+.B command
+executes
+.I name\^
+with tha arguments given by
+.IR arg .
+The
+.B \-p
+option causes
+a default path ta be searched
+rather than tha one defined by tha value of
+.SM
+.BR PATH .
+Functions aint gonna be searched fo' when finding
+.IR name .
+In addition, if
+.I name\^
+refers ta a special built-in,
+none of tha special propertizzles associated wit tha leading
+daggers is ghon be honored.
+(For example, tha predefined alias
+.B "redirect=\(fmcommand exec\(fm"
+prevents a script from terminatin when a invalid
+redirection is given.)
+With the
+.B \-x
+option,
+if command execution would result up in a gangbangin' failure cuz
+there is too nuff arguments, errno
+.SM
+.BR E2BIG ,
+the shell will invoke command
+.I name\^
+multiple times wit a subset of tha arguments on each invocation.
+Arguments dat occur prior ta tha straight-up original gangsta word that
+expandz ta multiple arguments n' afta tha last word
+that expandz ta multiple arguments is ghon be passed on each invocation.
+Da exit status is ghon be tha maximum invocation exit status.
+With the
+.B \-v
+option,
+.B command
+is equivalent ta tha built-in
+.B whence
+command busted lyrics bout below.
+The
+.B \-V
+option causes
+.B command
+to act like
+.BR "whence \-v" .
+.TP
+\(dg \f3continue\fP \*(OK \f2n\^\fP \*(CK
+Resume tha next iteration of tha enclosing
+.BR for\^ ,
+.BR while\^ ,
+.BR until\^ ,
+or
+.B select\^
+loop.
+If
+.I n\^
+is specified, then resume at the
+.IR n -th
+enclosin loop.
+.TP
+\f3disown\fP \*(OK \f2job\^\fP.\|.\|. \*(CK
+Causes tha shell not ta bust a HUP signal to
+each given
+.IR thang ,
+or all actizzle thangs if
+.I thang
+is omitted,
+when a login shell terminates.
+.TP
+\f3echo\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+When tha first
+.I arg\^
+does not begin wit a \-, and
+none of tha arguments contain a \e,
+then
+.B echo
+prints each of its arguments separated by a space
+and terminated by a new-line.
+Otherwise, tha behavior of
+.B echo
+is system dependent
+and
+.B print
+or
+.B printf
+busted lyrics bout below should be used.
+See
+.IR echo (1)
+for usage n' description.
+.TP
+\(dg\(dg \f3enum\fP \*(OK \f3\-i\fP  \*(CK \f2type\^\fP\*(OK=(\f2value\^\fP .\|.\|.) \*(CK
+Creates a thugged-out declaration command named \f2type\^\fP dat be an
+integer type dat allows one of tha specified \f2value\fPs as
+enumeration names.  If \f3=(\fP\f2value\^\ .\|.\|.\|\fP\f3)\fP is
+omitted, then \f2type\^\fP must be a indexed array variable wit at
+least two elements n' tha joints is taken from dis array variable.
+If
+.B -i
+is specified tha joints is case insensitive.
+.TP
+\(dg \f3eval\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Da arguments is read as input
+to tha shell
+and tha resultin command(s) executed.
+.TP
+\(dg \f3exec\fP \*(OK \f3\-c\fP \*(CK \*(OK \f3\-a\fP \f2name\^\fP \*(CK \*(OK \f2arg\^\fP .\|.\|. \*(CK
+If
+.I arg\^
+is given,
+the command specified by
+the arguments is executed up in place of dis shell
+without bustin a freshly smoked up process.
+The
+.B \-c
+option causes tha environment ta be cleared before applying
+variable assignments associated wit the
+.B exec
+invocation.
+The
+.B \-a
+option
+causes
+.I name\^
+rather than tha first
+.IR arg ,
+to become
+.B argv[0]
+for tha freshly smoked up process.
+Input/output arguments may step tha fuck up and
+affect tha current process.
+If
+.I arg\^
+is not given,
+the effect of dis command is to
+modify file descriptors
+as prescribed by tha input/output redirection list.
+In dis case,
+any file descriptor numbers pimped outa than 2 dat are
+opened wit dis mechanizzle is closed when invoking
+another program.
+.TP
+\(dg \f3exit\fP \*(OK \f2n\^\fP \*(CK
+Causes tha shell ta exit
+with tha exit status specified by
+.IR n .
+Da value is ghon be tha least dope 8 bitz of tha specified status.
+If
+.I n\^
+is omitted, then tha exit status is dat of tha last command executed.
+An end-of-file will also cause tha shell ta exit
+except fo' a
+shell which has the
+.B ignoreeof
+option (see
+.B set
+below) turned on.
+.TP
+\(dg\(dg \f3export\fP \*(OK \f3\-p\fP \*(CK \*(OK \f2name\^\fP\*(OK\f3=\fP\f2value\^\fP\*(CK \*(CK .\|.\|.
+If
+.I name\^
+is not given,
+the names n' jointz of each variable with
+the export attribute is printed wit tha joints
+quoted up in a manner dat allows dem ta be re-input.
+The
+.B export
+command is tha same ol' dirty as
+.B typeset \-x
+except dat if you use
+.B export
+within a gangbangin' function, no local
+variable is pimped.
+The
+.B \-p
+option
+causes tha word
+.B export
+to be banged before each one.
+Otherwise, tha given
+.IR name s
+are marked fo' automatic
+export ta the
+.I environment\^
+of subsequently-executed commands.
+.TP
+\f3false\fP
+Do nothing, n' exits 1. Used with
+.B until
+for infinite loops.
+.TP
+\f3fg\fP \*(OK \f2job\^\fP.\|.\|. \*(CK
+This command is only on systems dat support thang control.
+Each
+.I thang\^
+specified is brought ta tha foreground n' waited fo' in
+the specified order.
+Otherwise, tha current thang is
+brought tha fuck into tha foreground.
+See
+.I Jobs
+for a thugged-out description of tha format of
+.IR thang .
+.TP
+\f3getconf\fP \*(OK \f2name\^\fP \*(OK \f2pathname\^\fP \*(CK \*(CK
+Prints tha current value of tha configuration parameta given by
+.IR name .
+Da configuration parametas is defined by tha IEEE POSIX 1003.1
+and IEEE POSIX 1003.2 standards.
+(See
+.IR pathconf (2)
+and
+.IR sysconf (2).)
+The
+.I pathname
+argument is required fo' parametas whose value dependz on
+the location up in tha file system.
+If no arguments is given,
+.B getconf
+prints tha names n' jointz of tha current configuration
+parameters.
+Da pathname
+.B /
+is used fo' each of tha parametas dat requires
+.IR pathname .
+.TP
+\f3getopts\fP \*(OK \f3\ \-a\fP \f2name\^\fP \*(CK \f2optstrin vname\^\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Checks
+.I arg
+for legal options.
+If
+.I arg
+is omitted,
+the positionizzle parametas is used.
+An option argument begins wit a
+.B +
+or a
+.BR \- .
+An option not beginnin with
+.B +
+or
+.B \-
+or tha argument
+.B \-\|\-
+endz tha options.
+Options beginnin with
+.B +
+are only recognized when
+.I optstring\^
+begins wit a
+.BR + .
+.I optstring\^
+gotz nuff tha lettas that
+.B getopts
+recognizes.
+If a letta is followed by a
+.BR : ,
+that option is sposed ta fuckin have a argument.
+Da options can be separated from tha argument by blanks.
+Da option
+.B \-?
+causes
+.B getopts
+to generate a usage message on standard error.
+The
+.B \-a
+argument can be used ta specify tha name ta use fo' the
+usage message, which defaults to
+.BR $0 .
+.sp .5
+.B
+getopts
+places tha next option letta it findz inside variable
+.I vname\^
+each time it is invoked.
+Da option letta is ghon be prepended wit a
+.B +
+when
+.I arg
+begins wit a
+.BR + .
+Da index of tha next
+.I arg
+is stored in
+.SM
+.BR OPTIND .
+Da option argument,
+if any,
+gets stored in
+.SM
+.BR OPTARG .
+.sp .5
+A leading
+.B :
+in
+.I optstring
+causes
+.B getopts
+to store tha letta of a invalid
+option in
+.SM
+.BR OPTARG ,
+and ta set
+.I vname
+to
+.B ?
+for a unknown option n' to
+.B :
+when a required option argument is missing.
+Otherwise,
+.B getopts
+prints a error message.
+Da exit status is non-zero when there be no mo' options.
+.sp .5
+There is no way ta specify any of tha options
+.BR : ,
+.BR + ,
+.BR \- ,
+.BR , biatch? ,
+.BR [ ,
+and
+.BR ] .
+Da option
+.B #
+can only be specified as tha straight-up original gangsta option.
+.TP
+.PD 0
+\f3hist\fP \*(OK \f3\-e\fP \f2ename\^\fP \ \*(CK \*(OK \f3\-nlr\^\fP \*(CK \*(OK \f2first\^\fP \*(OK \f2last\^\fP \*(CK \*(CK
+.TP
+\f3hist \-s \fP \*(OK \f2old\fP\f3\=\fP\f2new\^\fP \*(CK \*(OK \f2command\^\fP \*(CK
+.PD
+In tha straight-up original gangsta form,
+a range of commandz from
+.I first\^
+to
+.I last\^
+is selected from tha last
+.SM
+.B HISTSIZE
+commandz dat was typed all up in tha terminal.
+Da arguments
+.I first\^
+and
+.I last\^
+may be specified as a number or as a string.
+A strang is used ta locate da most thugged-out recent command startin with
+the given string.
+A wack number is used as a offset ta tha current command number.
+If the
+.B \-l
+option
+is selected,
+the commandz is listed on standard output.
+Otherwise, tha editor program
+.I ename\^
+is invoked on a gangbangin' file containin these
+keyboard commands.
+If
+.I ename\^
+is not supplied, then tha value of tha variable
+.SM
+.B HISTEDIT
+is used.
+If
+.SM
+.B HISTEDIT
+is not set, then
+.SM
+.B FCEDIT
+(default
+.BR /bin/ed\^ )
+is used as tha editor.
+When editin is complete, tha edited command(s)
+is executed if tha chizzlez done been saved.
+If
+.I last\^
+is not specified,
+then it is ghon be set to
+.IR first .
+If
+.I first\^
+is not specified,
+the default is tha previous command
+for editin n' \-16 fo' listing.
+Da option
+.B \-r
+reverses tha order of tha commandz and
+the option
+.B \-n
+suppresses command numbers when listing.
+In tha second form,
+.I command\^
+is interpreted as
+.I first\^
+busted lyrics bout above
+and defaults ta tha last command executed.
+Da resultin command is executed
+afta tha optionizzle substitution
+\f2old\^\fP\f3=\fP\f2new\^\fP
+is performed.
+.TP
+\f3jobs\fP \*(OK \f3\-lnp\^\fP \*(CK \*(OK \f2job\^\fP \.\|.\|. \*(CK
+Lists shiznit bout each given thang; or all actizzle thangs if
+.I thang
+is omitted.
+The
+.B \-l
+option lists process idz up in addizzle ta tha aiiight shiznit.
+The
+.B \-n
+option only displays thangs dat have stopped or exited since last
+notified.
+The
+.B \-p
+option causes only tha process crew ta be listed.
+See
+.I Jobs
+for a thugged-out description of tha format of
+.IR thang .
+.TP
+.PD 0
+\f3kill\fP \*(OK \f3\-s\fP \f2signame\^\fP \*(CK \f2job\^\fP .\|.\|.
+.TP
+.PD 0
+\f3kill\fP \*(OK \f3\-n\fP \f2signum\^\fP \*(CK \f2job\^\fP .\|.\|.
+.TP
+\f3kill\fP \f3\-Ll\fP \*(OK \f2sig\^\fP .\|.\|. \*(CK
+.PD
+Sendz either tha TERM (terminate) signal or the
+specified signal ta tha specified thangs or processes.
+Signals is either given by number wit the
+.B \-n
+option or by name wit the
+.B \-s
+option
+(as given in
+.BR <signal.h> ,
+stripped of tha prefix ``SIG'' with
+the exception dat SIGCLD is named CHLD).
+For backward compatibility, the
+.B n
+and
+.B s
+can be omitted n' tha number or name placed immediately
+afta the
+.BR \- .
+If tha signal bein busted is TERM (terminate) or HUP (hangup),
+then tha thang or process is ghon be busted a CONT (continue) signal
+if it is stopped.
+Da argument
+.I thang\^
+can be tha process id of a process dat aint a gangmember of one of the
+actizzle thangs.
+See
+.I Jobs
+for a thugged-out description of tha format of
+.IR thang .
+In tha third form,
+.BR "kill \-l" ,
+or
+.BR "kill \-L" ,
+if
+.I sig\^
+is not specified,
+the signal names is listed.
+The
+.B \-l
+option list only tha signal names.
+.B \-L
+options lists each signal name n' correspondin number.
+Otherwise, fo' each
+.I sig\^
+that be a name, tha correspondin signal number is listed.
+For each
+.I sig\^
+that be a number, tha signal name correspondin ta the
+least dope 8 bits of
+.I sig\^
+is listed.
+.TP
+\f3let\fP \f2arg\^\fP .\|.\|.
+Each
+.I arg
+is a separate
+.I "arithmetic expression"
+to be evaluated.
+.B let
+only recognizes octal constants startin with
+.B 0
+when the
+.B set
+option
+.B letoctal
+is on.
+See
+.I "Arithmetic Evaluation"
+above, fo' a thugged-out description of arithmetic expression evaluation.
+.sp .5
+Da exit status is
+0 if tha value of tha last expression
+is non-zero, n' 1 otherwise.
+.TP
+\(dg \f3newgrp\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Equivalent to
+.BI "exec /bin/newgrp" " arg\^"
+\&.\|.\|.\^.
+.TP
+\f3print\fP \*(OK \f3\-CRenprsv\^\fP \*(CK \*(OK \f3\-u\fP \f2unit\^\fP\*(CK \*(OK \f3\-f\fP \f2format\^\fP \*(CK \*(OK \f2arg\^\fP .\|.\|. \*(CK
+With no options or wit option
+.B \-
+or
+.BR \-\|\- ,
+each
+.I arg
+is printed
+on standard output.
+The
+.B \-f
+option causes tha arguments ta be printed as
+busted lyrics bout by
+.BR printf .
+In dis case, any
+.BR e ,
+.BR n ,
+.BR r ,
+.B R
+options is ignored.
+Otherwise,
+unless the
+.BR \-C ,
+.BR \-R ,
+.BR \-r ,
+or
+.B \-v
+are specified, tha following
+escape conventions is ghon be applied:
+.RS
+.PD 0
+.TP
+.B \ea
+Da alert characta (ascii
+.BR 07 ).
+.TP
+.B \eb
+Da backspace characta (ascii
+.BR 010 ).
+.TP
+.B \ec
+Causes
+.B print
+to end without processin mo' arguments and
+not addin a new-line.
+.TP
+.B \ef
+Da formfeed characta (ascii
+.BR 014 ).
+.TP
+.B \en
+Da new-line characta (ascii
+.BR 012 ).
+.TP
+.B \er
+Da carriage return characta (ascii
+.BR 015 ).
+.TP
+.B \et
+Da tab characta (ascii
+.BR 011 ).
+.TP
+.B \ev
+Da vertical tab characta (ascii
+.BR 013 ).
+.TP
+.B \eE
+Da escape characta (ascii
+.BR 033 ).
+.TP
+.B \e\e
+Da backslash characta \e.
+.TP
+.BI \e0 x
+Da characta defined by tha 1, 2, or 3-digit octal
+strin given by \fIx\fP.
+.PD
+.PP
+The
+.B \-R
+option will print all subsequent arguments n' options
+other than
+.BR \-n .
+The
+.B \-e
+causes tha above escape conventions ta be applied.
+This is tha default behavior.
+It reverses tha effect of a earlier
+.BR \-r .
+The
+.B \-p
+option causes the
+arguments ta be freestyled onto tha pipe
+of tha process spawned with
+.B \(bv&
+instead of standard output.
+The
+.B \-v
+option treats each
+.I arg\^
+as a variable name n' writes tha value in
+the
+.B printf
+.B %B
+format.
+The
+.B \-C
+option treats each
+.I arg\^
+as a variable name n' writes tha value in
+the
+.B printf
+.B %#B
+format.
+The
+.B \-s
+option causes the
+arguments ta be freestyled onto tha history file
+instead of standard output.
+The
+.B \-u
+option can be used ta specify a one digit
+file descriptor unit number
+.I unit\^
+on which the
+output is ghon be placed.
+Da default is 1.
+If tha option
+.B \-n
+is used, no
+.B new-line\^
+is added ta tha output.
+.RE
+.TP
+\f3printf\fP \f2format\^\fP \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Da arguments
+.I arg\^
+are printed on standard output
+in accordizzle wit tha ANSI-C
+formattin rulez associated wit tha format string
+.IR format .
+If tha number of arguments exceedz tha number of
+format justifications, the
+.B format\^
+strin is reused ta format remainin arguments.
+Da followin extensions can also be used:
+.RS
+.PD 0
+.TP
+.B %b
+A
+.B %b
+format can be used instead of
+.B %s
+to cause escape sequences up in tha corresponding
+.I arg\^
+to be expanded as busted lyrics bout in
+.BR print.
+.TP
+.B %B
+A
+.B %B
+option causes each of tha arguments ta be treated
+as variable names n' tha binary value of variable
+will be printed.
+Da alternate flag
+.B #
+causes a cold-ass lil compound variable ta be output on a single line.
+This is most useful fo' compound variablez n' variablez whose attribute
+is
+.BR \-b .
+.TP
+.B %H
+A
+.B %H
+format can be used instead of
+.B %s
+to cause charactas in
+.I arg\^
+that is special up in HTML n' XML
+to be output as they entitizzle name.
+Da alternate flag
+.B #
+formats tha output fo' use as a URI.
+.TP
+.B %P
+A
+.B %P
+format can be used instead of
+.B %s
+to cause
+.I arg\^
+to be interpreted as a extended regular
+expression n' be printed as a gangbangin' finger-lickin' dirty-ass shell pattern.
+.TP
+.B %R
+A
+.B %R
+format can be used instead of
+.B %s
+to cause
+.I arg\^
+to be interpreted as a gangbangin' finger-lickin' dirty-ass shell pattern
+and ta be printed as a extended regular expression.
+.TP
+.B %q
+A
+.B %q
+format can be used instead of
+.B %s
+to cause tha resultin strang ta be quoted up in a manner than can
+be reinput ta tha shell.
+When
+.B q
+is preceded by tha alternatizzle format specifier,
+.BR # ,
+the strang is quoted up in manner suitable as a gangbangin' field up in a
+.B .csv
+format file.
+.TP
+.BI %( date-format )T
+A
+.BI %( date-format )T
+format can be use ta treat a argument as a thugged-out date/time string
+and ta format tha date/time accordin ta the
+.I date-format\^
+as defined fo' the
+.BR date (1)
+command.
+.TP
+.B %Z
+A
+.B %Z
+format will output a funky-ass byte whose value is 0.
+.TP
+.B %d
+Da precision field of the
+.B %d
+format can be followed by a
+.B .
+and tha output base.
+In dis case, the
+.B #
+flag characta causes
+.IB base #
+to be prepended.
+.TP
+.B #
+The
+.B #
+flag, when used wit the
+.B %d
+format without a output base,
+displays tha output up in powerz of 1000 indicated by one of tha followin suffixes:
+.BR "k M G T P E" ,
+and when used wit the
+.B %i
+format displays tha output up in powerz of 1024 indicated by one of tha followin suffixes:
+.BR "Ki Mi Gi Ti Pi Ei" .
+.TP
+.B =
+The
+.B =
+flag centas tha output within tha specified field width.
+.TP
+.B L
+The
+.B L
+flag, when used wit the
+.B %c
+or
+.B %s
+formats, treats precision as characta width instead of byte count.
+.TP
+.B ,
+The
+.B ,
+flag, when used wit the
+.B %d
+or
+.B %f
+formats, separates crewz of digits wit tha groupin delimiter
+.RB  ( ,
+on crewz of 3 up in tha C locale.)
+.PD
+.PP
+.RE
+.TP
+\f3pwd\fP \*(OK \f3\-LP\fP \*(CK
+Outputs tha value of tha current working
+directory.
+The
+.B \-L
+option is tha default; it prints tha logical name of tha current directory.
+If the
+.B \-P
+option is given,
+all symbolic links is resolved from tha name.
+Da last instizzle of
+.B \-L
+or
+.B \-P
+on tha command line
+determines which method is used.
+.TP
+\f3read\fP \*(OK \f3\-ACSprsv\^\fP \*(CK \*(OK \f3\-d\fP \f2delim\^\fP\*(CK \*(OK \f3\-n\fP \f2n\^\fP\*(CK \*(OK \*(OK \f3\-N\fP \f2n\^\fP\*(CK \*(OK \*(OK \f3\-t\fP \f2timeout\^\fP\*(CK \*(OK \f3\-u\fP \f2unit\^\fP\*(CK \*(OK \f2vname\f3?\f2prompt\^\f1 \*(CK \*(OK \f2vname\^\fP .\|.\|. \*(CK
+Da shell input mechanism.
+One line is read and
+is fucked up tha fuck into fieldz rockin tha charactas in
+.B
+.SM IFS
+as separators.
+Da escape character,
+.BR \e ,
+is used ta remove any special meanin fo' tha next
+characta n' fo' line continuation.
+The
+.B \-d
+option
+causes tha read ta continue ta tha straight-up original gangsta characta of
+.I delim\^
+rather than new-line.
+The
+.B \-n
+option causes at most
+.I n\^
+bytes ta read rather a gangbangin' full line
+but will return when readin from a slow device
+as soon as any charactas done been read.
+The
+.B \-N
+option causes exactly
+.I n\^
+to be read unless a end-of-file has been encountered or
+the read times up cuz of the
+.B \-t
+option.
+In raw mode,
+.B \-r,
+the
+.B \e
+characta aint treated specially.
+Da first
+field be assigned ta tha first
+.IR vname ,
+the second field
+to tha second
+.IR vname ,
+etc., wit leftover fieldz assigned ta tha last
+.IR vname .
+When
+.IR vname
+has tha binary attribute and
+.B \-n
+or
+.B \-N
+is specified, tha bytes dat is read is stored directly
+into tha variable.
+If the
+.B \-v
+is specified, then tha value of tha first
+.I vname\^
+will be used as a thugged-out default value when readin from a terminal device.
+The
+.B \-A
+option causes tha variable
+.I vname\^
+to be unset n' each field dat is read ta be stored in
+successive elementz of tha indexed array
+.IR vname.
+The
+.B \-C
+option causes tha variable
+.I vname\^
+to be read as a cold-ass lil compound variable.  Blanks is ghon be ignored when
+findin tha beginnin open parenthesis.
+Da \-S
+option causes tha line ta be treated like a record up in a
+.B .csv
+format file so dat double quotes can be used ta allow tha delimiter
+characta n' tha new-line characta ta step tha fuck up within a gangbangin' field.
+The
+.B \-p
+option causes tha input line
+to be taken from tha input pipe
+of a process spawned by tha shell
+using
+.BR \(bv& .
+If the
+.B \-s
+option is present,
+the input is ghon be saved as a cold-ass lil command up in tha history file.
+Da option
+.B \-u
+can be used ta specify a one digit file
+descriptor unit
+.I unit\^
+to read from.
+Da file descriptor can be opened wit the
+.B exec\^
+special built-in command.
+Da default value of unit
+.I n\^
+is 0.
+Da option
+.B \-t
+is used ta specify a timeout in
+secondz when readin from a terminal or pipe.
+If
+.I vname\^
+is omitted, then
+.SM
+.B REPLY
+is used as tha default
+.IR vname .
+An end-of-file wit the
+.B \-p
+option causes cleanup fo' dis process
+so dat another can be spawned.
+If tha straight-up original gangsta argument gotz nuff a
+.BR , biatch? ,
+the remainder of dis word is used as a
+.I prompt\^
+on standard error
+when tha shell is interactive.
+Da exit status is 0 unless a end-of-file is encountered
+or
+.B read
+has timed out.
+.TP
+\(dg\(dg \f3readonly\fP \*(OK \f3\-p\fP \*(CK \*(OK \f2vname\fP\*(OK\f3=\fP\f2value\^\fP\*(CK \*(CK .\|.\|.
+If
+.I vname\^
+is not given,
+the names n' jointz of each variable with
+the readonly attribute is printed wit tha joints
+quoted up in a manner dat allows dem ta be re-inputted.
+The
+.B \-p
+option
+causes tha word
+.B readonly
+to be banged before each one.
+Otherwise, tha given
+.IR vname s
+are marked
+readonly n' these
+names cannot be chizzled
+by subsequent assignment.
+When definin a type, if tha value of a readonly sub-variable aint defined
+the value is required when bustin each instance.
+.TP
+\(dg \f3return\fP \*(OK \f2n\^\fP \*(CK
+Causes a gangbangin' finger-lickin' dirty-ass shell
+.I function
+or
+\f3\|.\fP
+script ta return
+to tha invokin script
+with tha exit status specified by
+.IR n .
+Da value is ghon be tha least dope 8 bitz of tha specified status.
+If
+.I n\^
+is omitted, then tha return status is dat of tha last command executed.
+If
+.B return
+is invoked while not up in a
+.I function
+or a
+\f3\|.\fP
+script,
+then it behaves tha same ol' dirty as
+.BR exit .
+.TP
+\(dg \f3set\fP \*(OK \f3\(+-BCGabefhkmnoprstuvx\fP \*(CK \*(OK \f3\(+-o\fP \*(OK \f2option\^\fP \*(CK \*(CK .\|.\|. \*(OK \f3\(+-A\fP \f2vname\^\fP \*(CK  \*(OK \f2arg\^\fP .\|.\|. \*(CK
+Da options fo' dis command have meanin as bigs up:
+.RS
+.PD 0
+.TP 8
+.B \-A
+Array assignment.
+Unset tha variable
+.I vname
+and assign joints sequentially from the
+.I arg\^
+list.
+If
+.B +A
+is used, tha variable
+.I vname
+is not unset first.
+.TP 8
+.B \-B
+Enable brace pattern field generation.
+This is tha default behavior.
+.TP 8
+.B \-B
+Enable brace crew expansion. I aint talkin' bout chicken n' gravy biatch.  On by default.
+.TP 8
+.B \-C
+Prevents redirection
+.B >
+from truncatin existin files.
+Filez dat is pimped is opened wit tha O_EXCL mode.
+Requires
+.B >\(bv
+to truncate a gangbangin' file when turned on.
+.TP 8
+.B \-G
+Causes tha pattern
+.B \(**\(**
+by itself ta match filez n' zero or mo' directories n' sub-directories
+when used fo' file name generation.
+If followed by a
+.B /
+only directories n' sub-directories is matched.
+.TP 8
+.B \-a
+All subsequent variablez dat is defined is automatically exported.
+.TP 8
+.B \-b
+Prints thang completion lyrics as soon as a funky-ass background thang chizzles
+state rather than waitin fo' tha next prompt.
+.TP 8
+.B \-e
+Unless contained up in a
+.B \(bv\(bv
+or
+.B &&
+command, or tha command followin an
+.B if
+.B while
+or
+.B until
+command or up in tha pipeline following
+.BR ! ,
+if a cold-ass lil command has a non-zero exit status,
+execute the
+.SM
+.B ERR
+trap, if set,
+and exit.
+This mode is disabled while readin profiles.
+.TP 8
+.B \-f
+Disablez file name generation.
+.TP 8
+.B \-h
+Each command
+becomes a tracked alias when first encountered.
+.TP 8
+.B \-k
+(Obsolete) fo' realz. All variable assignment arguments is placed up in tha environment fo' a cold-ass lil command,
+not just dem dat precede tha command name.
+.TP 8
+.B \-m
+Background thangs will run up in a separate process group
+and a line will print upon completion.
+Da exit statuz of background thangs is reported up in a cold-ass lil completion message.
+On systems wit thang control,
+this option is turned on automatically for
+interactizzle shells.
+.TP 8
+.B \-n
+Read commandz n' check dem fo' syntax errors yo, but do not execute em.
+Ignored fo' interactizzle shells.
+.TP 8
+.B \-o
+Da followin argument can be one of tha followin option names:
+.RS
+.TP 8
+.B allexport
+Same as
+.BR \-a .
+.TP 8
+.B errexit
+Same as
+.BR \-e .
+.TP 8
+.B bgnice
+All background thangs is run at a lower priority.
+This is tha default mode.
+.TP 8
+.B braceexpand
+Same as
+.BR \-B .
+.TP 8
+.B emacs
+Puts you up in an
+.I emacs
+style in-line editor fo' command entry.
+.TP 8
+.B globstar
+Same as
+.BR \-G .
+.TP 8
+.B gmacs
+Puts you up in a
+.I gmacs
+style in-line editor fo' command entry.
+.TP 8
+.B ignoreeof
+Da shell aint gonna exit on end-of-file.
+Da command
+.B exit
+must be used.
+.TP 8
+.B keyword
+Same as
+.BR \-k .
+.TP 8
+.B letoctal
+The
+.B let
+command allows octal constants startin with
+.BR 0 .
+.TP 8
+.B markdirs
+All directory names resultin from file name generation gotz a trailing
+.B /
+appended.
+.TP 8
+.B monitor
+Same as
+.BR \-m .
+.TP 8
+.B multiline
+Da built-in editors will use multiple lines on tha screen fo' lines
+that is longer than tha width of tha screen. I aint talkin' bout chicken n' gravy biatch.  This may not work
+for all terminals.
+.TP 8
+.B noclobber
+Same as
+.BR \-C .
+.TP 8
+.B noexec
+Same as
+.BR \-n .
+.TP 8
+.B noglob
+Same as
+.BR \-f .
+.TP 8
+.B nolog
+Do not save function definitions up in tha history file.
+.TP 8
+.B notify
+Same as
+.BR \-b .
+.TP 8
+.B nounset
+Same as
+.BR \-u .
+.TP 8
+.B pipefail
+A pipeline aint gonna complete until all components
+of tha pipeline have completed, n' tha return value
+will be tha value of tha last non-zero command
+to fail or zero if no command has failed.
+.TP 8
+.B showme
+When enabled, simple commandz or pipelines preceded by a semicolon
+.RB ( ; )
+will be displayed as if the
+.B xtrace
+option was enabled but aint gonna be executed.
+Otherwise, tha leading
+.B ;
+will be ignored.
+.TP 8
+.B privileged
+Same as
+.BR \-p .
+.TP 8
+.B verbose
+Same as
+.BR \-v .
+.TP 8
+.B trackall
+Same as
+.BR \-h .
+.TP 8
+.B vi
+Puts you up in bang mode of a
+.I vi\^
+style in-line editor
+until you hit tha escape character
+.BR 033 .
+This puts you up in control mode.
+A return sendz tha line.
+.TP 8
+.B viraw
+Each characta is processed as it is typed
+in
+.I vi\^
+mode.
+.TP 8
+.B xtrace
+Same as
+.BR \-x .
+.PP
+If no option name is supplied, then tha current option settings is printed.
+.RE
+.TP 8
+.B \-p
+Disablez processin of the
+.B \s-1$HOME\s+1/.profile
+file n' uses tha file
+.B /etc/suid_profile
+instead of the
+.SM
+.B ENV
+file.
+This mode is on whenever tha effectizzle uid (gid)
+is not equal ta tha real uid (gid).
+Turnin dis off causes tha effectizzle uid n' gid ta be
+set ta tha real uid n' gid.
+.TP 8
+.B \-r
+Enablez tha restricted shell.  This option cannot be unset
+once set.
+.TP 8
+.B \-s
+Sort tha positionizzle parametas lexicographically.
+.TP 8
+.B \-t
+(Obsolete).  Exit afta readin n' executin one command.
+.TP 8
+.B \-u
+Treat unset parametas as a error when substituting.
+.TP 8
+.B \-v
+Print shell input lines as they is read.
+.TP 8
+.B \-x
+Print commandz n' they arguments as they is executed.
+.TP 8
+.B \-\|\-
+Do not chizzle any of tha options; useful up in setting
+.B $1
+to a value beginnin with
+.BR \- .
+If no arguments follow dis option then tha positionizzle parametas is unset.
+.PD
+.PP
+As a obsolete feature,
+if tha first
+.I arg\^
+is
+.B \-
+then the
+.B \-x
+and
+.B \-v
+options is turned off n' tha next
+.I arg
+is treated as tha straight-up original gangsta argument.
+Using
+.B \+
+rather than
+.B \-
+causes these options ta be turned off.
+These options can also be used upon invocation of tha shell.
+Da current set of options may be found in
+.BR $\- .
+Unless
+.B \-A
+is specified,
+the remainin arguments is positional
+parametas n' is assigned, up in order, to
+.B $1
+.B $2
+\&.\|.\|.\^.
+If no arguments is given, then tha names n' joints
+of all variablez is printed on tha standard output.
+.RE
+.TP
+\(dg \f3shift\fP \*(OK \f2n\^\fP \*(CK
+.br
+Da positionizzle parametas from
+\f3$\fP\f2n\fP\f3+1\fP
+\&.\|.\|.
+are renamed
+.B $1
+\&.\|.\|.\^
+, default
+.I n\^
+is 1.
+Da parameter
+.I n\^
+can be any arithmetic expression dat evaluates ta a non-negative
+number less than or equal to
+.BR $# .
+.TP
+\f3sleep\fP \f2seconds\^\fP
+Suspendz execution fo' tha number of decimal secondz or fractionz of a
+second given by
+.IR secondz .
+.TP
+\(dg \f3trap\fP \*(OK \f3\-p\fP \*(CK \*(OK \f2action\^\fP \*(CK \*(OK \f2sig\^\fP \*(CK .\|.\|.
+The
+.B \-p
+option causes tha trap
+action associated wit each trap as specified by tha arguments
+to be printed wit appropriate quoting.
+Otherwise,
+.I action\^
+will be processed as if it was a argument to
+.B eval
+when tha shell
+receives signal(s)
+.IR sig .
+Each
+.I sig\^
+can be given as a number or as tha name of tha signal.
+Trap commandz is executed up in order of signal number.
+Any attempt ta set a trap on a signal that
+was ignored on entry ta tha current shell
+is ineffective.
+If
+.I action\^
+is omitted n' tha first
+.I sig\^
+is a number, or if
+.I action\^
+is
+.BR \- ,
+then tha trap(s) fo' each
+.I sig\^
+are reset
+to they original gangsta joints.
+If
+.I action\^
+is tha null
+strin then dis signal is ignored by tha shell n' by tha commands
+it invokes.
+If
+.I sig\^
+is
+.SM
+.B ERR
+then
+.I action\^
+will be executed whenever a cold-ass lil command has a non-zero exit status.
+If
+.I sig\^
+is
+.SM
+.B DEBUG
+then
+.I action\^
+will be executed before each command.
+Da variable
+.B .sh.command
+will contain tha contentz of tha current command line
+when
+.I action\^
+is hustlin.
+If tha exit statuz of tha trap is
+.B 2
+the command aint gonna be executed.
+If tha exit statuz of tha trap is
+.B 255
+and inside a gangbangin' function or a thugged-out dot script,
+the function or dot script will return.
+If
+.I sig\^
+is
+.B 0
+or
+.SM
+.B EXIT
+and the
+.B trap
+statement is executed inside tha body of a gangbangin' function defined wit the
+.B function
+.I name\^
+syntax,
+then tha command
+.I action\^
+is executed
+afta tha function completes.
+If
+.I sig\^
+is
+.B 0
+or
+.SM
+.B EXIT
+for a
+.B trap
+set outside any function
+then tha command
+.I action\^
+is executed
+on exit from tha shell.
+If
+.I sig\^
+is
+.SM
+.BR KEYBD ,
+then
+.I action\^
+will be executed whenever a key is read
+while in
+.BR emacs ,
+.BR gmacs ,
+or
+.B vi\^
+mode.
+The
+.B trap
+command
+with no arguments prints a list
+of commandz associated wit each signal number.
+.PP
+An
+.B exit
+or
+.B return
+without a argument up in a trap action will
+preserve tha exit statuz of tha command dat invoked tha trap.
+.TP
+\f3true\fP
+Do nothing, n' exits 0. Used with
+.B while
+for infinite loops.
+.TP
+\(dg\(dg \f3typeset\fP \*(OK \f3\(+-ACHSfblmnprtux\^\fP \*(CK \*(OK \f3\(+-EFLRXZi\*(OK\f2n\^\fP\*(CK \*(CK   \*(OK \f3\+-M  \*(OK \f2mapname\fP \*(CK \*(CK \*(OK \f3\-T  \*(OK \f2tname\fP=(\f2assign_list\fP) \*(CK \*(CK \*(OK \f3\-h \f2str\fP \*(CK \*(OK \f3\-a\fP \*(OK\f2type\fP\*(CK \*(CK \*(OK \f2vname\^\fP\*(OK\f3=\fP\f2value\^\fP \*(CK \^ \*(CK .\|.\|.
+Sets attributes n' joints fo' shell variablez n' functions.
+When invoked inside a gangbangin' function defined wit the
+.B function
+.I name\^
+syntax,
+a freshly smoked up instizzle of tha variable
+.I vname\^
+is pimped,
+and tha variablez value n' type is restored
+when tha function completes.
+Da followin list of attributes may be specified:
+.RS
+.PD 0
+.TP
+.B \-A
+Declares
+.I vname\^
+to be a associatizzle array.
+Subscripts is strings rather than arithmetic
+expressions.
+.TP
+.B \-C
+causes each
+.I vname\^
+to be a cold-ass lil compound variable.
+.I value\^
+names a cold-ass lil compound variable it is copied into
+.IR vname .
+Otherwise, it unsets each
+.IR vname .
+.TP
+.B \-a
+Declares
+.I vname\^
+to be a indexed array.
+If
+.I type\^
+is specified, it must be tha name of a enumeration
+type pimped wit the
+.B enum
+command n' it allows enumeration constants ta be used
+as subscripts.
+.TP
+.B \-E
+Declares
+.I vname\^
+to be a thugged-out double precision floatin point number.
+If
+.I n\^
+is non-zero, it defines tha number of dope figures
+that is used when expanding
+.IR vname .
+Otherwise, ten dope figures is ghon be used.
+.TP
+.B \-F
+Declares
+.I vname\^
+to be a thugged-out double precision floatin point number.
+If
+.I n\^
+is non-zero, it defines tha number of places afta the
+decimal point dat is used when expanding
+.IR vname .
+Otherwise ten places afta tha decimal point is ghon be used.
+.TP
+.B \-H
+This option serves up UNIX ta host-name file mappin on non-UNIX
+machines.
+.TP
+.B \-L
+Left justify n' remove leadin blanks from
+.IR value .
+If
+.I n\^
+is non-zero, it defines tha width
+of tha field,
+otherwise it is determined by tha width of tha value of
+first assignment.
+When tha variable be assigned to, it is
+filled on tha right wit blanks or truncated, if necessary, to
+fit tha fuck into tha field.
+The
+.B \-R
+option is turned off.
+.TP
+.B \-M
+Use tha characta mapping
+.I mapping\^
+defined by
+.IR wctrans (3).
+such as
+.B tolower
+and
+.B toupper
+when assignin a value ta each of tha specified operands.
+When
+.I mapping\^
+is specified n' there be not operands, all variables
+that use dis mappin is freestyled ta standard output.
+When
+.I mapping\^
+is omitted n' there be no operands, all mapped
+variablez is freestyled ta standard output.
+.TP
+.B \-R
+Right justify n' fill wit leadin blanks.
+If
+.I n\^
+is non-zero, it defines tha width
+of tha field,
+otherwise it is determined by tha width of tha value of
+first assignment.
+Da field is left filled wit blanks or
+truncated from tha end if the
+variable is reassigned.
+The
+.B \-L
+option is turned off.
+.TP
+.B \-S
+When used within the
+.I assign_list\^
+of a type definition, it causes tha specified sub-variable
+to be shared by all instancez of tha type.
+When used inside a gangbangin' function defined wit the
+.B function
+reserved word, tha specified variablez will have
+.I "function static\^"
+scope.
+Otherwise, tha variable is unset prior ta processin tha assignment list.
+.TP
+.B \-T
+If followed by \fItname\^\fP, it
+creates a type named by \fItname\^\fP rockin tha compound
+assignment
+.I assign_list\^
+to \f2tname\fP.
+Otherwise, it writes all tha type definitions ta standard output.
+.TP
+.B \-X
+Declares
+.I vname\^
+to be a thugged-out double precision floatin point number
+and expandz rockin the
+.B %a
+format of ISO-C99.
+If
+.I n\^
+is non-zero, it defines tha number of hex digits after
+the radix point dat is used when expanding
+.IR vname .
+Da default is 10.
+.TP
+.B \-Z
+Right justify n' fill wit leadin zeros if
+the first non-blank characta be a gangbangin' finger-lickin' digit n' the
+.B \-L
+option has not been set.
+Remove leadin zeros if the
+.B \-L
+option be also set.
+If
+.I n\^
+is non-zero, it defines tha width
+of tha field,
+otherwise it is determined by tha width of tha value of
+first assignment.
+.TP
+.B \-f
+Da names refer ta function names rather than
+variable names.
+No assignments can be made n' tha only other
+valid options are
+.BR \-S ,
+.BR \-t ,
+.B \-u
+and
+.BR \-x .
+Da \-S
+can be used wit discipline functions defined up in a type ta indicate that
+the function is static.  For a static function, tha same method is ghon be used by all instancez of dat type no matta which instizzle references dat shit.  In addition,
+it can only use value of variablez from tha original gangsta type definition. I aint talkin' bout chicken n' gravy biatch.  These
+discipline functions cannot be redefined up in any type instance.
+The
+.B \-t
+option
+turns on execution tracin fo' dis function.
+The
+.B \-u
+option
+causes dis function ta be marked undefined.
+The
+.SM
+.B FPATH
+variable is ghon be searched ta find tha function definition
+when tha function is referenced.
+If no options other than
+.B \-f
+is specified, then tha function definizzle is ghon be displayed
+on standard output.  If
+.B +f
+is specified, then a line containin tha function name followed
+by a gangbangin' finger-lickin' dirty-ass shell comment containin tha line number n' path name of the
+file where dis function was defined, if any, is displayed.
+Da exit status can be used ta determine whether tha function is
+defined so that
+.BI "typeset \-f .sh.math." name\^
+will return 0 when math function
+.I name\^
+is defined n' non-zero otherwise.
+.TP
+.B \-b
+Da variable can hold any number of bytez of data.
+Da data can be text or binary.
+Da value is represented by tha base64 encodin of tha data.
+If
+.B \-Z
+is also specified, tha size up in bytez of the
+data up in tha buffer is ghon be determined by tha size associated wit the
+.BR \-Z .
+If tha base64 strang assigned thangs up in dis biatch up in mo' data, it will be
+truncated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Otherwise, it is ghon be filled wit bytes
+whose value is zero.
+The
+.B printf
+format
+.B %B
+can be used ta output tha actual data up in dis buffer instead
+of tha base64 encodin of tha data.
+.TP
+.B \-h
+Used within type definitions ta add shiznit when generating
+information bout tha sub-variable on tha playa page.
+It be ignored when used outside of a type definition.
+When used with
+.B \-f
+the shiznit be associated wit tha correspondin discipline
+function.
+.TP
+.B \-i
+Declares
+.I vname\^
+to be represented internally as integer.
+Da right hand side of a assignment is evaluated as an
+arithmetic expression when assignin ta a integer.
+If
+.I n\^
+is non-zero, it defines tha output arithmetic base,
+otherwise tha output base is ghon be ten.
+.TP
+.B \-l
+Used with
+.BR \-i ,
+.B \-E
+or
+.BR \-F ,
+to indicate long integer, or long float.
+Otherwise, all upper-case charactas are
+converted ta lower-case.
+Da upper-case option,
+.BR \-u ,
+is turned off.
+Equivalent to
+.B "\-M tolower" .
+.TP
+.B \-m
+moves or renames tha variable.
+Da value is tha name of a variable whose value is ghon be moved to
+.IR vname\^ .
+Da original gangsta variable is ghon be unset.
+Cannot be used wit any other options.
+.TP
+.B \-n
+Declares
+.I vname\^
+to be a reference ta tha variable whose name is
+defined by tha value of variable
+.IR vname .
+This is probably used ta reference a variable inside
+a function whose name has been passed as a argument.
+Cannot be used wit any other options.
+.TP
+.B \-p
+Da name, attributes n' joints fo' tha given
+.IR vname s
+are freestyled on standard output up in a gangbangin' form dat can be
+used as shell input.
+If
+.B +p
+is specified, then tha joints is not displayed.
+.TP
+.B \-r
+Da given
+.IR vname s
+are marked
+readonly n' these
+names cannot be chizzled
+by subsequent assignment.
+.TP
+.B \-t
+Tags tha variables.
+Tags is user definable n' have no special
+meanin ta tha shell.
+.TP
+.B \-u
+When given along with
+.BR \-i ,
+specifies unsigned integer.
+Otherwise, all lower-case charactas is converted
+to upper-case.
+Da lower-case option,
+.BR \-l ,
+is turned off.
+Equivalent to
+.B "\-M toupper" .
+.TP
+.B \-x
+Da given
+.IR vname s
+are marked fo' automatic
+export ta the
+.I environment\^
+of subsequently-executed commands.
+Variablez whose names contain a \fB\s+2.\s-2\fP
+cannot be exported.
+.PD
+.PP
+The
+.B \-i
+attribute cannot be specified along with
+.BR \-R ,
+.BR \-L ,
+.BR \-Z ,
+or
+.BR \-f .
+.PP
+Using
+.B \+
+rather than
+.B \-
+causes these options ta be turned off.
+If no
+.I vname\^
+arguments is given,
+a list of
+.I vnames\^
+(and optionally the
+.IR joints\^ )
+of the
+.I variables\^
+is printed.
+(Using
+.B \+
+rather than
+.B \-
+keeps the
+values from bein printed.)
+The
+.B \-p
+option causes
+.B typeset
+followed by tha option letters
+to be printed before each name
+rather than tha namez of tha options.
+If any option other than
+.B \-p
+is given,
+only dem variables
+which have all of tha given
+options is printed.
+Otherwise, the
+.IR vname s
+and
+.I attributes\^
+of all
+.I variables\^
+that have attributes
+are printed.
+.RE
+.TP
+\f3ulimit\fP \*(OK \f3\-HSacdfmnpstv\fP \*(CK \*(OK \f2limit\^\fP \*(CK
+Set or display a resource limit.
+Da available resource limits is listed below.
+Many systems do not support one or mo' of these limits.
+Da limit fo' a specified resource is set when
+.I limit\^
+is specified.
+Da value of
+.I limit\^
+can be a number up in tha unit specified below wit each resource,
+or tha value
+.BR unlimited .
+The
+.B \-H
+and
+.B \-S
+options specify whether tha hard limit or the
+soft limit fo' tha given resource is set.
+A hard limit cannot be increased once it is set.  A soft
+limit can be increased up ta tha value of tha hard limit.
+If neither the
+.B H
+nor
+.B S
+option is specified, tha limit applies ta both.
+Da current resource limit is printed when
+.I limit\^
+is omitted.
+In dis case, tha soft limit is printed unless
+.B H
+is specified.
+When mo' than one resource is specified, then tha limit
+name n' unit is printed before tha value.
+.RS
+.PD 0
+.TP
+.B \-a
+Lists all of tha current resource limits.
+.TP
+.B \-c
+Da number of 512-byte blocks on tha size of core dumps.
+.TP
+.B \-d
+Da number of K-bytes on tha size of tha data area.
+.TP
+.B \-f
+Da number of 512-byte blocks on filez dat can be freestyled by the
+current process or by lil pimp processes (filez of any size may be read).
+.TP
+.B \-m
+Da number of K-bytes on tha size of physical memory.
+.TP
+.B \-n
+Da number of file descriptors plus 1.
+.TP
+.B \-p
+Da number of 512-byte blocks fo' pipe buffering.
+.TP
+.B \-s
+Da number of K-bytes on tha size of tha stack area.
+.TP
+.B \-t
+Da number of CPU secondz ta be used by each process.
+.TP
+.B \-v
+Da number of K-bytes fo' virtual memory.
+.PD
+.PP
+If no option is given,
+.B \-f
+is assumed.
+.RE
+.TP
+\f3umask\fP \*(OK \f3\-S\fP \*(CK \*(OK \f2mask\^\fP \*(CK
+Da user file-creation mask is set to
+.I mask\^
+(see
+.IR umask (2)).
+.I mask
+can either be a octal number or
+a symbolic value as busted lyrics bout in
+.IR chmod (1).
+If a symbolic value is given,
+the new
+umask value is tha complement of tha result of
+applying
+.I mask\^
+to tha complement of tha previous umask value.
+If
+.I mask\^
+is omitted, tha current value of tha mask is printed.
+The
+.B \-S
+option causes tha mode ta be printed as a symbolic
+value.  Otherwise, the
+mask is printed up in octal.
+.TP
+\(dg \f3unalias\fP \*(OK \f3\-a\fP \*(CK \f2name\^\fP .\|.\|.
+Da aliases
+given by tha list of
+.IR name s
+are removed from tha alias list.
+The
+.B \-a
+option causes all the
+aliases ta be unset.
+.TP
+\(dg\f3unset\fP \*(OK \f3\-fnv\fP \*(CK \f2vname\^\fP .\|.\|.
+Da variablez given by tha list of
+.IR vname s
+are unassigned,
+i.e.,
+except fo' sub-variablez within a type,
+their joints n' attributes is erased.
+For sub-variablez of a type, tha joints is reset ta the
+default value from tha type definition.
+Readonly variablez cannot be unset.
+If the
+.B \-f
+option
+is set, then tha names refer to
+.I function\^
+names.
+If the
+.B \-v
+option is set, then tha names refer to
+.I variable\^
+names.
+The
+.B \-f
+option overrides
+.BR \-v .
+If
+.B \-n
+is set and
+.I name\^
+is a name reference, then
+.I name\^
+will be unset rather than tha variable
+that it references.
+Da default is equivalent to
+.BR \-v .
+Unsetting
+.SM
+.BR LINENO ,
+.SM
+.BR MAILCHECK ,
+.SM
+.BR OPTARG ,
+.SM
+.BR OPTIND ,
+.SM
+.BR RANDOM ,
+.SM
+.BR SECONDS ,
+.SM
+.BR TMOUT ,
+and
+.SM
+.B _
+removes they special meanin even if they are
+subsequently assigned to.
+.TP
+\f3wait\fP \*(OK \f2job\^\fP .\|.\|. \*(CK
+Wait fo' tha specified
+.I thang
+and
+report its termination status.
+If
+.I thang\^
+is not given, then all currently actizzle lil pimp processes is waited for.
+Da exit status from dis command is dat of
+the last process waited fo' if
+.I thang\^
+is specified; otherwise it is zero.
+See
+.I Jobs
+for a thugged-out description of tha format of
+.IR thang .
+.TP
+\f3whence\fP \*(OK \f3\-afpv\fP \*(CK \f2name\^\fP .\|.\|.
+For each
+.IR name ,
+indicate how tha fuck it
+would be interpreted if used as a cold-ass lil command name.
+.sp .5
+The
+.B \-v
+option
+produces a mo' verbose report.
+The
+.B \-f
+option skips tha search fo' functions.
+The
+.B \-p
+option
+does a path search for
+.I name\^
+even if name be a alias, a gangbangin' function, or a reserved word.
+The
+.B \-p
+option turns off the
+.B \-v
+option.
+The
+.B \-a
+option
+is similar ta the
+.B \-v
+option but causes
+all interpretationz of tha given name ta be reported.
+.SS Invocation.
+If tha shell is invoked by
+.IR exec (2),
+and tha straight-up original gangsta characta of argument zero
+.RB ( $0 )
+is
+.BR \- ,
+then tha shell be assumed ta be a
+.I login
+shell and
+commandz is read from
+.B /etc/profile
+and then from either
+.B .profile
+in tha current directory or
+.BR \s-1$HOME\s+1/.profile ,
+if either file exists.
+Next, fo' interactizzle shells, commandz is read from
+the file named by
+performin parameta expansion, command substitution,
+and arithmetic substitution on
+the value of tha environment variable
+.SM
+.B ENV
+if tha file exists.
+If the
+.B \-s
+option aint present and
+.I arg\^
+and a gangbangin' file by tha name of
+.I arg\^
+exists, then it readz n' executes dis script.
+Otherwise, if tha first
+.I arg\^
+does not contain a
+.BR / ,
+a path search is performed on tha first
+.I arg\^
+to determine tha name of tha script ta execute.
+Da script
+.I arg\^
+must have execute permission n' any
+.I setuid
+and
+.I setgid
+settings is ghon be ignored.
+If tha script aint found on tha path,
+.I arg\^
+is processed as if it named a funky-ass built-in command or function.
+Commandz is then read as busted lyrics bout below;
+the followin options is interpreted by tha shell
+when it is invoked:
+.PP
+.PD 0
+.TP 8
+.B \-D
+Do not execute tha script yo, but output tha set of double quoted strings
+preceded by a
+.BR $ .
+These strings is needed fo' localization of tha script ta different locales.
+.TP 8
+.B \-E
+Readz tha file named by the
+.B ENV
+variable or by
+\s-1$HOME\s+1/\f3.\fPkshrc
+if not defined afta tha profiles.
+.TP 10
+.BI \-c
+If the
+.B \-c
+option is present, then
+commandz is read from tha first
+.IR arg .
+Any remainin arguments become
+positionizzle parametas startin at
+.BR 0 .
+.TP
+.B \-s
+If the
+.B \-s
+option is present or if no
+arguments remain,
+then commandz is read from tha standard input.
+Shell output,
+except fo' tha output of the
+.I Special Commands\^
+listed above,
+is freestyled to
+file descriptor 2.
+.TP
+.B \-i
+If the
+.B \-i
+option is present or
+if tha shell input n' error output is attached ta a terminal (as holla'd at by
+.IR tcgetattr (2)),
+then dis shell is
+.IR interactizzle .
+In dis case \s-1TERM\s+1 is ignored (so dat \f3kill 0\fP
+does not bust a cap up in a interactizzle shell) n' \s-1INTR\s+1 is caught n' ignored
+(so that
+.B wait
+is ).
+In all cases, \s-1QUIT\s+1 is ignored by tha shell.
+.TP
+.B \-r
+If the
+.B \-r
+option is present, tha shell be a restricted shell.
+.TP
+.B \-D
+A list of all double quoted strings dat is preceded by a
+.B $
+will be printed on standard output n' tha shell will exit.
+This set of strings is ghon be subject ta language translation
+when tha locale aint C or POSIX.
+No commandz is ghon be executed.
+.PD
+.TP
+.B \-P
+If
+.B \-P
+or
+.B \-o profile
+is present, tha shell be a flava shell (see
+.IR pfexec (1)).
+.TP
+.BI \-R " filename\^"
+The
+.B \-R
+.I filename\^
+option is used
+to generate a cold-ass lil cross reference database
+that can be used by a separate utility
+to find definitions n' references fo' variablez n' commands.
+Da filename argument specifies tha generated database fo' realz. A script file must be
+provided on tha command line as well.
+.PP
+Da remainin options n' arguments is busted lyrics bout under the
+.B set
+command above.
+An optional
+.B \-
+as tha straight-up original gangsta argument is ignored.
+.if \nZ=0 \{.SS Rsh Only.
+.I Rsh\}
+.if \nZ=1 \{.SS Rksh Only.
+.I Rksh\}
+.if \nZ=2 \{.SS Rksh93 Only.
+.I Rksh93\}
+is used ta set up login names n' execution environments whose
+capabilitizzles is mo' controlled than dem of tha standard shell.
+Da actions of
+.if \nZ=0 .B rsh\^
+.if \nZ=1 .B rksh\^
+.if \nZ=2 .B rksh93\^
+are identical ta dem of
+.if \nZ=0 .BR sh\^ ,
+.if \nZ=1 .BR ksh\^ ,
+.if \nZ=2 .BR ksh93\^ ,
+except dat tha followin is disallowed:
+.RS
+.PD 0
+.PP
+Unsettin tha restricted option.
+.br
+changin directory (see
+.IR cd (1)),
+.br
+settin or unsettin tha value or attributes of
+.SM
+.BR SHELL ,
+.SM
+.BR ENV ,
+.SM
+.BR FPATH ,
+or
+.SM
+.BR PATH\*S,
+.br
+specifyin path or
+command names containing
+.BR / ,
+.br
+redirectin output
+.RB ( > ,
+.BR >| ,
+.BR <> ,
+and
+.BR >> ).
+.br
+addin or deletin built-in commands.
+.br
+using
+.B "command -p"
+to invoke a cold-ass lil command.
+.PD
+.RE
+.PP
+Da restrictions above is enforced
+afta \f3.profile\fP n' the
+.SM
+.B ENV
+filez is interpreted.
+.PP
+When a cold-ass lil command ta be executed is found ta be a gangbangin' finger-lickin' dirty-ass shell procedure,
+.if \nZ=0 \{.B rsh\^
+invokes
+.I sh\^\}
+.if \nZ=1 \{.B rksh\^
+invokes
+.I ksh\^\}
+.if \nZ=2 \{.B rksh93\^
+invokes
+.I ksh93\^\}
+to execute dat shit.
+Thus, it is possible ta provide ta tha end-user shell procedures
+that have access ta tha full juice of
+the standard shell,
+while imposin a limited menu of commands;
+this scheme assumes dat tha end-user aint gots write and
+execute permissions up in tha same directory.
+.PP
+Da net effect of these rulez is dat tha writa of the
+.B .profile
+has complete control over user actions,
+by struttin guaranteed setup actions
+and leavin tha user up in a appropriate directory
+(probably
+.I not\^
+the login directory).
+.PP
+Da system administrator often sets up a gangbangin' finger-lickin' directory
+of commands
+(e.g.,
+.BR /usr/rbin )
+that can be safely invoked by
+.if \nZ=0 .BR rsh .
+.if \nZ=1 .BR rksh .
+.if \nZ=2 .BR rksh93 .
+.SH EXIT STATUS
+Errors detected by tha shell, like fuckin syntax errors,
+cause tha shell
+to return a non-zero exit status.
+If tha shell is bein used non-interactively,
+then execution of tha shell file be abandoned
+unless tha error occurs inside a subshell up in which case
+the subshell be abandoned.
+Otherwise, tha shell returns tha exit status of
+the last command executed (see also the
+.B exit
+command above).
+Run time errors detected by tha shell is reported by
+printin tha command or function name n' tha error condition.
+If tha line number dat tha error occurred on is pimped outa than one,
+then tha line number be also printed up in square brackets
+.RB ( "[]" )
+afta tha command or function name.
+.SH FILES
+.TP
+.B /etc/profile
+Da system wide initialization file, executed fo' login shells.
+.if \nZ=2 \{.br
+.TP
+.B /etc/ksh.kshrc
+Da system wide startup file, executed fo' interactizzle shells.
+\}
+.TP
+.B \s-1$HOME\s+1/\f3.\fPprofile
+Da underground initialization file, executed fo' login shells afta /etc/profile.
+.TP
+\s-1$HOME\s+1/\f3.\fP.kshrc
+Default underground initialization file, executed fo' interactizzle shells when
+.SM
+.B ENV
+is not set.
+.TP
+.B /etc/suid_profile
+Alternatizzle initialization file, executed instead of tha underground initialization
+file when tha real n' effectizzle user or crew id do not match.
+.TP
+.B /dev/null
+NULL device
+.SH SEE ALSO
+cat(1),
+cd(1),
+chmod(1),
+cut(1),
+egrep(1),
+echo(1),
+emacs(1),
+env(1),
+fgrep(1),
+gmacs(1),
+grep(1),
+newgrp(1),
+pfexec(1),
+stty(1),
+test(1),
+umask(1),
+vi(1),
+dup(2),
+exec(2),
+fork(2),
+getpwnam(3),
+ioctl(2),
+lseek(2),
+paste(1),
+pathconf(2),
+pipe(2),
+sysconf(2),
+umask(2),
+ulimit(2),
+wait(2),
+wctrans(3),
+rand(3),
+a.out(5),
+profile(5),
+environ(7).
+.PP
+Morris I. Bolsky n' Dizzy G. Korn,
+.IR "Da New KornShell Command n' Programmin Language" ,
+Prentice Hall, 1995.
+.PP
+.I "POSIX \- Part 2: Shell n' Utilities,"
+IEEE Std 1003.2-1992, ISO/IEC 9945-2, IEEE, 1993.
+.SH CAVEATS
+.PP
+If a cold-ass lil command
+is executed, n' then a cold-ass lil command wit tha same name is
+installed up in a gangbangin' finger-lickin' directory up in tha search path before tha directory where the
+original gangsta command was found, tha shell will continue to
+.I exec\^
+the original gangsta command.
+Use the
+.B \-t
+option of the
+.B alias\^
+command ta erect dis thang.
+.PP
+Some straight-up oldschool shell scripts contain a
+.B ^
+as a synonym fo' tha pipe character
+.BR \(bv .
+.PP
+Usin the
+.B hist\^
+built-in command within a cold-ass lil compound command will cause tha whole
+command ta disappear from tha history file.
+.PP
+Da built-in command \f3\|.\fP \f2file\^\fP
+readz tha whole file before any commandz is executed.
+Therefore,
+.B alias
+and
+.B unalias
+commandz up in tha file
+will not apply ta any commandz defined up in tha file.
+.PP
+Traps is not processed while a thang is waitin fo' a gangbangin' foreground process.
+Thus, a trap on
+.B CHLD
+won't be executed until tha foreground thang terminates.
+.PP
+It be a phat scam ta leave a space afta tha comma operator in
+arithmetic expressions ta prevent tha comma from bein interpreted
+as tha decimal point characta up in certain locales.

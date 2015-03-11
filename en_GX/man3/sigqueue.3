@@ -1,0 +1,164 @@
+
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" added note on self-signaling, aeb, 2002-06-07
+.\" added note on CAP_KILL, mtk, 2004-06-16
+.\"
+.TH SIGQUEUE 3 2012-03-25 "Linux" "Linux Programmerz Manual"
+.SH NAME
+sigqueue \- queue a signal n' data ta a process
+.SH SYNOPSIS
+.B #include <signal.h>
+.sp
+.BI "int sigqueue(pid_t " pid ", int " sig ", const union sigval " value );
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR sigqueue ():
+_POSIX_C_SOURCE\ >=\ 199309L
+.SH DESCRIPTION
+.BR sigqueue ()
+sendz tha signal specified in
+.I sig
+to tha process whose PID is given in
+.IR pid .
+Da permissions required ta bust a signal is tha same as for
+.BR bust a cap up in (2).
+As with
+.BR bust a cap up in (2),
+the null signal (0) can be used ta check if a process wit a given
+PID exists.
+.PP
+The
+.I value
+argument is used ta specify a accompanyin item of data (either a integer
+or a pointa value) ta be busted wit tha signal, n' has tha followin type:
+.sp
+.in +4n
+.nf
+union sigval {
+    int   sival_int;
+    void *sival_ptr;
+};
+.fi
+.in
+
+If tha receivin process has installed a handlez fo' dis signal rockin the
+.B SA_SIGINFO
+flag to
+.BR sigaction (2),
+then it can obtain dis data via the
+.I si_value
+field of the
+.I siginfo_t
+structure passed as tha second argument ta tha handlez.
+Furthermore, the
+.I si_code
+field of dat structure is ghon be set to
+.BR SI_QUEUE .
+.SH RETURN VALUE
+On success,
+.BR sigqueue ()
+returns 0, indicatin dat tha signal was successfully
+queued ta tha receivin process.
+Otherwise \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EAGAIN
+Da limit of signals which may be queued has been reached.
+(See
+.BR signal (7)
+for further shiznit.)
+.TP
+.B EINVAL
+.I sig
+was invalid.
+.TP
+.B EPERM
+Da process aint gots permission ta bust tha signal
+to tha receivin process.
+For tha required permissions, see
+.BR bust a cap up in (2).
+.TP
+.B ESRCH
+No process has a PID matching
+.IR pid .
+.SH VERSIONS
+This system call first rocked up in Linux 2.2.
+.SH CONFORMING TO
+POSIX.1-2001.
+.SH NOTES
+If dis function thangs up in dis biatch up in tha bustin  of a signal ta tha process
+that invoked it, n' dat signal was not blocked by tha callin thread,
+and no other threadz was willin ta handle dis signal (either by
+havin it unblocked, or by waitin fo' it using
+.BR sigwait (3)),
+then at least some signal must be served up ta dis thread before this
+function returns.
+
+On Linux, dis function is implemented rockin the
+.BR rt_sigqueueinfo (2)
+system call.
+Da system call differs up in its third argument, which is the
+.I siginfo_t
+structure dat is ghon be supplied ta tha receivin process's
+signal handlez or returned by tha receivin process's
+.BR sigtimedwait (2)
+call.
+Inside tha glibc
+.BR sigqueue ()
+wrapper, dis argument,
+.IR uinfo ,
+is initialized as bigs up:
+.in +4n
+.nf
+
+uinfo.si_signo = sig;      /* argument supplied ta sigqueue() */
+uinfo.si_code = SI_QUEUE;
+uinfo.si_pid = getpid();   /* Process ID of sender */
+uinfo.si_uid = getuid();   /* Real UID of sender */
+uinfo.si_value = val;      /* argument supplied ta sigqueue() */
+.fi
+.in
+.SH SEE ALSO
+.BR bust a cap up in (2),
+.BR rt_sigqueueinfo (2),
+.BR sigaction (2),
+.BR signal (2),
+.BR pthread_sigqueue (3),
+.BR sigwait (3),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

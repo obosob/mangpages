@@ -1,0 +1,313 @@
+.\" Copyright (c) 1995  Hewlett-Packard Company
+.\"
+.\" Permission is hereby granted, free of charge, ta any thug obtainin a
+.\" copy of dis software n' associated documentation filez (the "Software"),
+.\" ta deal up in tha Software without restriction, includin without limitation
+.\" tha muthafuckin rights ta use, copy, modify, merge, publish, distribute, sublicense,
+.\" and/or push copiez of tha Software, n' ta permit peeps ta whom the
+.\" Software furnished ta do so, subject ta tha followin conditions:
+.\"
+.\" Da above copyright notice n' dis permission notice shall be included in
+.\" all copies or substantial portionz of tha Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+.\" IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+.\" HEWLETT-PACKARD COMPANY BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+.\" WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+.\" OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+.\" SOFTWARE.
+.\"
+.\" Except as contained up in dis notice, tha name of tha Hewlett-Packard Company shall not
+.\" be used up in advertisin or otherwise ta promote tha sale, use or other
+.\" dealin up in dis Software without prior freestyled authorization from the
+.\" Hewlett-Packard Company.
+.\"
+.TH DBE 3 "libXext 1.3.2" "X Version 11" "X FUNCTIONS"
+.SH NAME
+DBE - Double Buffer Extension
+.SH SYNOPSIS
+Da Double Buffer Extension (DBE) serves up a standard way ta utilize
+double-bufferin within tha framework of tha X Window System.
+Double-bufferin uses two buffers, called front n' back, which hold images.
+Da front buffer is visible ta tha user; tha back buffer is not.  Successive
+framez of a animation is rendered tha fuck into tha back buffer while tha previously
+rendered frame is displayed up in tha front buffer n' shit.  When a freshly smoked up frame is ready,
+the back n' front buffers swap roles, makin tha freshly smoked up frame visible.  Ideally,
+this exchange appears ta happen instantaneously ta tha user, wit no visual
+artifacts, n' you can put dat on yo' toast.  Thus, only straight-up rendered images is presented ta tha user,
+and remain visible durin tha entire time it takes ta render a freshly smoked up frame.  The
+result be a gangbangin' flicker-free animation.
+.SH DESCRIPTION
+.B Concepts
+.RS
+Normal windows is pimped using
+.B XCreateWindow()
+or
+.B XCreateSimpleWindow(),
+which allocate a set of window attributes and, fo' InputOutput windows, a gangbangin' front
+buffer, tha fuck into which a image can be drawn. I aint talkin' bout chicken n' gravy biatch.  Da contentz of dis buffer will be
+displayed when tha window is visible.
+
+This extension enablez applications ta use double-bufferin wit a window.
+This involves bustin a second buffer, called a funky-ass back buffer, n' associating
+one or mo' back buffer names
+.I (XIDs)
+with tha window, fo' use when referring
+to (i.e., drawin ta or readin from) tha windowz back buffer.
+Da back buffer name be a thugged-out drawable of type
+.I XdbeBackBuffer.
+
+DBE serves up a relatizzle double-bufferin model.  One XID, tha window,
+always refers ta tha front buffer n' shit.  One or mo' other XIDs, tha back buffer
+names, always refer ta tha back buffer n' shit.  Afta a funky-ass buffer swap, tha window
+continues ta refer ta tha (new) front buffer, n' tha back buffer name
+continues ta refer ta tha (new) back buffer n' shit.  Thus, applications n' toolkits
+that wanna just render ta tha back buffer always use tha back buffer name
+for all drawin requests ta tha window.  Portionz of a application dat want
+to render ta tha front buffer always use tha window XID fo' all drawing
+requests ta tha window.
+
+Multiple clients n' toolkits can all use double-bufferin on tha same window.
+DBE do not provide a request fo' queryin whether a window has
+double-bufferin support, n' if so, what tha fuck tha back buffer name is.  Given the
+asynchronous nature of tha X Window System, dis would cause race
+conditions.  Instead, DBE allows multiple back buffer names ta exist fo' the
+same window; they all refer ta tha same physical back buffer n' shit.  Da last time a
+back buffer name be allocated fo' a window, tha window becomes
+double-buffered n' tha back buffer name be associated wit tha window.
+Subsequently, tha window already be a thugged-out double-buffered window, n' nothing
+about tha window chizzlez when a freshly smoked up back buffer name be allocated, except
+that tha freshly smoked up back buffer name be associated wit tha window.  Da window
+remains double-buffered until either tha window is destroyed, or until all of
+the back buffer names fo' tha window is deallocated.
+
+In general, both tha front n' back buffers ae treated tha same.  In
+particular, here is some blingin characteristics:
+
+.RS
+Only one buffer per window can be visible at a time (the front buffer).
+
+Both buffers associated wit a window have tha same visual type, depth,
+width, height, n' shape as tha window.
+
+Both buffers associated wit a window is "visible" (or "obscured") in
+the same way.  When a Expose event is generated fo' a window, this
+event is considered ta apply ta both buffers equally.  When a
+double-buffered window is exposed, both buffers is tiled wit the
+window background.
+Even though tha back buffer aint visible, terms like fuckin obscure apply ta the
+back buffer as well as ta tha front buffer.
+
+It be aaight at any time ta pass an
+.I XdbeBackBuffer
+in any function dat expects a thugged-out drawable.
+This enablez a application ta draw directly into
+.I XdbeBackBuffer
+in tha same fashizzle as it would draw tha fuck into any other drawable.
+
+It be a error (Window) ta pass an
+.I XdbeBackBuffer
+in a gangbangin' function dat expects a Window.
+
+An
+.I XdbeBackBuffer
+will never be busted up in a reply, event, or error where a Window is specified.
+
+If backing-store n' save-under applies ta a thugged-out double-buffered
+window, it applies ta both buffers equally.
+
+If the
+.B XClearArea()
+or
+.B XClearWindow()
+function is executed on a
+double-buffered window, tha same area up in both tha front n' back buffers
+is cleared.
+.RE
+
+Da effect of passin a window ta a gangbangin' function dat accepts a thugged-out drawable
+is unchanged by dis extension. I aint talkin' bout chicken n' gravy biatch.  Da window n' front buffer is synonymous
+with each other n' shit.  This includes obeyin the
+.B XGetImage()
+and
+.B XGetSubImage()
+semantics n' tha subwindow-mode semantics if a graphics context is
+involved. Y'all KNOW dat shit, muthafucka!  Regardless of whether tha window was explicitly passed up in an
+.B XGetImage()
+or
+.B XGetSubImage()
+call, or implicitly referenced (i.e., one of
+the windowz ancestors was passed up in tha function), tha front (i.e. visible)
+buffer be always referenced.
+Thus, DBE-naive screen dump clients will always git tha front buffer.
+.B XGetImage()
+and
+.B XGetSubImage()
+on a funky-ass back
+buffer return undefined image contents fo' any obscured regionz of tha back
+buffer dat fall within tha image.
+
+Drawin ta a funky-ass back buffer always uses tha clip region dat would be used to
+draw ta tha front buffer wit a GC subwindow-mode of ClipByChildren. I aint talkin' bout chicken n' gravy biatch.  If an
+ancestor of a thugged-out double-buffered window is drawn ta wit a GC havin a
+subwindow-mode of IncludeInferiors, tha effect on tha double-buffered
+windowz back buffer dependz on tha depth of tha double-buffered window
+and tha ancestor. Shiiit, dis aint no joke.  If tha depths is tha same, tha contentz of tha back buffer
+of tha double-buffered window is not chizzled. Y'all KNOW dat shit, muthafucka!  If tha depths is different,
+the contentz of tha back buffer of tha double-buffered window is undefined
+for tha pixels dat tha IncludeInferiors drawin touched.
+
+DBE addz no freshly smoked up events, n' you can put dat on yo' toast.  DBE do not extend tha semantics of any existing
+events wit tha exception of addin a freshly smoked up drawable type called
+.I XdbeBackBuffer.
+
+If events, replies, or errors dat contain a thugged-out drawable
+(e.g., GraphicsExpose) is generated up in response ta a request, the
+drawable returned is ghon be tha one specified up in tha request.
+
+DBE advertises which visuals support double buffering.
+
+DBE do not include any timin or synchronization facilities. Put ya muthafuckin choppers up if ya feel dis!  Applications
+that need such facilitizzles (e.g., ta maintain a cold-ass lil constant frame rate) should
+investigate tha Synchronization Extension, a X Consortium standard.
+.RE
+
+.B Window Management Operations
+
+.RS
+Da basic philosophy of DBE is dat both buffers is treated tha same by
+X window pimpment operations.
+
+When a thugged-out double-buffered window is destroyed,
+both buffers associated wit tha window is destroyed, n' all back buffer
+names associated wit tha window is freed.
+
+If tha size of a thugged-out double-buffered window chizzles, both
+buffers assume tha freshly smoked up size.  If tha windowz size increases, tha effect on the
+buffers dependz on whether tha implementation honors bit gravitizzle fo' buffers.
+If bit gravitizzle is implemented, then tha contentz of both buffers is moved in
+accordizzle wit tha windowz bit gravity,
+and tha remainin areas is tiled wit tha window background. Y'all KNOW dat shit, muthafucka!  If
+bit gravitizzle aint implemented, then tha entire unobscured region of both
+buffers is tiled wit tha window background. Y'all KNOW dat shit, muthafucka!  In either case, Expose events are
+generated fo' tha region dat is tiled wit tha window background.
+
+If the
+.B XGetGeometry()
+function is executed on an
+.I XdbeBackBuffer,
+the returned x, y, n' border-width is ghon be zero.
+
+If tha Shape extension
+.B ShapeRectangles, ShapeMask, ShapeCombine,
+or
+.B ShapeOffset
+request is executed on a thugged-out double-buffered window, both
+buffers is reshaped ta match tha freshly smoked up window shape.  Da region difference
+D = freshly smoked up shape - oldschool shape is tiled wit tha window background up in both
+buffers, n' Expose events is generated fo' D.
+.RE
+
+.B Complex Swap Actions
+
+.RS
+DBE has no explicit knowledge of ancillary buffers (e.g. depth buffers or
+alpha buffers), n' only has a limited set of defined swap actions.  Some
+applications may need a richer set of swap actions than DBE provides.  Some
+DBE implementations have knowledge of ancillary buffers, and/or can provide
+a rich set of swap actions. Instead of continually extendin DBE ta increase
+its set of swap actions, DBE serves up a gangbangin' flexible "idiom" mechanism.  If an
+applicationss needz is served by tha defined swap actions, it should use
+them; otherwise, it should use tha followin method of expressin a cold-ass lil complex
+swap action as a idiom.  Peepin dis policy will ensure tha dopest possible
+performizzle across a wide variety of implementations.
+
+As suggested by tha term "idiom," a cold-ass lil complex swap action should be expressed
+as a group/seriez of requests, n' you can put dat on yo' toast.  Taken together, dis crew of requests may be
+combined tha fuck into a atomic operation by tha implementation, up in order to
+maximize performance.  Da set of idioms straight-up recognized fo' optimization
+is implementation dependent.  To help wit idiom expression and
+interpretation, a idiom must be surrounded by two function calls:
+.B XdbeBeginIdiom()
+and
+.B XdbeEndIdiom().
+Unless dis begin-end pair
+surroundz tha idiom, it may not be recognized by a given implementation, and
+performizzle will suffer.
+
+For example, if a application wants ta swap buffers fo' two windows, n' use
+X ta clear only certain planez of tha back buffers, tha application would
+make tha followin calls as a group, n' up in tha followin order:
+
+.RS
+.B XdbeBeginIdiom().
+
+.B XdbeSwapBuffers()
+with XIDs fo' two windows, each of which uses a swap action of Untouched.
+
+.B XFillRectangle()
+to tha back buffer of one window.
+
+.B XFillRectangle()
+to tha back buffer of tha other window.
+
+.B XdbeEndIdiom().
+.RE
+
+The
+.B XdbeBeginIdiom()
+and
+.B XdbeEndIdiom()
+functions do not big-ass up any
+actions theyselves.  They is treated as markers by implementations dat can
+combine certain groups/seriez of requests as idioms, n' is ignored by other
+implementations or fo' non-recognized groups/seriez of requests, n' you can put dat on yo' toast.  If these
+function calls is made outta order, or is mismatched, no errors is sent,
+and tha functions is executed as usual, though performizzle may suffer.
+
+.B XdbeSwapBuffers()
+need not be included up in a idiom.  For
+example, if a swap action of Copied is desired yo, but only a shitload of tha planes
+should be copied,
+.B XCopyArea()
+may be used instead of
+.B XdbeSwapBuffers().
+If
+.B XdbeSwapBuffers()
+is included up in a idiom, it should immediately follow the
+.B XdbeBeginIdiom()
+call.  Also, when the
+.B XdbeSwapBuffers()
+is included up in a idiom, dat requestz swap action will
+still be valid, n' if tha swap action might overlap wit another request, then
+the final result of tha idiom must be as if tha separate requests was executed
+serially.  For example, if tha specified swap action is Untouched, n' if a
+.B XFillRectangle()
+usin a cold-ass lil client clip rectangle is done ta tha windowz back
+buffer afta the
+.B XdbeSwapBuffers()
+call, then tha contentz of tha new
+back buffer (afta tha idiom) is ghon be tha same as if tha idiom was not
+recognized by tha implementation.
+
+It be highly recommended dat API providaz define, n' application
+developers use, "convenience" functions dat allow client applications ta call
+one procedure dat encapsulates common idioms.  These functions will
+generate the
+.B XdbeBeginIdiom(),
+idiom, and
+.B XdbeEndIdiom()
+calls.  Usage of these functions will ensure dopest possible
+performizzle across a wide variety of implementations.
+.SH SEE ALSO
+.I XdbeAllocateBackBufferName(),
+.I XdbeBeginIdiom(),
+.I XdbeDeallocateBackBufferName(),
+.I XdbeEndIdiom(),
+.I XdbeFreeVisualInfo(),
+.I XdbeGetBackBufferAttributes(),
+.I XdbeGetVisualInfo(),
+.I XdbeQueryExtension(),
+.I XdbeSwapBuffers().
+

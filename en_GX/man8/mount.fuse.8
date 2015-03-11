@@ -1,0 +1,161 @@
+.TH fuse "8"
+.SH NAME
+fuse \- format n' options fo' tha fuse file systems
+.SH DESCRIPTION
+FUSE (Filesystem up in Userspace) be a simple intercourse fo' userspace programs ta export a virtual filesystem ta tha Linux kernel. FUSE also aims ta provide a secure method fo' non privileged playas ta create n' mount they own filesystem implementations.
+.SH CONFIGURATION
+Some options regardin mount policy can be set up in tha file \fI/etc/fuse.conf\fP. Currently these options are:
+.TP
+\fBmount_max = NNN\fP
+Set tha maximum number of FUSE mounts allowed ta non-root users. Da default is 1000.
+.TP
+\fBuser_allow_other\fP
+Allow non-root playas ta specify tha \fBallow_other\fP or \fBallow_root\fP mount options (see below).
+.SH OPTIONS
+Most of tha generic mount options busted lyrics bout up in \fBmount\fP is supported (\fBro\fP, \fBrw\fP, \fBsuid\fP, \fBnosuid\fP, \fBdev\fP, \fBnodev\fP, \fBexec\fP, \fBnoexec\fP, \fBatime\fP, \fBnoatime\fP, \fBsync\fP, \fBasync\fP, \fBdirsync\fP). Filesystems is mounted wit \fBnodev,nosuid\fP by default, which can only be overridden by a privileged user.
+.SS "General mount options:"
+These is FUSE specific mount options dat can be specified fo' all filesystems:
+.TP
+\fBdefault_permissions\fP
+By default FUSE don't check file access permissions, tha filesystem is free ta implement itz access policy or leave it ta tha underlyin file access mechanizzle (e.g. up in case of network filesystems). This option enablez permission checking, restrictin access based on file mode.  This is option is probably useful together wit tha \fBallow_other\fP mount option.
+.TP
+\fBallow_other\fP
+This option overrides tha securitizzle measure restrictin file access ta tha user mountin tha filesystem.  So all playas (includin root) can access tha files.  This option is by default only allowed ta root yo, but dis restriction can be removed wit a cold-ass lil configuration option busted lyrics bout up in tha previous section.
+.TP
+\fBallow_root\fP
+This option is similar ta \fBallow_other\fP but file access is limited ta tha user mountin tha filesystem n' root.  This option n' \fBallow_other\fP is mutually exclusive.
+.TP
+\fBkernel_cache\fP
+This option disablez flushin tha cache of tha file contents on every last muthafuckin \fBopen\fP(2).  This should only be enabled on filesystems, where tha file data is never chizzled externally (not all up in tha mounted FUSE filesystem).  Thus it aint suitable fo' network filesystems n' other \fIintermediate\fP filesystems.
+
+\fBNOTE\fP: if dis option aint specified (and neither \fBdirect_io\fP) data is still cached afta tha \fBopen\fP(2), so a \fBread\fP(2) system call aint gonna always initiate a read operation.
+.TP
+\fBauto_cache\fP
+This option enablez automatic flushin of tha data cache on \fBopen\fP(2). Da cache will only be flushed if tha modification time or tha size of tha file has chizzled.
+.TP
+\fBlarge_read\fP
+Issue big-ass read requests, n' you can put dat on yo' toast.  This can improve performizzle fo' some filesystems yo, but can also degrade performance. This option is only useful on 2.4.X kernels, as on 2.6 kernels requests size be automatically determined fo' optimum performance.
+.TP
+\fBdirect_io\fP
+This option disablez tha use of page cache (file content cache) up in tha kernel fo' dis filesystem. This has nuff muthafuckin affects:
+.IP 1.
+Each \fBread\fP(2) or \fBwrite\fP(2) system call will initiate one or mo' read or write operations, data aint gonna be cached up in tha kernel.
+.IP 2.
+Da return value of tha read() n' write() system calls will correspond ta tha return jointz of tha read n' write operations. This is useful fo' example if tha file size aint known up in advizzle (before readin it).
+.TP
+\fBmax_read=N\fP
+With dis option tha maximum size of read operations can be set. Da default is infinite. Note dat tha size of read requests is limited anyway ta 32 pages (which is 128kbyte on i386).
+.TP
+\fBmax_readahead=N\fN
+Set tha maximum number of bytes ta read-ahead. Y'all KNOW dat shit, muthafucka!  Da default is determined by tha kernel. On linux-2.6.22 or earlier itz 131072 (128kbytes)
+.TP
+\fBmax_write=N\fP
+Set tha maximum number of bytes up in a single write operation. I aint talkin' bout chicken n' gravy biatch. Da default is 128kbytes.  Note, dat cuz of various limitations, tha size of write requests can be much smalla (4kbytes). This limitation is ghon be removed up in tha future.
+.TP
+\fBasync_read\fP
+Perform readz asynchronously. This is tha default
+.TP
+\fBsync_read\fP
+Perform all readz (even read-ahead) synchronously.
+.TP
+\fBhard_remove\fP
+Da default behavior is dat if a open file is deleted, tha file is renamed ta a hidden file (\fB.fuse_hiddenXXX\fP), n' only removed when tha file is finally busted out. Y'all KNOW dat shit, muthafucka!  This relieves tha filesystem implementation of havin ta deal wit dis problem.  This option disablez tha hidin behavior, n' filez is removed immediately up in a unlink operation (or up in a rename operation which overwrites a existin file).
+
+It be recommended dat you not use tha hard_remove option. I aint talkin' bout chicken n' gravy biatch. When hard_remove is set, tha followin libc functions fail on unlinked filez (returnin errno of \fBENOENT\fP): \fBread\fP(2), \fBwrite\fP(2), \fBfsync\fP(2), \fBclose\fP(2), \fBf*xattr\fP(2), \fBftruncate\fP(2), \fBfstat\fP(2), \fBfchmod\fP(2), \fBfchown\fP(2)
+.TP
+\fBdebug\fP
+Turns on debug shiznit printin by tha library.
+.TP
+\fBfsname=NAME\fP
+Sets tha filesystem source (first field up in \fI/etc/mtab\fP). Da default is tha mount program name.
+.TP
+\fBsubtype=TYPE\fP
+Sets tha filesystem type (third field up in \fI/etc/mtab\fP). Da default is tha mount program name. If tha kernel suppports it, \fI/etc/mtab\fP n' \fI/proc/mounts\fP will show tha filesystem type as \fBfuse.TYPE\fP
+
+If tha kernel don't support subtypes, tha source filed is ghon be \fBTYPE#NAME\fP, or if \fBfsname\fP option aint specified, just \fBTYPE\fP.
+.TP
+\fBuse_ino\fP
+Honor tha \fIst_ino\fP field up in kernel functions \fBgetattr()\fP n' \fBfill_dir()\fP. This value is used ta fill up in the
+\fIst_ino\fP field up in tha \fBstat\fP(2), \fBlstat\fP(2), \fBfstat\fP(2) functions n' tha \fId_ino\fP field up in tha \fBreaddir\fP(2) function. I aint talkin' bout chicken n' gravy biatch. Da filesystem do not gotta guarantee uniqueness, however some applications rely on dis value bein unique fo' tha whole filesystem.
+.TP
+\fBreaddir_ino\fP
+If \fBuse_ino\fP option aint given, still try ta fill up in tha \fId_ino\fP field up in \fBreaddir\fP(2). If tha name was previously looked up, n' is still up in tha cache, tha inode number found there is ghon be used. Y'all KNOW dat shit, muthafucka! Otherwise it is ghon be set ta \fB-1\fP.  If \fBuse_ino\fP option is given, dis option is ignored.
+.TP
+\fBnonempty\fP
+Allows mounts over a non-empty file or directory. By default these  mounts is rejected ta prevent accidental coverin up of data, which could fo' example prevent automatic backup.
+.TP
+\fBumask=M\fP
+Override tha permission bits up in \fIst_mode\fP set by tha filesystem. Da resultin permission bits is tha ones missin from tha given umask value.  Da value is given up in octal representation.
+.TP
+\fBuid=N\fP
+Override tha \fIst_uid\fP field set by tha filesystem (N is numeric).
+.TP
+\fBgid=N\fP
+Override tha \fIst_gid\fP field set by tha filesystem (N is numeric).
+.TP
+\fBblkdev\fP
+Mount a gangbangin' filesystem backed by a funky-ass block device.  This be a privileged option. I aint talkin' bout chicken n' gravy biatch. Da thang must be specified wit tha \fBfsname=NAME\fP option.
+.TP
+\fBentry_timeout=T\fP
+Da timeout up in secondz fo' which name lookups is ghon be cached. Y'all KNOW dat shit, muthafucka! Da default is 1.0 second. Y'all KNOW dat shit, muthafucka! For all tha timeout options, it is possible ta give fractionz of a second as well (e.g. \fBentry_timeout=2.8\fP)
+.TP
+\fBnegative_timeout=T\fP
+Da timeout up in secondz fo' which a wack lookup is ghon be cached. Y'all KNOW dat shit, muthafucka! This means, dat if file did not exist (lookup retuned \fBENOENT\fP), tha lookup will only be redone afta tha timeout, n' tha file/directory is ghon be assumed ta not exist until then. I aint talkin' bout chicken n' gravy biatch.  Da default is 0.0 second, meanin dat cachin wack lookups is disabled.
+.TP
+\fBattr_timeout=T\fP
+Da timeout up in secondz fo' which file/directory attributes is cached. Y'all KNOW dat shit, muthafucka!  Da default is 1.0 second.
+.TP
+\fBac_attr_timeout=T\fP
+Da timeout up in secondz fo' which file attributes is cached fo' tha purpose of checkin if \fBauto_cache\fP should flush tha file data on  open. I aint talkin' bout chicken n' gravy biatch. Da default is tha value of \fBattr_timeout\fP
+.TP
+\fBintr\fP
+Allow requests ta be interrupted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Turnin on dis option may result up in unexpected behavior, if tha filesystem do not support request interruption.
+.TP
+\fBintr_signal=NUM\fP
+Specify which signal number ta bust ta tha filesystem when a request is interrupted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time.  Da default is hardcoded ta USR1.
+.TP
+\fBmodules=M1[:M2...]\fP
+Add modulez ta tha filesystem stack.  Modulez is pushed up in tha order they is specified, wit tha original gangsta filesystem bein on tha bottom of tha stack.
+.SH FUSE MODULES (STACKING)
+Modulez is filesystem stackin support ta high level API. Filesystem modulez can be built tha fuck into libfuse or loaded from shared object
+.SS "iconv"
+Perform file name characta set conversion. I aint talkin' bout chicken n' gravy biatch.  Options are:
+.TP
+\fBfrom_code=CHARSET\fP
+Characta set ta convert from (see \fBiconv -l\fP fo' a list of possible joints). Default is \fBUTF-8\fP.
+.TP
+\fBto_code=CHARSET\fP
+Characta set ta convert to.  Default is determined by tha current locale.
+.SS "subdir"
+Prepend a given directory ta each path. Options are:
+.TP
+\fBsubdir=DIR\fP
+Directory ta prepend ta all paths.  This option is \fImandatory\fP.
+.TP
+\fBrellinks\fP
+Transform absolute symlinks tha fuck into relative
+.TP
+\fBnorellinks\fP
+Do not transform absolute symlinks tha fuck into relative.  This is tha default.
+.SH SECURITY
+Da fusermount program is installed set-user-gid ta fuse. This is done ta allow playas from fuse crew ta mount
+their own filesystem implementations.
+There must however be some limitations, up in order ta prevent Wack User from
+fuckin wit nasty thangs.  Currently dem limitations are:
+.IP 1.
+Da user can only mount on a mountpoint, fo' which it has write permission
+.IP 2.
+Da mountpoint aint a sticky directory which aint owned by tha user (like \fI/tmp\fP probably is)
+.IP 3.
+No other user (includin root) can access tha contentz of tha mounted filesystem.
+.SH NOTE
+FUSE filesystems is unmounted rockin tha \fBfusermount\fP(1) command (\fBfusermount -u mountpoint\fP).
+.SH "AUTHORS"
+.LP
+Da main lyricist of FUSE is Miklos Szeredi <mszeredi@inf.bme.hu>.
+.LP
+This playa page was freestyled by Bastien Roucaries <roucaries.bastien+debian@gmail.com> fo' the
+Debian GNU/Linux distribution (but it may be used by others) from README file.
+.SH SEE ALSO
+fusermount(1)
+mount(8)

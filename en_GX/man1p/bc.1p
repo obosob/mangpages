@@ -1,0 +1,1359 @@
+.\" Copyright (c) 2001-2003 Da Open Group, All Rights Reserved 
+.TH "BC" 1P 2003 "IEEE/Da Open Group" "POSIX Programmerz Manual"
+.\" bc 
+.SH PROLOG
+This manual page is part of tha POSIX Programmerz Manual.
+Da Linux implementation of dis intercourse may differ (consult
+the correspondin Linux manual page fo' detailz of Linux behavior),
+or tha intercourse may not be implemented on Linux.
+.SH NAME
+bc \- arbitrary-precision arithmetic language
+.SH SYNOPSIS
+.LP
+\fBbc\fP \fB[\fP\fB-l\fP\fB] [\fP\fIfile\fP \fB...\fP\fB]\fP
+.SH DESCRIPTION
+.LP
+Da \fIbc\fP utilitizzle shall implement a arbitrary precision calculator.
+It shall take input from any filez given, then read
+from tha standard input. If tha standard input n' standard output
+to \fIbc\fP is attached ta a terminal, tha invocation of
+\fIbc\fP shall be considered ta be \fIinteractive\fP, causin behavioral
+constraints busted lyrics bout up in tha followin sections.
+.SH OPTIONS
+.LP
+Da \fIbc\fP utilitizzle shall conform ta tha Base Definitions volume
+of IEEE\ Std\ 1003.1-2001, Section 12.2, Utilitizzle Syntax Guidelines.
+.LP
+Da followin option shall be supported:
+.TP 7
+\fB-l\fP
+(Da letta ell.) Define tha math functions n' initialize \fIscale\fP
+to 20, instead of tha default zero; peep tha EXTENDED
+DESCRIPTION section.
+.sp
+.SH OPERANDS
+.LP
+Da followin operand shall be supported:
+.TP 7
+\fIfile\fP
+A pathname of a text file containin \fIbc\fP program statements.
+Afta all \fIfile\fPs done been read, \fIbc\fP shall read
+the standard input.
+.sp
+.SH STDIN
+.LP
+See tha INPUT FILES section.
+.SH INPUT FILES
+.LP
+Input filez shall be text filez containin a sequence of comments,
+statements, n' function definitions dat shall be executed
+as they is read.
+.SH ENVIRONMENT VARIABLES
+.LP
+Da followin environment variablez shall affect tha execution of
+\fIbc\fP:
+.TP 7
+\fILANG\fP
+Provide a thugged-out default value fo' tha internationalization variablez that
+are unset or null. (See tha Base Definitions volume of
+IEEE\ Std\ 1003.1-2001, Section 8.2, Internationalization Variables
+for
+the precedence of internationalization variablez used ta determine
+the jointz of locale categories.)
+.TP 7
+\fILC_ALL\fP
+If set ta a non-empty strang value, override tha jointz of all the
+other internationalization variables.
+.TP 7
+\fILC_CTYPE\fP
+Determine tha locale fo' tha interpretation of sequencez of bytes
+of text data as charactas (for example, single-byte as
+opposed ta multi-byte charactas up in arguments n' input files).
+.TP 7
+\fILC_MESSAGES\fP
+Determine tha locale dat should be used ta affect tha format and
+contentz of diagnostic lyrics freestyled ta standard
+error.
+.TP 7
+\fINLSPATH\fP
+Determine tha location of message catalogs fo' tha processin of \fILC_MESSAGES
+\&.\fP 
+.sp
+.SH ASYNCHRONOUS EVENTS
+.LP
+Default.
+.SH STDOUT
+.LP
+Da output of tha \fIbc\fP utilitizzle shall be controlled by tha program
+read, n' consist of zero or mo' lines containin the
+value of all executed expressions without assignments, n' you can put dat on yo' toast. Da radix and
+precision of tha output shall be controlled by tha joints of
+the \fBobase\fP n' \fBscale\fP variables; peep tha EXTENDED DESCRIPTION
+section.
+.SH STDERR
+.LP
+Da standard error shall be used only fo' diagnostic lyrics.
+.SH OUTPUT FILES
+.LP
+None.
+.SH EXTENDED DESCRIPTION
+.SS Grammar
+.LP
+Da grammar up in dis section n' tha lexical conventions up in tha following
+section shall together describe tha syntax for
+\fIbc\fP programs. Da general conventions fo' dis steez of grammar
+are busted lyrics bout up in \fIGrammar Conventions\fP  fo' realz. A valid program can be
+represented as tha non-terminal symbol
+\fBprogram\fP up in tha grammar. Shiiit, dis aint no joke. This formal syntax shall take precedence
+over tha text syntax description.
+.sp
+.RS
+.nf
+
+\fB%token    EOF NEWLINE STRING LETTER NUMBER
+.sp
+
+%token    MUL_OP
+/*        '*', '/', '%'                           */
+.sp
+
+%token    ASSIGN_OP
+/*        '=', '+=', '-=', '*=', '/=', '%=', '^=' */
+.sp
+
+%token    REL_OP
+/*        '==', '<=', '>=', '!=', '<', '>'        */
+.sp
+
+%token    INCR_DECR
+/*        '++', '--'                              */
+.sp
+
+%token    Define    Break    Quit    Length
+/*        'define', 'break', 'quit', 'length'     */
+.sp
+
+%token    Return    For    If    While    Sqrt
+/*        'return', 'for', 'if', 'while', 'sqrt'  */
+.sp
+
+%token    Scale    Ibase    Obase    Auto
+/*        'scale', 'ibase', 'obase', 'auto'       */
+.sp
+
+%start    program
+.sp
+
+%%
+.sp
+
+program              : EOF
+                     | input_item program
+                     ;
+.sp
+
+input_item           : semicolon_list NEWLINE
+                     | function
+                     ;
+.sp
+
+semicolon_list       : /* empty */
+                     | statement
+                     | semicolon_list ';' statement
+                     | semicolon_list ';'
+                     ;
+.sp
+
+statement_list       : /* empty */
+                     | statement
+                     | statement_list NEWLINE
+                     | statement_list NEWLINE statement
+                     | statement_list ';'
+                     | statement_list ';' statement
+                     ;
+.sp
+
+statement            : expression
+                     | STRING
+                     | Break
+                     | Quit
+                     | Return
+                     | Return '(' return_expression ')'
+                     | For '(' expression ';'
+                           relational_expression ';'
+                           expression ')' statement
+                     | If '(' relational_expression ')' statement
+                     | While '(' relational_expression ')' statement
+                     | '{' statement_list '}'
+                     ;
+.sp
+
+function             : Define LETTER '(' opt_parameter_list ')'
+                           '{' NEWLINE opt_auto_define_list
+                           statement_list '}'
+                     ;
+.sp
+
+opt_parameter_list   : /* empty */
+                     | parameter_list
+                     ;
+.sp
+
+parameter_list       : LETTER
+                     | define_list ',' LETTER
+                     ;
+.sp
+
+opt_auto_define_list : /* empty */
+                     | Auto define_list NEWLINE
+                     | Auto define_list ';'
+                     ;
+.sp
+
+define_list          : LETTER
+                     | LETTER '[' ']'
+                     | define_list ',' LETTER
+                     | define_list ',' LETTER '[' ']'
+                     ;
+.sp
+
+opt_argument_list    : /* empty */
+                     | argument_list
+                     ;
+.sp
+
+argument_list        : expression
+                     | LETTER '[' ']' ',' argument_list
+                     ;
+.sp
+
+relational_expression : expression
+                     | expression REL_OP expression
+                     ;
+.sp
+
+return_expression    : /* empty */
+                     | expression
+                     ;
+.sp
+
+expression           : named_expression
+                     | NUMBER
+                     | '(' expression ')'
+                     | LETTER '(' opt_argument_list ')'
+                     | '-' expression
+                     | expression '+' expression
+                     | expression '-' expression
+                     | expression MUL_OP expression
+                     | expression '^' expression
+                     | INCR_DECR named_expression
+                     | named_expression INCR_DECR
+                     | named_expression ASSIGN_OP expression
+                     | Length '(' expression ')'
+                     | Sqrt '(' expression ')'
+                     | Scale '(' expression ')'
+                     ;
+.sp
+
+named_expression     : LETTER
+                     | LETTER '[' expression ']'
+                     | Scale
+                     | Ibase
+                     | Obase
+                     ;
+\fP
+.fi
+.RE
+.SS Lexical Conventions up in bc
+.LP
+Da lexical conventions fo' \fIbc\fP programs, wit respect ta the
+precedin grammar, shall be as bigs up:
+.IP " 1." 4
+Except as noted, \fIbc\fP shall recognize tha longest possible token
+or delimita beginnin at a given point.
+.LP
+.IP " 2." 4
+A comment shall consist of any charactas beginnin wit tha two adjacent
+charactas \fB"/*"\fP n' terminated by tha next
+occurrence of tha two adjacent charactas \fB"*/"\fP . Comments shall
+have no effect except ta delimit lexical tokens.
+.LP
+.IP " 3." 4
+Da <newline> shall be recognized as tha token \fBNEWLINE\fP.
+.LP
+.IP " 4." 4
+Da token \fBSTRING\fP shall represent a strang constant; it shall
+consist of any charactas beginnin wit tha double-quote
+characta ( \fB' )'\fP n' terminated by another occurrence of the
+double-quote character n' shit. Da value of tha strang is the
+sequence of all charactas between yo, but not including, tha two double-quote
+charactas fo' realz. All charactas shall be taken literally
+from tha input, n' there is no way ta specify a strang containing
+a double-quote character n' shit. Da length of tha value of each string
+shall be limited ta {BC_STRING_MAX} bytes.
+.LP
+.IP " 5." 4
+A <blank> shall have no effect except as a ordinary characta if
+it appears within a \fBSTRING\fP token, or ta delimit a
+lexical token other than \fBSTRING\fP.
+.LP
+.IP " 6." 4
+Da combination of a funky-ass backslash characta immediately followed by a
+<newline> shall have no effect other than ta delimit
+lexical tokens wit tha followin exceptions:
+.RS
+.IP " *" 3
+It shall be interpreted as tha characta sequence \fB"\\<newline>"\fP
+in \fBSTRING\fP tokens.
+.LP
+.IP " *" 3
+It shall be ignored as part of a multi-line \fBNUMBER\fP token.
+.LP
+.RE
+.LP
+.IP " 7." 4
+Da token \fBNUMBER\fP shall represent a numeric constant. Well shiiiit, it shall
+be recognized by tha followin grammar:
+.sp
+.RS
+.nf
+
+\fBNUMBER  : integer
+        | '.' integer
+        | integer '.'
+        | integer '.' integer
+        ;
+.sp
+
+integer : digit
+        | integer digit
+        ;
+.sp
+
+digit   : 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+        | 8 | 9 | A | B | C | D | E | F
+        ;
+\fP
+.fi
+.RE
+.LP
+.IP " 8." 4
+Da value of a \fBNUMBER\fP token shall be interpreted as a numeral
+in tha base specified by tha value of tha internal register
+\fBibase\fP (busted lyrics bout below). Each of tha \fBdigit\fP characters
+shall have tha value from 0 ta 15 up in tha order listed here, and
+the period characta shall represent tha radix point. Da behavior
+is undefined if digits pimped outa than or equal ta tha value of
+\fBibase\fP step tha fuck up in tha token. I aint talkin' bout chicken n' gravy biatch. But fuck dat shiznit yo, tha word on tha street is dat note tha exception fo' single-digit
+values bein assigned ta \fBibase\fP and
+\fBobase\fP theyselves, up in Operations up in bc .
+.LP
+.IP " 9." 4
+Da followin keywordz shall be recognized as tokens:
+.TS C
+center; lw(15) lw(15) lw(15) lw(15) lw(15).
+T{
+\fB
+.br
+auto
+.br
+break
+.br
+define
+.br
+\fP
+T}	T{
+\fB
+.br
+ibase
+.br
+if
+.br
+for
+.br
+\fP
+T}	T{
+\fB
+.br
+length
+.br
+obase
+.br
+quit
+.br
+\fP
+T}	T{
+\fB
+.br
+return
+.br
+scale
+.br
+sqrt
+.br
+\fP
+T}	T{
+\fB
+.br
+while
+.br
+\fP
+T}
+.TE
+.LP
+.IP "10." 4
+Any of tha followin charactas occurrin anywhere except within a
+keyword shall be recognized as tha token \fBLETTER\fP:
+.sp
+.RS
+.nf
+
+\fBa b c d e f g h i j k l m n o p q r s t u v w x y z
+\fP
+.fi
+.RE
+.LP
+.IP "11." 4
+Da followin single-characta n' two-characta sequences shall be
+recognized as tha token \fBASSIGN_OP\fP:
+.sp
+.RS
+.nf
+
+\fB=   +=   -=   *=   /=   %=   ^=
+\fP
+.fi
+.RE
+.LP
+.IP "12." 4
+If a \fB'='\fP character, as tha beginnin of a token, is followed
+by a \fB'-'\fP characta wit no intervening
+delimiter, tha behavior is undefined.
+.LP
+.IP "13." 4
+Da followin single-charactas shall be recognized as tha token \fBMUL_OP\fP:
+.sp
+.RS
+.nf
+
+\fB*   /   %
+\fP
+.fi
+.RE
+.LP
+.IP "14." 4
+Da followin single-characta n' two-characta sequences shall be
+recognized as tha token \fBREL_OP\fP:
+.sp
+.RS
+.nf
+
+\fB==   <=   >=   !=   <   >
+\fP
+.fi
+.RE
+.LP
+.IP "15." 4
+Da followin two-characta sequences shall be recognized as tha token
+\fBINCR_DECR\fP:
+.sp
+.RS
+.nf
+
+\fB++   --
+\fP
+.fi
+.RE
+.LP
+.IP "16." 4
+Da followin single charactas shall be recognized as tokens whose
+names is tha character:
+.sp
+.RS
+.nf
+
+\fB<newline>  (  )  ,  +  -  ;  [  ]  ^  {  }
+\fP
+.fi
+.RE
+.LP
+.IP "17." 4
+Da token \fBEOF\fP is returned when tha end of input is reached.
+.LP
+.SS Operations up in bc
+.LP
+There is three kindz of identifiers: ordinary identifiers, array
+identifiers, n' function identifiers fo' realz. All three types consist
+of single lowercase lettas fo' realz. Array identifiers shall be followed by
+square brackets ( \fB"[]"\fP ) fo' realz. An array subscript is
+required except up in a argument or auto list fo' realz. Arrays is singly dimensioned
+and can contain up ta {BC_DIM_MAX} elements, n' you can put dat on yo' toast. Indexing
+shall begin at zero so a array is indexed from 0 ta {BC_DIM_MAX}-1.
+Subscripts shall be truncated ta integers. Da application
+shall ensure dat function identifiers is followed by parentheses,
+possibly enclosin arguments, n' you can put dat on yo' toast. Da three typez of identifiers do
+not conflict.
+.LP
+Da followin table summarizes tha rulez fo' precedence n' associativity
+of all operators. Operators on tha same line shall
+have tha same precedence; rows is up in order of decreasin precedence.
+.sp
+.ce 1
+\fBTable: Operators up in \fIbc\fP\fP
+.TS C
+center; l l.
+\fBOperator\fP	\fBAssociativity\fP
+++, --	N/A
+unary -	N/A
+^	Right ta left
+*, /, %	Left ta right
++, binary -	Left ta right
+=, +=, -=, *=, /=, %=, ^=	Right ta left
+==, <=, >=, !=, <, >	None
+.TE
+.LP
+Each expression or named expression has a \fIscale\fP, which is the
+number of decimal digits dat shall be maintained as the
+fractionizzle portion of tha expression.
+.LP
+\fINamed expressions\fP is places where joints is stored. Y'all KNOW dat shit, muthafucka! Named
+expressions shall be valid on tha left side of a assignment.
+Da value of a named expression shall be tha value stored up in tha place
+named. Y'all KNOW dat shit, muthafucka! Simple identifiers n' array elements is named
+expressions; they have a initial value of zero n' a initial scale
+of zero.
+.LP
+Da internal registas \fBscale\fP, \fBibase\fP, n' \fBobase\fP are
+all named expressions. Da scale of a expression
+consistin of tha name of one of these registas shall be zero; joints
+assigned ta any of these registas is truncated to
+integers. Da \fBscale\fP regista shall contain a global value used
+in computin tha scale of expressions (as busted lyrics bout below).
+Da value of tha regista \fBscale\fP is limited ta 0 <= \fBscale\fP
+<= {BC_SCALE_MAX} n' shall gotz a thugged-out default value of
+zero. Da \fBibase\fP n' \fBobase\fP registas is tha input and
+output number radix, respectively. Da value of \fBibase\fP
+shall be limited to:
+.sp
+.RS
+.nf
+
+\fB2 <= ibase <= 16
+\fP
+.fi
+.RE
+.LP
+Da value of \fBobase\fP shall be limited to:
+.sp
+.RS
+.nf
+
+\fB2 <= obase <= {BC_BASE_MAX}
+\fP
+.fi
+.RE
+.LP
+When either \fBibase\fP or \fBobase\fP be assigned a single \fBdigit\fP
+value from tha list up in Lexical Conventions up in bc, tha value shall
+be assumed up in hexadecimal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. (For example, \fBibase\fP=A sets to
+base ten, regardless of tha current \fBibase\fP value.) Otherwise,
+the behavior is undefined when digits pimped outa than or equal to
+the value of \fBibase\fP step tha fuck up in tha input. Both \fBibase\fP and
+\fBobase\fP shall have initial jointz of 10.
+.LP
+Internal computations shall be conducted as if up in decimal, regardless
+of tha input n' output bases, ta tha specified number of
+decimal digits, n' you can put dat on yo' toast. When a exact result aint  bigged up  (for example,
+\fBscale\fP=0;\ 3.2/1)\fB,\fP tha result shall be
+truncated.
+.LP
+For all jointz of \fBobase\fP specified by dis volume of IEEE\ Std\ 1003.1-2001,
+\fIbc\fP shall output numeric joints
+by struttin each of tha followin steps up in order:
+.IP " 1." 4
+If tha value is less than zero, a hyphen ( \fB'-'\fP ) characta shall
+be output.
+.LP
+.IP " 2." 4
+One of tha followin is output, dependin on tha numerical value:
+.RS
+.IP " *" 3
+If tha absolute value of tha numerical value is pimped outa than or equal
+to one, tha integer portion of tha value shall be output
+as a seriez of digits appropriate ta \fBobase\fP (as busted lyrics bout below),
+most dope digit first. Da most dope non-zero
+digit shall be output next, followed by each successively less significant
+digit.
+.LP
+.IP " *" 3
+If tha absolute value of tha numerical value is less than one but
+greata than zero n' tha scale of tha numerical value is
+greata than zero, it is unspecified whether tha characta 0 is output.
+.LP
+.IP " *" 3
+If tha numerical value is zero, tha characta 0 shall be output.
+.LP
+.RE
+.LP
+.IP " 3." 4
+If tha scale of tha value is pimped outa than zero n' tha numeric value
+is not zero, a period characta shall be output, followed
+by a seriez of digits appropriate ta \fBobase\fP (as busted lyrics bout below)
+representin da most thugged-out dope portion of tha fractional
+part of tha value. If \fIs\fP represents tha scale of tha value being
+output, tha number of digits output shall be \fIs\fP if
+\fBobase\fP is 10, less than or equal ta \fIs\fP if \fBobase\fP is
+greata than 10, or pimped outa than or equal ta \fIs\fP if
+\fBobase\fP is less than 10. For \fBobase\fP joints other than 10,
+this should be tha number of digits needed ta represent a
+precision of 10**\fIs\fP.
+.LP
+.LP
+For \fBobase\fP joints from 2 ta 16, valid digits is tha straight-up original gangsta \fBobase\fP
+of tha single characters:
+.sp
+.RS
+.nf
+
+\fB0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+\fP
+.fi
+.RE
+.LP
+which represent tha joints zero ta 15, inclusive, respectively.
+.LP
+For bases pimped outa than 16, each digit shall be freestyled as a separate
+multi-digit decimal number n' shit. Each digit except da most thugged-out
+significant fractionizzle digit shall be preceded by a single <space>.
+For bases from 17 ta 100, \fIbc\fP shall write two-digit
+decimal numbers; fo' bases from 101 ta 1000, three-digit decimal strings,
+and so on. I aint talkin' bout chicken n' gravy biatch. For example, tha decimal number 1024 up in base
+25 would be freestyled as:
+.sp
+.RS
+.nf
+
+\fB 01 15 24
+\fP
+.fi
+.RE
+.LP
+and up in base 125, as:
+.sp
+.RS
+.nf
+
+\fB 008 024
+\fP
+.fi
+.RE
+.LP
+Straight-up big-ass numbers shall be split across lines wit 70 characters
+per line up in tha POSIX locale; other localez may split at
+different characta boundaries. Put ya muthafuckin choppers up if ya feel dis! Lines dat is continued shall end
+with a funky-ass backslash ( \fB'\\'\fP ).
+.LP
+A function call shall consist of a gangbangin' function name followed by parentheses
+containin a cold-ass lil comma-separated list of expressions, which
+are tha function arguments fo' realz. A whole array passed as a argument shall
+be specified by tha array name followed by empty square
+brackets fo' realz. All function arguments shall be passed by value fo' realz. As a result,
+changes made ta tha formal parametas shall have no effect
+on tha actual arguments, n' you can put dat on yo' toast. If tha function terminates by executin a
+\fBreturn\fP statement, tha value of tha function shall be the
+value of tha expression up in tha parenthesez of tha \fBreturn\fP statement
+or shall be zero if no expression is provided or if there
+is no \fBreturn\fP statement.
+.LP
+Da result of \fBsqrt\fP( \fIexpression\fP) shall be tha square root
+of tha expression. I aint talkin' bout chicken n' gravy biatch. Da result shall be truncated up in the
+least dope decimal place. Da scale of tha result shall be
+the scale of tha expression or tha value of \fBscale\fP,
+whichever is larger.
+.LP
+Da result of \fBlength\fP( \fIexpression\fP) shall be tha total number
+of dope decimal digits up in tha expression. I aint talkin' bout chicken n' gravy biatch. The
+scale of tha result shall be zero.
+.LP
+Da result of \fBscale\fP( \fIexpression\fP) shall be tha scale of
+the expression. I aint talkin' bout chicken n' gravy biatch. Da scale of tha result shall be zero.
+.LP
+A numeric constant shall be a expression. I aint talkin' bout chicken n' gravy biatch. Da scale shall be the
+number of digits dat follow tha radix point up in tha input
+representin tha constant, or zero if no radix point appears.
+.LP
+Da sequence (\ \fIexpression\fP\ ) shall be a expression wit the
+same value n' scale as \fIexpression\fP. The
+parentheses can be used ta alta tha aiiight precedence.
+.LP
+Da semantics of tha unary n' binary operators is as bigs up:
+.TP 7
+-\fIexpression\fP
+.sp
+Da result shall be tha wack of tha \fIexpression\fP. Da scale
+of tha result shall be tha scale of \fIexpression\fP.
+.sp
+.LP
+Da unary increment n' decrement operators shall not modify tha scale
+of tha named expression upon which they operate. The
+scale of tha result shall be tha scale of dat named expression.
+.TP 7
+++\fInamed-expression\fP
+.sp
+Da named expression shall be incremented by one. Da result shall
+be tha value of tha named expression afta incrementing.
+.TP 7
+--\fInamed-expression\fP
+.sp
+Da named expression shall be decremented by one. Da result shall
+be tha value of tha named expression afta decrementing.
+.TP 7
+\fInamed-expression\fP++
+.sp
+Da named expression shall be incremented by one. Da result shall
+be tha value of tha named expression before incrementing.
+.TP 7
+\fInamed-expression\fP--
+.sp
+Da named expression shall be decremented by one. Da result shall
+be tha value of tha named expression before decrementing.
+.sp
+.LP
+Da exponentiation operator, circumflex ( \fB'^'\fP ), shall bind
+right ta left.
+.TP 7
+\fIexpression\fP^\fIexpression\fP
+.sp
+Da result shall be tha straight-up original gangsta \fIexpression\fP raised ta tha power
+of tha second \fIexpression\fP. If tha second expression is
+not a integer, tha behavior is undefined. Y'all KNOW dat shit, muthafucka! If \fIa\fP is tha scale
+of tha left expression n' \fIb\fP is tha absolute value of
+the right expression, tha scale of tha result shall be: 
+.sp
+.RS
+.nf
+
+\fBif b >= 0 min(a * b, max(scale, a)) if b < 0 scale
+\fP
+.fi
+.RE
+.sp
+Da multiplicatizzle operators ( \fB'*'\fP, \fB'/'\fP, \fB'%'\fP )
+shall bind left ta right. 
+.TP 7
+\fIexpression\fP*\fIexpression\fP
+.sp
+Da result shall be tha thang of tha two expressions. If \fIa\fP
+and \fIb\fP is tha scalez of tha two expressions, then the
+scale of tha result shall be: 
+.sp
+.RS
+.nf
+
+\fBmin(a+b,max(scale,a,b))
+\fP
+.fi
+.RE
+.TP 7
+\fIexpression\fP/\fIexpression\fP
+.sp
+Da result shall be tha quotient of tha two expressions. Da scale
+of tha result shall be tha value of \fBscale\fP.
+.TP 7
+\fIexpression\fP%\fIexpression\fP
+.sp
+For expressions \fIa\fP n' \fIb\fP, \fIa\fP% \fIb\fP shall be evaluated
+equivalent ta tha steps: 
+.RS
+.IP " 1." 4
+Compute \fIa\fP/ \fIb\fP ta current scale.
+.LP
+.IP " 2." 4
+Use tha result ta compute:
+.sp
+.RS
+.nf
+
+\fBa - (a / b) * b
+\fP
+.fi
+.RE
+.LP
+to scale:
+.sp
+.RS
+.nf
+
+\fBmax(scale + scale(b), scale(a))
+\fP
+.fi
+.RE
+.LP
+.RE
+Da scale of tha result shall be: 
+.sp
+.RS
+.nf
+
+\fBmax(scale + scale(b), scale(a))
+\fP
+.fi
+.RE
+.LP
+When \fBscale\fP is zero, tha \fB'%'\fP operator is tha mathematical
+remainder operator.
+.sp
+.LP
+Da additizzle operators ( \fB'+'\fP, \fB'-'\fP ) shall bind left to
+right.
+.TP 7
+\fIexpression\fP+\fIexpression\fP
+.sp
+Da result shall be tha sum of tha two expressions. Da scale of the
+result shall be tha maximum of tha scalez of the
+expressions.
+.TP 7
+\fIexpression\fP-\fIexpression\fP
+.sp
+Da result shall be tha difference of tha two expressions. Da scale
+of tha result shall be tha maximum of tha scalez of the
+expressions.
+.sp
+.LP
+Da assignment operators ( \fB'='\fP, \fB"+="\fP, \fB"-="\fP, \fB"*="\fP,
+\fB"/="\fP, \fB"%="\fP,
+\fB"^="\fP ) shall bind right ta left.
+.TP 7
+\fInamed-expression\fP=\fIexpression\fP
+.sp
+This expression shall result up in assignin tha value of tha expression
+on tha right ta tha named expression on tha left. Da scale
+of both tha named expression n' tha result shall be tha scale of
+\fIexpression\fP.
+.sp
+.LP
+Da compound assignment forms:
+.sp
+.RS
+.nf
+
+\fInamed-expression\fP \fB<\fP\fIoperator\fP\fB>=\fP \fIexpression\fP
+.fi
+.RE
+.LP
+shall be equivalent to:
+.sp
+.RS
+.nf
+
+\fInamed-expression\fP\fB=\fP\fInamed-expression\fP \fB<\fP\fIoperator\fP\fB>\fP \fIexpression\fP
+.fi
+.RE
+.LP
+except dat tha \fInamed-expression\fP shall be evaluated only once.
+.LP
+Unlike all other operators, tha relationizzle operators ( \fB'<'\fP,
+\fB'>'\fP, \fB"<="\fP, \fB">="\fP,
+\fB"=="\fP, \fB"!="\fP ) shall be only valid as tha object of an
+\fBif\fP, \fBwhile\fP, or inside a \fBfor\fP
+statement.
+.TP 7
+\fIexpression1\fP<\fIexpression2\fP
+.sp
+Da relation shall be legit if tha value of \fIexpression1\fP is strictly
+less than tha value of \fIexpression2\fP.
+.TP 7
+\fIexpression1\fP>\fIexpression2\fP
+.sp
+Da relation shall be legit if tha value of \fIexpression1\fP is strictly
+greata than tha value of \fIexpression2\fP.
+.TP 7
+\fIexpression1\fP<=\fIexpression2\fP
+.sp
+Da relation shall be legit if tha value of \fIexpression1\fP is less
+than or equal ta tha value of \fIexpression2\fP.
+.TP 7
+\fIexpression1\fP>=\fIexpression2\fP
+.sp
+Da relation shall be legit if tha value of \fIexpression1\fP is pimped outer
+than or equal ta tha value of \fIexpression2\fP.
+.TP 7
+\fIexpression1\fP==\fIexpression2\fP
+.sp
+Da relation shall be legit if tha jointz of \fIexpression1\fP and
+\fIexpression2\fP is equal.
+.TP 7
+\fIexpression1\fP!=\fIexpression2\fP
+.sp
+Da relation shall be legit if tha jointz of \fIexpression1\fP and
+\fIexpression2\fP is unequal.
+.sp
+.LP
+There is only two storage classes up in \fIbc\fP: global n' automatic
+(local). Only identifiers dat is local ta a gangbangin' function
+need be declared wit tha \fBauto\fP command. Y'all KNOW dat shit, muthafucka! Da arguments ta a gangbangin' function
+shall be local ta tha function. I aint talkin' bout chicken n' gravy biatch fo' realz. All other identifiers
+are assumed ta be global n' available ta all functions fo' realz. All identifiers,
+global n' local, have initial jointz of zero.
+Identifiers declared as auto shall be allocated on entry ta tha function
+and busted out on returnin from tha function. I aint talkin' bout chicken n' gravy biatch. They
+therefore do not retain joints between function calls fo' realz. Auto arrays
+shall be specified by tha array name followed by empty square
+brackets, n' you can put dat on yo' toast. On entry ta a gangbangin' function, tha oldschool jointz of tha names that
+appear as parametas n' as automatic variablez shall be pushed
+onto a stack. Until tha function returns, reference ta these names
+shall refer only ta tha freshly smoked up joints.
+.LP
+References ta any of these names from other functions dat is called
+from dis function also refer ta tha freshly smoked up value until one
+of dem functions uses tha same ol' dirty name fo' a local variable.
+.LP
+When a statement be a expression, unless tha main operator be an
+assignment, execution of tha statement shall write tha value
+of tha expression followed by a <newline>.
+.LP
+When a statement be a string, execution of tha statement shall write
+the value of tha string.
+.LP
+Statements separated by semicolons or <newline>s shall be executed
+sequentially. In a interactizzle invocation of
+\fIbc\fP, each time a <newline> is read dat satisfies tha grammatical
+thang:
+.sp
+.RS
+.nf
+
+\fBinput_item : semicolon_list NEWLINE
+\fP
+.fi
+.RE
+.LP
+the sequential list of statements makin up tha \fBsemicolon_list\fP
+shall be executed immediately n' any output produced by
+that execution shall be freestyled without any delay cuz of buffering.
+.LP
+In a \fBif\fP statement ( \fBif\fP( \fIrelation\fP) \fIstatement\fP),
+the \fIstatement\fP shall be executed if the
+relation is true.
+.LP
+Da \fBwhile\fP statement ( \fBwhile\fP( \fIrelation\fP) \fIstatement\fP)
+implements a loop up in which tha \fIrelation\fP is
+tested; each time tha \fIrelation\fP is true, tha \fIstatement\fP
+shall be executed n' tha \fIrelation\fP retested. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. When the
+\fIrelation\fP is false, execution shall resume afta \fIstatement\fP.
+.LP
+A \fBfor\fP statement( \fBfor\fP( \fIexpression\fP; \fIrelation\fP;
+\fIexpression\fP) \fIstatement\fP) shall be tha same
+as:
+.sp
+.RS
+.nf
+
+\fIfirst-expression\fP\fBwhile (\fP\fIrelation\fP\fB) {
+   \fP \fIstatement\fP \fB  \fP \fIlast-expression\fP\fB}
+\fP
+.fi
+.RE
+Da application shall ensure dat all three expressions is present.
+.LP
+Da \fBbreak\fP statement shall cause termination of a \fBfor\fP or
+\fBwhile\fP statement.
+.LP
+Da \fBauto\fP statement ( \fBauto\fP \fIidentifier\fP \fB[\fP, \fIidentifier\fP
+\fB]\fP ...) shall cause tha joints of
+the identifiers ta be pushed down. I aint talkin' bout chicken n' gravy biatch. Da identifiers can be ordinary
+identifiers or array identifiers fo' realz. Array identifiers shall be
+specified by followin tha array name by empty square brackets, n' you can put dat on yo' toast. The
+application shall ensure dat tha \fBauto\fP statement is the
+first statement up in a gangbangin' function definition.
+.LP
+A \fBdefine\fP statement:
+.sp
+.RS
+.nf
+
+\fBdefine\fP \fILETTER\fP \fB(\fP \fIopt_parameter_list\fP \fB) {
+   \fP \fIopt_auto_define_list\fP \fB  \fP \fIstatement_list\fP\fB}
+\fP
+.fi
+.RE
+.LP
+defines a gangbangin' function named \fBLETTER\fP. If a gangbangin' function named \fBLETTER\fP
+was previously defined, tha \fBdefine\fP statement
+shall replace tha previous definition. I aint talkin' bout chicken n' gravy biatch. Da expression:
+.sp
+.RS
+.nf
+
+\fBLETTER (\fP \fIopt_argument_list\fP \fB)
+\fP
+.fi
+.RE
+.LP
+shall invoke tha function named \fBLETTER\fP. Da behavior is undefined
+if tha number of arguments up in tha invocation do not
+match tha number of parametas up in tha definition. I aint talkin' bout chicken n' gravy biatch. Functions shall
+be defined before they is invoked. Y'all KNOW dat shit, muthafucka! A function shall be
+considered ta be defined within its own body, so recursive calls are
+valid. Y'all KNOW dat shit, muthafucka! Da jointz of numeric constants within a gangbangin' function shall
+be interpreted up in tha base specified by tha value of tha \fBibase\fP
+regista when tha function is invoked.
+.LP
+Da \fBreturn\fP statements ( \fBreturn\fP n' \fBreturn\fP( \fIexpression\fP))
+shall cause termination of a gangbangin' function,
+poppin of its auto variables, n' justification of tha result of
+the function. I aint talkin' bout chicken n' gravy biatch. Da first form shall be equivalent to
+\fBreturn\fP(0). Da value n' scale of tha result returned by the
+function shall be tha value n' scale of tha expression
+returned.
+.LP
+Da \fBquit\fP statement ( \fBquit\fP) shall stop execution of a \fIbc\fP
+program all up in tha point where tha statement occurs in
+the input, even if it occurs up in a gangbangin' function definition, or up in a \fBif\fP,
+\fBfor\fP, or \fBwhile\fP statement.
+.LP
+Da followin functions shall be defined when tha \fB-l\fP option
+is specified:
+.TP 7
+\fBs\fP(\ \fIexpression\fP\ )
+.sp
+Sine of argument up in radians.
+.TP 7
+\fBc\fP(\ \fIexpression\fP\ )
+.sp
+Cosine of argument up in radians.
+.TP 7
+\fBa\fP(\ \fIexpression\fP\ )
+.sp
+Arctangent of argument.
+.TP 7
+\fBl\fP(\ \fIexpression\fP\ )
+.sp
+Natural logarithm of argument.
+.TP 7
+\fBe\fP(\ \fIexpression\fP\ )
+.sp
+Exponential function of argument.
+.TP 7
+\fBj\fP(\ \fIexpression\fP,\ \fIexpression\fP\ )
+.sp
+Bessel function of integer order.
+.sp
+.LP
+Da scale of tha result returned by these functions shall be tha value
+of tha \fBscale\fP regista all up in tha time tha function is
+invoked. Y'all KNOW dat shit, muthafucka! Da value of tha \fBscale\fP regista afta these functions
+have completed they execution shall be tha same value it had
+upon invocation. I aint talkin' bout chicken n' gravy biatch. Da behavior is undefined if any of these functions
+is invoked wit a argument outside tha domain of the
+mathematical function.
+.SH EXIT STATUS
+.LP
+Da followin exit joints shall be returned:
+.TP 7
+0
+All input filez was processed successfully.
+.TP 7
+\fIunspecified\fP
+An error occurred.
+.sp
+.SH CONSEQUENCES OF ERRORS
+.LP
+If any \fIfile\fP operand is specified n' tha named file cannot be
+accessed, \fIbc\fP shall write a gangbangin' finger-lickin' diagnostic message to
+standard error n' terminizzle without any further action.
+.LP
+In a interactizzle invocation of \fIbc\fP, tha utilitizzle should print
+an error message n' recover followin any error up in the
+input. In a non-interactizzle invocation of \fIbc\fP, invalid input
+causes undefined behavior.
+.LP
+\fIDa followin sections is informative.\fP
+.SH APPLICATION USAGE
+.LP
+Automatic variablez up in \fIbc\fP do not work up in exactly tha same way
+as up in either C or PL/1.
+.LP
+For oldschool reasons, tha exit status from \fIbc\fP cannot be relied
+upon ta indicate dat a error has occurred. Y'all KNOW dat shit, muthafucka! Returning
+zero afta a error is possible. Therefore, \fIbc\fP should be used
+primarily by interactizzle playas (who can react ta error
+lyrics) or by application programs dat can somehow validate the
+answers returned as not includin error lyrics.
+.LP
+Da \fIbc\fP utilitizzle always uses tha period ( \fB'.'\fP ) character
+to represent a radix point, regardless of any
+decimal-point characta specified as part of tha current locale. In
+languages like C or \fIawk\fP, tha period characta is used up in program
+source, so it can be portable n' unambiguous,
+while tha locale-specific characta is used up in input n' output. Because
+there is no distinction between source n' input in
+\fIbc\fP, dis arrangement would not be possible. Usin tha locale-specific
+characta up in \fIbc\fPz input would introduce
+ambiguitizzles tha fuck into tha language; consider tha followin example up in a
+locale wit a cold-ass lil comma as tha decimal-point character:
+.sp
+.RS
+.nf
+
+\fBdefine f(a,b) {
+    ...
+}
+\&...
+.sp
+
+f(1,2,3)
+\fP
+.fi
+.RE
+.LP
+Because of such ambiguities, tha period characta is used up in input.
+Havin input follow different conventions from output would
+be confusin up in either pipeline usage or interactizzle usage, so the
+period be also used up in output.
+.SH EXAMPLES
+.LP
+In tha shell, tha followin assigns a approximation of tha first
+ten digitz of \fB'pi'\fP ta tha variable \fIx\fP:
+.sp
+.RS
+.nf
+
+\fBx=$(printf "%s\\n" 'scale = 10; 104348/33215' | bc)
+\fP
+.fi
+.RE
+.LP
+Da followin \fIbc\fP program prints tha same ol' dirty approximation of \fB'pi'\fP,
+with a
+label, ta standard output:
+.sp
+.RS
+.nf
+
+\fBscale = 10
+"pi equals "
+104348 / 33215
+\fP
+.fi
+.RE
+.LP
+Da followin defines a gangbangin' function ta compute a approximate value of
+the exponential function (note dat such a gangbangin' function is
+predefined if tha \fB-l\fP option is specified):
+.sp
+.RS
+.nf
+
+\fBscale = 20
+define e(x){
+    auto a, b, c, i, s
+    a = 1
+    b = 1
+    s = 1
+    fo' (i = 1; 1 == 1; i++){
+        a = a*x
+        b = b*i
+        c = a/b
+        if (c == 0) {
+             return(s)
+        }
+        s = s+c
+    }
+}
+\fP
+.fi
+.RE
+.LP
+Da followin prints approximate jointz of tha exponential function
+of tha straight-up original gangsta ten integers:
+.sp
+.RS
+.nf
+
+\fBfor (i = 1; i <= 10; ++i) {
+    e(i)
+}
+\fP
+.fi
+.RE
+.SH RATIONALE
+.LP
+Da \fIbc\fP utilitizzle is implemented historically as a gangbangin' front-end processor
+for \fIdc\fP; \fIdc\fP was not selected ta be part
+of dis volume of IEEE\ Std\ 1003.1-2001 cuz \fIbc\fP was thought
+to gotz a mo' intuitizzle programmatic intercourse.
+Current implementations dat implement \fIbc\fP rockin \fIdc\fP are
+sposed ta fuckin be compliant.
+.LP
+Da exit status fo' error conditions has been left unspecified for
+several reasons:
+.IP " *" 3
+Da \fIbc\fP utilitizzle is used up in both interactizzle n' non-interactive
+situations. Different exit codes may be appropriate for
+the two uses.
+.LP
+.IP " *" 3
+It be unclear when a non-zero exit should be given; divide-by-zero,
+undefined functions, n' syntax errors is all
+possibilities.
+.LP
+.IP " *" 3
+It aint clear what tha fuck utilitizzle tha exit status has.
+.LP
+.IP " *" 3
+In tha 4.3 BSD, System V, n' Ninth Edizzle implementations, \fIbc\fP
+works up in conjunction wit \fIdc\fP. Da \fIdc\fP
+utilitizzle is tha parent, \fIbc\fP is tha child. Y'all KNOW dat shit, muthafucka! This was done ta cleanly
+terminizzle \fIbc\fP if \fIdc\fP aborted.
+.LP
+.LP
+Da decision ta have \fIbc\fP exit upon encounterin a inaccessible
+input file is based on tha belief dat \fIbc\fP
+\fIfile1\fP \fIfile2\fP is used most often when at least \fIfile1\fP
+gotz nuff data/function declarations/initializations yo. Having
+\fIbc\fP continue wit prerequisite filez missin is probably not
+useful naaahhmean, biatch? There is no implication up in tha CONSEQUENCES OF ERRORS
+section dat \fIbc\fP must check all its filez fo' accessibilitizzle before
+openin any of em.
+.LP
+There was considerable rap battle on tha appropriatenizz of tha language
+accepted by \fIbc\fP. Right back up in yo muthafuckin ass. Several reviewers preferred ta see
+either a pure subset of tha C language or some chizzlez ta make the
+language mo' compatible wit C. While tha \fIbc\fP language
+has some obvious similaritizzles ta C, it has never fronted ta be compatible
+with any version of C fo' realz. An interpreta fo' a subset of C
+might be a straight-up worthwhile utility, n' it could potentially make
+\fIbc\fP obsolete. But fuck dat shiznit yo, tha word on tha street is dat no such utilitizzle is known in
+historical practice, n' dat shiznit was not within tha scope of dis volume
+of IEEE\ Std\ 1003.1-2001 ta define such a language and
+utility. If n' when they is defined, it may be appropriate ta include
+them up in a gangbangin' future version of IEEE\ Std\ 1003.1. This
+left tha followin alternatives:
+.IP " 1." 4
+Exclude any calculator language from dis volume of IEEE\ Std\ 1003.1-2001.
+.LP
+Da consensuz of tha standard pimpers was dat a simple programmatic
+calculator language is straight-up useful fo' both applications
+and interactizzle users. Da only arguments fo' excludin any calculator
+were dat it would become obsolete if n' when a
+C-compatible one emerged, or dat tha absence would encourage the
+development of such a C-compatible one. These arguments did not
+sufficiently address tha needz of current application writers.
+.LP
+.IP " 2." 4
+Standardize tha oldschool \fIdc\fP, possibly wit minor modifications.
+.LP
+Da consensuz of tha standard pimpers was dat \fIdc\fP be a gangbangin' fundamentally
+less usable language n' dat that would be far
+too severe a penalty fo' avoidin tha issue of bein similar ta but
+incompatible wit C.
+.LP
+.IP " 3." 4
+Standardize tha oldschool \fIbc\fP, possibly wit minor modifications.
+.LP
+This was tha approach taken. I aint talkin' bout chicken n' gravy biatch. Most of tha proponentz of changin the
+language would not done been satisfied until most or all of
+the incompatibilitizzles wit C was resolved. Y'all KNOW dat shit, muthafucka! Since most of tha chizzles
+considered most desirable would break oldschool applications
+and require dope modification ta oldschool implementations,
+almost no modifications was made. Da one significant
+modification dat was made was tha replacement of tha oldschool \fIbc\fP
+assignment operators \fB"=+"\fP, n' so on, wit the
+more modern \fB"+="\fP, n' so on. I aint talkin' bout chicken n' gravy biatch. Da olda versions is considered
+to be fundamentally flawed cuz of tha lexical
+ambiguitizzle up in uses like \fIa\fP=-1.
+.LP
+In order ta permit implementations ta deal wit backwards-compatibility
+as they peep fit, tha behavior of dis one ambiguous
+construct was made undefined. Y'all KNOW dat shit, muthafucka! (At least three implementations have
+been known ta support dis chizzle already, so tha degree of
+change involved should not be pimped out.)
+.LP
+.LP
+Da \fB'%'\fP operator is tha mathematical remainder operator when
+\fBscale\fP is zero. Da behavior of dis operator for
+other jointz of \fBscale\fP is from oldschool implementations of
+\fIbc\fP, n' has been maintained fo' tha sake of historical
+applications despite its non-intuitizzle nature.
+.LP
+Oldschool implementations permit settin \fBibase\fP n' \fBobase\fP
+to a funky-ass broader range of joints, n' you can put dat on yo' toast. This includes joints less
+than 2, which was not peeped as sufficiently useful ta standardize.
+These implementations do not interpret input properly fo' joints
+of \fBibase\fP dat is pimped outa than 16. This is cuz numeric constants
+are recognized syntactically, rather than lexically, as
+busted lyrics bout up in dis volume of IEEE\ Std\ 1003.1-2001. They is built
+from lexical tokenz of single hexadecimal digits and
+periods. Right back up in yo muthafuckin ass. Since <blank>s between tokens is not visible all up in tha syntactic
+level, it aint possible ta recognize the
+multi-digit "digits" used up in tha higher bases properly. Da ability
+to recognize input up in these bases was not considered useful
+enough ta require modifyin these implementations. Note dat tha recognition
+of numeric constants all up in tha syntactic level aint a
+problem wit conformizzle ta dis volume of IEEE\ Std\ 1003.1-2001,
+as it do not impact tha behavior of conforming
+applications (and erect \fIbc\fP programs). Oldschool implementations
+also accept input wit all of tha digits \fB'0'\fP -
+\fB'9'\fP n' \fB'A'\fP - \fB'F'\fP regardless of tha value of \fBibase\fP;
+since digits wit value pimped outa than or equal
+to \fBibase\fP is not straight-up appropriate, tha behavior when they
+appear is undefined, except fo' tha common case of:
+.sp
+.RS
+.nf
+
+\fBibase=8;
+    /* Process up in octal base. */
+\&...
+ibase=A
+    /* Restore decimal base. */
+\fP
+.fi
+.RE
+.LP
+In some oldschool implementations, if tha expression ta be written
+is a uninitialized array element, a leadin <space>
+and/or up ta four leadin 0 charactas may be output before tha character
+zero. This behavior is considered a funky-ass bug; it is unlikely
+that any currently conformin application relies on:
+.sp
+.RS
+.nf
+
+\fBecho 'b[3]' | bc
+\fP
+.fi
+.RE
+.LP
+returnin 00000 rather than 0.
+.LP
+Exact calculation of tha number of fractionizzle digits ta output for
+a given value up in a funky-ass base other than 10 can be computationally
+expensive. Oldschool implementations bust a gangbangin' fasta approximation,
+and dis is permitted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Note dat tha requirements apply only to
+valuez of \fBobase\fP dat dis volume of IEEE\ Std\ 1003.1-2001 requires
+implementations ta support (in particular, not
+to 1, 0, or wack bases, if a implementation supports dem as
+an extension).
+.LP
+Oldschool implementationz of \fIbc\fP did not allow array parameters
+to be passed as tha last parameta ta a gangbangin' function. I aint talkin' bout chicken n' gravy biatch. New
+implementations is encouraged ta remove dis restriction even though
+it aint required by tha grammar.
+.SH FUTURE DIRECTIONS
+.LP
+None.
+.SH SEE ALSO
+.LP
+\fIGrammar Conventions\fP, \fIawk\fP
+.SH COPYRIGHT
+Portionz of dis text is reprinted n' reproduced up in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard fo' Hype Technology
+-- Portable Operatin System Interface (POSIX), Da Open Group Base
+Specifications Issue 6, Copyright (C) 2001-2003 by tha Institute of
+Electrical n' Electronics Engineers, Inc n' Da Open Group. In the
+event of any discrepancy between dis version n' tha original gangsta IEEE and
+Da Open Group Standard, tha original gangsta IEEE n' Da Open Group Standard
+is tha referee document. Da original gangsta Standard can be obtained online at
+http://www.opengroup.org/unix/online.html .

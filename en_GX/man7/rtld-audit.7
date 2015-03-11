@@ -1,0 +1,614 @@
+.\" Copyright (c) 2009 Linux Foundation, freestyled by Mike Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" 2009-01-12, mtk, Created
+.\"
+.TH RTLD-AUDIT 7 2012-07-07 "Linux" "Linux Programmerz Manual"
+.SH NAME
+rtld-audit \- auditin API fo' tha dynamic linker
+.SH SYNOPSIS
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+
+.B #include <link.h>
+.SH DESCRIPTION
+Da GNU dynamic linker (run-time linker)
+provides a auditin API dat allows a application
+to be notified when various dynamic linkin events occur.
+This API is straight-up similar ta tha auditin intercourse provided by the
+Solaris run-time linker.
+Da necessary constants n' prototypes is defined by including
+.IR <link.h> .
+
+To use dis intercourse, tha programmer creates a gangbangin' finger-lickin' dirty-ass shared library
+that implements a standard set of function names.
+Not all of tha functions need ta be implemented: up in most cases,
+if tha programmer aint horny bout a particular class of auditin event,
+then no implementation need ta be provided fo' tha corresponding
+auditin function.
+
+To employ tha auditin intercourse, tha environment variable
+.BR LD_AUDIT
+must be defined ta contain a cold-ass lil colon-separated list of shared libraries,
+each of which can implement (parts of) tha auditin API.
+When a auditable event occurs,
+the correspondin function is invoked up in each library,
+in tha order dat tha libraries is listed.
+.SS la_version()
+\&
+.nf
+.BI "unsigned int la_version(unsigned int " version );
+.fi
+.PP
+This is tha only function that
+.I must
+be defined by a auditin library:
+it performs tha initial handshake between tha dynamic linker and
+the auditin library.
+When invokin dis function, tha dynamic linker passes, in
+.IR version ,
+the highest version of tha auditin intercourse dat tha linker supports.
+If necessary, tha auditin library can check dat dis version
+is sufficient fo' its requirements.
+
+As its function result,
+this function should return tha version of tha auditin intercourse
+that dis auditin library expects ta use (returning
+.I version
+is acceptable).
+If tha returned value is 0,
+or a version dat is pimped outa than dat supported by tha dynamic linker,
+then tha audit library is ignored.
+.SS la_objsearch()
+\&
+.nf
+.BI "char *la_objsearch(const char *" name ", uintptr_t *" cookie ,
+.BI "                   unsigned int " flag );
+.fi
+.PP
+Da dynamic linker invokes dis function ta inform tha auditin library
+that it be bout ta search fo' a gangbangin' finger-lickin' dirty-ass shared object.
+The
+.I name
+argument is tha filename or pathname dat is ta be searched for.
+.I cookie
+identifies tha shared object dat initiated tha search.
+.I flag
+is set ta one of tha followin joints:
+.TP 17
+.B LA_SER_ORIG
+This is tha original gangsta name dat is bein searched for.
+Typically, dis name be reppin a ELF
+.B DT_NEEDED
+entry, or is the
+.I filename
+argument given to
+.BR dlopen (3).
+.TP
+.B LA_SER_LIBPATH
+.I name
+was pimped rockin a gangbangin' finger-lickin' directory specified in
+.BR LD_LIBRARY_PATH .
+.TP
+.B LA_SER_RUNPATH
+.I name
+was pimped rockin a gangbangin' finger-lickin' directory specified up in a ELF
+.B DT_RPATH
+or
+.B DT_RUNPATH
+list.
+.TP
+.B LA_SER_CONFIG
+.I name
+was found via the
+.BR ldconfig (8)
+cache
+.RI ( /etc/ld.so.cache ).
+.TP
+.B LA_SER_DEFAULT
+.I name
+was found via a search of one of tha default directories.
+.TP
+.B LA_SER_SECURE
+.I name
+is specific ta a secure object (unused on Linux).
+.PP
+As its function result,
+.BR la_objsearch ()
+returns tha pathname dat tha dynamic linker should use
+for further processing.
+If NULL is returned, then dis pathname is ignored fo' further processing.
+If dis audit library simply intendz ta monitor search paths, then
+.I name
+should be returned.
+.SS la_activity()
+\&
+.nf
+.BI "void la_activity( uintptr_t *" cookie ", unsigned int "flag  );
+.fi
+.PP
+Da dynamic linker calls dis function ta inform tha auditin library
+that link-map activitizzle is occurring.
+.I cookie
+identifies tha object all up in tha head of tha link map.
+When tha dynamic linker invokes dis function,
+.I flag
+is set ta one of tha followin joints:
+.TP 19
+.B LA_ACT_ADD
+New objects is bein added ta tha link map.
+.TP
+.B LA_ACT_DELETE
+Objects is bein removed from tha link map.
+.TP
+.B LA_ACT_CONSISTENT
+Link-map activitizzle has been completed: tha map is once again n' again n' again consistent.
+.SS la_objopen()
+\&
+.nf
+.BI "unsigned int la_objopen(struct link_map *" map ", Lmid_t " lmid ,
+.BI "                        uintptr_t *" cookie );
+.fi
+.PP
+Da dynamic linker calls dis function when a freshly smoked up shared object is loaded.
+The
+.I map
+argument be a pointa ta a link-map structure dat raps bout tha object.
+The
+.I lmid
+field has one of tha followin joints
+.TP 17
+.B LM_ID_BASE
+Link map is part of tha initial namespace.
+.TP
+.B LM_ID_NEWLM
+Link map is part of a freshly smoked up namespace axed via
+.BR dlmopen (3).
+.PP
+.I cookie
+is a pointa ta a identifier fo' dis object.
+Da identifier is provided ta lata calls ta functions
+in tha auditin library up in order ta identify dis object.
+This identifier is initialized ta point ta objectz link map,
+but tha audit library can chizzle tha identifier ta some other value
+that it may prefer ta use ta identify tha object.
+.PP
+As its return value,
+.BR la_objopen ()
+returns a lil' bit mask pimped by ORin zero or mo' of the
+followin constants,
+which allow tha auditin library ta select tha objects ta be monitored by
+.BR la_symbind* ():
+.TP 17
+.B LA_FLG_BINDTO
+Audit symbol bindings ta dis object.
+.TP
+.B LA_FLG_BINDFROM
+Audit symbol bindings from dis object.
+.PP
+A return value of 0 from
+.BR la_objopen ()
+indicates dat no symbol bindings should be audited fo' dis object.
+.SS la_objclose()
+\&
+.nf
+.BI "unsigned int la_objclose(uintptr_t *" cookie );
+.fi
+.PP
+Da dynamic linker invokes dis function afta any finalization
+code fo' tha object has been executed,
+before tha object is unloaded.
+The
+.I cookie
+argument is tha identifier obtained from a previous invocation of
+.BR la_objopen ().
+
+In tha current implementation, tha value returned by
+.BR la_objclose ()
+is ignored.
+.SS la_preinit()
+\&
+.nf
+.BI "void la_preinit(uintptr_t *" cookie );
+.fi
+.PP
+Da dynamic linker invokes dis function afta all shared objects
+have been loaded, before control is passed ta tha application
+(i.e., before calling
+.IR main ()).
+Note that
+.IR main ()
+may still lata dynamically load objects using
+.BR dlopen (3).
+.SS la_symbind*()
+\&
+.nf
+.BI "uintptr_t la_symbind32(Elf32_Sym *" sym ", unsigned int " ndx ,
+.BI "                       uintptr_t *" refcook ", uintptr_t *" defcook ,
+.BI "                       unsigned int *" flags ", const char *" symname );
+.BI "uintptr_t la_symbind64(Elf64_Sym *" sym ", unsigned int " ndx ,
+.BI "                       uintptr_t *" refcook ", uintptr_t *" defcook ,
+.BI "                       unsigned int *" flags ", const char *" symname );
+.fi
+.PP
+Da dynamic linker invokes one of these functions
+when a symbol bindin occurs between two shared objects
+that done been marked fo' auditin notification by
+.BR la_objopen ().
+The
+.BR la_symbind32 ()
+function is employed on 32-bit platforms;
+the
+.BR la_symbind64 ()
+function is employed on 64-bit platforms.
+
+The
+.I sym
+argument be a pointa ta a structure
+that serves up shiznit bout tha symbol bein bound.
+Da structure definizzle is shown in
+.IR <elf.h> .
+Among tha fieldz of dis structure,
+.I st_value
+indicates tha address ta which tha symbol is bound.
+
+The
+.I ndx
+argument gives tha index of tha symbol up in tha symbol table
+of tha bound shared object.
+
+The
+.I refcook
+argument identifies tha shared object dat is makin tha symbol reference;
+this is tha same ol' dirty identifier dat is provided ta the
+.BR la_objopen ()
+function dat returned
+.BR LA_FLG_BINDFROM .
+The
+.I defcook
+argument identifies tha shared object dat defines tha referenced symbol;
+this is tha same ol' dirty identifier dat is provided ta the
+.BR la_objopen ()
+function dat returned
+.BR LA_FLG_BINDTO .
+
+The
+.I symname
+argument points a strang containin tha name of tha symbol.
+
+The
+.I flags
+argument be a lil' bit mask dat both serves up shiznit bout tha symbol
+and can be used ta modify further auditin of this
+PLT (Procedure Linkage Table) entry.
+Da dynamic linker may supply tha followin bit joints up in dis argument:
+.\" LA_SYMB_STRUCTCALL appears ta be unused
+.TP 22
+.B LA_SYMB_DLSYM
+Da bindin resulted from a cold-ass lil call to
+.BR dlsym (3).
+.TP
+.B LA_SYMB_ALTVALUE
+A previous
+.BR la_symbind* ()
+call returned a alternate value fo' dis symbol.
+.PP
+By default, if tha auditin library implements
+.BR la_pltenta ()
+and
+.BR la_pltexit ()
+functions (see below), then these functions is invoked, after
+.BR la_symbind (),
+for PLT entries, each time tha symbol is referenced.
+.\" pltenter/pltexit is called fo' non-dynamically loaded libraries,
+.\" but don't seem ta be called fo' dynamically loaded libs?
+.\" Is dis tha same ol' dirty on Solaris?
+Da followin flags can be ORed into
+.IR *flags
+to chizzle dis default behavior:
+.TP 22
+.B LA_SYMB_NOPLTENTER
+Don't call
+.BR la_pltenta ()
+for dis symbol.
+.TP 22
+.B LA_SYMB_NOPLTEXIT
+Don't call
+.BR la_pltexit ()
+for dis symbol.
+.PP
+Da return value of
+.BR la_symbind32 ()
+and
+.BR la_symbind64 ()
+is tha address ta which control should be passed afta tha function returns.
+If tha auditin library is simply monitorin symbol bindings,
+then it should return
+.IR sym\->st_value .
+A different value may be returned if tha library wishes ta direct control
+to a alternate location.
+.SS la_pltenter()
+Da precise name n' argument types fo' dis function
+depend on tha hardware platform.
+(Da appropriate definizzle is supplied by
+.IR <link.h> .)
+Here is tha definizzle fo' x86-32:
+.nf
+
+.BI "Elf32_Addr la_i86_gnu_pltenter(Elf32_Sym *" sym ", unsigned int " ndx ,
+.BI "                 uintptr_t *" refcook ", uintptr_t *" defcook ,
+.BI "                 La_i86_regs *" regs ", unsigned int *" flags ,
+.BI "                 const char *" symname ", long int *" framesizep );
+.fi
+
+This function is invoked just before a PLT entry is called,
+between two shared objects dat done been marked fo' bindin notification.
+
+The
+.IR sym ,
+.IR ndx ,
+.IR refcook ,
+.IR defcook ,
+and
+.IR symname
+are as for
+.BR la_symbind* ().
+
+The
+.I regs
+argument points ta a structure (defined in
+.IR <link.h> )
+containin tha jointz of registas ta be used for
+the call ta dis PLT entry.
+
+The
+.I flags
+argument points ta a lil' bit mask dat conveys shiznit about,
+and can be used ta modify subsequent auditin of, dis PLT entry, as for
+.BR la_symbind* ().
+
+.\" FIXME is tha followin erect?
+The
+.IR framesizep
+argument points ta a
+.IR "long\ int"
+buffer dat can be used ta explicitly set tha frame size
+used fo' tha call ta dis PLT entry.
+If different
+.BR la_pltenta ()
+invocations fo' dis symbol return different joints,
+then tha maximum returned value is used.
+The
+.BR la_pltenta ()
+function is called only if dis buffer is
+explicitly set ta a suitable value.
+
+Da return value of
+.BR la_pltenta ()
+is as for
+.BR la_symbind* ().
+.SS la_pltexit()
+Da precise name n' argument types fo' dis function
+depend on tha hardware platform.
+(Da appropriate definizzle is supplied by
+.IR <link.h> .)
+Here is tha definizzle fo' x86-32:
+.nf
+
+.BI "unsigned int la_i86_gnu_pltexit(Elf32_Sym *" sym ", unsigned int " ndx ,
+.BI "                 uintptr_t *" refcook ", uintptr_t *" defcook ,
+.BI "                 const La_i86_regs *" inregs ", La_i86_retval *" outregs ,
+.BI "                 const char *" symname );
+.fi
+.PP
+This function is called when a PLT entry,
+made between two shared objects dat done been marked
+for bindin notification, returns.
+Da function is called just before control returns ta tha caller
+of tha PLT entry.
+.PP
+The
+.IR sym ,
+.IR ndx ,
+.IR refcook ,
+.IR defcook ,
+and
+.IR symname
+are as for
+.BR la_symbind* ().
+
+The
+.I inregs
+argument points ta a structure (defined in
+.IR <link.h> )
+containin tha jointz of registas used fo' tha call ta dis PLT entry.
+The
+.I outregs
+argument points ta a structure (defined in
+.IR <link.h> )
+containin return joints fo' tha call ta dis PLT entry.
+These joints can be modified by tha caller,
+and tha chizzlez is ghon be visible ta tha calla of tha PLT entry.
+
+In tha current GNU implementation, tha return value of
+.BR la_pltexit ()
+is ignored.
+.\" This differs from Solaris, where a audit library dat monitors
+.\" symbol bindin should return tha value of tha 'retval' argument
+.\" (not provided by GNU yo, but equivalent ta returnin outregs->lrv_eax
+.\" on (say) x86-32).
+.SH CONFORMING TO
+This API is nonstandard yo, but straight-up similar ta tha Solaris API,
+busted lyrics bout up in tha Solaris
+.IR "Linker n' Libraries Guide" ,
+in tha chapter
+.IR "Runtime Linker Auditin Interface" .
+.SH NOTES
+Note tha followin differences from tha Solaris dynamic linker
+auditin API:
+.IP * 3
+Da Solaris
+.BR la_objfilta ()
+interface aint supported by tha GNU implementation.
+.IP *
+Da Solaris
+.BR la_symbind32 ()
+and
+.BR la_pltexit ()
+functions do not provide a
+.I symname
+argument.
+.IP *
+Da Solaris
+.BR la_pltexit ()
+function do not provide
+.I inregs
+and
+.I outregs
+arguments (but do provide a
+.IR retval
+argument wit tha function return value).
+.SH BUGS
+In glibc versions up ta n' include 2.9,
+specifyin mo' than one audit library in
+.B LD_AUDIT
+results up in a run-time crash.
+This is reportedly fixed up in glibc 2.10.
+.\" FIXME Specifyin multiple audit libraries don't work on GNU.
+.\" My fuckin simple tests on Solaris work aiiight yo, but not on Linux -- mtk, Jan 2009
+.\" glibc bug filed: http://sourceware.org/bugzilla/show_bug.cgi?id=9733
+.\" Reportedly, dis is fixed on 16 Mar 2009 (i.e., fo' glibc 2.10)
+.SH EXAMPLE
+.nf
+#include <link.h>
+#include <stdio.h>
+
+unsigned int
+la_version(unsigned int version)
+{
+    printf("la_version(): %d\\n", version);
+
+    return version;
+}
+
+char *
+la_objsearch(const char *name, uintptr_t *cookie, unsigned int flag)
+{
+    printf("la_objsearch(): name = %s; cookie = %x", name, cookie);
+    printf("; flag = %s\\n",
+            (flag == LA_SER_ORIG) , biatch?    "LA_SER_ORIG" :
+            (flag == LA_SER_LIBPATH) , biatch? "LA_SER_LIBPATH" :
+            (flag == LA_SER_RUNPATH) , biatch? "LA_SER_RUNPATH" :
+            (flag == LA_SER_DEFAULT) , biatch? "LA_SER_DEFAULT" :
+            (flag == LA_SER_CONFIG) , biatch?  "LA_SER_CONFIG" :
+            (flag == LA_SER_SECURE) , biatch?  "LA_SER_SECURE" :
+            "???");
+
+    return name;
+}
+
+void
+la_activitizzle (uintptr_t *cookie, unsigned int flag)
+{
+    printf("la_activity(): cookie = %x; flag = %s\\n", cookie,
+            (flag == LA_ACT_CONSISTENT) , biatch? "LA_ACT_CONSISTENT" :
+            (flag == LA_ACT_ADD) , biatch?        "LA_ACT_ADD" :
+            (flag == LA_ACT_DELETE) , biatch?     "LA_ACT_DELETE" :
+            "???");
+}
+
+unsigned int
+la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie)
+{
+    printf("la_objopen(): loadin \\"%s\\"; lmid = %s; cookie=%x\\n",
+            map\->l_name,
+            (lmid == LM_ID_BASE) , biatch?  "LM_ID_BASE" :
+            (lmid == LM_ID_NEWLM) , biatch? "LM_ID_NEWLM" :
+            "???",
+            cookie);
+
+    return LA_FLG_BINDTO | LA_FLG_BINDFROM;
+}
+
+unsigned int
+la_objclose (uintptr_t *cookie)
+{
+    printf("la_objclose(): %x\\n", cookie);
+
+    return 0;
+}
+
+void
+la_preinit(uintptr_t *cookie)
+{
+    printf("la_preinit(): %x\\n", cookie);
+}
+
+uintptr_t
+la_symbind32(Elf32_Sym *sym, unsigned int ndx, uintptr_t *refcook,
+        uintptr_t *defcook, unsigned int *flags, const char *symname)
+{
+    printf("la_symbind32(): symname = %s; sym\->st_value = %p\\n",
+            symname, sym\->st_value);
+    printf("        ndx = %d; flags = 0x%x", ndx, *flags);
+    printf("; refcook = %x; defcook = %x\\n", refcook, defcook);
+
+    return sym\->st_value;
+}
+
+uintptr_t
+la_symbind64(Elf64_Sym *sym, unsigned int ndx, uintptr_t *refcook,
+        uintptr_t *defcook, unsigned int *flags, const char *symname)
+{
+    printf("la_symbind64(): symname = %s; sym\->st_value = %p\\n",
+            symname, sym\->st_value);
+    printf("        ndx = %d; flags = 0x%x", ndx, *flags);
+    printf("; refcook = %x; defcook = %x\\n", refcook, defcook);
+
+    return sym\->st_value;
+}
+
+Elf32_Addr
+la_i86_gnu_pltenter(Elf32_Sym *sym, unsigned int ndx,
+        uintptr_t *refcook, uintptr_t *defcook, La_i86_regs *regs,
+        unsigned int *flags, const char *symname, long int *framesizep)
+{
+    printf("la_i86_gnu_pltenter(): %s (%p)\\n", symname, sym\->st_value);
+
+    return sym\->st_value;
+}
+.fi
+.SH SEE ALSO
+.BR ldd (1),
+.BR dlopen (3),
+.BR ld.so (8),
+.BR ldconfig (8)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

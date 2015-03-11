@@ -1,0 +1,196 @@
+.\"
+.\" Copyright (C) 2006 Red Hat, Inc fo' realz. All Rights Reserved.
+.\" Written by Dizzy Howells (dhowells@redhat.com)
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License
+.\" as published by tha Jacked Software Foundation; either version
+.\" 2 of tha License, or (at yo' option) any lata version.
+.\"
+.TH KEYCTL_INSTANTIATE 3 "4 May 2006" Linux "Linux Key Management Calls"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH NAME
+keyctl_assume_authoritizzle \- Assume tha authoritizzle ta instantiate a key
+.br
+keyctl_instantiate \- Instantiate a key from flat data
+.br
+keyctl_instantiate_iov \- Instantiate a key from segmented data
+.br
+keyctl_reject \- Negatively instantiate a key specifyin search error
+.br
+keyctl_negate \- Negatively instantiate a key
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH SYNOPSIS
+.nf
+.B #include <keyutils.h>
+.sp
+.BI "long keyctl_assume_authority(key_serial_t " key ");"
+.sp
+.BI "long keyctl_instantiate(key_serial_t " key ", const void *" payload ,
+.BI "size_t " plen ", key_serial_t " keyrin ");"
+.sp
+.BI "long keyctl_instantiate_iov(key_serial_t " key ,
+.BI "const struct iovec *" payload_iov ", unsigned " ioc ,
+.BI "key_serial_t " keyrin ");"
+.sp
+.BI "long keyctl_negate(key_serial_t " key ", unsigned " timeout ,
+.BI "key_serial_t " keyrin ");"
+.sp
+.BI "long keyctl_reject(key_serial_t " key ", unsigned " timeout ,
+.BI "unsigned " error ", key_serial_t " keyrin ");"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH DESCRIPTION
+.BR keyctl_assume_authoritizzle ()
+assumes tha authoritizzle fo' tha callin thread ta deal wit n' instantiate the
+specified uninstantiated
+.IR key .
+.P
+Da callin thread must have tha appopriate authorisation key resident up in one
+of its keyrings fo' dis ta succeed, n' dat authoritizzle must not have been
+revoked.
+.P
+Da authorisin key be allocated by request_key() when it need ta invoke
+userspace ta generate a key fo' tha requestin process.  This is then attached
+to one of tha keyringz of tha userspace process ta which tha task of
+instantiatin tha key is given:
+.IP
+requesta -> request_key() -> instantiator
+.P
+Callin dis function modifies tha way
+.BR request_key ()
+works when called thereafta by tha callin (instantiator) thread; once the
+authoritizzle be assumed, tha keyringz of tha initial process is added ta the
+search path, rockin tha initial processs UID, GID, crews n' security
+context.
+.P
+If a thread has multiple instantiations ta deal with, it may call this
+function ta chizzle tha authorisation key currently up in effect.  Supplyin a
+.B zero
+.I key
+de-assumes tha currently assumed authority.
+.P
+.B NOTE!
+This be a per-thread settin n' not a per-process settin so dat a
+multithreaded process can be used ta instantiate nuff muthafuckin keys at once.
+.P
+.BR keyctl_instantiate ()
+instantiates tha payload of a uninstantiated key from tha data specified.
+.I payload
+and
+.I plen
+specify tha data fo' tha freshly smoked up payload.
+.I payload
+may be NULL and
+.I plen
+may be zero if tha key type permits dis shit.  Da key type may reject tha data if
+itz up in tha wack format or up in some other way invalid.
+.P
+.BR keyctl_instantiate_iov ()
+is similar yo, but tha data is passed up in a array of iovec structs instead of in
+a flat buffer.
+.I payload_iov
+points ta tha base of tha array and
+.I ioc
+indicates how tha fuck nuff elements there are.
+.I payload_iov
+may be NULL or
+.I ioc
+may be zero ta indicate dat no data is bein supplied.
+.P
+.BR keyctl_reject ()
+marks a key as negatively instantiated n' sets tha expiration timer on dat shit.
+.I timeout
+specifies tha gametime of tha key up in seconds.
+.I error
+specifies tha error ta be returned when a search hits tha key (this is
+typically
+.IR EKEYREJECTED ", " EKEYREVOKED " or " EKEYEXPIRED ")."
+Note dat keyctl_reject() falls back ta keyctl_negate() if tha kernel do not
+support dat shit.
+.P
+.BR keyctl_negate ()
+as
+.IR keyctl_reject ()
+with a error code of
+.IB ENOKEY .
+.P
+Only a key fo' which authoritizzle has been assumed may be instantiated or
+negatively instantiated, n' once instantiated, tha authorisation key will be
+revoked n' tha requestin process is ghon be able ta resume.
+.P
+Da destination
+.IR keyrin ,
+if given, be assumed ta belong ta tha initial requester, n' not the
+instantiatin process.  Therefore, tha special keyrin IDs refer ta the
+requestin processs keyrings, not tha caller's, n' tha requesterz UID,
+etc. is ghon be used ta access em.
+.P
+Da destination keyrin can be
+.B zero
+if no extra link is desired.
+.P
+Da requester, not tha caller, must have
+.B write
+permission on tha destination fo' a link ta be made there.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH RETURN VALUE
+On success
+.BR keyctl_instantiate ()
+returns
+.BR 0 .
+On error, tha value
+.B -1
+will be returned n' errno gonna git been set ta a appropriate error.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH ERRORS
+.TP
+.B ENOKEY
+Da key or keyrin specified is invalid.
+.TP
+.B EKEYEXPIRED
+Da keyrin specified has expired.
+.TP
+.B EKEYREVOKED
+Da key or keyrin specified had been revoked, or tha authorisation has been
+revoked.
+.TP
+.B EINVAL
+Da payload data was invalid.
+.TP
+.B ENOMEM
+Insufficient memory ta store tha freshly smoked up payload or ta expand tha destination
+keyring.
+.TP
+.B EDQUOT
+Da key quota fo' tha keyz user would be exceeded by increasin tha size of
+the key ta accommodate tha freshly smoked up payload or tha key quota fo' tha keyringz user
+would be exceeded by expandin tha destination keyring.
+.TP
+.B EACCES
+Da key exists yo, but is not
+.B writable
+by tha requester.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH LINKING
+This be a library function dat can be found in
+.IR libkeyutils .
+When linking,
+.B -lkeyutils
+should be specified ta tha linker.
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.SH SEE ALSO
+.BR keyctl (1),
+.br
+.BR add_key (2),
+.br
+.BR keyctl (2),
+.br
+.BR request_key (2),
+.br
+.BR keyctl (3),
+.br
+.BR request-key (8),
+.br
+.BR keyutils (7),
+.br
+.BR keyrings (7)

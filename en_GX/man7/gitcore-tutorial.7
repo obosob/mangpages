@@ -1,0 +1,2129 @@
+'\" t
+.\"     Title: gitcore-tutorial
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 10/25/2014
+.\"    Manual: Git Manual
+.\"    Source: Git 1.9.3
+.\"  Language: Gangsta
+.\"
+.TH "GITCORE\-TUTORIAL" "7" "10/25/2014" "Git 1\&.9\&.3" "Git Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+gitcore-tutorial \- A Git core tutorial fo' pimpers
+.SH "SYNOPSIS"
+.sp
+git *
+.SH "DESCRIPTION"
+.sp
+This tutorial explains how tha fuck ta use tha "core" Git commandz ta set up n' work wit a Git repository\&.
+.sp
+If you just need ta use Git as a revision control system you may prefer ta start wit "A Tutorial Introduction ta Git" (\fBgittutorial\fR(7)) or \m[blue]\fBthe Git User Manual\fR\m[]\&\s-2\u[1]\d\s+2\&.
+.sp
+But fuck dat shiznit yo, tha word on tha street is dat a understandin of these low\-level tools can be helpful if you wanna KNOW Git\(cqs internals\&.
+.sp
+Da core Git is often called "plumbing", wit tha prettier user intercourses on top of it called "porcelain"\&. Yo ass may not wanna use tha plumbin directly straight-up often yo, but it can be phat ta know what tha fuck tha plumbin do fo' when tha porcelain isn\(cqt flushing\&.
+.sp
+Back when dis document was originally written, nuff porcelain commandz was shell scripts\&. For simplicity, it still uses dem as examplez ta illustrate how tha fuck plumbin is fit together ta form tha porcelain commands\&. Da source tree includes a shitload of these scripts up in contrib/examples/ fo' reference\& fo' realz. Although these is not implemented as shell scripts no mo', tha description of what tha fuck tha plumbin layer commandz do is still valid\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Deeper technical details is often marked as Notes, which you can skip on yo' first reading\&.
+.sp .5v
+.RE
+.SH "CREATING A GIT REPOSITORY"
+.sp
+Creatin a freshly smoked up Git repository couldn\(cqt be easier: all Git repositories start up empty, n' tha only thang you need ta do is find yo ass a subdirectory dat you wanna use as a hustlin tree \- either a empty one fo' a straight-up freshly smoked up project, or a existin hustlin tree dat you wanna import tha fuck into Git\&.
+.sp
+For our first example, we\(cqre goin ta start a straight-up freshly smoked up repository from scratch, wit no pre\-existin files, n' we\(cqll call it \fIgit\-tutorial\fR\&. To start up, create a subdirectory fo' it, chizzle tha fuck into dat subdirectory, n' initialize tha Git infrastructure wit \fIgit init\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ mkdir git\-tutorial
+$ cd git\-tutorial
+$ git init
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+to which Git will reply
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Initialized empty Git repository up in \&.git/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which is just Git\(cqs way of sayin dat you haven\(cqt been bustin anythang strange, n' dat it gonna git pimped a local \&.git directory setup fo' yo' freshly smoked up project\&. Yo ass will now gotz a \&.git directory, n' you can inspect dat wit \fIls\fR\&. For yo' freshly smoked up empty project, it should show you three entries, among other thangs:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+a file called
+HEAD, dat has
+ref: refs/heads/master
+in it\&. This is similar ta a symbolic link n' points at
+refs/heads/master
+relatizzle ta the
+HEAD
+file\&.
+.sp
+Don\(cqt worry bout tha fact dat tha file dat the
+HEAD
+link points ta don\(cqt even exist yet \(em you haven\(cqt pimped tha commit dat will start your
+HEAD
+development branch yet\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+a subdirectory called
+objects, which will contain all tha objectz of yo' project\&. Yo ass should never have any real reason ta peep tha objects directly yo, but you might wanna know dat these objects is what tha fuck gotz nuff all tha real
+\fIdata\fR
+in yo' repository\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+a subdirectory called
+refs, which gotz nuff references ta objects\&.
+.RE
+.sp
+In particular, tha refs subdirectory will contain two other subdirectories, named headz n' tags respectively\&. They do exactly what tha fuck they names imply: they contain references ta any number of different \fIheads\fR of pimpment (aka \fIbranches\fR), n' ta any \fItags\fR dat you have pimped ta name specific versions up in yo' repository\&.
+.sp
+One note: tha special masta head is tha default branch, which is why tha \&.git/HEAD file was pimped points ta it even if it don\(cqt yet exist\&. Basically, tha HEAD link is supposed ta always point ta tha branch yo ass is hustlin on up in dis biatch, n' you always start up expectin ta work on tha masta branch\&.
+.sp
+But fuck dat shiznit yo, tha word on tha street is dat dis is only a cold-ass lil convention, n' you can name yo' branches anythang you want, n' don\(cqt gotta eva even \fIhave\fR a masta branch\& fo' realz. A number of tha Git tools will assume dat \&.git/HEAD is valid, though\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+An \fIobject\fR is identified by its 160\-bit SHA\-1 hash, aka \fIobject name\fR, n' a reference ta a object be always tha 40\-byte hex representation of dat SHA\-1 name\&. Da filez up in tha refs subdirectory is sposed ta fuckin contain these hex references (usually wit a gangbangin' final \en all up in tha end), n' you should thus expect ta peep a fuckin shitload of 41\-byte filez containin these references up in these refs subdirectories when you straight-up start populatin yo' tree\&.
+.sp .5v
+.RE
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+An advanced user may wanna take a peep \fBgitrepository-layout\fR(5) afta finishin dis tutorial\&.
+.sp .5v
+.RE
+.sp
+Yo ass have now pimped yo' first Git repository\&. Of course, since it\(cqs empty, that\(cqs not straight-up useful, so let\(cqs start populatin it wit data\&.
+.SH "POPULATING A GIT REPOSITORY"
+.sp
+We\(cqll keep dis simple n' stupid, so we\(cqll start off wit populatin all dem trivial filez just ta git a gangbangin' feel fo' it\&.
+.sp
+Start off wit just bustin any random filez dat you wanna maintain up in yo' Git repository\&. We\(cqll start off wit all dem wack examples, just ta git a gangbangin' feel fo' how tha fuck dis works:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ echo "Wuz crackalackin' World" >hello
+$ echo "Silly example" >example
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+you have now pimped two filez up in yo' hustlin tree (aka \fIworkin directory\fR) yo, but ta straight-up check up in yo' hard work, yo big-ass booty is ghon gotta go all up in two steps:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+fill up in the
+\fIindex\fR
+file (aka
+\fIcache\fR) wit tha shiznit bout yo' hustlin tree state\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+commit dat index file as a object\&.
+.RE
+.sp
+Da first step is trivial: when you wanna tell Git bout any chizzlez ta yo' hustlin tree, you use tha \fIgit update\-index\fR program\&. That program normally just takes a list of filenames you wanna update yo, but ta avoid trivial mistakes, it refuses ta add freshly smoked up entries ta tha index (or remove existin ones) unless you explicitly tell it dat you\(cqre addin a freshly smoked up entry wit tha \-\-add flag (or removin a entry wit tha \-\-remove) flag\&.
+.sp
+So ta populate tha index wit tha two filez you just pimped, you can do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git update\-index \-\-add wassup example
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and you have now holla'd at Git ta track dem two files\&.
+.sp
+In fact, as you did that, if you now look tha fuck into yo' object directory, you\(cqll notice dat Git gonna git added two freshly smoked up objects ta tha object database\&. If you did exactly tha steps above, you should now be able ta do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ ls \&.git/objects/??/*
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and peep two files:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\&.git/objects/55/7db03de997c86a4a028e1ebd3a1ceb225be238
+\&.git/objects/f2/4c74a2e500f5ee1332c86b94199f52b1d1d962
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which correspond wit tha objects wit namez of 557db\&.\&.\&. n' f24c7\&.\&.\&. respectively\&.
+.sp
+If you want to, you can use \fIgit cat\-file\fR ta peep dem objects yo, but you\(cqll gotta use tha object name, not tha filename of tha object:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git cat\-file \-t 557db03de997c86a4a028e1ebd3a1ceb225be238
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+where tha \-t  drops some lyrics ta \fIgit cat\-file\fR ta rap  what tha fuck tha "type" of tha object is\&. Git will rap  dat you gotz a "blob" object (i\&.e\&., just a regular file), n' you can peep tha contents with
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git cat\-file blob 557db03
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which will print up "Wuz crackalackin' World"\&. Da object 557db03 is not a god damn thang mo' than tha contentz of yo' file hello\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Don\(cqt confuse dat object wit tha file wassup itself\&. Da object is literally just dem specific \fBcontents\fR of tha file, n' however much you lata chizzle tha contents up in file hello, tha object our laid-back asses just looked at aint NEVER gonna chizzle\&. Objects is immutable\&.
+.sp .5v
+.RE
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Da second example demonstrates dat you can abbreviate tha object name ta only tha straight-up original gangsta nuff muthafuckin hexadecimal digits up in most places\&.
+.sp .5v
+.RE
+.sp
+Anyway, as we mentioned previously, you normally never straight-up take a peep tha objects theyselves, n' typin long 40\-characta hex names aint suttin' you\(cqd normally wanna do\&. Da above digression was just ta show dat \fIgit update\-index\fR did suttin' magical, n' straight-up saved away tha contentz of yo' filez tha fuck into tha Git object database\&.
+.sp
+Uppimpin tha index did suttin' else too: it pimped a \&.git/index file\&. This is tha index dat raps bout yo' current hustlin tree, n' suttin' you should be straight-up aware of\& fo' realz. Again, you normally never worry bout tha index file itself yo, but you should be aware of tha fact dat you aint straight-up straight-up "checked in" yo' filez tha fuck into Git so far, you\(cqve only \fBtold\fR Git bout them\&.
+.sp
+But fuck dat shiznit yo, tha word on tha street is dat since Git knows bout them, you can now start rockin a shitload of da most thugged-out basic Git commandz ta manipulate tha filez or peep they status\&.
+.sp
+In particular, let\(cqs not even check up in tha two filez tha fuck into Git yet, we\(cqll start off by addin another line ta wassup first:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ echo "It\(aqs a freshly smoked up dizzle fo' git" >>hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and you can now, since you holla'd at Git bout tha previous state of hello, ask Git what tha fuck has chizzled up in tha tree compared ta yo' oldschool index, rockin tha \fIgit diff\-files\fR command:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff\-files
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Oops\&. That wasn\(cqt straight-up readable\&. Well shiiiit, it just spit up its own internal version of a \fIdiff\fR yo, but dat internal version straight-up just  drops some lyrics ta you dat it has noticed dat "hello" has been modified, n' dat tha oldschool object contents it had done been replaced wit suttin' else\&.
+.sp
+To make it readable, we can tell \fIgit diff\-files\fR ta output tha differences as a patch, rockin tha \-p flag:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff\-filez \-p
+diff \-\-git a/wassup b/hello
+index 557db03\&.\&.263414f 100644
+\-\-\- a/hello
++++ b/hello
+@@ \-1 +1,2 @@
+ Wuz crackalackin' World
++It\(aqs a freshly smoked up dizzle fo' git
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+i\&.e\&. tha diff of tha chizzle we caused by addin another line ta hello\&.
+.sp
+In other lyrics, \fIgit diff\-files\fR always shows our asses tha difference between what tha fuck is recorded up in tha index, n' what tha fuck is currently up in tha hustlin tree\&. That\(cqs straight-up useful\&.
+.sp
+A common shorthand fo' git diff\-filez \-p is ta just write git diff, which will do tha same thang\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff
+diff \-\-git a/wassup b/hello
+index 557db03\&.\&.263414f 100644
+\-\-\- a/hello
++++ b/hello
+@@ \-1 +1,2 @@
+ Wuz crackalackin' World
++It\(aqs a freshly smoked up dizzle fo' git
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "COMMITTING GIT STATE"
+.sp
+Now, we wanna git all up in tha next stage up in Git, which is ta take tha filez dat Git knows bout up in tha index, n' commit dem as a real tree\&. Us dudes do dat up in two phases: bustin a \fItree\fR object, n' committin dat \fItree\fR object as a \fIcommit\fR object together wit a explanation of what tha fuck tha tree was all about, along wit shiznit of how tha fuck we came ta dat state\&.
+.sp
+Creatin a tree object is trivial, n' is done wit \fIgit write\-tree\fR\&. There is no options or other input: git write\-tree will take tha current index state, n' write a object dat raps bout dat whole index\&. In other lyrics, we\(cqre now tyin together all tha different filenames wit they contents (and they permissions), n' we\(cqre bustin tha equivalent of a Git "directory" object:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git write\-tree
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and dis will just output tha name of tha resultin tree, up in dis case (if you have done exactly as I\(cqve busted lyrics about) it should be
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+8988da15d077d4829fc51d8544c097def6644dbb
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which be another incomprehensible object name\& fo' realz. Again, if you want to, you can use git cat\-file \-t 8988d\&.\&.\&. ta peep dat dis time tha object aint a "blob" object yo, but a "tree" object (you can also use git cat\-file ta straight-up output tha raw object contents yo, but you\(cqll peep mainly a funky-ass binary mess, so that\(cqs less interesting)\&.
+.sp
+However \(em normally you\(cqd never use \fIgit write\-tree\fR on its own, cuz normally you always commit a tree tha fuck into a cold-ass lil commit object rockin tha \fIgit commit\-tree\fR command\&. In fact, it\(cqs easier ta not straight-up use \fIgit write\-tree\fR on its own at all yo, but ta just pass its result up in as a argument ta \fIgit commit\-tree\fR\&.
+.sp
+\fIgit commit\-tree\fR normally takes nuff muthafuckin arguments \(em it wants ta know what tha fuck tha \fIparent\fR of a cold-ass lil commit was yo, but since dis is tha straight-up original gangsta commit eva up in dis freshly smoked up repository, n' it has no muthafathas, we only need ta pass up in tha object name of tha tree\&. But fuck dat shiznit yo, tha word on tha street is dat \fIgit commit\-tree\fR also wants ta git a cold-ass lil commit message on its standard input, n' it will write up tha resultin object name fo' tha commit ta its standard output\&.
+.sp
+And dis is where we create tha \&.git/refs/heads/masta file which is pointed at by HEAD\&. This file is supposed ta contain tha reference ta tha top\-of\-tree of tha masta branch, n' since that\(cqs exactly what tha fuck \fIgit commit\-tree\fR spits out, we can do dis all wit a sequence of simple shell commands:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ tree=$(git write\-tree)
+$ commit=$(echo \(aqInitial commit\(aq | git commit\-tree $tree)
+$ git update\-ref HEAD $commit
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+In dis case dis creates a straight-up freshly smoked up commit dat aint related ta anythang else\&. Normally you do dis only \fBonce\fR fo' a project ever, n' all lata commits is ghon be parented on top of a earlier commit\&.
+.sp
+Again, normally you\(cqd never straight-up do dis by hand\&. There be a helpful script called git commit dat will do all of dis fo' you\&. Right back up in yo muthafuckin ass. So you could have just freestyled git commit instead, n' it would have done tha above magic scriptin fo' you\&.
+.SH "MAKING A CHANGE"
+.sp
+Remember how tha fuck our phat asses did tha \fIgit update\-index\fR on file wassup n' then we chizzled wassup afterward, n' could compare tha freshly smoked up state of wassup wit tha state we saved up in tha index file?
+.sp
+Further, remember how tha fuck I holla'd dat \fIgit write\-tree\fR writes tha contentz of tha \fBindex\fR file ta tha tree, n' thus what tha fuck our laid-back asses just committed was up in fact tha \fBoriginal\fR contentz of tha file hello, not tha freshly smoked up ones\&. Us dudes did dat on purpose, ta show tha difference between tha index state, n' tha state up in tha hustlin tree, n' how tha fuck they don\(cqt gotta match, even when we commit thangs\&.
+.sp
+As before, if our phat asses do git diff\-filez \-p up in our git\-tutorial project, we\(cqll still peep tha same difference we saw last time: tha index file hasn\(cqt chizzled by tha act of committin anything\&. But fuck dat shiznit yo, tha word on tha street is dat now dat our crazy asses have committed something, we can also learn ta bust a freshly smoked up command: \fIgit diff\-index\fR\&.
+.sp
+Unlike \fIgit diff\-files\fR, which flossed tha difference between tha index file n' tha hustlin tree, \fIgit diff\-index\fR shows tha differences between a cold-ass lil committed \fBtree\fR n' either tha index file or tha hustlin tree\&. In other lyrics, \fIgit diff\-index\fR wants a tree ta be diffed against, n' before our phat asses did tha commit, we couldn\(cqt do that, cuz our phat asses didn\(cqt have anythang ta diff against\&.
+.sp
+But now we can do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff\-index \-p HEAD
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+(where \-p has tha same ol' dirty meanin as it did up in \fIgit diff\-files\fR), n' it will show our asses tha same ol' dirty difference yo, but fo' a straight-up different reason\&. Now we\(cqre comparin tha hustlin tree not against tha index file yo, but against tha tree our laid-back asses just wrote\&. Well shiiiit, it just so happens dat dem two is obviously tha same, so we git tha same result\&.
+.sp
+Again, cuz dis be a cold-ass lil common operation, you can also just shorthand it with
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff HEAD
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which endz up bustin tha above fo' you\&.
+.sp
+In other lyrics, \fIgit diff\-index\fR normally compares a tree against tha hustlin tree yo, but when given tha \-\-cached flag, it is holla'd at ta instead compare against just tha index cache contents, n' ignore tha current hustlin tree state entirely\&. Right back up in yo muthafuckin ass. Since our laid-back asses just freestyled tha index file ta HEAD, bustin git diff\-index \-\-cached \-p HEAD should thus return a empty set of differences, n' that\(cqs exactly what tha fuck it do\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+\fIgit diff\-index\fR straight-up always uses tha index fo' its comparisons, n' sayin dat it compares a tree against tha hustlin tree is thus not strictly accurate\&. In particular, tha list of filez ta compare (the "meta\-data") \fBalways\fR be reppin tha index file, regardless of whether tha \-\-cached flag is used or not\&. Da \-\-cached flag straight-up only determines whether tha file \fBcontents\fR ta be compared come from tha hustlin tree or not\&.
+.sp
+This aint hard ta understand, as soon as you realize dat Git simply never knows (or cares) bout filez dat it aint holla'd at bout explicitly\&. Git aint NEVER gonna go \fBlooking\fR fo' filez ta compare, it expects you ta tell it what tha fuck tha filez are, n' that\(cqs what tha fuck tha index is there for\&.
+.sp .5v
+.RE
+.sp
+But fuck dat shiznit yo, tha word on tha street is dat our next step is ta commit tha \fBchange\fR our phat asses did, n' again, ta KNOW what\(cqs goin on, keep up in mind tha difference between "workin tree contents", "index file" n' "committed tree"\&. Our thugged-out asses have chizzlez up in tha hustlin tree dat we wanna commit, n' we always gotta work all up in tha index file, so tha straight-up original gangsta thang we need ta do is ta update tha index cache:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git update\-index hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+(note how tha fuck our phat asses didn\(cqt need tha \-\-add flag dis time, since Git knew bout tha file already)\&.
+.sp
+Note what tha fuck happens ta tha different \fIgit diff\-*\fR versions here\& fo' realz. Afta we\(cqve updated wassup up in tha index, git diff\-filez \-p now shows no differences yo, but git diff\-index \-p HEAD still \fBdoes\fR show dat tha current state is different from tha state we committed\&. In fact, now \fIgit diff\-index\fR shows tha same ol' dirty difference whether we use tha \-\-cached flag or not, since now tha index is coherent wit tha hustlin tree\&.
+.sp
+Now, since we\(cqve updated wassup up in tha index, we can commit tha freshly smoked up version\&. We could do it by freestylin tha tree by hand again, n' committin tha tree (this time we\(cqd gotta use tha \-p HEAD flag ta tell commit dat tha HEAD was tha \fBparent\fR of tha freshly smoked up commit, n' dat dis wasn\(cqt a initial commit any more) yo, but you\(cqve done dat once already, so let\(cqs just use tha helpful script dis time:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git commit
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which starts a editor fo' you ta write tha commit message n'  drops some lyrics ta you a lil' bit bout what tha fuck you have done\&.
+.sp
+Write whatever message you want, n' all tha lines dat start wit \fI#\fR is ghon be pruned out, n' tha rest is ghon be used as tha commit message fo' tha chizzle\&. If you decizzle you don\(cqt wanna commit anythang afta all at dis point (you can continue ta edit thangs n' update tha index), you can just leave a empty message\&. Otherwise git commit will commit tha chizzle fo' you\&.
+.sp
+You\(cqve now made yo' first real Git commit\& fo' realz. And if you\(cqre horny bout lookin at what tha fuck git commit straight-up do, feel free ta investigate: it\(cqs all dem straight-up simple shell scripts ta generate tha helpful (?) commit message headers, n' all dem one\-liners dat straight-up do tha commit itself (\fIgit commit\fR)\&.
+.SH "INSPECTING CHANGES"
+.sp
+While bustin chizzlez is useful, it\(cqs even mo' useful if you can tell lata what tha fuck chizzled\&. Da most useful command fo' dis be another of tha \fIdiff\fR crew, namely \fIgit diff\-tree\fR\&.
+.sp
+\fIgit diff\-tree\fR can be given two arbitrary trees, n' it will rap  tha differences between them\&. Perhaps even mo' commonly, though, you can give it just a single commit object, n' it will figure up tha parent of dat commit itself, n' show tha difference directly\&. Thus, ta git tha same diff dat we\(cqve already peeped nuff muthafuckin times, we can now do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff\-tree \-p HEAD
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+(again, \-p means ta show tha difference as a human\-readable patch), n' it will show what tha fuck tha last commit (in HEAD) straight-up chizzled\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Here be a ASCII art by Jizzle Loeliger dat illustrates how tha fuck various \fIdiff\-*\fR commandz compare thangs\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+            diff\-tree
+             +\-\-\-\-+
+             |    |
+             |    |
+             V    V
+          +\-\-\-\-\-\-\-\-\-\-\-+
+          | Object DB |
+          |  Backin  |
+          |   Store   |
+          +\-\-\-\-\-\-\-\-\-\-\-+
+            ^    ^
+            |    |
+            |    |  diff\-index \-\-cached
+            |    |
+diff\-index  |    V
+            |  +\-\-\-\-\-\-\-\-\-\-\-+
+            |  |   Index   |
+            |  |  "cache"  |
+            |  +\-\-\-\-\-\-\-\-\-\-\-+
+            |    ^
+            |    |
+            |    |  diff\-files
+            |    |
+            V    V
+          +\-\-\-\-\-\-\-\-\-\-\-+
+          |  Workin  |
+          | Directory |
+          +\-\-\-\-\-\-\-\-\-\-\-+
+.fi
+.if n \{\
+.RE
+.\}
+.sp .5v
+.RE
+.sp
+Mo' interestingly, you can also give \fIgit diff\-tree\fR tha \-\-pretty flag, which  drops some lyrics ta it ta also show tha commit message n' lyricist n' date of tha commit, n' you can tell it ta show a whole seriez of diffs\& fo' realz. Alternatively, you can tell it ta be "silent", n' not show tha diffs at all yo, but just show tha actual commit message\&.
+.sp
+In fact, together wit tha \fIgit rev\-list\fR program (which generates a list of revisions), \fIgit diff\-tree\fR endz up bein a veritable fount of chizzles\&. Yo ass can emulate git log, git log \-p, etc\&. wit a trivial script dat pipes tha output of git rev\-list ta git diff\-tree \-\-stdin, which was exactly how tha fuck early versionz of git log was implemented\&.
+.SH "TAGGING A VERSION"
+.sp
+In Git, there be two kindz of tags, a "light" one, n' a "annotated tag"\&.
+.sp
+A "light" tag is technologically not a god damn thang mo' than a funky-ass branch, except we put it up in tha \&.git/refs/tags/ subdirectory instead of callin it a head\&. Right back up in yo muthafuckin ass. So tha simplest form of tag involves not a god damn thang mo' than
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git tag my\-first\-tag
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which just writes tha current HEAD tha fuck into tha \&.git/refs/tags/my\-first\-tag file, afta which point you can then use dis symbolic name fo' dat particular state\&. Yo ass can, fo' example, do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git diff my\-first\-tag
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+to diff yo' current state against dat tag which at dis point will obviously be a empty diff yo, but if you continue ta pimp n' commit stuff, you can use yo' tag as a "anchor\-point" ta peep what tha fuck has chizzled since you tagged it\&.
+.sp
+An "annotated tag" is straight-up a real Git object, n' gotz nuff not only a pointa ta tha state you wanna tag yo, but also a lil' small-ass tag name n' message, along wit optionally a PGP signature dat say dat fo'sho, you straight-up did dat tag\&. Yo ass create these annotated tags wit either tha \-a or \-s flag ta \fIgit tag\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git tag \-s <tagname>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which will sign tha current HEAD (but you can also give it another argument dat specifies tha thang ta tag, e\&.g\&., you could have tagged tha current mybranch point by rockin git tag <tagname> mybranch)\&.
+.sp
+Yo ass normally only do signed tags fo' major releases or thangs like that, while tha light\-weight tags is useful fo' any markin you wanna do \(em any time you decizzle dat you wanna remember a cold-ass lil certain point, just create a private tag fo' it, n' you gotz a sick symbolic name fo' tha state at dat point\&.
+.SH "COPYING REPOSITORIES"
+.sp
+Git repositories is normally straight-up self\-sufficient n' relocatable\&. Unlike CVS, fo' example, there is no separate notion of "repository" n' "workin tree"\& fo' realz. A Git repository normally \fBis\fR tha hustlin tree, wit tha local Git shiznit hidden up in tha \&.git subdirectory\&. There is not a god damn thang else\&. What you peep is what tha fuck you got\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Yo ass can tell Git ta split tha Git internal shiznit from tha directory dat it tracks yo, but we\(cqll ignore dat fo' now: it\(cqs not how tha fuck aiiight projects work, n' it\(cqs straight-up only meant fo' special uses\&. Right back up in yo muthafuckin ass. So tha menstrual model of "the Git shiznit be always tied directly ta tha hustlin tree dat it raps about" may not be technologically 100% accurate yo, but it\(cqs a phat model fo' all aiiight use\&.
+.sp .5v
+.RE
+.sp
+This has two implications:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+if you grow bugged out wit tha tutorial repository you pimped (or you\(cqve done cooked up a gangbangin' fuck up n' wanna start all over), you can just do simple
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ rm \-rf git\-tutorial
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+and it is ghon be gone\&. There\(cqs no external repository, n' there\(cqs no history outside tha project you pimped\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+if you wanna move or duplicate a Git repository, you can do so\&. There is
+\fIgit clone\fR
+command yo, but if all you wanna do is just ta create a cold-ass lil copy of yo' repository (with all tha full history dat went along wit it), you can do so wit a regular
+cp \-a git\-tutorial new\-git\-tutorial\&.
+.sp
+Note dat when you\(cqve moved or copied a Git repository, yo' Git index file (which caches various shiznit, notably a shitload of tha "stat" shiznit fo' tha filez involved) will likely need ta be refreshed\&. Right back up in yo muthafuckin ass. So afta you do a
+cp \-a
+to create a freshly smoked up copy, you\(cqll wanna do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git update\-index \-\-refresh
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+in tha freshly smoked up repository ta make shizzle dat tha index file is up\-to\-date\&.
+.RE
+.sp
+Note dat tha second point is legit even across machines\&. Yo ass can duplicate a remote Git repository wit \fBany\fR regular copy mechanism, be it \fIscp\fR, \fIrsync\fR or \fIwget\fR\&.
+.sp
+When copyin a remote repository, you\(cqll wanna at a minimum update tha index cache when you do this, n' especially wit other peoples\(aq repositories you often wanna make shizzle dat tha index cache is up in some known state (you don\(cqt know \fBwhat\fR they\(cqve done n' not yet checked in), so probably you\(cqll precede tha \fIgit update\-index\fR wit a
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git read\-tree \-\-reset HEAD
+$ git update\-index \-\-refresh
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which will force a total index re\-build from tha tree pointed ta by HEAD\&. Well shiiiit, it resets tha index contents ta HEAD, n' then tha \fIgit update\-index\fR make shizzle ta match up all index entries wit tha checked\-out files\&. If tha original gangsta repository had uncommitted chizzlez up in its hustlin tree, git update\-index \-\-refresh notices dem n'  drops some lyrics ta you they need ta be updated\&.
+.sp
+Da above can also be freestyled as simply
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git reset
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and up in fact a shitload of tha common Git command combinations can be scripted wit tha git xyz intercourses\&. Yo ass can learn thangs by just lookin at what tha fuck tha various git scripts do\&. For example, git reset used ta be tha above two lines implemented up in \fIgit reset\fR yo, but some thangs like \fIgit status\fR n' \fIgit commit\fR is slightly mo' complex scripts round tha basic Git commands\&.
+.sp
+Many (most?) hood remote repositories aint gonna contain any of tha checked up filez or even a index file, n' will \fBonly\fR contain tha actual core Git files\&. Right back up in yo muthafuckin ass. Such a repository probably don\(cqt even have tha \&.git subdirectory yo, but has all tha Git filez directly up in tha repository\&.
+.sp
+To create yo' own local live copy of such a "raw" Git repository, you\(cqd first create yo' own subdirectory fo' tha project, n' then copy tha raw repository contents tha fuck into tha \&.git directory\&. For example, ta create yo' own copy of tha Git repository, you\(cqd do tha following
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ mkdir my\-git
+$ cd my\-git
+$ rsync \-rL rsync://rsync\&.kernel\&.org/pub/scm/git/git\&.git/ \&.git
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+followed by
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git read\-tree HEAD
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+to populate tha index\&. But fuck dat shiznit yo, tha word on tha street is dat now you have populated tha index, n' you have all tha Git internal filez yo, but yo big-ass booty is ghon notice dat you don\(cqt straight-up have any of tha hustlin tree filez ta work on\&. To git them, you\(cqd check dem up with
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout\-index \-u \-a
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+where tha \-u flag means dat you want tha checkout ta keep tha index up\-to\-date (so dat you don\(cqt gotta refresh it afterward), n' tha \-a flag means "check up all files" (if you gotz a stale copy or a olda version of a cold-ass lil checked up tree you may also need ta add tha \-f flag first, ta tell \fIgit checkout\-index\fR ta \fBforce\fR overwritin of any oldschool files)\&.
+.sp
+Again, dis can all be simplified with
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git clone rsync://rsync\&.kernel\&.org/pub/scm/git/git\&.git/ my\-git
+$ cd my\-git
+$ git checkout
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which will end up bustin all of tha above fo' you\&.
+.sp
+Yo ass have now successfully copied some muthafucka else\(cqs (mine) remote repository, n' checked it out\&.
+.SH "CREATING A NEW BRANCH"
+.sp
+Branches up in Git is straight-up not a god damn thang mo' than pointas tha fuck into tha Git object database from within tha \&.git/refs/ subdirectory, n' as we already discussed, tha HEAD branch is not a god damn thang but a symlink ta one of these object pointers\&.
+.sp
+Yo ass can at any time create a freshly smoked up branch by just pickin a arbitrary point up in tha project history, n' just freestylin tha SHA\-1 name of dat object tha fuck into a gangbangin' file under \&.git/refs/heads/\&. Yo ass can use any filename you want (and indeed, subdirectories) yo, but tha convention is dat tha "normal" branch is called master\&. That\(cqs just a cold-ass lil convention, though, n' not a god damn thang enforces it\&.
+.sp
+To show dat as a example, let\(cqs go back ta tha git\-tutorial repository we used earlier, n' create a funky-ass branch up in it\&. Yo ass do dat by simply just sayin dat you wanna check up a freshly smoked up branch:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout \-b mybranch
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+will create a freshly smoked up branch based all up in tha current HEAD position, n' switch ta it\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+If you make tha decision ta start yo' freshly smoked up branch at some other point up in tha history than tha current HEAD, you can do so by just spittin some lyrics ta \fIgit checkout\fR what tha fuck tha base of tha checkout would be\&. In other lyrics, if you have a earlier tag or branch, you\(cqd just do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout \-b mybranch earlier\-commit
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and it would create tha freshly smoked up branch mybranch all up in tha earlier commit, n' check up tha state at dat time\&.
+.sp .5v
+.RE
+.sp
+Yo ass can always just jump back ta yo' original gangsta masta branch by bustin
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout master
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+(or any other branch\-name, fo' dat matter) n' if you forget which branch you happen ta be on, a simple
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ pussaaaaay \&.git/HEAD
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+will rap  where it\(cqs pointing\&. To git tha list of branches you have, you can say
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git branch
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which used ta be not a god damn thang mo' than a simple script round ls \&.git/refs/heads\&. There is ghon be a asterisk up in front of tha branch yo ass is currently on\&.
+.sp
+Sometimes you may wish ta create a freshly smoked up branch \fIwithout\fR straight-up checkin it up n' switchin ta it\&. If so, just use tha command
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git branch <branchname> [startingpoint]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which will simply \fIcreate\fR tha branch yo, but aint gonna do anythang further\&. Yo ass can then lata \(em once you decizzle dat you wanna straight-up pimp on dat branch \(em switch ta dat branch wit a regular \fIgit checkout\fR wit tha branchname as tha argument\&.
+.SH "MERGING TWO BRANCHES"
+.sp
+One of tha scamz of havin a funky-ass branch is dat you do some (possibly experimental) work up in it, n' eventually merge it back ta tha main branch\&. Right back up in yo muthafuckin ass. So assumin you pimped tha above mybranch dat started up bein tha same as tha original gangsta masta branch, let\(cqs make shizzle we\(cqre up in dat branch, n' do some work there\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout mybranch
+$ echo "Work, work, work" >>hello
+$ git commit \-m "Some work\&." \-i hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Here, our laid-back asses just added another line ta hello, n' we used a gangbangin' finger-lickin' dirty-ass shorthand fo' bustin both git update\-index wassup n' git commit by just givin tha filename directly ta git commit, wit a \-i flag (it  drops some lyrics ta Git ta \fIinclude\fR dat file up in addizzle ta what tha fuck you have done ta tha index file so far when makin tha commit)\&. Da \-m flag is ta give tha commit log message from tha command line\&.
+.sp
+Now, ta make it a lil' bit mo' interesting, let\(cqs assume dat some muthafucka else do some work up in tha original gangsta branch, n' simulate dat by goin back ta tha masta branch, n' editin tha same file differently there:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout master
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Here, take a moment ta peep tha contentz of hello, n' notice how tha fuck they don\(cqt contain tha work our laid-back asses just did up in mybranch \(em cuz dat work hasn\(cqt happened up in tha masta branch at all\&. Then do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ echo "Play, play, play" >>hello
+$ echo "Lotz of fun" >>example
+$ git commit \-m "Some fun\&." \-i wassup example
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+since tha masta branch is obviously up in a much betta vibe\&.
+.sp
+Now, you\(cqve gots two branches, n' you decizzle dat you wanna merge tha work done\&. Before our phat asses do that, let\(cqs introduce a cold-ass lil def graphical tool dat helps you view what\(cqs goin on:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ gitk \-\-all
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+will show you graphically both of yo' branches (that\(cqs what tha fuck tha \-\-all means: normally it will just show you yo' current HEAD) n' they histories\&. Yo ass can also peep exactly how tha fuck they came ta be from a cold-ass lil common source\&.
+.sp
+Anyway, let\(cqs exit \fIgitk\fR (^Q or tha File menu), n' decizzle dat we wanna merge tha work our phat asses did on tha mybranch branch tha fuck into tha masta branch (which is currently our HEAD too)\&. To do that, there\(cqs a sick script called \fIgit merge\fR, which wants ta know which branches you wanna resolve n' what tha fuck tha merge be all about:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git merge \-m "Merge work up in mybranch" mybranch
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+where tha straight-up original gangsta argument is goin ta be used as tha commit message if tha merge can be resolved automatically\&.
+.sp
+Now, up in dis case we\(cqve intentionally pimped a thang where tha merge will need ta be fixed up by hand, though, so Git will do as much of it as it can automatically (which up in dis case is just merge tha example file, which had no differences up in tha mybranch branch), n' say:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+        Auto\-mergin hello
+        CONFLICT (content): Merge conflict up in hello
+        Automatic merge failed; fix conflicts n' then commit tha result\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+It  drops some lyrics ta you dat it did a "Automatic merge", which failed cuz of conflicts up in hello\&.
+.sp
+Not ta worry\&. Well shiiiit, it left tha (trivial) conflict up in wassup up in tha same form you should already be well used ta if you\(cqve eva used CVS, so let\(cqs just open wassup up in our editor (whatever dat may be), n' fix it up somehow\&. I\(cqd suggest just makin it so dat wassup gotz nuff all four lines:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Wuz crackalackin' World
+It\(aqs a freshly smoked up dizzle fo' git
+Play, play, play
+Work, work, work
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and once you\(cqre aiiight wit yo' manual merge, just do a
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git commit \-i hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+which will straight-up loudly warn you dat you\(cqre now committin a merge (which is erect, so never mind), n' you can write a lil' small-ass merge message bout yo' adventures up in \fIgit merge\fR\-land\&.
+.sp
+Afta you\(cqre done, start up gitk \-\-all ta peep graphically what tha fuck tha history looks like\&. Notice dat mybranch still exists, n' you can switch ta it, n' continue ta work wit it if you want to\&. Da mybranch branch aint gonna contain tha merge yo, but next time you merge it from tha masta branch, Git will know how tha fuck you merged it, so you\(cqll not gotta do \fIthat\fR merge again\&.
+.sp
+Another useful tool, especially if you do not always work up in X\-Window environment, is git show\-branch\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git show\-branch \-\-topo\-order \-\-more=1 masta mybranch
+* [master] Merge work up in mybranch
+ ! [mybranch] Some work\&.
+\-\-
+\-  [master] Merge work up in mybranch
+*+ [mybranch] Some work\&.
+*  [master^] Some fun\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Da first two lines indicate dat it is showin tha two branches wit tha titlez of they top\-of\-the\-tree commits, yo ass is currently on masta branch (notice tha asterisk * character), n' tha straight-up original gangsta column fo' tha lata output lines is used ta show commits contained up in tha masta branch, n' tha second column fo' tha mybranch branch\&. Three commits is shown along wit they titles\& fo' realz. All of dem have non blank charactas up in tha straight-up original gangsta column (* shows a ordinary commit on tha current branch, \- be a merge commit), which means they is now part of tha masta branch\&. Only tha "Some work" commit has tha plus + characta up in tha second column, cuz mybranch has not been merged ta incorporate these commits from tha masta branch\&. Da strang inside brackets before tha commit log message be a gangbangin' finger-lickin' dirty-ass short name you can use ta name tha commit\&. In tha above example, \fImaster\fR n' \fImybranch\fR is branch heads\&. \fImaster^\fR is tha straight-up original gangsta parent of \fImaster\fR branch head\&. Please peep \fBgitrevisions\fR(7) if you wanna peep mo' complex cases\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Without tha \fI\-\-more=1\fR option, \fIgit show\-branch\fR would not output tha \fI[master^]\fR commit, as \fI[mybranch]\fR commit be a cold-ass lil common ancestor of both \fImaster\fR n' \fImybranch\fR tips\&. Please peep \fBgit-show-branch\fR(1) fo' details\&.
+.sp .5v
+.RE
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+If there was mo' commits on tha \fImaster\fR branch afta tha merge, tha merge commit itself would not be shown by \fIgit show\-branch\fR by default\&. Yo ass would need ta provide \fI\-\-sparse\fR option ta make tha merge commit visible up in dis case\&.
+.sp .5v
+.RE
+.sp
+Now, let\(cqs pretend yo ass is tha one whoz ass did all tha work up in mybranch, n' tha fruit of yo' mad bullshit has finally been merged ta tha masta branch\&. Let\(cqs go back ta mybranch, n' run \fIgit merge\fR ta git tha "upstream chizzles" back ta yo' branch\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout mybranch
+$ git merge \-m "Merge upstream chizzles\&." master
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+This outputs suttin' like dis (the actual commit object names would be different)
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Uppimpin from ae3a2da\&.\&.\&. ta a80b4aa\&.\&.\&.\&.
+Fast\-forward (no commit pimped; \-m option ignored)
+ example | 1 +
+ wassup   | 1 +
+ 2 filez chizzled, 2 insertions(+)
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Because yo' branch did not contain anythang mo' than what tha fuck had already been merged tha fuck into tha masta branch, tha merge operation did not straight-up do a merge\&. Instead, it just updated tha top of tha tree of yo' branch ta dat of tha masta branch\&. This is often called \fIfast\-forward\fR merge\&.
+.sp
+Yo ass can run gitk \-\-all again n' again n' again ta peep how tha fuck tha commit ancestry looks like, or run \fIshow\-branch\fR, which  drops some lyrics ta you this\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git show\-branch masta mybranch
+! [master] Merge work up in mybranch
+ * [mybranch] Merge work up in mybranch
+\-\-
+\-\- [master] Merge work up in mybranch
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "MERGING EXTERNAL WORK"
+.sp
+It\(cqs probably much mo' common dat you merge wit some muthafucka else than mergin wit yo' own branches, so it\(cqs worth pointin up dat Git make dat straight-up easy as fuck  too, n' up in fact, it\(cqs not dat different from bustin a \fIgit merge\fR\&. In fact, a remote merge endz up bein not a god damn thang mo' than "fetch tha work from a remote repository tha fuck into a temporary tag" followed by a \fIgit merge\fR\&.
+.sp
+Fetchin from a remote repository is done by, unsurprisingly, \fIgit fetch\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git fetch <remote\-repository>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+One of tha followin transports can be used ta name tha repository ta downlizzle from:
+.PP
+Rsync
+.RS 4
+rsync://remote\&.machine/path/to/repo\&.git/
+.sp
+Rsync transhiznit is usable fo' both uploadin n' downloadin yo, but is straight-up unaware of what tha fuck git do, n' can produce unexpected thangs up in dis biatch when you downlizzle from tha hood repository while tha repository balla is uploadin tha fuck into it via
+rsync
+transport\&. Most notably, it could update tha filez under
+refs/
+which holdz tha object name of tha topmost commits before uploadin tha filez in
+objects/ \(em tha downloader would obtain head commit object name while dat object itself is still not available up in tha repository\&. For dis reason, it is considered deprecated\&.
+.RE
+.PP
+SSH
+.RS 4
+remote\&.machine:/path/to/repo\&.git/
+or
+.sp
+ssh://remote\&.machine/path/to/repo\&.git/
+.sp
+This transhiznit can be used fo' both uploadin n' downloading, n' requires you ta git a log\-in privilege over
+ssh
+to tha remote machine\&. Well shiiiit, it findz up tha set of objects tha other side lacks by exchangin tha head commits both endz have n' transfers (close to) minimum set of objects\&. Well shiiiit, it is by far da most thugged-out efficient way ta exchange Git objects between repositories\&.
+.RE
+.PP
+Local directory
+.RS 4
+/path/to/repo\&.git/
+.sp
+This transhiznit is tha same ol' dirty as SSH transhiznit but uses
+\fIsh\fR
+to run both endz on tha local machine instead of hustlin other end on tha remote machine via
+\fIssh\fR\&.
+.RE
+.PP
+Git Native
+.RS 4
+git://remote\&.machine/path/to/repo\&.git/
+.sp
+This transhiznit was designed fo' anonymous downloading\&. Like SSH transport, it findz up tha set of objects tha downstream side lacks n' transfers (close to) minimum set of objects\&.
+.RE
+.PP
+HTTP(S)
+.RS 4
+http://remote\&.machine/path/to/repo\&.git/
+.sp
+Downloader from http n' https URL first obtains tha topmost commit object name from tha remote joint by lookin all up in tha specified refname under
+repo\&.git/refs/
+directory, n' then tries ta obtain tha commit object by downloadin from
+repo\&.git/objects/xx/xxx\&.\&.\&.
+usin tha object name of dat commit object\&. Then it readz tha commit object ta smoke up its parent commits n' tha associate tree object; it repeats dis process until it gets all tha necessary objects\&. Because of dis behavior, they is sometimes also called
+\fIcommit strutters\fR\&.
+.sp
+The
+\fIcommit strutters\fR
+are sometimes also called
+\fIdumb transports\fR, cuz they do not require any Git aware smart-ass server like Git Natizzle transhiznit do\& fo' realz. Any stock HTTP server dat do not even support directory index would suffice\&. But you must prepare yo' repository with
+\fIgit update\-server\-info\fR
+to help dumb transhiznit downloaders\&.
+.RE
+.sp
+Once you fetch from tha remote repository, you merge dat wit yo' current branch\&.
+.sp
+However \(em it\(cqs such a cold-ass lil common thang ta fetch n' then immediately merge, dat it\(cqs called git pull, n' you can simply do
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git pull <remote\-repository>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and optionally give a funky-ass branch\-name fo' tha remote end as a second argument\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Yo ass could do without rockin any branches at all, by keepin as nuff local repositories as you wanna have branches, n' mergin between dem wit \fIgit pull\fR, just like you merge between branches\&. Da advantage of dis approach is dat it lets you keep a set of filez fo' each branch checked up n' you may find it easier ta switch back n' forth if you juggle multiple linez of pimpment simultaneously\&. Of course, yo big-ass booty is ghon pay tha price of mo' disk usage ta hold multiple hustlin trees yo, but disk space is skanky these days\&.
+.sp .5v
+.RE
+.sp
+It be likely dat yo big-ass booty is ghon be pullin from tha same remote repository from time ta time\& fo' realz. As a gangbangin' finger-lickin' dirty-ass short hand, you can store tha remote repository URL up in tha local repository\(cqs config file like this:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git config remote\&.linus\&.url http://www\&.kernel\&.org/pub/scm/git/git\&.git/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+and use tha "linus" keyword wit \fIgit pull\fR instead of tha full URL\&.
+.sp
+Examples\&.
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+git pull linus
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+git pull linus tag v0\&.99\&.1
+.RE
+.sp
+the above is equivalent to:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+git pull http://www\&.kernel\&.org/pub/scm/git/git\&.git/ HEAD
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+git pull http://www\&.kernel\&.org/pub/scm/git/git\&.git/ tag v0\&.99\&.1
+.RE
+.SH "HOW DOES THE MERGE WORK?"
+.sp
+We holla'd dis tutorial shows what tha fuck plumbin do ta help you cope wit tha porcelain dat isn\(cqt flushin yo, but we so far did not rap bout how tha fuck tha merge straight-up works\&. If yo ass is followin dis tutorial tha last time, I\(cqd suggest ta skip ta "Publishin yo' work" section n' come back here later\&.
+.sp
+OK, still wit me son, biatch? To give our asses a example ta peep, let\(cqs go back ta tha earlier repository wit "hello" n' "example" file, n' brang ourselves back ta tha pre\-merge state:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git show\-branch \-\-more=2 masta mybranch
+! [master] Merge work up in mybranch
+ * [mybranch] Merge work up in mybranch
+\-\-
+\-\- [master] Merge work up in mybranch
++* [master^2] Some work\&.
++* [master^] Some fun\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Remember, before hustlin \fIgit merge\fR, our masta head was at "Some fun\&." commit, while our mybranch head was at "Some work\&." commit\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git checkout mybranch
+$ git reset \-\-hard master^2
+$ git checkout master
+$ git reset \-\-hard master^
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Afta rewinding, tha commit structure should be lookin like this:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git show\-branch
+* [master] Some fun\&.
+ ! [mybranch] Some work\&.
+\-\-
+*  [master] Some fun\&.
+ + [mybranch] Some work\&.
+*+ [master^] Initial commit
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Now we is locked n loaded ta experiment wit tha merge by hand\&.
+.sp
+git merge command, when mergin two branches, uses 3\-way merge algorithm\&. First, it findz tha common ancestor between them\&. Da command it uses is \fIgit merge\-base\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ mb=$(git merge\-base HEAD mybranch)
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Da command writes tha commit object name of tha common ancestor ta tha standard output, so we captured its output ta a variable, cuz we is ghon be rockin it up in tha next step\&. By tha way, tha common ancestor commit is tha "Initial commit" commit up in dis case\&. Yo ass can tell it by:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git name\-rev \-\-name\-only \-\-tags $mb
+my\-first\-tag
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Afta findin up a cold-ass lil common ancestor commit, tha second step is this:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git read\-tree \-m \-u $mb HEAD mybranch
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+This is tha same ol' dirty \fIgit read\-tree\fR command our crazy asses have already seen yo, but it takes three trees, unlike previous examples\&. This readz tha contentz of each tree tha fuck into different \fIstage\fR up in tha index file (the first tree goes ta stage 1, tha second ta stage 2, etc\&.)\& fo' realz. Afta readin three trees tha fuck into three stages, tha paths dat is tha same up in all three stages is \fIcollapsed\fR tha fuck into stage 0\& fo' realz. Also paths dat is tha same up in two of three stages is collapsed tha fuck into stage 0, takin tha SHA\-1 from either stage 2 or stage 3, whichever is different from stage 1 (i\&.e\&. only one side chizzled from tha common ancestor)\&.
+.sp
+Afta \fIcollapsing\fR operation, paths dat is different up in three trees is left up in non\-zero stages\& fo' realz. At dis point, you can inspect tha index file wit dis command:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git ls\-filez \-\-stage
+100644 7f8b141b65fdcee47321e399a2598a235a032422 0       example
+100644 557db03de997c86a4a028e1ebd3a1ceb225be238 1       hello
+100644 ba42a2a96e3027f3333e13ede4ccf4498c3ae942 2       hello
+100644 cc44c73eb783565da5831b4d820c962954019b69 3       hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+In our example of only two files, our phat asses did not have unchanged filez so only \fIexample\fR resulted up in collapsing\&. But up in real\-life big-ass projects, when only a lil' small-ass number of filez chizzle up in one commit, dis \fIcollapsing\fR tendz ta trivially merge most of tha paths fairly quickly, leavin only a handful of real chizzlez up in non\-zero stages\&.
+.sp
+To peep only non\-zero stages, use \-\-unmerged flag:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git ls\-filez \-\-unmerged
+100644 557db03de997c86a4a028e1ebd3a1ceb225be238 1       hello
+100644 ba42a2a96e3027f3333e13ede4ccf4498c3ae942 2       hello
+100644 cc44c73eb783565da5831b4d820c962954019b69 3       hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Da next step of mergin is ta merge these three versionz of tha file, rockin 3\-way merge\&. This is done by givin \fIgit merge\-one\-file\fR command as one of tha arguments ta \fIgit merge\-index\fR command:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git merge\-index git\-merge\-one\-file hello
+Auto\-mergin hello
+ERROR: Merge conflict up in hello
+fatal: merge program failed
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+\fIgit merge\-one\-file\fR script is called wit parametas ta describe dem three versions, n' is responsible ta leave tha merge thangs up in dis biatch up in tha hustlin tree\&. Well shiiiit, it aint nuthin but a gangbangin' fairly straightforward shell script, n' eventually calls \fImerge\fR program from RCS suite ta big-ass up a gangbangin' file\-level 3\-way merge\&. In dis case, \fImerge\fR detects conflicts, n' tha merge result wit conflict marks is left up in tha hustlin tree\&.\&. This can be peeped if you run ls\-filez \-\-stage again n' again n' again at dis point:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git ls\-filez \-\-stage
+100644 7f8b141b65fdcee47321e399a2598a235a032422 0       example
+100644 557db03de997c86a4a028e1ebd3a1ceb225be238 1       hello
+100644 ba42a2a96e3027f3333e13ede4ccf4498c3ae942 2       hello
+100644 cc44c73eb783565da5831b4d820c962954019b69 3       hello
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+This is tha state of tha index file n' tha hustlin file afta \fIgit merge\fR returns control back ta you, leavin tha conflictin merge fo' you ta resolve\&. Notice dat tha path wassup is still unmerged, n' what tha fuck you peep wit \fIgit diff\fR at dis point is differences since stage 2 (i\&.e\&. yo' version)\&.
+.SH "PUBLISHING YOUR WORK"
+.sp
+So, we can use some muthafucka else\(cqs work from a remote repository yo, but how tha fuck can \fByou\fR prepare a repository ta let other playas pull from it?
+.sp
+Yo ass do yo' real work up in yo' hustlin tree dat has yo' primary repository hangin under it as its \&.git subdirectory\&. Yo ass \fBcould\fR make dat repository accessible remotely n' ask playas ta pull from it yo, but up in practice dat aint tha way thangs is probably done\& fo' realz. A recommended way is ta git a hood repository, make it reachable by other people, n' when tha chizzlez you made up in yo' primary hustlin tree is up in phat shape, update tha hood repository from it\&. This is often called \fIpushing\fR\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+This hood repository could further be mirrored, n' dat is how tha fuck Git repositories at kernel\&.org is managed\&.
+.sp .5v
+.RE
+.sp
+Publishin tha chizzlez from yo' local (private) repository ta yo' remote (public) repository requires a write privilege on tha remote machine\&. Yo ass need ta have a SSH account there ta run a single command, \fIgit\-receive\-pack\fR\&.
+.sp
+First, you need ta create a empty repository on tha remote machine dat will doggy den yo' hood repository\&. This empty repository is ghon be populated n' be kept up\-to\-date by pushin tha fuck into it later\&. Obviously, dis repository creation need ta be done only once\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+\fIgit push\fR uses a pair of commands, \fIgit send\-pack\fR on yo' local machine, n' \fIgit\-receive\-pack\fR on tha remote machine\&. Da communication between tha two over tha network internally uses a SSH connection\&.
+.sp .5v
+.RE
+.sp
+Yo crazy-ass private repository\(cqs Git directory is probably \&.git yo, but yo' hood repository is often named afta tha project name, i\&.e\&. <project>\&.git\&. Let\(cqs create such a hood repository fo' project my\-git\& fo' realz. Afta loggin tha fuck into tha remote machine, create a empty directory:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ mkdir my\-git\&.git
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Then, make dat directory tha fuck into a Git repository by hustlin \fIgit init\fR yo, but dis time, since its name aint tha usual \&.git, our phat asses do thangs slightly differently:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ GIT_DIR=my\-git\&.git git init
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Make shizzle dis directory be available fo' others you want yo' chizzlez ta be pulled via tha transhiznit of yo' chizzle\& fo' realz. Also you need ta make shizzle dat you have tha \fIgit\-receive\-pack\fR program on tha $PATH\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Many installationz of sshd do not invoke yo' shell as tha login shell when you directly run programs; what tha fuck dis means is dat if yo' login shell is \fIbash\fR, only \&.bashrc is read n' not \&.bash_profile\& fo' realz. As a workaround, make shizzle \&.bashrc sets up $PATH so dat you can run \fIgit\-receive\-pack\fR program\&.
+.sp .5v
+.RE
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+If you plan ta publish dis repository ta be accessed over http, you should do mv my\-git\&.git/hooks/post\-update\&.sample my\-git\&.git/hooks/post\-update at dis point\&. This make shizzle dat every last muthafuckin time you push tha fuck into dis repository, git update\-server\-info is run\&.
+.sp .5v
+.RE
+.sp
+Yo crazy-ass "hood repository" is now locked n loaded ta accept yo' chizzles\&. Come back ta tha machine you have yo' private repository\&. From there, run dis command:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git push <public\-host>:/path/to/my\-git\&.git master
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+This synchronizes yo' hood repository ta match tha named branch head (i\&.e\&. masta up in dis case) n' objects reachable from dem up in yo' current repository\&.
+.sp
+As a real example, dis is how tha fuck I update mah hood Git repository\&. Kernel\&.org mirror network takes care of tha propagation ta other publicly visible machines:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git push master\&.kernel\&.org:/pub/scm/git/git\&.git/
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "PACKING YOUR REPOSITORY"
+.sp
+Earlier, we saw dat one file under \&.git/objects/??/ directory is stored fo' each Git object you create\&. This representation is efficient ta create atomically n' safely yo, but not so convenient ta transhiznit over tha network\&. Right back up in yo muthafuckin ass. Since Git objects is immutable once they is pimped, there be a way ta optimize tha storage by "packin dem together"\&. Da command
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git repack
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+will do it fo' you\&. If you followed tha tutorial examples, you would have accumulated bout 17 objects up in \&.git/objects/??/ directories by now\&. \fIgit repack\fR  drops some lyrics ta you how tha fuck nuff objects it packed, n' stores tha packed file up in \&.git/objects/pack directory\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+Yo ass will peep two files, pack\-*\&.pack n' pack\-*\&.idx, up in \&.git/objects/pack directory\&. They is closely related ta each other, n' if you eva copy dem by hand ta a gangbangin' finger-lickin' different repository fo' whatever reason, you should make shizzle you copy dem together\&. Da forma holdz all tha data from tha objects up in tha pack, n' tha latta holdz tha index fo' random access\&.
+.sp .5v
+.RE
+.sp
+If yo ass is paranoid, hustlin \fIgit verify\-pack\fR command would detect if you gotz a cold-ass lil corrupt pack yo, but do not worry too much\&. Our programs is always slick ;\-)\&.
+.sp
+Once you have packed objects, you do not need ta leave tha unpacked objects dat is contained up in tha pack file no mo'\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git prune\-packed
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+would remove dem fo' you\&.
+.sp
+Yo ass can try hustlin find \&.git/objects \-type f before n' afta you run git prune\-packed if yo ass is curious\& fo' realz. Also git count\-objects would rap  how tha fuck nuff unpacked objects is up in yo' repository n' how tha fuck much space they is consuming\&.
+.if n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fR
+.ps -1
+.br
+.sp
+git pull is slightly cumbersome fo' HTTP transport, as a packed repository may contain relatively few objects up in a relatively big-ass pack\&. If you expect nuff HTTP pulls from yo' hood repository you might wanna repack & prune often, or never\&.
+.sp .5v
+.RE
+.sp
+If you run git repack again n' again n' again at dis point, it will say "Nothang freshly smoked up ta pack\&."\&. Once you continue yo' pimpment n' accumulate tha chizzles, hustlin git repack again n' again n' again will create a freshly smoked up pack, dat gotz nuff objects pimped since you packed yo' repository tha last time\&. We recommend dat you pack yo' project soon afta tha initial import (unless yo ass is startin yo' project from scratch), n' then run git repack every last muthafuckin once up in a while, dependin on how tha fuck actizzle yo' project is\&.
+.sp
+When a repository is synchronized via git push n' git pull objects packed up in tha source repository is probably stored unpacked up in tha destination, unless rsync transhiznit is used\&. While dis allows you ta use different packin strategies on both ends, it also means you may need ta repack both repositories every last muthafuckin once up in a while\&.
+.SH "WORKING WITH OTHERS"
+.sp
+Although Git be a truly distributed system, it is often convenient ta organize yo' project wit a informal hierarchy of pimpers\&. Linux kernel pimpment is run dis way\&. There be a sick illustration (page 17, "Merges ta Mainline") up in \m[blue]\fBRandy Dunlap\(cqs presentation\fR\m[]\&\s-2\u[2]\d\s+2\&.
+.sp
+It should be stressed dat dis hierarchy is purely \fBinformal\fR\&. There is not a god damn thang fundamenstrual up in Git dat enforces tha "chain of patch flow" dis hierarchy implies\&. Yo ass do not gotta pull from only one remote repository\&.
+.sp
+A recommended workflow fo' a "project lead" goes like this:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+Prepare yo' primary repository on yo' local machine\&. Yo crazy-ass work is done there\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+Prepare a hood repository accessible ta others\&.
+.sp
+If other playas is pullin from yo' repository over dumb transhiznit protocols (HTTP), you need ta keep dis repository
+\fIdumb transhiznit bumpin'\fR\& fo' realz. After
+git init,
+$GIT_DIR/hooks/post\-update\&.sample
+copied from tha standard templates would contain a cold-ass lil call to
+\fIgit update\-server\-info\fR
+but you need ta manually enable tha hook with
+mv post\-update\&.sample post\-update\&. This make sure
+\fIgit update\-server\-info\fR
+keeps tha necessary filez up\-to\-date\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Push tha fuck into tha hood repository from yo' primary repository\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+\fIgit repack\fR
+the hood repository\&. This establishes a funky-ass big-ass pack dat gotz nuff tha initial set of objects as tha baseline, n' possibly
+\fIgit prune\fR
+if tha transhiznit used fo' pullin from yo' repository supports packed repositories\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+Keep hustlin up in yo' primary repository\&. Yo crazy-ass chizzlez include modificationz of yo' own, patches you receive via e\-mails, n' merges resultin from pullin tha "public" repositoriez of yo' "subsystem maintainers"\&.
+.sp
+Yo ass can repack dis private repository whenever you feel like\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+Push yo' chizzlez ta tha hood repository, n' announce it ta tha public\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+Every once up in a while,
+\fIgit repack\fR
+the hood repository\&. Go back ta step 5\&. n' continue working\&.
+.RE
+.sp
+A recommended work cycle fo' a "subsystem maintainer" whoz ass works on dat project n' has a own "hood repository" goes like this:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+Prepare yo' work repository, by
+\fIgit clone\fR
+the hood repository of tha "project lead"\&. Da URL used fo' tha initial clonin is stored up in tha remote\&.origin\&.url configuration variable\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+Prepare a hood repository accessible ta others, just like tha "project lead" thug do\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Copy over tha packed filez from "project lead" hood repository ta yo' hood repository, unless tha "project lead" repository lives on tha same machine as yours\&. In tha latta case, you can use
+objects/info/alternates
+file ta point all up in tha repository yo ass is borrowin from\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+Push tha fuck into tha hood repository from yo' primary repository\&. Run
+\fIgit repack\fR, n' possibly
+\fIgit prune\fR
+if tha transhiznit used fo' pullin from yo' repository supports packed repositories\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+Keep hustlin up in yo' primary repository\&. Yo crazy-ass chizzlez include modificationz of yo' own, patches you receive via e\-mails, n' merges resultin from pullin tha "public" repositoriez of yo' "project lead" n' possibly yo' "sub\-subsystem maintainers"\&.
+.sp
+Yo ass can repack dis private repository whenever you feel like\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+Push yo' chizzlez ta yo' hood repository, n' ask yo' "project lead" n' possibly yo' "sub\-subsystem maintainers" ta pull from it\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+Every once up in a while,
+\fIgit repack\fR
+the hood repository\&. Go back ta step 5\&. n' continue working\&.
+.RE
+.sp
+A recommended work cycle fo' a "individual pimper" whoz ass aint gots a "public" repository is somewhat different\&. Well shiiiit, it goes like this:
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+Prepare yo' work repository, by
+\fIgit clone\fR
+the hood repository of tha "project lead" (or a "subsystem maintainer", if you work on a subsystem)\&. Da URL used fo' tha initial clonin is stored up in tha remote\&.origin\&.url configuration variable\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+Do yo' work up in yo' repository on
+\fImaster\fR
+branch\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+Run
+git fetch origin
+from tha hood repository of yo' upstream every last muthafuckin once up in a while\&. This do only tha straight-up original gangsta half of
+git pull
+but do not merge\&. Da head of tha hood repository is stored in
+\&.git/refs/remotes/origin/master\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+Use
+git cherry origin
+to peep which onez of yo' patches was accepted, and/or use
+git rebase origin
+to port yo' unmerged chizzlez forward ta tha updated upstream\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+Use
+git format\-patch origin
+to prepare patches fo' e\-mail submission ta yo' upstream n' bust it out\&. Go back ta step 2\&. n' continue\&.
+.RE
+.SH "WORKING WITH OTHERS, SHARED REPOSITORY STYLE"
+.sp
+If yo ass is comin from CVS background, tha steez of cooperation suggested up in tha previous section may be freshly smoked up ta you\&. Yo ass do not gotta worry\&. Git supports "shared hood repository" steez of cooperation yo ass is probably mo' familiar wit as well\&.
+.sp
+See \fBgitcvs-migration\fR(7) fo' tha details\&.
+.SH "BUNDLING YOUR WORK TOGETHER"
+.sp
+It be likely dat yo big-ass booty is ghon be hustlin on mo' than one thang at a time\&. Well shiiiit, it is easy as fuck  ta manage dem more\-or\-less independent tasks rockin branches wit Git\&.
+.sp
+Our thugged-out asses have already peeped how tha fuck branches work previously, wit "fun n' work" example rockin two branches\&. Da scam is tha same ol' dirty if there be mo' than two branches\&. Let\(cqs say you started up from "master" head, n' have some freshly smoked up code up in tha "master" branch, n' two independent fixes up in tha "commit\-fix" n' "diff\-fix" branches:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git show\-branch
+! [commit\-fix] Fix commit message normalization\&.
+ ! [diff\-fix] Fix rename detection\&.
+  * [master] Release muthafucka #1
+\-\-\-
+ +  [diff\-fix] Fix rename detection\&.
+ +  [diff\-fix~1] Betta common substrin algorithm\&.
++   [commit\-fix] Fix commit message normalization\&.
+  * [master] Release muthafucka #1
+++* [diff\-fix~2] Pretty\-print lyrics\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Both fixes is tested well, n' at dis point, you wanna merge up in both of them\&. Yo ass could merge up in \fIdiff\-fix\fR first n' then \fIcommit\-fix\fR next, like this:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git merge \-m "Merge fix up in diff\-fix" diff\-fix
+$ git merge \-m "Merge fix up in commit\-fix" commit\-fix
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Which would result in:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git show\-branch
+! [commit\-fix] Fix commit message normalization\&.
+ ! [diff\-fix] Fix rename detection\&.
+  * [master] Merge fix up in commit\-fix
+\-\-\-
+  \- [master] Merge fix up in commit\-fix
++ * [commit\-fix] Fix commit message normalization\&.
+  \- [master~1] Merge fix up in diff\-fix
+ +* [diff\-fix] Fix rename detection\&.
+ +* [diff\-fix~1] Betta common substrin algorithm\&.
+  * [master~2] Release muthafucka #1
+++* [master~3] Pretty\-print lyrics\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+But fuck dat shiznit yo, tha word on tha street is dat there is no particular reason ta merge up in one branch first n' tha other next, when what tha fuck you have is a set of truly independent chizzlez (if tha order mattered, then they is not independent by definition)\&. Yo ass could instead merge dem two branches tha fuck into tha current branch at once\&. First let\(cqs undo what tha fuck our laid-back asses just did n' start over\&. Us thugs would wanna git tha masta branch before these two merges by resettin it ta \fImaster~2\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git reset \-\-hard master~2
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Yo ass can make shizzle git show\-branch matches tha state before dem two \fIgit merge\fR you just did\&. Then, instead of hustlin two \fIgit merge\fR commandz up in a row, you would merge these two branch headz (this is known as \fImakin a Octopus\fR):
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ git merge commit\-fix diff\-fix
+$ git show\-branch
+! [commit\-fix] Fix commit message normalization\&.
+ ! [diff\-fix] Fix rename detection\&.
+  * [master] Octopus merge of branches \(aqdiff\-fix\(aq n' \(aqcommit\-fix\(aq
+\-\-\-
+  \- [master] Octopus merge of branches \(aqdiff\-fix\(aq n' \(aqcommit\-fix\(aq
++ * [commit\-fix] Fix commit message normalization\&.
+ +* [diff\-fix] Fix rename detection\&.
+ +* [diff\-fix~1] Betta common substrin algorithm\&.
+  * [master~1] Release muthafucka #1
+++* [master~2] Pretty\-print lyrics\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.sp
+Note dat you should not do Octopus cuz you can\& fo' realz. An octopus be a valid thang ta do n' often make it easier ta view tha commit history if yo ass is mergin mo' than two independent chizzlez all up in tha same time\&. But fuck dat shiznit yo, tha word on tha street is dat if you have merge conflicts wit any of tha branches yo ass is mergin up in n' need ta hand resolve, dat be a indication dat tha pimpment happened up in dem branches was not independent afta all, n' you should merge two at a time, documentin how tha fuck you resolved tha conflicts, n' tha reason why you preferred chizzlez made up in one side over tha other\&. Otherwise it would make tha project history harder ta follow, not easier\&.
+.SH "SEE ALSO"
+.sp
+\fBgittutorial\fR(7), \fBgittutorial-2\fR(7), \fBgitcvs-migration\fR(7), \fBgit-help\fR(1), \m[blue]\fBEverydizzle git\fR\m[]\&\s-2\u[3]\d\s+2, \m[blue]\fBDa Git User\(cqs Manual\fR\m[]\&\s-2\u[1]\d\s+2
+.SH "GIT"
+.sp
+Part of tha \fBgit\fR(1) suite\&.
+.SH "NOTES"
+.IP " 1." 4
+the Git User Manual
+.RS 4
+\%file:///usr/share/doc/git/user-manual.html
+.RE
+.IP " 2." 4
+Randy Dunlap\(cqs presentation
+.RS 4
+\%http://www.xenotime.net/linux/mentor/linux-mentoring-2006.pdf
+.RE
+.IP " 3." 4
+Everydizzle git
+.RS 4
+\%file:///usr/share/doc/git/everyday.html
+.RE

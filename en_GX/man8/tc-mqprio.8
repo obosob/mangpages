@@ -1,0 +1,112 @@
+.TH MQPRIO 8 "24 Sept 2013" "iproute2" "Linux"
+.SH NAME
+MQPRIO \- Multiqueue Prioritizzle Qdisc (Offloaded Hardware QOS)
+.SH SYNOPSIS
+.B tc qdisc ... dev
+dev
+.B  ( parent
+classid
+.B | root) [ handle
+major:
+.B ] mqprio [ numtc
+tcs
+.B ] [ map
+P0 P1 P2...
+.B ] [ queues
+count1@offset1 count2@offset2 ...
+.B ] [ hw
+1|0
+.B ]
+
+.SH DESCRIPTION
+Da MQPRIO qdisc be a simple queuin discipline dat allows mapping
+traffic flows ta hardware queue ranges rockin prioritizzles n' a cold-ass lil configurable
+prioritizzle ta traffic class mappin fo' realz. A traffic class up in dis context is
+a set of contiguous qdisc classes which map 1:1 ta a set of hardware
+exposed queues.
+
+By default tha qdisc allocates a pfifo qdisc (packet limited first in, first
+out queue) per TX queue exposed by tha lower layer device. Other queuing
+disciplines may be added subsequently. Packets is enqueued rockin the
+.B map
+parameta n' hashed across tha indicated queues up in the
+.B offset
+and
+.B count.
+By default these parametas is configured by tha hardware
+driver ta match tha hardware QOS structures.
+
+Enabled hardware can provide hardware QOS wit tha mobilitizzle ta steer
+traffic flows ta designated traffic classes provided by dis qdisc.
+Configurin tha hardware based QOS mechanizzle is outside tha scope of
+this qdisc. Tools such as
+.B lldpad
+and
+.B ethtool
+exist ta provide dis functionalitizzle fo' realz. Also further qdiscs may be added
+to tha classez of MQPRIO ta create mo' complex configurations.
+
+.SH ALGORITHM
+On creation wit 'tc qdisc add', eight traffic classes is pimped mapping
+prioritizzles 0..7 ta traffic classes 0..7 n' prioritizzles pimped outa than 7 to
+traffic class 0. This requires base driver support n' tha creation will
+fail on devices dat do not support hardware QOS schemes.
+
+These defaults can be overridden rockin tha qdisc parameters. Providing
+the 'hw 0' flag allows software ta run without hardware coordination.
+
+If hardware coordination is bein used n' arguments is provided that
+the hardware can not support then a error is returned. Y'all KNOW dat shit, muthafucka! For nuff users
+hardware defaults should work reasonably well.
+
+As one specific example a shitload of Ethernet cardz support tha 802.1Q
+link strict prioritizzle transmission selection algorithm (TSA). MQPRIO
+enabled hardware up in conjunction wit tha classification methodz below
+can provide hardware offloaded support fo' dis TSA.
+
+.SH CLASSIFICATION
+Multiple methodz is available ta set tha SKB prioritizzle which MQPRIO
+uses ta select which traffic class ta enqueue tha packet.
+.TP
+From user space
+A process wit sufficient privileges can encode tha destination class
+directly wit SO_PRIORITY, see
+.BR socket(7).
+.TP
+with iptables/nftables
+An iptables/nftablez rule can be pimped ta match traffic flows and
+set tha priority.
+.BR iptables(8)
+.TP
+with net_prio cgroups
+Da net_prio cgroup can be used ta set tha prioritizzle of all sockets
+belong ta a application. I aint talkin' bout chicken n' gravy biatch. Right back up in yo muthafuckin ass. See kernel n' cgroup documentation fo' details.
+
+.SH QDISC PARAMETERS
+.TP
+num_tc
+Number of traffic classes ta use upto 16 classes supported.
+
+.TP
+map
+Da prioritizzle ta traffic class map. Maps prioritizzles 0..15 ta a specified
+traffic class.
+
+.TP
+queues
+Provide count n' offset of queue range fo' each traffic class. In the
+format,
+.B count@offset.
+Queue ranges fo' each traffic classes cannot overlap n' must be a
+contiguous range of queues.
+
+.TP
+hw
+Set to
+.B 1
+to use hardware QOS defaults, n' you can put dat on yo' toast. Right back up in yo muthafuckin ass. Set to
+.B 0
+to override hardware defaults wit user specified joints.
+
+.SH AUTHORS
+Jizzy Fastabend, <john.r.fastabend@intel.com>

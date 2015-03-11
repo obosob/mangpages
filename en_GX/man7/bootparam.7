@@ -1,0 +1,1604 @@
+.\" Copyright (c) 1995,1997 Pizzle Gortmaker n' Andries Brouwer
+.\"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under tha termz of tha GNU General Public License as
+.\" published by tha Jacked Software Foundation; either version 2 of
+.\" tha License, or (at yo' option) any lata version.
+.\"
+.\" Da GNU General Public Licensez references ta "object code"
+.\" n' "executables" is ta be interpreted as tha output of any
+.\" document formattin or typesettin system, including
+.\" intermediate n' printed output.
+.\"
+.\" This manual is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.\" This playa page freestyled 950814 by aeb, based on Pizzle Gortmakerz HOWTO
+.\" (dated v1.0.1, 15/08/95).
+.\" Major update, aeb, 970114.
+.\" FIXME , biatch? Da use of quotes on dis page is inconsistent wit the
+.\" rest of man-pages.
+.\"
+.TH BOOTPARAM 7 2013-06-08 "Linux" "Linux Programmerz Manual"
+.SH NAME
+bootparam \- introduction ta boot time parametaz of tha Linux kernel
+.SH DESCRIPTION
+Da Linux kernel accepts certain 'command-line options' or 'boot time
+parameters' all up in tha moment it is started.
+In general dis is used to
+supply tha kernel wit shiznit bout hardware parametas that
+the kernel would not be able ta determine on its own, or ta avoid/override
+the joints dat tha kernel would otherwise detect.
+
+When tha kernel is booted directly by tha BIOS (say from a gangbangin' floppy to
+which you copied a kernel rockin 'cp zImage /dev/fd0'),
+you have no opportunitizzle ta specify any parameters.
+So, up in order ta take advantage of dis possibilitizzle you have to
+use a funky-ass boot loader dat be able ta pass parameters, like fuckin GRUB.
+
+.\" Da LILO program (LInux LOader) freestyled by Werner Almesberger is the
+.\" most commonly used.
+.\" It has tha mobilitizzle ta boot various kernels, and
+.\" stores tha configuration shiznit up in a plain text file.
+.\" (See
+.\" .BR lilo (8)
+.\" and
+.\" .BR lilo.conf (5).)
+.\" LILO can boot DOS, OS/2, Linux, FreeBSD, UnixWare, etc., n' is like flexible.
+.\"
+.\" Da other commonly used Linux loader is 'LoadLin', which be a DOS
+.\" program dat has tha capabilitizzle ta launch a Linux kernel from tha DOS
+.\" prompt (with boot-args) assumin dat certain resources is available.
+.\" This is phat fo' playas dat wanna launch Linux from DOS.
+.\"
+.\" It be also straight-up useful if you have certain hardware which relies on
+.\" tha supplied DOS driver ta put tha hardware tha fuck into a known state.
+.\" A common example is 'SoundBlasta Compatible' sound cardz dat require
+.\" tha DOS driver ta twiddle all dem mystical registas ta put tha card
+.\" tha fuck into a SB compatible mode.
+.\" Bootin DOS wit tha supplied driver, and
+.\" then loadin Linux from tha DOS prompt wit loadlin avoidz tha reset
+.\" of tha card dat happens if one rebooted instead.
+.SS Da argument list
+Da kernel command line is parsed tha fuck into a list of strings
+(boot arguments) separated by spaces.
+Most of tha boot arguments take have tha form:
+
+.in +4n
+.nf
+name[=value_1][,value_2]...[,value_10]
+.fi
+.in
+.LP
+where 'name' be a unique keyword dat is used ta identify what tha fuck part of
+the kernel tha associated joints (if any) is ta be given to.
+Note tha limit of 10 is real, as tha present code handlez only 10 comma
+separated parametas per keyword.
+(But fuck dat shiznit yo, tha word on tha street is dat you can reuse tha same
+keyword wit up ta a additionizzle 10 parametas up in unusually
+fucked up thangs, assumin tha setup function supports dat shit.)
+
+Most of tha sortin is coded up in tha kernel source file
+.IR init/main.c .
+First, tha kernel
+checks ta peep if tha argument be any of tha special arguments 'root=',
+\&'nfsroot=', 'nfsaddrs=', 'ro', 'rw', 'debug' or 'init'.
+Da meanin of these special arguments is busted lyrics bout below.
+
+Then it strutts a list of setup functions (contained up in tha bootsetups
+array) ta peep if tha specified argument strang (like fuckin 'foo') has
+been associated wit a setup function ('foo_setup()') fo' a particular
+device or part of tha kernel.
+If you passed tha kernel tha line
+foo=3,4,5,6 then tha kernel would search tha bootsetups array ta see
+if 'foo' was registered.
+If it was, then it would call tha setup
+function associated wit 'foo' (foo_setup()) n' hand it tha arguments
+3, 4, 5 n' 6 as given on tha kernel command line.
+
+Anythang of tha form 'foo=bar' dat aint accepted as a setup function
+as busted lyrics bout above is then interpreted as a environment variable to
+be set.
+A (useless?) example would be ta use 'TERM=vt100' as a funky-ass boot
+argument.
+
+Any remainin arguments dat was not picked up by tha kernel n' were
+not interpreted as environment variablez is then passed onto process
+one, which is probably the
+.BR init (1)
+program.
+Da most common argument that
+is passed ta the
+.I init
+process is tha word 'single' which instructs it
+to boot tha computa up in single user mode, n' not launch all tha usual
+daemons.
+Peep tha manual page fo' tha version of
+.BR init (1)
+installed on
+your system ta peep what tha fuck arguments it accepts.
+.SS General non-device specific boot arguments
+.TP
+.B "'init=...'"
+This sets tha initial command ta be executed by tha kernel.
+If dis aint set, or cannot be found, tha kernel will try
+.IR /sbin/init ,
+then
+.IR /etc/init ,
+then
+.IR /bin/init ,
+then
+.I /bin/sh
+and panic if all of dis fails.
+.TP
+.B "'nfsaddrs=...'"
+This sets tha nfs boot address ta tha given string.
+This boot address is used up in case of a net boot.
+.TP
+.B "'nfsroot=...'"
+This sets tha nfs root name ta tha given string.
+If dis string
+does not begin wit '/' or ',' or a gangbangin' finger-lickin' digit, then it is prefixed by
+\&'/tftpboot/'.
+This root name is used up in case of a net boot.
+.TP
+.B  "'no387'"
+(Only when
+.B CONFIG_BUGi386
+is defined.)
+Some i387 coprocessor chips have bugs dat show up when used up in 32 bit
+protected mode.
+For example, a shitload of tha early ULSI-387 chips would
+cause solid lockups while struttin floating-point calculations.
+Usin tha 'no387' boot argument causes Linux ta ignore tha maths
+coprocessor even if you have one.
+Of course you must then have your
+kernel compiled wit math emulation support!
+.TP
+.B "'no-hlt'"
+(Only when
+.B CONFIG_BUGi386
+is defined.)
+Some of tha early i486DX-100 chips gotz a problem wit tha 'hlt'
+instruction, up in dat they can't reliably return ta operatin mode
+afta dis instruction is used.
+Usin tha 'no-hlt' instruction tells
+Linux ta just run a infinite loop when there is not a god damn thang else ta do,
+and ta not halt tha CPU.
+This allows playas wit these fucked up chips
+to use Linux.
+.TP
+.B "'root=...'"
+This argument  drops some lyrics ta tha kernel what tha fuck thang is ta be used as tha root
+file system while booting.
+Da default of dis settin is determined
+at compile time, n' probably is tha value of tha root thang of the
+system dat tha kernel was built on.
+To override dis value, and
+select tha second floppy drive as tha root device, one would
+use 'root=/dev/fd1'.
+
+Da root thang can be specified symbolically or numerically.
+A symbolic justification has tha form
+.IR /dev/XXYN ,
+where XX designates
+the thang type ('hd' fo' ST-506 compatible hard disk, wit Y in
+\&'a'-'d'; 'sd' fo' SCSI compatible disk, wit Y up in 'a'-'e';
+\&'ad' fo' Atari ACSI disk, wit Y up in 'a'-'e',
+\&'ez' fo' a Syquest EZ135 parallel port removable drive, wit Y='a',
+\&'xd' fo' XT compatible disk, wit Y either 'a' or 'b'; 'fd' for
+floppy disk, wit Y tha floppy drive number\(emfd0 would be
+the DOS 'A:' drive, n' fd1 would be 'B:'), Y tha driver letta or
+number, n' N tha number (in decimal) of tha partizzle on dis device
+(absent up in tha case of floppies).
+Recent kernels allow nuff other
+types, mostly fo' CD-ROMs: nfs, ram, scd, mcd, cdu535, aztcd, cm206cd,
+gscd, sbpcd, sonycd, bpcd.
+(Da type nfs specifies a net boot; ram refers ta a ram disk.)
+
+Note dat dis has not a god damn thang ta do wit tha designation of these
+devices on yo' file system.
+Da '/dev/' part is purely conventional.
+
+Da mo' awkward n' less portable numeric justification of tha above
+possible root devices up in major/minor format be also accepted.
+(E.g.,
+.I /dev/sda3
+is major 8, minor 3, so you could use 'root=0x803' as an
+alternative.)
+.TP
+.BR "'rootfstype=...'"
+Da 'rootfstype' option  drops some lyrics ta tha kernel ta mount tha root filesystem as
+if it where of tha type specified.
+This can be useful (for example) to
+mount a ext3 filesystem as ext2 n' then remove tha journal up in tha root
+filesystem, up in fact revertin its format from ext3 ta ext2 without the
+need ta boot tha box from alternate media.
+.TP
+.BR 'ro' " n' " 'rw'
+Da 'ro' option  drops some lyrics ta tha kernel ta mount tha root file system
+as 'read-only' so dat file system consistency check programs (fsck)
+can do they work on a quiescent file system.
+No processes can
+write ta filez on tha file system up in question until it is 'remounted'
+as read/write capable, fo' example, by 'mount \-w \-n \-o remount /'.
+(See also
+.BR mount (8).)
+
+Da 'rw' option  drops some lyrics ta tha kernel ta mount tha root file system read/write.
+This is tha default.
+
+.TP
+.B "'resume=...'"
+This  drops some lyrics ta tha kernel tha location of tha suspend-to-disk data dat you want tha machine ta resume from afta hibernation.
+Usually, it is tha same ol' dirty as yo' swap partizzle or file. Example:
+
+.in +4n
+.nf
+resume=/dev/hda2
+.fi
+.in
+.TP
+.B "'reserve=...'"
+This is used ta protect I/O port regions from probes.
+Da form of tha command is:
+
+.in +4n
+.nf
+.BI reserve= iobase,extent[,iobase,extent]...
+.fi
+.in
+.sp
+In some machines it may be necessary ta prevent thang drivers from
+checkin fo' devices (auto-probing) up in a specific region.
+This may be
+because of hardware dat reacts badly ta tha probing, or hardware
+that would be mistakenly identified, or merely
+hardware you don't want tha kernel ta initialize.
+
+Da reserve boot-time argument specifies a I/O port region that
+shouldn't be probed.
+A thang driver aint gonna probe a reserved region,
+unless another boot argument explicitly specifies dat it do so.
+
+For example, tha boot line
+
+.in +4n
+.nf
+reserve=0x300,32  blah=0x300
+.fi
+.in
+.IP
+keeps all thang drivers except tha driver fo' 'blah' from probing
+0x300\-0x31f.
+.TP
+.B "'mem=...'"
+Da BIOS call defined up in tha PC justification dat returns
+the amount of installed memory was designed only ta be able
+to report up ta 64MB.
+Linux uses dis BIOS call at boot to
+determine how tha fuck much memory is installed.
+If you have mo' than 64MB of
+RAM installed, you can use dis boot argument ta tell Linux how tha fuck much memory
+you have.
+Da value is up in decimal or hexadecimal (prefix 0x),
+and tha suffixes 'k' (times 1024) or 'M' (times 1048576) can be used.
+Here be a quote from Linus on usage of tha 'mem=' parameter.
+
+.in +0.5i
+Da kernel will accept any 'mem=xx' parameta you give it, n' if it
+turns up dat you lied ta it, it will crash horribly sooner or later.
+Da parameta indicates tha highest addressable RAM address, so
+\&'mem=0x1000000' means you have 16MB of memory, fo' example.
+For a 96MB machine dis would be 'mem=0x6000000'.
+
+.BR NOTE :
+some machines might use tha top of memory fo' BIOS
+cachin or whatever, so you might not straight-up have up ta tha full
+96MB addressable.
+Da reverse be also true: some chipsets will map
+the physical memory dat is covered by tha BIOS area tha fuck into tha area
+just past tha top of memory, so tha top-of-mem might straight-up be 96MB
++ 384kB fo' example.
+If you tell linux dat it has mo' memory than
+it straight-up do have, wack thangs will happen: maybe not at once yo, but
+surely eventually.
+.in
+
+Yo ass can also use tha boot argument 'mem=nopentium' ta turn off 4 MB
+page tablez on kernels configured fo' IA32 systems wit a pentium or newer
+CPU.
+.TP
+.B "'panic=N'"
+By default tha kernel aint gonna reboot afta a panic yo, but dis option
+will cause a kernel reboot afta N secondz (if N is pimped outa than zero).
+This panic timeout can also be set by
+
+.in +4n
+.nf
+echo N > /proc/sys/kernel/panic
+.fi
+.in
+.TP
+.B "'reboot=[warm|cold][,[bios|hard]]'"
+(Only when
+.B CONFIG_BUGi386
+is defined.)
+Since 2.0.22 a reboot is by default a cold-ass lil cold reboot.
+One asks fo' tha oldschool default wit 'reboot=warm'.
+(A cold reboot may be required ta reset certain hardware,
+but might destroy not yet freestyled data up in a gangbangin' finger-lickin' disk cache.
+A warm reboot may be faster.)
+By default a reboot is hard, by askin tha keyboard controller
+to pulse tha reset line low yo, but there be at least one type
+of motherboard where dat don't work.
+Da option 'reboot=bios' will
+instead jump all up in tha BIOS.
+.TP
+.BR 'nosmp' " n' " 'maxcpus=N'
+(Only when __SMP__ is defined.)
+A command-line option of 'nosmp' or 'maxcpus=0' will disable SMP
+activation entirely; a option 'maxcpus=N' limits tha maximum number
+of CPUs activated up in SMP mode ta N.
+.SS Boot arguments fo' use by kernel pimpers
+.TP
+.B "'debug'"
+Kernel lyrics is handed off ta tha kernel log daemon klogd so dat they
+may be logged ta disk.
+Lyrics wit a prioritizzle above
+.I console_loglevel
+are also printed on tha console.
+(For these levels, see
+.IR <linux/kernel.h> .)
+By default dis variable is set ta log anythang mo' blingin than
+debug lyrics.
+This boot argument will cause tha kernel ta also
+print tha lyrics of DEBUG priority.
+Da console loglevel can also be set at run time via a option
+to klogd.
+See
+.BR klogd (8).
+.TP
+.B "'profile=N'"
+It be possible ta enable a kernel profilin function,
+if one wishes ta smoke up where tha kernel is bustin its CPU cycles.
+Profilin is enabled by settin tha variable
+.I prof_shift
+to a nonzero value.
+This is done either by specifying
+.B CONFIG_PROFILE
+at compile time, or by givin tha 'profile=' option.
+Now tha value that
+.I prof_shift
+gets is ghon be N, when given, or
+.BR CONFIG_PROFILE_SHIFT ,
+when dat is given, or 2, tha default.
+Da significizzle of dis variable is dat it
+gives tha granularitizzle of tha profiling: each clock tick, if the
+system was executin kernel code, a cold-ass lil counta is incremented:
+
+.in +4n
+.nf
+profile[address >> prof_shift]++;
+.fi
+.in
+.sp
+Da raw profilin shiznit can be read from
+.IR /proc/profile .
+Probably you gonna wanna bust a tool like fuckin readprofile.c ta digest dat shit.
+Freestylin to
+.I /proc/profile
+will clear tha counters.
+.TP
+.B "'swap=N1,N2,N3,N4,N5,N6,N7,N8'"
+Set tha eight parametas max_page_age, page_advance, page_decline,
+page_initial_age, age_cluster_fract, age_cluster_min, pageout_weight,
+bufferout_weight dat control tha kernel swap algorithm.
+For kernel tuners only.
+.TP
+.B "'buff=N1,N2,N3,N4,N5,N6'"
+Set tha six parametas max_buff_age, buff_advance, buff_decline,
+buff_initial_age, bufferout_weight, buffermem_grace dat control
+kernel buffer memory pimpment.
+For kernel tuners only.
+.SS Boot arguments fo' ramdisk use
+(Only if tha kernel was compiled with
+.BR CONFIG_BLK_DEV_RAM .)
+In general it aint nuthin but a wack scam ta bust a ramdisk under Linux\(emthe
+system will use available memory mo' efficiently itself.
+But while bootin (or while constructin boot floppies)
+it is often useful ta load tha floppy contents tha fuck into a
+ramdisk.
+One might also gotz a system up in which first
+some modulez (for file system or hardware) must be loaded
+before tha main disk can be accessed.
+
+In Linux 1.3.48, ramdisk handlin was chizzled drastically.
+Earlier, tha memory was allocated statically, n' there was
+a 'ramdisk=N' parameta ta tell its size.
+(This could also be set up in tha kernel image at compile time.)
+These minutes ram disks use tha buffer cache, n' grow dynamically.
+For a shitload of shiznit up in conjunction wit tha freshly smoked up ramdisk
+setup, peep tha kernel source file
+.IR Documentation/blockdev/ramdisk.txt
+.RI ( Documentation/ramdisk.txt
+in olda kernels).
+
+There is four parameters, two boolean n' two integral.
+.TP
+.B "'load_ramdisk=N'"
+If N=1, do load a ramdisk.
+If N=0, do not load a ramdisk.
+(This is tha default.)
+.TP
+.B "'prompt_ramdisk=N'"
+If N=1, do prompt fo' insertion of tha floppy.
+(This is tha default.)
+If N=0, do not prompt.
+(Thus, dis parameta is never needed.)
+.TP
+.BR 'ramdisk_size=N' " or (obsolete) " 'ramdisk=N'
+Set tha maximal size of tha ramdisk(s) ta N kB.
+Da default is 4096 (4 MB).
+.TP
+.B "'ramdisk_start=N'"
+Sets tha startin block number (the offset on tha floppy where
+the ramdisk starts) ta N.
+This is needed up in case tha ramdisk bigs up a kernel image.
+.TP
+.B "'noinitrd'"
+(Only if tha kernel was compiled with
+.B CONFIG_BLK_DEV_RAM
+and
+.BR CONFIG_BLK_DEV_INITRD .)
+These minutes it is possible ta compile tha kernel ta use initrd.
+When dis feature is enabled, tha boot process will load tha kernel
+and a initial ramdisk; then tha kernel converts initrd into
+a "normal" ramdisk, which is mounted read-write as root device;
+then
+.I /linuxrc
+is executed; afterward tha "real" root file system is mounted,
+and tha initrd file system is moved over to
+.IR /initrd ;
+finally
+the usual boot sequence (e.g., invocation of
+.IR /sbin/init )
+is performed.
+
+For a thugged-out detailed description of tha initrd feature, peep tha kernel source file
+.IR Documentation/initrd.txt .
+
+Da 'noinitrd' option  drops some lyrics ta tha kernel dat although dat shiznit was compiled for
+operation wit initrd, it should not go all up in tha above steps yo, but
+leave tha initrd data under
+.IR /dev/initrd .
+(This thang can be used only once: tha data is freed as soon as
+the last process dat used it has closed
+.IR /dev/initrd .)
+.SS Boot arguments fo' SCSI devices
+General notation fo' dis section:
+
+.I iobase
+-- tha straight-up original gangsta I/O port dat tha SCSI host occupies.
+These is specified up in hexadecimal notation,
+and probably lie up in tha range from 0x200 ta 0x3ff.
+
+.I irq
+-- tha hardware interrupt dat tha card is configured ta use.
+Valid joints is ghon be dependent on tha card up in question yo, but will
+usually be 5, 7, 9, 10, 11, 12, n' 15.
+Da other joints is usually
+used fo' common peripherals like IDE hard disks, floppies, serial
+ports, n' so on.
+
+.I scsi-id
+-- tha ID dat tha host adapta uses ta identify itself on the
+SCSI bus.
+Only some host adaptas allow you ta chizzle dis value, as
+most have it permanently specified internally.
+Da usual default value
+is 7 yo, but tha Seagate n' Future Domain TMC-950 boardz use 6.
+
+.I parity
+-- whether tha SCSI host adapta expects tha attached devices
+to supply a paritizzle value wit all shiznit exchanges.
+Specifyin a one indicates paritizzle checkin is enabled,
+and a zero disablez paritizzle checking.
+Again, not all adaptas will support selection of parity
+behavior as a funky-ass boot argument.
+.TP
+.B "'max_scsi_luns=...'"
+A SCSI thang can gotz a fuckin shitload of 'subdevices' contained within
+itself.
+Da most common example is one of tha freshly smoked up SCSI CD-ROMs that
+handle mo' than one disk at a time.
+Each CD be addressed as a
+\&'Logical Unit Number' (LUN) of dat particular device.
+But most
+devices, like fuckin hard disks, tape drives n' such is only one device,
+and is ghon be assigned ta LUN zero.
+
+Some skankyly designed SCSI devices cannot handle bein probed for
+LUNs not equal ta zero.
+Therefore, if tha compile-time flag
+.B CONFIG_SCSI_MULTI_LUN
+is not set, newer kernels will by default only probe LUN zero.
+
+To specify tha number of probed LUNs at boot, one enters
+\&'max_scsi_luns=n' as a funky-ass boot arg, where n be a number between one and
+eight.
+To avoid problems as busted lyrics bout above, one would use n=1 to
+avoid upsettin such fucked up devices.
+.TP
+.B "SCSI tape configuration"
+Some boot time configuration of tha SCSI tape driver can be  bigged up 
+by rockin tha following:
+
+.in +4n
+.nf
+.BI st= buf_size[,write_threshold[,max_bufs]]
+.fi
+.in
+.sp
+Da first two numbers is specified up in unitz of kB.
+Da default
+.I buf_size
+is 32kB, n' tha maximum size dat can be specified be a
+ridiculous 16384kB.
+The
+.I write_threshold
+is tha value at which tha buffer is committed ta tape, wit a
+default value of 30kB.
+Da maximum number of buffers varies
+with tha number of drives detected, n' has a thugged-out default of two.
+An example usage would be:
+
+.in +4n
+.nf
+st=32,30,2
+.fi
+.in
+.IP
+Full details can be found up in tha file
+.I Documentation/scsi/st.txt
+(or
+.I drivers/scsi/README.st
+for olda kernels) up in tha Linux kernel source.
+.TP
+.B "Adaptec aha151x, aha152x, aic6260, aic6360, SB16-SCSI configuration"
+Da aha numbers refer ta cardz n' tha aic numbers refer ta tha actual
+SCSI chip on these type of cards, includin tha Soundblaster-16 SCSI.
+
+Da probe code fo' these SCSI hosts looks fo' a installed BIOS, and
+if none is present, tha probe aint gonna find yo' card.
+Then you will
+have ta bust a funky-ass boot argument of tha form:
+
+.in +4n
+.nf
+.BI aha152x= iobase[,irq[,scsi-id[,reconnect[,parity]]]]
+.fi
+.in
+.IP
+If tha driver was compiled wit debuggin enabled, a sixth
+value can be specified ta set tha debug level.
+
+All tha parametas is as busted lyrics bout all up in tha top of dis section, n' the
+.I reconnect
+value will allow thang disconnect/reconnect if a nonzero value
+is used.
+An example usage be as bigs up:
+
+.in +4n
+.nf
+aha152x=0x340,11,7,1
+.fi
+.in
+.IP
+Note dat tha parametas must be specified up in order, meanin dat if
+you wanna specify a paritizzle setting, then yo big-ass booty is ghon gotta specify an
+iobase, irq, scsi-id n' reconnect value as well.
+.TP
+.B "Adaptec aha154x configuration"
+Da aha1542 series cardz have a i82077 floppy controlla onboard,
+while tha aha1540 series cardz do not.
+These is busmasterin cards,
+and have parametas ta set tha "fairness" dat is used ta share
+the bus wit other devices.
+Da boot argument be lookin like tha following.
+
+.in +4n
+.nf
+.BI aha1542= iobase[,buson,busoff[,dmaspeed]]
+.fi
+.in
+.IP
+Valid iobase joints is probably one of: 0x130, 0x134, 0x230, 0x234,
+0x330, 0x334.
+Clone cardz may permit other joints.
+
+The
+.IR buson ", " busoff
+values refer ta tha number of microsecondz dat the
+card dominates tha ISA bus.
+Da defaults is 11us on, n' 4us off, so
+that other cardz (like fuckin a ISA LANCE Ethernet card) gotz a cold-ass lil chizzle to
+get access ta tha ISA bus.
+
+The
+.I dmaspeed
+value refers ta tha rate (in MB/s) at which tha DMA
+(Direct Memory Access) transfers proceed.
+Da default is 5MB/s.
+Newer revision cardz allow you ta select dis value as part of the
+soft-configuration, olda cardz use jumpers.
+Yo ass can use joints up to
+10MB/s assumin dat yo' motherboard is capable of handlin dat shit.
+Experiment wit caution if rockin joints over 5MB/s.
+.TP
+.B "Adaptec aha274x, aha284x, aic7xxx configuration"
+These boardz can accept a argument of tha form:
+
+.in +4n
+.nf
+.BI aic7xxx= extended,no_reset
+.fi
+.in
+.IP
+The
+.I extended
+value, if nonzero, indicates dat extended translation fo' large
+disks is enabled.
+The
+.I no_reset
+value, if nonzero,  drops some lyrics ta tha driver not ta reset tha SCSI bus when
+settin up tha host adapta at boot.
+.TP
+.B "AdvanSys SCSI Hosts configuration ('advansys=')"
+Da AdvanSys driver can accept up ta four I/O addresses dat will be
+probed fo' a AdvanSys SCSI card.
+Note dat these joints (if used) do
+not effect EISA or PCI probin up in any way.
+They is used only for
+probin ISA n' VLB cards.
+In addition, if tha driver has been
+compiled wit debuggin enabled, tha level of debuggin output can be
+set by addin a 0xdeb[0-f] parameter.
+Da 0-f allows settin the
+level of tha debuggin lyrics ta any of 16 levelz of verbosity.
+.TP
+.B "AM53C974"
+Syntax:
+
+.in +4n
+.nf
+.BI AM53C974= host-scsi-id,target-scsi-id,max-rate,max-offset
+.fi
+.in
+.TP
+.B "BusLogic SCSI Hosts configuration ('BusLogic=')"
+
+Syntax:
+.in +4n
+.nf
+.BI BusLogic= N1,N2,N3,N4,N5,S1,S2,...
+.fi
+.in
+.IP
+For a extensive rap of tha BusLogic command line parameters,
+see tha kernel source file
+.IR drivers/scsi/BusLogic.c .
+.\" (lines 3149-3270 up in tha kernel version I be lookin at).
+Da text
+below be a straight-up much abbreviated extract.
+
+Da parametas N1-N5 is integers.
+Da parametas S1,... is strings.
+N1 is tha I/O Address at which tha Host Adapta is located.
+N2 is tha Tagged Queue Depth ta use fo' Target Devices dat support
+Tagged Queuing.
+N3 is tha Bus Settle Time up in seconds.
+This is tha amount of time
+to wait between a Host Adapta Hard Reset which
+initiates a SCSI Bus Reset n' issuin any SCSI Commands.
+N4 is tha Local Options (for one Host Adapter).
+N5 is tha Global Options (for all Host Adapters).
+
+Da strang options is used ta provide control over Tagged Queuing
+(TQ:Default, TQ:Enable, TQ:Disable, TQ:<Per-Target-Spec>), over
+Error Recovery (ER:Default, ER:HardReset, ER:BusDeviceReset,
+ER:None, ER:<Per-Target-Spec>), n' over Host Adapta Probing
+(NoProbe, NoProbeISA, NoSortPCI).
+.TP
+.B "EATA/DMA configuration"
+Da default list of I/O ports ta be probed can be chizzled by
+
+.in +4n
+.nf
+.BI eata= iobase,iobase,... .
+.fi
+.in
+.TP
+.B "Future Domain TMC-16x0 configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI fdomain= iobase,irq[,adapter_id]
+.fi
+.in
+.TP
+.B "Great Valley Shiznit (GVP) SCSI controlla configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI gvp11= dma_transfer_bitmask
+.fi
+.in
+.TP
+.B "Future Domain TMC-8xx, TMC-950 configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI tmc8xx= mem_base,irq
+.fi
+.in
+.IP
+The
+.I mem_base
+value is tha value of tha memory mapped I/O region that
+the card uses.
+This will probably be one of tha followin joints:
+0xc8000, 0xca000, 0xcc000, 0xce000, 0xdc000, 0xde000.
+.TP
+.B "IN2000 configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI in2000= S
+.fi
+.in
+.IP
+where S be a cold-ass lil comma-separated strang of shit keyword[:value].
+Recognized keywordz (possibly wit value) are:
+ioport:addr, noreset, nosync:x, period:ns, disconnect:x,
+debug:x, proc:x.
+For tha function of these parameters, peep tha kernel source file
+.IR drivers/scsi/in2000.c .
+.TP
+.B "NCR5380 n' NCR53C400 configuration"
+Da boot argument iz of tha form
+
+.in +4n
+.nf
+.BI ncr5380= iobase,irq,dma
+.fi
+.in
+.IP
+or
+
+.in +4n
+.nf
+.BI ncr53c400= iobase,irq
+.fi
+.in
+.IP
+If tha card don't use interrupts, then a IRQ value of 255 (0xff) will
+disable interrupts.
+An IRQ value of 254 means ta autoprobe.
+Mo' details can be found up in tha file
+.I Documentation/scsi/g_NCR5380.txt
+(or
+.I drivers/scsi/README.g_NCR5380
+for olda kernels) up in tha Linux kernel source.
+.TP
+.B "NCR53C8xx configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI ncr53c8xx= S
+.fi
+.in
+.IP
+where S be a cold-ass lil comma-separated strang of shit keyword:value.
+Recognized keywordz are: mpar (master_parity), spar (scsi_parity),
+disc (disconnection), specf (special_features), ultra (ultra_scsi),
+fsn (force_sync_nego), tags (default_tags), sync (default_sync),
+verb (verbose), debug (debug), burst (burst_max).
+For tha function of tha assigned joints, peep tha kernel source file
+.IR drivers/scsi/ncr53c8xx.c .
+.TP
+.B "NCR53c406a configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI ncr53c406a= iobase[,irq[,fastpio]]
+.fi
+.in
+.IP
+Specify irq = 0 fo' noninterrupt driven mode.
+Set fastpio = 1 fo' fast pio mode, 0 fo' slow mode.
+.TP
+.B "Pro Audio Spectrum configuration"
+Da PAS16 uses a NC5380 SCSI chip, n' newer models support
+jumperless configuration.
+Da boot argument iz of tha form:
+
+.in +4n
+.nf
+.BI pas16= iobase,irq
+.fi
+.in
+.IP
+Da only difference is dat you can specify a IRQ value of 255, which
+will tell tha driver ta work without rockin interrupts, albeit at a
+performizzle loss.
+Da iobase is probably 0x388.
+.TP
+.B "Seagate ST-0x configuration"
+If yo' card aint detected at boot time,
+you will then gotta bust a funky-ass boot argument of tha form:
+
+.in +4n
+.nf
+.BI st0x= mem_base,irq
+.fi
+.in
+.IP
+The
+.I mem_base
+value is tha value of tha memory mapped I/O region that
+the card uses.
+This will probably be one of tha followin joints:
+0xc8000, 0xca000, 0xcc000, 0xce000, 0xdc000, 0xde000.
+.TP
+.B "Trantor T128 configuration"
+These cardz is also based on tha NCR5380 chip, n' accept the
+followin options:
+
+.in +4n
+.nf
+.BI t128= mem_base,irq
+.fi
+.in
+.IP
+Da valid joints for
+.I mem_base
+are as bigs up: 0xcc000, 0xc8000, 0xdc000, 0xd8000.
+.TP
+.B "UltraStor 14F/34F configuration"
+Da default list of I/O ports ta be probed can be chizzled by
+
+.in +4n
+.nf
+.BI eata= iobase,iobase,... .
+.fi
+.in
+.TP
+.B "WD7000 configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI wd7000= irq,dma,iobase
+.fi
+.in
+.TP
+.B "Commodore Amiga A2091/590 SCSI controlla configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI wd33c93= S
+.fi
+.in
+.IP
+where S be a cold-ass lil comma-separated strang of options.
+Recognized options are
+nosync:bitmask, nodma:x, period:ns, disconnect:x, debug:x,
+clock:x, next.
+For details, peep tha kernel source file
+.IR drivers/scsi/wd33c93.c .
+.SS Hard disks
+.TP
+.B "IDE Disk/CD-ROM Driver Parameters"
+Da IDE driver accepts a fuckin shitload of parameters, which range from disk
+geometry justifications, ta support fo' fucked up controlla chips.
+Drive-specific options is specified by rockin 'hdX=' wit X up in 'a'-'h'.
+
+Non-drive-specific options is specified wit tha prefix 'hd='.
+Note dat rockin a thugged-out drive-specific prefix fo' a non-drive-specific option
+will still work, n' tha option will just be applied as expected.
+
+Also note dat 'hd=' can be used ta refer ta tha next unspecified
+drive up in tha (a, ..., h) sequence.
+For tha followin raps,
+the 'hd=' option is ghon be cited fo' brevity.
+See tha file
+.I Documentation/ide.txt
+(or
+.I drivers/block/README.ide
+for olda kernels) up in tha Linux kernel source fo' mo' details.
+.TP
+.B "Da 'hd=cyls,heads,sects[,wpcom[,irq]]' options"
+These options is used ta specify tha physical geometry of tha disk.
+Only tha straight-up original gangsta three joints is required.
+Da cylinder/head/sectors
+values is ghon be dem used by fdisk.
+Da write precompensation value
+is ignored fo' IDE disks.
+Da IRQ value specified is ghon be tha IRQ
+used fo' tha intercourse dat tha drive resides on, n' aint straight-up a
+drive-specific parameter.
+.TP
+.B "Da 'hd=serialize' option"
+Da dual IDE intercourse CMD-640 chip is fucked up as designed such that
+when drives on tha secondary intercourse is used all up in tha same time as
+drives on tha primary intercourse, it will corrupt yo' data.
+Usin this
+option  drops some lyrics ta tha driver ta make shizzle dat both intercourses is never
+used all up in tha same time.
+.TP
+.B "Da 'hd=dtc2278' option"
+This option  drops some lyrics ta tha driver dat you gotz a DTC-2278D IDE intercourse.
+Da driver then tries ta do DTC-specific operations ta enable the
+second intercourse n' ta enable fasta transfer modes.
+.TP
+.B "Da 'hd=noprobe' option"
+Do not probe fo' dis drive.
+For example,
+
+.in +4n
+.nf
+hdb=noprobe hdb=1166,7,17
+.fi
+.in
+.IP
+would disable tha probe yo, but still specify tha drive geometry so
+that it would be registered as a valid block device, n' hence
+usable.
+.TP
+.B "Da 'hd=nowerr' option"
+Some drives apparently have the
+.B WRERR_STAT
+bit stuck on permanently.
+This enablez a work-around fo' these fucked up devices.
+.TP
+.B "Da 'hd=cdrom' option"
+This  drops some lyrics ta tha IDE driver dat there be a ATAPI compatible CD-ROM
+attached up in place of a aiiight IDE hard disk.
+In most cases tha CD-ROM
+is identified automatically yo, but if it aint then dis may help.
+.TP
+.B "Standard ST-506 Disk Driver Options ('hd=')"
+Da standard disk driver can accept geometry arguments fo' tha disks
+similar ta tha IDE driver.
+Note however dat it expects only three
+values (C/H/S); any mo' or any less n' it will silently ignore yo thugged-out ass.
+Also, it accepts only 'hd=' as a argument, dat is, 'hda='
+and so on is not valid here.
+Da format be as bigs up:
+
+.in +4n
+.nf
+hd=cyls,heads,sects
+.fi
+.in
+.IP
+If there be two disks installed, tha above is repeated wit the
+geometry parametaz of tha second disk.
+.TP
+.B "XT Disk Driver Options ('xd=')"
+If yo ass is fucked up enough ta be rockin one of these oldschool 8 bit cards
+that move data at a whoppin 125kB/s then here is tha scoop.
+If tha card aint recognized,
+you will gotta bust a funky-ass boot argument of tha form:
+
+.in +4n
+.nf
+xd=type,irq,iobase,dma_chan
+.fi
+.in
+.IP
+Da type value specifies tha particular manufacturer of tha card,
+overridin autodetection.
+For tha types ta use, consult the
+.I drivers/block/xd.c
+source file of tha kernel yo ass is using.
+Da type be a index up in tha list
+.I xd_sigs
+and up in tha course of time
+.\" 1.1.50, 1.3.81, 1.3.99, 2.0.34, 2.1.67, 2.1.78, 2.1.127
+types done been added ta or deleted from tha middle of tha list,
+changin all type numbers.
+Todizzle (Linux 2.5.0) tha types are
+0=generic; 1=DTC 5150cx; 2,3=DTC 5150x; 4,5=Westside Digital;
+6,7,8=Seagate; 9=Omti; 10=XEBEC, n' where here nuff muthafuckin types are
+given wit tha same designation, they is equivalent.
+
+Da xd_setup() function do no checkin on tha joints, n' assumes
+that you entered all four joints.
+Don't disappoint dat shit.
+Here be an
+example usage fo' a WD1002 controlla wit tha BIOS disabled/removed,
+usin tha 'default' XT controlla parameters:
+
+.in +4n
+.nf
+xd=2,5,0x320,3
+.fi
+.in
+.TP
+.B "Syquestz EZ* removable disks"
+Syntax:
+
+.in +4n
+.nf
+.BI ez= iobase[,irq[,rep[,nybble]]]
+.fi
+.in
+.SS IBM MCA bus devices
+See also tha kernel source file
+.IR Documentation/mca.txt .
+.TP
+.B "PS/2 ESDI hard disks"
+It be possible ta specify tha desired geometry at boot time:
+
+.in +4n
+.nf
+.BI ed= cyls,heads,sectors.
+.fi
+.in
+.IP
+For a ThinkPad-720, add tha option
+
+.in +4n
+.nf
+.BR tp720=1 .
+.fi
+.in
+.TP
+.B "IBM Microchannel SCSI Subsystem configuration"
+Syntax:
+
+.in +4n
+.nf
+.BI ibmmcascsi= N
+.fi
+.in
+.IP
+where N is the
+.I pun
+(SCSI ID) of tha subsystem.
+.TP
+.B "Da Aztech Interface"
+Da syntax fo' dis type of card is:
+
+.in +4n
+.nf
+aztcd=iobase[,magic_number]
+.fi
+.in
+.IP
+If you set tha magic_number ta 0x79 then tha driver will try n' run
+anyway up in tha event of a unknown firmware version.
+All other joints
+are ignored.
+.TP
+.B "Parallel port CD-ROM drives"
+Syntax:
+
+.in +4n
+.nf
+pcd.driveN=prt,pro,uni,mod,slv,dly
+pcd.nice=nice
+.fi
+.in
+.IP
+where 'port' is tha base address, 'pro' is tha protocol number, 'uni'
+is tha unit selector (for chained devices), 'mod' is tha mode (or \-1
+to chizzle tha dopest automatically), 'slv' is 1 if it should be a slave,
+and 'dly' be a lil' small-ass integer fo' slowin down port accesses.
+Da 'nice' parameta controls tha driverz use of idle CPU time, at the
+expense of some speed.
+.TP
+.B "Da CDU-31A n' CDU-33A Sony Interface"
+This CD-ROM intercourse is found on a shitload of tha Pro Audio Spectrum sound
+cards, n' other Sony supplied intercourse cards.
+Da syntax be as bigs up:
+
+.in +4n
+.nf
+cdu31a=iobase,[irq[,is_pas_card]]
+.fi
+.in
+.IP
+Specifyin a IRQ value of zero  drops some lyrics ta tha driver dat hardware
+interrupts aren't supported (as on some PAS cards).
+If yo' card
+supports interrupts, you should use dem as it cuts down on tha CPU
+usage of tha driver.
+
+The
+.I is_pas_card
+should be entered as 'PAS' if rockin a Pro Audio Spectrum card,
+and otherwise it should not be specified at all.
+.TP
+.B "Da CDU-535 Sony Interface"
+Da syntax fo' dis CD-ROM intercourse is:
+
+.in +4n
+.nf
+sonycd535=iobase[,irq]
+.fi
+.in
+.IP
+A zero can be used fo' tha I/O base as a 'placeholder' if one wishes
+to specify a IRQ value.
+.TP
+.B "Da GoldStar Interface"
+Da syntax fo' dis CD-ROM intercourse is:
+
+.in +4n
+.nf
+gscd=iobase
+.fi
+.in
+.TP
+.B "Da ISP16 CD-ROM Interface"
+Syntax:
+
+.in +4n
+.nf
+isp16=[iobase[,irq[,dma[,type]]]]
+.fi
+.in
+.IP
+(Three integers n' a string.)
+If tha type is given as 'noisp16',
+the intercourse aint gonna be configured.
+Other recognized types
+are: 'Sanyo", 'Sony', 'Panasonic' n' 'Mitsumi'.
+.TP
+.B "Da Mitsumi Standard Interface"
+Da syntax fo' dis CD-ROM intercourse is:
+
+.in +4n
+.nf
+mcd=iobase,[irq[,wait_value]]
+.fi
+.in
+.IP
+The
+.I wait_value
+is used as a internal timeout value fo' playas whoz ass are
+havin problems wit they drive, n' may or may not be implemented
+dependin on a cold-ass lil compile-time #define.
+Da Mitsumi FX400 be a IDE/ATAPI CD-ROM playa n' do not use
+the mcd driver.
+.TP
+.B "Da Mitsumi XA/MultiSession Interface"
+This is fo' tha same hardware as above yo, but tha driver has extended features.
+Syntax:
+
+.in +4n
+.nf
+mcdx=iobase[,irq]
+.fi
+.in
+.TP
+.B "Da Optics Storage Interface"
+Da syntax fo' dis type of card is:
+
+.in +4n
+.nf
+optcd=iobase
+.fi
+.in
+.TP
+.B "Da Phillips CM206 Interface"
+Da syntax fo' dis type of card is:
+
+.in +4n
+.nf
+cm206=[iobase][,irq]
+.fi
+.in
+.IP
+Da driver assumes numbers between 3 n' 11 is IRQ joints, and
+numbers between 0x300 n' 0x370 is I/O ports, so you can specify one,
+or both numbers, up in any order.
+It also accepts 'cm206=auto' ta enable
+autoprobing.
+.TP
+.B "Da Sanyo Interface"
+Da syntax fo' dis type of card is:
+
+.in +4n
+.nf
+sjcd=iobase[,irq[,dma_channel]]
+.fi
+.in
+.TP
+.B "Da SoundBlasta Pro Interface"
+Da syntax fo' dis type of card is:
+
+.in +4n
+.nf
+sbpcd=iobase,type
+.fi
+.in
+.IP
+where type is one of tha followin (case sensitive) strings:
+\&'SoundBlaster', 'LaserMate', or 'SPEA'.
+Da I/O base is dat of the
+CD-ROM intercourse, n' not dat of tha sound portion of tha card.
+.SS Ethernet devices
+Different drivers make use of different parametas yo, but they all at
+least share havin a IRQ, a I/O port base value, n' a name.
+In its most generic form, it looks suttin' like this:
+
+.in +4n
+.nf
+ether=irq,iobase[,param_1[,...param_8]],name
+.fi
+.in
+
+Da first nonnumeric argument is taken as tha name.
+Da param_n joints (if applicable) probably have different meanings fo' each
+different card/driver.
+Typical param_n joints is used ta specify
+things like shared memory address, intercourse selection, DMA channel
+and tha like.
+
+Da most common use of dis parameta is ta force probin fo' a second
+ethercard, as tha default is ta probe only fo' one.
+This can be accomplished wit a simple:
+
+.in +4n
+.nf
+ether=0,0,eth1
+.fi
+.in
+
+Note dat tha jointz of zero fo' tha IRQ n' I/O base up in tha above
+example tell tha driver(s) ta autoprobe.
+
+Da Ethernet-HowTo has extensive documentation on rockin multiple
+cardz n' on tha card/driver-specific implementation
+of tha param_n joints where used.
+Interested readaz should refer to
+the section up in dat document on they particular card.
+.SS Da floppy disk driver
+There is nuff floppy driver options, n' they is all listed in
+.I Documentation/floppy.txt
+(or
+.I drivers/block/README.fd
+for olda kernels) up in tha Linux kernel source.
+This shiznit is taken directly
+from dat file.
+.TP
+.B "floppy=mask,allowed_drive_mask"
+Sets tha bit mask of allowed drives ta mask.
+By default, only units 0
+and 1 of each floppy controlla is allowed.
+This is done cuz
+certain nonstandard hardware (ASUS PCI motherboards) mess up the
+keyboard when accessin units 2 or 3.
+This option is somewhat
+obsoleted by tha cmos option.
+.TP
+.B "floppy=all_drives"
+Sets tha bit mask of allowed drives ta all drives.
+Use dis if you have
+more than two drives connected ta a gangbangin' floppy controller.
+.TP
+.B "floppy=asus_pci"
+Sets tha bit mask ta allow only units 0 n' 1.
+(Da default)
+.TP
+.B "floppy=daring"
+Tells tha floppy driver dat you gotz a well behaved floppy
+controller.
+This allows mo' efficient n' smoother operation yo, but
+may fail on certain controllers.
+This may speed up certain operations.
+.TP
+.B "floppy=0,daring"
+Tells tha floppy driver dat yo' floppy controlla should be used
+with caution.
+.TP
+.B "floppy=one_fdc"
+Tells tha floppy driver dat you have only floppy controlla (default)
+.TP
+.BR floppy=two_fdc " or " floppy=address,two_fdc
+Tells tha floppy driver dat you have two floppy controllers.
+Da second floppy controlla be assumed ta be at address.
+If address is
+not given, 0x370 be assumed.
+.TP
+.B "floppy=thinkpad"
+Tells tha floppy driver dat you gotz a Thinkpad.
+Thinkpadz use an
+inverted convention fo' tha disk chizzle line.
+.TP
+.B "floppy=0,thinkpad"
+Tells tha floppy driver dat you aint gots a Thinkpad.
+.TP
+.B "floppy=drive,type,cmos"
+Sets tha cmos type of drive ta type.
+Additionally, dis drive is
+allowed up in tha bit mask.
+This is useful if you have mo' than two
+floppy drives (only two can be busted lyrics bout up in tha physical cmos), or if
+your BIOS uses nonstandard CMOS types.
+Settin tha CMOS ta 0 fo' the
+first two drives (default) make tha floppy driver read tha physical
+cmos fo' dem drives.
+.TP
+.B "floppy=unexpected_interrupts"
+Print a warnin message when a unexpected interrupt is received
+(default behavior)
+.TP
+.BR floppy=no_unexpected_interrupts " or " floppy=L40SX
+Don't print a message when a unexpected interrupt is received.
+This is needed on IBM L40SX laptops up in certain vizzle modes.
+(There seems to
+be a interaction between vizzle n' floppy.
+Da unexpected interrupts
+only affect performance, n' can safely be ignored.)
+.SS Da sound driver
+Da sound driver can also accept boot arguments ta override tha compiled in
+values.
+This aint recommended, as it is rather complex.
+It be busted lyrics bout up in tha Linux kernel source file
+.IR Documentation/sound/oss/README.OSS
+.RI ( drivers/sound/Readme.linux
+in olda kernel versions).
+It accepts
+a boot argument of tha form:
+
+.in +4n
+.nf
+sound=device1[,device2[,device3...[,device10]]]
+.fi
+.in
+.IP
+where each deviceN value iz of tha followin format 0xTaaaId n' the
+bytes is used as bigs up:
+
+T \- thang type: 1=FM, 2=SB, 3=PAS, 4=GUS, 5=MPU401, 6=SB16,
+7=SB16-MPU401
+
+aaa \- I/O address up in hex.
+
+I \- interrupt line up in hex (i.e 10=a, 11=b, ...)
+
+d \- DMA channel.
+
+As you can peep it gets pretty messy, n' yo ass is betta off ta compile
+in yo' own underground joints as recommended.
+Usin a funky-ass boot argument of
+\&'sound=0' will disable tha sound driver entirely.
+.SS ISDN drivers
+.TP
+.B "Da ICN ISDN driver"
+Syntax:
+
+.in +4n
+.nf
+icn=iobase,membase,icn_id1,icn_id2
+.fi
+.in
+.IP
+where icn_id1,icn_id2 is two strings used ta identify the
+card up in kernel lyrics.
+.TP
+.B "Da PCBIT ISDN driver"
+Syntax:
+
+.in +4n
+.nf
+pcbit=membase1,irq1[,membase2,irq2]
+.fi
+.in
+.IP
+where membaseN is tha shared memory base of tha N'th card, n' irqN is
+the interrupt settin of tha N'th card.
+Da default is IRQ 5 and
+membase 0xD0000.
+.TP
+.B "Da Telez ISDN driver"
+Syntax:
+
+.in +4n
+.nf
+teles=iobase,irq,membase,protocol,teles_id
+.fi
+.in
+.IP
+where iobase is tha I/O port address of tha card, membase is the
+shared memory base address of tha card, irq is tha interrupt channel
+the card uses, n' teles_id is tha unique ASCII strang identifier.
+.SS Serial port drivers
+.TP
+.B "Da RISCom/8 Multiport Serial Driver ('riscom8=')"
+Syntax:
+
+.in +4n
+.nf
+riscom=iobase1[,iobase2[,iobase3[,iobase4]]]
+.fi
+.in
+.IP
+Mo' details can be found up in tha kernel source file
+.IR Documentation/riscom8.txt .
+.TP
+.B "Da DigiBoard Driver ('digi=')"
+If dis option is used, it should have precisely six parameters.
+Syntax:
+
+.in +4n
+.nf
+digi=status,type,altpin,numports,iobase,membase
+.fi
+.in
+.IP
+Da parametas maybe given as integers, or as strings.
+If strings is used, then iobase n' membase should be given
+in hexadecimal.
+Da integer arguments (fewer may be given) is up in order:
+status (Enable(1) or Disable(0) dis card),
+type (PC/Xi(0), PC/Xe(1), PC/Xeve(2), PC/Xem(3)),
+altpin (Enable(1) or Disable(0) alternate pin arrangement),
+numports (number of ports on dis card),
+iobase (I/O Port where card is configured (in HEX)),
+membase (base of memory window (in HEX)).
+Thus, tha followin two boot prompt arguments is equivalent:
+
+.in +4n
+.nf
+digi=E,PC/Xi,D,16,200,D0000
+digi=1,0,0,16,0x200,851968
+.fi
+.in
+.IP
+Mo' details can be found up in tha kernel source file
+.IR Documentation/digiboard.txt .
+.TP
+.B "Da Bizzlecom Serial/Parallel Radio Modem"
+Syntax:
+
+.in +4n
+.nf
+baycom=iobase,irq,modem
+.fi
+.in
+.IP
+There is precisely 3 parameters; fo' nuff muthafuckin cards, give
+several 'baycom=' commands.
+Da modem parameta be a string
+that can take one of tha joints ser12, ser12*, par96, par96*.
+Here tha * denotes dat software DCD is ta be used, and
+ser12/par96 chizzlez between tha supported modem types.
+For mo' details, peep tha file
+.I Documentation/networking/baycom.txt
+(or
+.I drivers/net/README.baycom
+for olda kernels) up in tha Linux kernel source.
+.TP
+.B "Soundcard radio modem driver"
+Syntax:
+
+.in +4n
+.nf
+soundmodem=iobase,irq,dma[,dma2[,serio[,pario]]],0,mode
+.fi
+.in
+.IP
+All parametas except tha last is integers;
+the dummy 0 is required cuz of a funky-ass bug up in tha setup code.
+Da mode parameta be a strang wit syntax hw:modem,
+where hw is one of sbc, wss, wssfdx n' modem is one of
+afsk1200, fsk9600.
+.SS Da line printa driver
+.TP
+.B "'lp='"
+.br
+Syntax:
+
+.in +4n
+.nf
+lp=0
+lp=auto
+lp=reset
+lp=port[,port...]
+.fi
+.in
+.IP
+Yo ass can tell tha printa driver what tha fuck ports ta use n' what tha fuck ports not
+to use.
+Da latta comes up in handy if you don't want tha printa driver
+to claim all available parallel ports, so dat other drivers
+(e.g., PLIP, PPA) can use dem instead.
+
+Da format of tha argument is multiple port names.
+For example,
+lp=none,parport0 would use tha straight-up original gangsta parallel port fo' lp1, and
+disable lp0.
+To disable tha printa driver entirely, one can use
+lp=0.
+.TP
+.B "WDT500/501 driver"
+Syntax:
+
+.in +4n
+.nf
+wdt=io,irq
+.fi
+.in
+.SS Mouse drivers
+.TP
+.B "'bmouse=irq'"
+Da busmouse driver accepts only one parameter, dat bein the
+hardware IRQ value ta be used.
+.TP
+.B "'msmouse=irq'"
+And precisely tha same is legit fo' tha msmouse driver.
+.TP
+.B "ATARI mouse setup"
+Syntax:
+
+.in +4n
+.nf
+atamouse=threshold[,y-threshold]
+.fi
+.in
+.IP
+If only one argument is given, it is used fo' both
+x-threshold n' y-threshold.
+Otherwise, tha straight-up original gangsta argument
+is tha x-threshold, n' tha second tha y-threshold.
+These joints must lie between 1 n' 20 (inclusive); tha default is 2.
+.SS Video hardware
+.TP
+.B "'no-scroll'"
+This option  drops some lyrics ta tha console driver not ta use hardware scroll
+(where a scroll is effected by movin tha screen origin up in vizzle
+memory, instead of movin tha data).
+It be required by certain
+Braille machines.
+.\" .SH AUTHORS
+.\" Linus Torvaldz (and nuff others)
+.SH SEE ALSO
+.BR lilo.conf (5),
+.BR klogd (8),
+.BR lilo (8),
+.BR mount (8)
+
+Big-Ass partz of dis playa page done been derived from the
+Boot Parameta HOWTO (version 1.0.1) freestyled by Pizzle Gortmaker.
+Mo' shiznit may be found up in dis (or a mo' recent) HOWTO.
+An up-to-date source of shiznit is tha kernel source file
+.IR Documentation/kernel-parameters.txt .
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

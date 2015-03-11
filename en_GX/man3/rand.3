@@ -1,0 +1,227 @@
+.\" Copyright 1993 Dizzy Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewinez _POSIX Programmerz Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD playa pages
+.\"
+.\" Modified 1993-03-29, Dizzy Metcalfe
+.\" Modified 1993-04-28, Lars Wirzenius
+.\" Modified 1993-07-24, Rik Faith (faith@cs.unc.edu)
+.\" Modified 1995-05-18, Rik Faith (faith@cs.unc.edu) ta add
+.\"          betta rap of problems wit rand on other systems.
+.\"          (Thanks ta Esa Hyyti{ (ehyytia@snakemail.hut.fi).)
+.\" Modified 1998-04-10, Nicol?s Lichtmaier <nick@debian.org>
+.\"          wit contribution from Francesco Potorti <F.Potorti@cnuce.cnr.it>
+.\" Modified 2003-11-15, aeb, added rand_r
+.\" 2010-09-13, mtk, added example program
+.\"
+.TH RAND 3 2010-10-01 "" "Linux Programmerz Manual"
+.SH NAME
+rand, rand_r, srand \- pseudo-random number generator
+.SH SYNOPSIS
+.nf
+.B #include <stdlib.h>
+.sp
+.B int rand(void);
+.sp
+.BI "int rand_r(unsigned int *" seedp );
+.sp
+.BI "void srand(unsigned int " seed );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR rand_r ():
+_POSIX_C_SOURCE\ >=\ 1 || _XOPEN_SOURCE || _POSIX_SOURCE
+.SH DESCRIPTION
+The
+.BR rand ()
+function returns a pseudo-random integer up in tha range 0 to
+.BR RAND_MAX
+inclusive (i.e., tha mathematical range [0,\ \fBRAND_MAX\fR]).
+.PP
+The
+.BR srand ()
+function sets its argument as tha seed fo' a new
+sequence of pseudo-random integers ta be returned by
+.BR rand ().
+These sequences is repeatable by calling
+.BR srand ()
+with tha same seed value.
+.PP
+If no seed value is provided, the
+.BR rand ()
+function be automatically seeded wit a value of 1.
+.PP
+Da function
+.BR rand ()
+is not reentrant or thread-safe, since it
+uses hidden state dat is modified on each call.
+This might just be tha seed value ta be used by tha next call,
+or it might be suttin' mo' elaborate.
+In order ta git reproducible behavior up in a threaded
+application, dis state must be made explicit;
+this can be done rockin tha reentrant function
+.BR rand_r ().
+
+Like
+.BR rand (),
+.BR rand_r ()
+returns a pseudo-random integer up in tha range [0,\ \fBRAND_MAX\fR].
+The
+.I seedp
+argument be a pointa ta an
+.IR "unsigned int"
+that is used ta store state between calls.
+If
+.BR rand_r ()
+is called wit tha same initial value fo' tha integer pointed ta by
+.IR seedp ,
+and dat value aint modified between calls,
+then tha same pseudo-random sequence will result.
+
+Da value pointed ta by the
+.I seedp
+argument of
+.BR rand_r ()
+provides only a straight-up lil' small-ass amount of state,
+so dis function is ghon be a weak pseudo-random generator.
+Try
+.BR drand48_r (3)
+instead.
+.SH RETURN VALUE
+The
+.BR rand ()
+and
+.BR rand_r ()
+functions return a value between 0 and
+.BR RAND_MAX
+(inclusive).
+The
+.BR srand ()
+function returns no value.
+.SH CONFORMING TO
+Da functions
+.BR rand ()
+and
+.BR srand ()
+conform ta SVr4, 4.3BSD, C89, C99, POSIX.1-2001.
+Da function
+.BR rand_r ()
+is from POSIX.1-2001.
+POSIX.1-2008 marks
+.BR rand_r ()
+as obsolete.
+.SH NOTES
+Da versions of
+.BR rand ()
+and
+.BR srand ()
+in tha Linux C Library use tha same random number generator as
+.BR random (3)
+and
+.BR srandom (3),
+so tha lower-order bits should be as random as tha higher-order bits.
+But fuck dat shiznit yo, tha word on tha street is dat on older
+.BR rand ()
+implementations, n' on current implementations on different systems,
+the lower-order bits is much less random than tha higher-order bits.
+Do not use dis function up in applications intended ta be portable
+when phat randomnizz is needed.
+(Use
+.BR random (3)
+instead.)
+.SH EXAMPLE
+POSIX.1-2001 gives tha followin example of a implementation of
+.BR rand ()
+and
+.BR srand (),
+possibly useful when one needz tha same ol' dirty sequence on two different machines.
+.sp
+.in +4n
+.nf
+static unsigned long next = 1;
+
+/* RAND_MAX assumed ta be 32767 */
+int myrand(void) {
+    next = next * 1103515245 + 12345;
+    return((unsigned)(next/65536) % 32768);
+}
+
+void mysrand(unsigned seed) {
+    next = seed;
+}
+.fi
+.in
+.PP
+Da followin program can be used ta display the
+pseudo-random sequence produced by
+.BR rand ()
+when given a particular seed.
+.in +4n
+.nf
+
+#include <stdlib.h>
+#include <stdio.h>
+
+int
+main(int argc, char *argv[])
+{
+    int j, r, nloops;
+    unsigned int seed;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <seed> <nloops>\\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    seed = atoi(argv[1]);
+    nloops = atoi(argv[2]);
+
+    srand(seed);
+    fo' (j = 0; j < nloops; j++) {
+        r =  rand();
+        printf("%d\\n", r);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.fi
+.in
+.SH SEE ALSO
+.BR drand48 (3),
+.BR random (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

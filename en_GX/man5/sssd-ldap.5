@@ -1,0 +1,1754 @@
+'\" t
+.\"     Title: sssd-ldap
+.\"    Author: Da SSSD upstream - http://fedorahosted.org/sssd
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 12/11/2014
+.\"    Manual: File Formats n' Conventions
+.\"    Source: SSSD
+.\"  Language: Gangsta
+.\"
+.TH "SSSD\-LDAP" "5" "12/11/2014" "SSSD" "File Formats n' Conventions"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+sssd-ldap \- tha configuration file fo' SSSD
+.SH "DESCRIPTION"
+.PP
+This manual page raps bout tha configuration of LDAP domains for
+\fBsssd\fR(8)\&. Refer ta the
+\(lqFILE FORMAT\(rq
+section of the
+\fBsssd.conf\fR(5)
+manual page fo' detailed syntax shiznit\&.
+.PP
+Yo ass can configure SSSD ta use mo' than one LDAP domain\&.
+.PP
+LDAP back end supports id, auth, access n' chpass providers\&. If you wanna authenticate against a LDAP server either TLS/SSL or LDAPS is required\&.
+\fBsssd\fR\fIdoes not\fR
+support authentication over a unencrypted channel\&. If tha LDAP server is used only as a identitizzle provider, a encrypted channel aint needed\&. Please refer to
+\(lqldap_access_filter\(rq
+config option fo' mo' shiznit bout rockin LDAP as a access provider\&.
+.SH "CONFIGURATION OPTIONS"
+.PP
+All of tha common configuration options dat apply ta SSSD domains also apply ta LDAP domains\&. Refer ta the
+\(lqDOMAIN SECTIONS\(rq
+section of the
+\fBsssd.conf\fR(5)
+manual page fo' full details\&.
+.PP
+ldap_uri, ldap_backup_uri (string)
+.RS 4
+Specifies tha comma\-separated list of URIz of tha LDAP servers ta which SSSD should connect up in tha order of preference\&. Refer ta the
+\(lqFAILOVER\(rq
+section fo' mo' shiznit on failover n' server redundancy\&. If neither option is specified, steez discovery is enabled\&. For mo' shiznit, refer ta the
+\(lqSERVICE DISCOVERY\(rq
+section\&.
+.sp
+Da format of tha URI must match tha format defined up in RFC 2732:
+.sp
+ldap[s]://<host>[:port]
+.sp
+For explicit IPv6 addresses, <host> must be enclosed up in brackets []
+.sp
+example: ldap://[fc00::126:25]:389
+.RE
+.PP
+ldap_chpass_uri, ldap_chpass_backup_uri (string)
+.RS 4
+Specifies tha comma\-separated list of URIz of tha LDAP servers ta which SSSD should connect up in tha order of preference ta chizzle tha password of a user\&. Refer ta the
+\(lqFAILOVER\(rq
+section fo' mo' shiznit on failover n' server redundancy\&.
+.sp
+To enable steez discovery ldap_chpass_dns_service_name must be set\&.
+.sp
+Default: empty, i\&.e\&. ldap_uri is used\&.
+.RE
+.PP
+ldap_search_base (string)
+.RS 4
+Da default base DN ta use fo' struttin LDAP user operations\&.
+.sp
+Startin wit SSSD 1\&.7\&.0, SSSD supports multiple search bases rockin tha syntax:
+.sp
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&.
+.sp
+Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+Examples:
+.sp
+ldap_search_base = dc=example,dc=com (which is equivalent to) ldap_search_base = dc=example,dc=com?subtree?
+.sp
+ldap_search_base = cn=host_specific,dc=example,dc=com?subtree?(host=thishost)?dc=example\&.com?subtree?
+.sp
+Note: It be unsupported ta have multiple search bases which reference identically\-named objects (for example, crews wit tha same name up in two different search bases)\&. This will lead ta unpredictable behavior on client machines\&.
+.sp
+Default: If not set, tha value of tha defaultNamingContext or namingContexts attribute from tha RootDSE of tha LDAP server is used\&. If defaultNamingContext do not exist or has a empty value namingContexts is used\&. Da namingContexts attribute must gotz a single value wit tha DN of tha search base of tha LDAP server ta make dis work\&. Multiple joints is is not supported\&.
+.RE
+.PP
+ldap_schema (string)
+.RS 4
+Specifies tha Schema Type up in use on tha target LDAP server\&. Dependin on tha selected schema, tha default attribute names retrieved from tha servers may vary\&. Da way dat some attributes is handled may also differ\&.
+.sp
+Four schema types is currently supported:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+rfc2307
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+rfc2307bis
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+IPA
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+AD
+.RE
+.sp
+Da main difference between these schema types is how tha fuck crew memberships is recorded up in tha server\&. With rfc2307, crew thugz is listed by name up in the
+\fImemberUid\fR
+attribute\&. With rfc2307bis n' IPA, crew thugz is listed by DN n' stored up in the
+\fImember\fR
+attribute\&. Da AD schema type sets tha attributes ta correspond wit Actizzle Directory 2008r2 joints\&.
+.sp
+Default: rfc2307
+.RE
+.PP
+ldap_default_bind_dn (string)
+.RS 4
+Da default bind DN ta use fo' struttin LDAP operations\&.
+.RE
+.PP
+ldap_default_authtok_type (string)
+.RS 4
+Da type of tha authentication token of tha default bind DN\&.
+.sp
+Da two mechanizzlez currently supported are:
+.sp
+password
+.sp
+obfuscated_password
+.sp
+Default: password
+.RE
+.PP
+ldap_default_authtok (string)
+.RS 4
+Da authentication token of tha default bind DN\&. Only clear text passwordz is currently supported\&.
+.RE
+.PP
+ldap_user_object_class (string)
+.RS 4
+Da object class of a user entry up in LDAP\&.
+.sp
+Default: posixAccount
+.RE
+.PP
+ldap_user_name (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user\*(Aqs login name\&.
+.sp
+Default: uid
+.RE
+.PP
+ldap_user_uid_number (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user\*(Aqs id\&.
+.sp
+Default: uidNumber
+.RE
+.PP
+ldap_user_gid_number (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user\*(Aqs primary crew id\&.
+.sp
+Default: gidNumber
+.RE
+.PP
+ldap_user_gecos (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user\*(Aqs gecos field\&.
+.sp
+Default: gecos
+.RE
+.PP
+ldap_user_home_directory (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha name of tha user\*(Aqs home directory\&.
+.sp
+Default: homeDirectory
+.RE
+.PP
+ldap_user_shell (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha path ta tha user\*(Aqs default shell\&.
+.sp
+Default: loginShell
+.RE
+.PP
+ldap_user_objectsid (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha objectSID of a LDAP user object\&. This is probably only necessary fo' ActiveDirectory servers\&.
+.sp
+Default: objectSid fo' ActiveDirectory, not set fo' other servers\&.
+.RE
+.PP
+ldap_user_modify_timestamp (string)
+.RS 4
+Da LDAP attribute dat gotz nuff timestamp of tha last modification of tha parent object\&.
+.sp
+Default: modifyTimestamp
+.RE
+.PP
+ldap_user_shadow_last_change (string)
+.RS 4
+When rockin ldap_pwd_policy=shadow, dis parameta gotz nuff tha name of a LDAP attribute correspondin ta its
+\fBshadow\fR(5)
+counterpart (date of tha last password chizzle)\&.
+.sp
+Default: shadowLastChange
+.RE
+.PP
+ldap_user_shadow_min (string)
+.RS 4
+When rockin ldap_pwd_policy=shadow, dis parameta gotz nuff tha name of a LDAP attribute correspondin ta its
+\fBshadow\fR(5)
+counterpart (minimum password age)\&.
+.sp
+Default: shadowMin
+.RE
+.PP
+ldap_user_shadow_max (string)
+.RS 4
+When rockin ldap_pwd_policy=shadow, dis parameta gotz nuff tha name of a LDAP attribute correspondin ta its
+\fBshadow\fR(5)
+counterpart (maximum password age)\&.
+.sp
+Default: shadowMax
+.RE
+.PP
+ldap_user_shadow_warnin (string)
+.RS 4
+When rockin ldap_pwd_policy=shadow, dis parameta gotz nuff tha name of a LDAP attribute correspondin ta its
+\fBshadow\fR(5)
+counterpart (password warnin period)\&.
+.sp
+Default: shadowWarning
+.RE
+.PP
+ldap_user_shadow_inactizzle (string)
+.RS 4
+When rockin ldap_pwd_policy=shadow, dis parameta gotz nuff tha name of a LDAP attribute correspondin ta its
+\fBshadow\fR(5)
+counterpart (password inactivitizzle period)\&.
+.sp
+Default: shadowInactive
+.RE
+.PP
+ldap_user_shadow_expire (string)
+.RS 4
+When rockin ldap_pwd_policy=shadow or ldap_account_expire_policy=shadow, dis parameta gotz nuff tha name of a LDAP attribute correspondin ta its
+\fBshadow\fR(5)
+counterpart (account expiration date)\&.
+.sp
+Default: shadowExpire
+.RE
+.PP
+ldap_user_krb_last_pwd_change (string)
+.RS 4
+When rockin ldap_pwd_policy=mit_kerberos, dis parameta gotz nuff tha name of a LDAP attribute storin tha date n' time of last password chizzle up in kerberos\&.
+.sp
+Default: krbLastPwdChange
+.RE
+.PP
+ldap_user_krb_password_expiration (string)
+.RS 4
+When rockin ldap_pwd_policy=mit_kerberos, dis parameta gotz nuff tha name of a LDAP attribute storin tha date n' time when current password expires\&.
+.sp
+Default: krbPasswordExpiration
+.RE
+.PP
+ldap_user_ad_account_expires (string)
+.RS 4
+When rockin ldap_account_expire_policy=ad, dis parameta gotz nuff tha name of a LDAP attribute storin tha expiration time of tha account\&.
+.sp
+Default: accountExpires
+.RE
+.PP
+ldap_user_ad_user_account_control (string)
+.RS 4
+When rockin ldap_account_expire_policy=ad, dis parameta gotz nuff tha name of a LDAP attribute storin tha user account control bit field\&.
+.sp
+Default: userAccountControl
+.RE
+.PP
+ldap_ns_account_lock (string)
+.RS 4
+When rockin ldap_account_expire_policy=rhdz or equivalent, dis parameta determines if access be allowed or not\&.
+.sp
+Default: nsAccountLock
+.RE
+.PP
+ldap_user_nds_login_disabled (string)
+.RS 4
+When rockin ldap_account_expire_policy=nds, dis attribute determines if access be allowed or not\&.
+.sp
+Default: loginDisabled
+.RE
+.PP
+ldap_user_nds_login_expiration_time (string)
+.RS 4
+When rockin ldap_account_expire_policy=nds, dis attribute determines until which date access is granted\&.
+.sp
+Default: loginDisabled
+.RE
+.PP
+ldap_user_nds_login_allowed_time_map (string)
+.RS 4
+When rockin ldap_account_expire_policy=nds, dis attribute determines tha minutez of a thugged-out dizzle up in a week when access is granted\&.
+.sp
+Default: loginAllowedTimeMap
+.RE
+.PP
+ldap_user_principal (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha user\*(Aqs Kerberos User Principal Name (UPN)\&.
+.sp
+Default: krbPrincipalName
+.RE
+.PP
+ldap_user_extra_attrs (string)
+.RS 4
+Comma\-separated list of LDAP attributes dat SSSD would fetch along wit tha usual set of user attributes\&.
+.sp
+Da list can either contain LDAP attribute names only, or colon\-separated tuplez of SSSD cache attribute name n' LDAP attribute name\&. In case only LDAP attribute name is specified, tha attribute is saved ta tha cache verbatim\&. Usin a cold-ass lil custom SSSD attribute name might be required by environments dat configure nuff muthafuckin SSSD domains wit different LDAP schemas\&.
+.sp
+Please note dat nuff muthafuckin attribute names is reserved by SSSD, notably the
+\(lqname\(rq
+attribute\&. Right back up in yo muthafuckin ass. SSSD would report a error if any of tha reserved attribute names is used as a extra attribute name\&.
+.sp
+Examples:
+.sp
+ldap_user_extra_attrs = telephoneNumber
+.sp
+Save the
+\(lqtelephoneNumber\(rq
+attribute from LDAP as
+\(lqtelephoneNumber\(rq
+to tha cache\&.
+.sp
+ldap_user_extra_attrs = phone:telephoneNumber
+.sp
+Save the
+\(lqtelephoneNumber\(rq
+attribute from LDAP as
+\(lqphone\(rq
+to tha cache\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_user_ssh_public_key (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha user\*(Aqs SSH hood keys\&.
+.RE
+.PP
+ldap_force_upper_case_realm (boolean)
+.RS 4
+Some directory servers, fo' example Actizzle Directory, might serve up tha realm part of tha UPN up in lower case, which might cause tha authentication ta fail\&. Right back up in yo muthafuckin ass. Set dis option ta a non\-zero value if you wanna use a upper\-case realm\&.
+.sp
+Default: false
+.RE
+.PP
+ldap_enumeration_refresh_timeout (integer)
+.RS 4
+Specifies how tha fuck nuff secondz SSSD has ta wait before refreshin its cache of enumerated records\&.
+.sp
+Default: 300
+.RE
+.PP
+ldap_purge_cache_timeout (integer)
+.RS 4
+Determine how tha fuck often ta check tha cache fo' inactizzle entries (like fuckin crews wit no thugz n' playas whoz ass have never logged in) n' remove dem ta save space\&.
+.sp
+Settin dis option ta zero will disable tha cache cleanup operation\&.
+.sp
+Default: 10800 (12 hours)
+.RE
+.PP
+ldap_user_fullname (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user\*(Aqs full name\&.
+.sp
+Default: cn
+.RE
+.PP
+ldap_user_member_of (string)
+.RS 4
+Da LDAP attribute dat lists tha user\*(Aqs crew memberships\&.
+.sp
+Default: memberOf
+.RE
+.PP
+ldap_user_authorized_service (string)
+.RS 4
+If access_provider=ldap n' ldap_access_order=authorized_service, SSSD will use tha presence of tha authorizedService attribute up in tha user\*(Aqs LDAP entry ta determine access privilege\&.
+.sp
+An explicit deny (!svc) is resolved first\&. Right back up in yo muthafuckin ass. Second, SSSD searches fo' explicit allow (svc) n' finally fo' allow_all (*)\&.
+.sp
+Please note dat tha ldap_access_order configuration option
+\fImust\fR
+include
+\(lqauthorized_service\(rq
+in order fo' tha ldap_user_authorized_service option ta work\&.
+.sp
+Default: authorizedService
+.RE
+.PP
+ldap_user_authorized_host (string)
+.RS 4
+If access_provider=ldap n' ldap_access_order=host, SSSD will use tha presence of tha host attribute up in tha user\*(Aqs LDAP entry ta determine access privilege\&.
+.sp
+An explicit deny (!host) is resolved first\&. Right back up in yo muthafuckin ass. Second, SSSD searches fo' explicit allow (host) n' finally fo' allow_all (*)\&.
+.sp
+Please note dat tha ldap_access_order configuration option
+\fImust\fR
+include
+\(lqhost\(rq
+in order fo' tha ldap_user_authorized_host option ta work\&.
+.sp
+Default: host
+.RE
+.PP
+ldap_group_object_class (string)
+.RS 4
+Da object class of a crew entry up in LDAP\&.
+.sp
+Default: posixGroup
+.RE
+.PP
+ldap_group_name (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha crew name\&.
+.sp
+Default: cn
+.RE
+.PP
+ldap_group_gid_number (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha group\*(Aqs id\&.
+.sp
+Default: gidNumber
+.RE
+.PP
+ldap_group_member (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha namez of tha group\*(Aqs members\&.
+.sp
+Default: memberuid (rfc2307) / member (rfc2307bis)
+.RE
+.PP
+ldap_group_objectsid (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha objectSID of a LDAP crew object\&. This is probably only necessary fo' ActiveDirectory servers\&.
+.sp
+Default: objectSid fo' ActiveDirectory, not set fo' other servers\&.
+.RE
+.PP
+ldap_group_modify_timestamp (string)
+.RS 4
+Da LDAP attribute dat gotz nuff timestamp of tha last modification of tha parent object\&.
+.sp
+Default: modifyTimestamp
+.RE
+.PP
+ldap_group_type (integer)
+.RS 4
+Da LDAP attribute dat gotz nuff a integer value indicatin tha type of tha crew n' maybe other flags\&.
+.sp
+This attribute is currently only used by tha AD provider ta determine if a crew be a thugged-out domain local crews n' has ta be filtered up fo' trusted domains\&.
+.sp
+Default: groupType up in tha AD provider, othewise not set
+.RE
+.PP
+ldap_group_nesting_level (integer)
+.RS 4
+If ldap_schema is set ta a schema format dat supports nested crews (e\&.g\&. RFC2307bis), then dis option controls how tha fuck nuff levelz of nestin SSSD will follow\&. This option has no effect on tha RFC2307 schema\&.
+.sp
+Note: This option specifies tha guaranteed level of nested crews ta be processed fo' any lookup\&. But fuck dat shiznit yo, tha word on tha street is dat nested crews beyond dis limit
+\fImay be\fR
+returned if previous lookups already resolved tha deeper nestin levels\& fo' realz. Also, subsequent lookups fo' other crews may enpimpin' tha result set fo' original gangsta lookup if re\-queried\&.
+.sp
+If ldap_group_nesting_level is set ta 0 then no nested crews is processed at all\&. But fuck dat shiznit yo, tha word on tha street is dat when connected ta Active\-Directory Server 2008 n' lata it is furthermore required ta disable usage of Token\-Groups by settin ldap_use_tokengroups ta false\&.
+.sp
+Default: 2
+.RE
+.PP
+ldap_groups_use_matching_rule_in_chain
+.RS 4
+This option  drops some lyrics ta SSSD ta take advantage of a Actizzle Directory\-specific feature which may speed up crew lookup operations on deployments wit complex or deep nested groups\&.
+.sp
+In most common cases, it is dopest ta leave dis option disabled\&. Well shiiiit, it generally only serves up a performizzle increase on straight-up complex nestings\&.
+.sp
+If dis option is enabled, SSSD will use it if it detects dat tha server supports it durin initial connection\&. Right back up in yo muthafuckin ass. So "True" here essentially means "auto\-detect"\&.
+.sp
+Note: This feature is currently known ta work only wit Actizzle Directory 2008 R1 n' later\&. Right back up in yo muthafuckin ass. See
+\m[blue]\fBMSDN(TM) documentation\fR\m[]\&\s-2\u[1]\d\s+2
+for mo' details\&.
+.sp
+Default: False
+.RE
+.PP
+ldap_initgroups_use_matching_rule_in_chain
+.RS 4
+This option  drops some lyrics ta SSSD ta take advantage of a Actizzle Directory\-specific feature which might speed up initgroups operations (most notably when dealin wit complex or deep nested groups)\&.
+.sp
+If dis option is enabled, SSSD will use it if it detects dat tha server supports it durin initial connection\&. Right back up in yo muthafuckin ass. So "True" here essentially means "auto\-detect"\&.
+.sp
+Note: This feature is currently known ta work only wit Actizzle Directory 2008 R1 n' later\&. Right back up in yo muthafuckin ass. See
+\m[blue]\fBMSDN(TM) documentation\fR\m[]\&\s-2\u[1]\d\s+2
+for mo' details\&.
+.sp
+Default: False
+.RE
+.PP
+ldap_use_tokengroups
+.RS 4
+This options enablez or disablez use of Token\-Groups attribute when struttin initgroup fo' playas from Actizzle Directory Server 2008 n' later\&.
+.sp
+Default: True
+.RE
+.PP
+ldap_netgroup_object_class (string)
+.RS 4
+Da object class of a netgroup entry up in LDAP\&.
+.sp
+In IPA provider, ipa_netgroup_object_class should be used instead\&.
+.sp
+Default: nisNetgroup
+.RE
+.PP
+ldap_netgroup_name (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha netgroup name\&.
+.sp
+In IPA provider, ipa_netgroup_name should be used instead\&.
+.sp
+Default: cn
+.RE
+.PP
+ldap_netgroup_member (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha namez of tha netgroup\*(Aqs members\&.
+.sp
+In IPA provider, ipa_netgroup_member should be used instead\&.
+.sp
+Default: memberNisNetgroup
+.RE
+.PP
+ldap_netgroup_triple (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha (host, user, domain) netgroup triples\&.
+.sp
+This option aint available up in IPA provider\&.
+.sp
+Default: nisNetgroupTriple
+.RE
+.PP
+ldap_netgroup_modify_timestamp (string)
+.RS 4
+Da LDAP attribute dat gotz nuff timestamp of tha last modification of tha parent object\&.
+.sp
+This option aint available up in IPA provider\&.
+.sp
+Default: modifyTimestamp
+.RE
+.PP
+ldap_service_object_class (string)
+.RS 4
+Da object class of a steez entry up in LDAP\&.
+.sp
+Default: ipService
+.RE
+.PP
+ldap_service_name (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha name of steez attributes n' they aliases\&.
+.sp
+Default: cn
+.RE
+.PP
+ldap_service_port (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha port managed by dis service\&.
+.sp
+Default: ipServicePort
+.RE
+.PP
+ldap_service_proto (string)
+.RS 4
+Da LDAP attribute dat gotz nuff tha protocols understood by dis service\&.
+.sp
+Default: ipServiceProtocol
+.RE
+.PP
+ldap_service_search_base (string)
+.RS 4
+An optionizzle base DN, search scope n' LDAP filta ta restrict LDAP searches fo' dis attribute type\&.
+.sp
+syntax:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&. Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+For examplez of dis syntax, please refer ta the
+\(lqldap_search_base\(rq
+examplez section\&.
+.sp
+Default: tha value of
+\fIldap_search_base\fR
+.sp
+Please note dat specifyin scope or filta aint supported fo' searches against a Actizzle Directory Server dat might yield a big-ass number of thangs up in dis biatch n' trigger tha Range Retrieval extension up in tha response\&.
+.RE
+.PP
+ldap_search_timeout (integer)
+.RS 4
+Specifies tha timeout (in seconds) dat ldap searches is allowed ta run before they is shut down n' cached thangs up in dis biatch is returned (and offline mode is entered)
+.sp
+Note: dis option is subject ta chizzle up in future versionz of tha SSSD\&. Well shiiiit, it will likely be replaced at some point by a seriez of timeouts fo' specific lookup types\&.
+.sp
+Default: 6
+.RE
+.PP
+ldap_enumeration_search_timeout (integer)
+.RS 4
+Specifies tha timeout (in seconds) dat ldap searches fo' user n' crew enumerations is allowed ta run before they is shut down n' cached thangs up in dis biatch is returned (and offline mode is entered)
+.sp
+Default: 60
+.RE
+.PP
+ldap_network_timeout (integer)
+.RS 4
+Specifies tha timeout (in seconds) afta which the
+\fBpoll\fR(2)/\fBselect\fR(2)
+followin a
+\fBconnect\fR(2)
+returns up in case of no activity\&.
+.sp
+Default: 6
+.RE
+.PP
+ldap_opt_timeout (integer)
+.RS 4
+Specifies a timeout (in seconds) afta which calls ta synchronous LDAP APIs will abort if no response is received\& fo' realz. Also controls tha timeout when communicatin wit tha KDC up in case of SASL bind\&.
+.sp
+Default: 6
+.RE
+.PP
+ldap_connection_expire_timeout (integer)
+.RS 4
+Specifies a timeout (in seconds) dat a cold-ass lil connection ta a LDAP server is ghon be maintained\& fo' realz. Afta dis time, tha connection is ghon be re\-established\&. If used up in parallel wit SASL/GSSAPI, tha sooner of tha two joints (this value vs\&. tha TGT gametime) is ghon be used\&.
+.sp
+Default: 900 (15 minutes)
+.RE
+.PP
+ldap_page_size (integer)
+.RS 4
+Specify tha number of recordz ta retrieve from LDAP up in a single request\&. Right back up in yo muthafuckin ass. Some LDAP servers enforce a maximum limit per\-request\&.
+.sp
+Default: 1000
+.RE
+.PP
+ldap_disable_pagin (boolean)
+.RS 4
+Disable tha LDAP pagin control\&. This option should be used if tha LDAP server reports dat it supports tha LDAP pagin control up in its RootDSE but it aint enabled or do not behave properly\&.
+.sp
+Example: OpenLDAP servers wit tha pagin control module installed on tha server but not enabled will report it up in tha RootDSE but be unable ta use it\&.
+.sp
+Example: 389 DS has a funky-ass bug where it can only support a one pagin control at a time on a single connection\&. On busy clients, dis can result up in some requests bein denied\&.
+.sp
+Default: False
+.RE
+.PP
+ldap_disable_range_retrieval (boolean)
+.RS 4
+Disable Actizzle Directory range retrieval\&.
+.sp
+Actizzle Directory limits tha number of thugz ta be retrieved up in a single lookup rockin tha MaxValRange policy (which defaults ta 1500 members)\&. If a crew gotz nuff mo' members, tha reply would include a AD\-specific range extension\&. This option disablez parsin of tha range extension, therefore big-ass crews will step tha fuck up as havin no members\&.
+.sp
+Default: False
+.RE
+.PP
+ldap_sasl_minssf (integer)
+.RS 4
+When communicatin wit a LDAP server rockin SASL, specify tha minimum securitizzle level necessary ta establish tha connection\&. Da jointz of dis option is defined by OpenLDAP\&.
+.sp
+Default: Use tha system default (usually specified by ldap\&.conf)
+.RE
+.PP
+ldap_deref_threshold (integer)
+.RS 4
+Specify tha number of crew thugz dat must be missin from tha internal cache up in order ta trigger a thugged-out dereference lookup\&. If less thugz is missing, they is looked up individually\&.
+.sp
+Yo ass can turn off dereference lookups straight-up by settin tha value ta 0\&.
+.sp
+A dereference lookup be a meanz of fetchin all crew thugz up in a single LDAP call\&. Different LDAP servers may implement different dereference methods\&. Da currently supported servers is 389/RHDS, OpenLDAP n' Actizzle Directory\&.
+.sp
+\fINote:\fR
+If any of tha search bases specifies a search filter, then tha dereference lookup performizzle enhancement is ghon be disabled regardless of dis setting\&.
+.sp
+Default: 10
+.RE
+.PP
+ldap_tls_reqcert (string)
+.RS 4
+Specifies what tha fuck checks ta big-ass up on server certificates up in a TLS session, if any\&. Well shiiiit, it can be specified as one of tha followin joints:
+.sp
+\fInever\fR
+= Da client aint gonna request or check any server certificate\&.
+.sp
+\fIallow\fR
+= Da server certificate is requested\&. If no certificate is provided, tha session proceedz normally\&. If a wack certificate is provided, it is ghon be ignored n' tha session proceedz normally\&.
+.sp
+\fItry\fR
+= Da server certificate is requested\&. If no certificate is provided, tha session proceedz normally\&. If a wack certificate is provided, tha session is immediately terminated\&.
+.sp
+\fIdemand\fR
+= Da server certificate is requested\&. If no certificate is provided, or a wack certificate is provided, tha session is immediately terminated\&.
+.sp
+\fIhard\fR
+= Same as
+\(lqdemand\(rq
+.sp
+Default: hard
+.RE
+.PP
+ldap_tls_cacert (string)
+.RS 4
+Specifies tha file dat gotz nuff certificates fo' all of tha Certificate Authoritizzles that
+\fBsssd\fR
+will recognize\&.
+.sp
+Default: use OpenLDAP defaults, typically in
+/etc/openldap/ldap\&.conf
+.RE
+.PP
+ldap_tls_cacertdir (string)
+.RS 4
+Specifies tha path of a gangbangin' finger-lickin' directory dat gotz nuff Certificate Authoritizzle certificates up in separate individual files\&. Typically tha file names need ta be tha hash of tha certificate followed by \*(Aq\&.0\*(Aq\&. If available,
+\fBcacertdir_rehash\fR
+can be used ta create tha erect names\&.
+.sp
+Default: use OpenLDAP defaults, typically in
+/etc/openldap/ldap\&.conf
+.RE
+.PP
+ldap_tls_cert (string)
+.RS 4
+Specifies tha file dat gotz nuff tha certificate fo' tha client\*(Aqs key\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_tls_key (string)
+.RS 4
+Specifies tha file dat gotz nuff tha client\*(Aqs key\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_tls_cipher_suite (string)
+.RS 4
+Specifies aaight cipher suites\&. Typically dis be a cold-ass lil colon sperated list\&. Right back up in yo muthafuckin ass. See
+\fBldap.conf\fR(5)
+for format\&.
+.sp
+Default: use OpenLDAP defaults, typically in
+/etc/openldap/ldap\&.conf
+.RE
+.PP
+ldap_id_use_start_tls (boolean)
+.RS 4
+Specifies dat tha id_provider connection must also use
+tls
+to protect tha channel\&.
+.sp
+Default: false
+.RE
+.PP
+ldap_id_mappin (boolean)
+.RS 4
+Specifies dat SSSD should attempt ta map user n' crew IDs from tha ldap_user_objectsid n' ldap_group_objectsid attributes instead of relyin on ldap_user_uid_number n' ldap_group_gid_number\&.
+.sp
+Currently dis feature supports only ActiveDirectory objectSID mapping\&.
+.sp
+Default: false
+.RE
+.PP
+ldap_min_id, ldap_max_id (interger)
+.RS 4
+In contrast ta tha SID based ID mappin which is used if ldap_id_mappin is set ta legit tha allowed ID range fo' ldap_user_uid_number n' ldap_group_gid_number is unbound\&. In a setup wit sub/trusted\-domains dis might lead ta ID collisions\&. To avoid collisions ldap_min_id n' ldap_max_id can be set ta restrict tha allowed range fo' tha IDs which is read directly from tha server\&. Right back up in yo muthafuckin ass. Sub\-domains can then pick other ranges ta map IDs\&.
+.sp
+Default: not set (both options is set ta 0)
+.RE
+.PP
+ldap_sasl_mech (string)
+.RS 4
+Specify tha SASL mechanizzle ta use\&. Currently only GSSAPI is tested n' supported\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_sasl_authid (string)
+.RS 4
+Specify tha SASL authorization id ta use\&. When GSSAPI is used, dis represents tha Kerberos principal used fo' authentication ta tha directory\&. This option can either contain tha full principal (for example host/myhost@EXAMPLE\&.COM) or just tha principal name (for example host/myhost)\&.
+.sp
+Default: host/hostname@REALM
+.RE
+.PP
+ldap_sasl_realm (string)
+.RS 4
+Specify tha SASL realm ta use\&. When not specified, dis option defaults ta tha value of krb5_realm\&. If tha ldap_sasl_authid gotz nuff tha realm as well, dis option is ignored\&.
+.sp
+Default: tha value of krb5_realm\&.
+.RE
+.PP
+ldap_sasl_canonicalize (boolean)
+.RS 4
+If set ta true, tha LDAP library would big-ass up a reverse lookup ta canonicalize tha host name durin a SASL bind\&.
+.sp
+Default: false;
+.RE
+.PP
+ldap_krb5_keytab (string)
+.RS 4
+Specify tha keytab ta use when rockin SASL/GSSAPI\&.
+.sp
+Default: System keytab, normally
+/etc/krb5\&.keytab
+.RE
+.PP
+ldap_krb5_init_credz (boolean)
+.RS 4
+Specifies dat tha id_provider should init Kerberos credentials (TGT)\&. This action is performed only if SASL is used n' tha mechanizzle selected is GSSAPI\&.
+.sp
+Default: true
+.RE
+.PP
+ldap_krb5_ticket_lifetime (integer)
+.RS 4
+Specifies tha gametime up in secondz of tha TGT if GSSAPI is used\&.
+.sp
+Default: 86400 (24 hours)
+.RE
+.PP
+krb5_server, krb5_backup_server (string)
+.RS 4
+Specifies tha comma\-separated list of IP addresses or hostnamez of tha Kerberos servers ta which SSSD should connect up in tha order of preference\&. For mo' shiznit on failover n' server redundancy, peep the
+\(lqFAILOVER\(rq
+section\& fo' realz. An optionizzle port number (preceded by a cold-ass lil colon) may be appended ta tha addresses or hostnames\&. If empty, steez discovery is enabled \- fo' mo' shiznit, refer ta the
+\(lqSERVICE DISCOVERY\(rq
+section\&.
+.sp
+When rockin steez discovery fo' KDC or kpasswd servers, SSSD first searches fo' DNS entries dat specify _udp as tha protocol n' falls back ta _tcp if none is found\&.
+.sp
+This option was named
+\(lqkrb5_kdcip\(rq
+in earlier releasez of SSSD\&. While tha legacy name is recognized fo' tha time being, playas is advised ta migrate they config filez ta use
+\(lqkrb5_server\(rq
+instead\&.
+.RE
+.PP
+krb5_realm (string)
+.RS 4
+Specify tha Kerberos REALM (for SASL/GSSAPI auth)\&.
+.sp
+Default: System defaults, see
+/etc/krb5\&.conf
+.RE
+.PP
+krb5_canonicalize (boolean)
+.RS 4
+Specifies if tha host principal should be canonicalized when connectin ta LDAP server\&. This feature be available wit MIT Kerberos >= 1\&.7
+.sp
+Default: false
+.RE
+.PP
+krb5_use_kdcinfo (boolean)
+.RS 4
+Specifies if tha SSSD should instruct tha Kerberos libraries what tha fuck realm n' which KDCs ta use\&. This option is on by default, if you disable it, you need ta configure tha Kerberos library rockin the
+\fBkrb5.conf\fR(5)
+configuration file\&.
+.sp
+See the
+\fBsssd_krb5_locator_plugin\fR(8)
+manual page fo' mo' shiznit on tha locator plugin\&.
+.sp
+Default: true
+.RE
+.PP
+ldap_pwd_policy (string)
+.RS 4
+Select tha policy ta evaluate tha password expiration on tha client side\&. Da followin joints is allowed:
+.sp
+\fInone\fR
+\- No evaluation on tha client side\&. This option cannot disable server\-side password policies\&.
+.sp
+\fIshadow\fR
+\- Use
+\fBshadow\fR(5)
+style attributes ta evaluate if tha password has expired\&.
+.sp
+\fImit_kerberos\fR
+\- Use tha attributes used by MIT Kerberos ta determine if tha password has expired\&. Use chpass_provider=krb5 ta update these attributes when tha password is chizzled\&.
+.sp
+Default: none
+.sp
+\fINote\fR: if a password policy is configured on server side, it always takes precedence over policy set wit dis option\&.
+.RE
+.PP
+ldap_referrals (boolean)
+.RS 4
+Specifies whether automatic referral chasin should be enabled\&.
+.sp
+Please note dat sssd only supports referral chasin when it is compiled wit OpenLDAP version 2\&.4\&.13 or higher\&.
+.sp
+Chasin referrals may incur a performizzle penalty up in environments dat use dem heavily, a notable example is Microsizzlez Actizzle Directory\&. If yo' setup do not up in fact require tha use of referrals, settin dis option ta false might brang a noticeable performizzle improvement\&.
+.sp
+Default: true
+.RE
+.PP
+ldap_dns_service_name (string)
+.RS 4
+Specifies tha steez name ta use when steez discovery is enabled\&.
+.sp
+Default: ldap
+.RE
+.PP
+ldap_chpass_dns_service_name (string)
+.RS 4
+Specifies tha steez name ta use ta find a LDAP server which allows password chizzlez when steez discovery is enabled\&.
+.sp
+Default: not set, i\&.e\&. steez discovery is disabled
+.RE
+.PP
+ldap_chpass_update_last_change (bool)
+.RS 4
+Specifies whether ta update tha ldap_user_shadow_last_change attribute wit minutes since tha Epoch afta a password chizzle operation\&.
+.sp
+Default: False
+.RE
+.PP
+ldap_access_filta (string)
+.RS 4
+If rockin access_provider = ldap n' ldap_access_order = filta (default), dis option is mandatory\&. Well shiiiit, it specifies a LDAP search filta criteria dat must be kicked it wit fo' tha user ta be granted access on dis host\&. If access_provider = ldap, ldap_access_order = filta n' dis option aint set, it will result up in all playas bein denied access\&. Use access_provider = permit ta chizzle dis default behavior\&. Please note dat dis filta be applied on tha LDAP user entry only\&.
+.sp
+Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+access_provider = ldap
+ldap_access_filta = (employeeType=admin)
+                        
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This example means dat access ta dis host is restricted ta playas whose hommieType attribute is set ta "admin"\&.
+.sp
+Offline cachin fo' dis feature is limited ta determinin whether tha user\*(Aqs last online login was granted access permission\&. If they was granted access durin they last login, they will continue ta be granted access while offline n' vice\-versa\&.
+.sp
+Default: Empty
+.RE
+.PP
+ldap_account_expire_policy (string)
+.RS 4
+With dis option a cold-ass lil client side evaluation of access control attributes can be enabled\&.
+.sp
+Please note dat it be always recommended ta use server side access control, i\&.e\&. tha LDAP server should deny tha bind request wit a suitable error code even if tha password is erect\&.
+.sp
+Da followin joints is allowed:
+.sp
+\fIshadow\fR: use tha value of ldap_user_shadow_expire ta determine if tha account is expired\&.
+.sp
+\fIad\fR: use tha value of tha 32bit field ldap_user_ad_user_account_control n' allow access if tha second bit aint set\&. If tha attribute is missin access is granted\& fo' realz. Also tha expiration time of tha account is checked\&.
+.sp
+\fIrhds\fR,
+\fIipa\fR,
+\fI389ds\fR: use tha value of ldap_ns_account_lock ta check if access be allowed or not\&.
+.sp
+\fInds\fR: tha jointz of ldap_user_nds_login_allowed_time_map, ldap_user_nds_login_disabled n' ldap_user_nds_login_expiration_time is used ta check if access be allowed\&. If both attributes is missin access is granted\&.
+\fI This be a experimenstrual feature, please use http://fedorahosted\&.org/sssd ta report any issues\&. \fR
+.sp
+Please note dat tha ldap_access_order configuration option
+\fImust\fR
+include
+\(lqexpire\(rq
+in order fo' tha ldap_account_expire_policy option ta work\&.
+.sp
+Default: Empty
+.RE
+.PP
+ldap_access_order (string)
+.RS 4
+Comma separated list of access control options\& fo' realz. Allowed joints are:
+.sp
+\fIfilter\fR: use ldap_access_filter
+.sp
+\fIlockout\fR: use account locking\&. If set, dis option denies access up in case dat ldap attribute \*(AqpwdAccountLockedTime\*(Aq is present n' has value of \*(Aq000001010000Z\*(Aq\&. Please peep tha option ldap_pwdlockout_dn\&.
+.sp
+\fIexpire\fR: use ldap_account_expire_policy
+.sp
+\fIauthorized_service\fR: use tha authorizedService attribute ta determine access
+.sp
+\fIhost\fR: use tha host attribute ta determine access
+.sp
+Default: filter
+.sp
+Please note dat it aint nuthin but a cold-ass lil configuration error if a value is used mo' than once\&.
+.RE
+.PP
+ldap_pwdlockout_dn (string)
+.RS 4
+This option specifies tha DN of password policy entry on LDAP server\&. Please note dat absence of dis option up in sssd\&.conf up in case of enabled account lockout checkin will yield access denied as ppolicy attributes on LDAP server cannot be checked properly\&.
+.sp
+Example: cn=ppolicy,ou=policies,dc=example,dc=com
+.sp
+Default: cn=ppolicy,ou=policies,$ldap_search_base
+.RE
+.PP
+ldap_deref (string)
+.RS 4
+Specifies how tha fuck alias dereferencin is done when struttin a search\&. Da followin options is allowed:
+.sp
+\fInever\fR: Aliases is never dereferenced\&.
+.sp
+\fIsearching\fR: Aliases is dereferenced up in subordinatez of tha base object yo, but not up in locatin tha base object of tha search\&.
+.sp
+\fIfinding\fR: Aliases is only dereferenced when locatin tha base object of tha search\&.
+.sp
+\fIalways\fR: Aliases is dereferenced both up in searchin n' up in locatin tha base object of tha search\&.
+.sp
+Default: Empty (this is handled as
+\fInever\fR
+by tha LDAP client libraries)
+.RE
+.PP
+ldap_rfc2307_fallback_to_local_users (boolean)
+.RS 4
+Allows ta retain local playas as thugz of a LDAP crew fo' servers dat use tha RFC2307 schema\&.
+.sp
+In some environments where tha RFC2307 schema is used, local playas is made thugz of LDAP crews by addin they names ta tha memberUid attribute\&. Da self\-consistency of tha domain is compromised when dis is done, so SSSD would normally remove tha "missing" playas from tha cached crew memberships as soon as nsswitch tries ta fetch shiznit bout tha user via getpw*() or initgroups() calls\&.
+.sp
+This option falls back ta checkin if local playas is referenced, n' caches dem so dat lata initgroups() calls will augment tha local playas wit tha additionizzle LDAP groups\&.
+.sp
+Default: false
+.RE
+.SH "SUDO OPTIONS"
+.PP
+Da detailed instructions fo' configuration of sudo_provider is up in tha manual page
+\fBsssd-sudo\fR(5)\&.
+.PP
+.PP
+ldap_sudorule_object_class (string)
+.RS 4
+Da object class of a sudo rule entry up in LDAP\&.
+.sp
+Default: sudoRole
+.RE
+.PP
+ldap_sudorule_name (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha sudo rule name\&.
+.sp
+Default: cn
+.RE
+.PP
+ldap_sudorule_command (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha command name\&.
+.sp
+Default: sudoCommand
+.RE
+.PP
+ldap_sudorule_host (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha host name (or host IP address, host IP network, or host netgroup)
+.sp
+Default: sudoHost
+.RE
+.PP
+ldap_sudorule_user (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user name (or UID, crew name or user\*(Aqs netgroup)
+.sp
+Default: sudoUser
+.RE
+.PP
+ldap_sudorule_option (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha sudo options\&.
+.sp
+Default: sudoOption
+.RE
+.PP
+ldap_sudorule_runasuser (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha user name dat commandz may be run as\&.
+.sp
+Default: sudoRunAsUser
+.RE
+.PP
+ldap_sudorule_runasgroup (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha crew name or crew GID dat commandz may be run as\&.
+.sp
+Default: sudoRunAsGroup
+.RE
+.PP
+ldap_sudorule_notbefore (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha start date/time fo' when tha sudo rule is valid\&.
+.sp
+Default: sudoNotBefore
+.RE
+.PP
+ldap_sudorule_notafta (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha expiration date/time, afta which tha sudo rule will no longer be valid\&.
+.sp
+Default: sudoNotAfter
+.RE
+.PP
+ldap_sudorule_order (string)
+.RS 4
+Da LDAP attribute dat correspondz ta tha orderin index of tha rule\&.
+.sp
+Default: sudoOrder
+.RE
+.PP
+ldap_sudo_full_refresh_interval (integer)
+.RS 4
+How tha fuck nuff secondz SSSD will wait between executin a gangbangin' full refresh of sudo rulez (which downloadz all rulez dat is stored on tha server)\&.
+.sp
+Da value must be pimped outa than
+\fIldap_sudo_smart_refresh_interval \fR
+.sp
+Default: 21600 (6 hours)
+.RE
+.PP
+ldap_sudo_smart_refresh_interval (integer)
+.RS 4
+How tha fuck nuff secondz SSSD has ta wait before executin a smart-ass refresh of sudo rulez (which downloadz all rulez dat have USN higher than tha highest USN of cached rules)\&.
+.sp
+If USN attributes is not supported by tha server, tha modifyTimestamp attribute is used instead\&.
+.sp
+Default: 900 (15 minutes)
+.RE
+.PP
+ldap_sudo_use_host_filta (boolean)
+.RS 4
+If true, SSSD will downlizzle only rulez dat is applicable ta dis machine (usin tha IPv4 or IPv6 host/network addresses n' hostnames)\&.
+.sp
+Default: true
+.RE
+.PP
+ldap_sudo_hostnames (string)
+.RS 4
+Space separated list of hostnames or straight-up qualified domain names dat should be used ta filta tha rules\&.
+.sp
+If dis option is empty, SSSD will try ta discover tha hostname n' tha straight-up qualified domain name automatically\&.
+.sp
+If
+\fIldap_sudo_use_host_filter\fR
+is
+\fIfalse\fR
+then dis option has no effect\&.
+.sp
+Default: not specified
+.RE
+.PP
+ldap_sudo_ip (string)
+.RS 4
+Space separated list of IPv4 or IPv6 host/network addresses dat should be used ta filta tha rules\&.
+.sp
+If dis option is empty, SSSD will try ta discover tha addresses automatically\&.
+.sp
+If
+\fIldap_sudo_use_host_filter\fR
+is
+\fIfalse\fR
+then dis option has no effect\&.
+.sp
+Default: not specified
+.RE
+.PP
+ldap_sudo_include_netgroups (boolean)
+.RS 4
+If legit then SSSD will downlizzle every last muthafuckin rule dat gotz nuff a netgroup up in sudoHost attribute\&.
+.sp
+If
+\fIldap_sudo_use_host_filter\fR
+is
+\fIfalse\fR
+then dis option has no effect\&.
+.sp
+Default: true
+.RE
+.PP
+ldap_sudo_include_regexp (boolean)
+.RS 4
+If legit then SSSD will downlizzle every last muthafuckin rule dat gotz nuff a wildcard up in sudoHost attribute\&.
+.sp
+If
+\fIldap_sudo_use_host_filter\fR
+is
+\fIfalse\fR
+then dis option has no effect\&.
+.sp
+Default: true
+.RE
+.PP
+This manual page only raps bout attribute name mapping\&. For detailed explanation of sudo related attribute semantics, see
+\fBsudoers.ldap\fR(5)
+.SH "AUTOFS OPTIONS"
+.PP
+Please note dat tha default joints correspond ta tha default schema which is RFC2307\&.
+.PP
+.PP
+ldap_autofs_map_object_class (string)
+.RS 4
+Da object class of a automount map entry up in LDAP\&.
+.sp
+Default: automountMap
+.RE
+.PP
+ldap_autofs_map_name (string)
+.RS 4
+Da name of a automount map entry up in LDAP\&.
+.sp
+Default: ou
+.RE
+.PP
+ldap_autofs_entry_object_class (string)
+.RS 4
+Da object class of a automount map entry up in LDAP\&.
+.sp
+Default: automountMap
+.RE
+.PP
+ldap_autofs_entry_key (string)
+.RS 4
+Da key of a automount entry up in LDAP\&. Da entry probably correspondz ta a mount point\&.
+.sp
+Default: cn
+.RE
+.PP
+ldap_autofs_entry_value (string)
+.RS 4
+Da key of a automount entry up in LDAP\&. Da entry probably correspondz ta a mount point\&.
+.sp
+Default: automountInformation
+.RE
+.PP
+Please note dat tha automounta only readz tha masta map on startup, so if any autofs\-related chizzlez is made ta tha sssd\&.conf, you typically also need ta restart tha automounta daemon afta restartin tha SSSD\&.
+.SH "ADVANCED OPTIONS"
+.PP
+These options is supported by LDAP domains yo, but they should be used wit caution\&. Please include dem up in yo' configuration only if you know what tha fuck yo ass is bustin\&.
+.PP
+ldap_netgroup_search_base (string)
+.RS 4
+An optionizzle base DN, search scope n' LDAP filta ta restrict LDAP searches fo' dis attribute type\&.
+.sp
+syntax:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&. Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+For examplez of dis syntax, please refer ta the
+\(lqldap_search_base\(rq
+examplez section\&.
+.sp
+Default: tha value of
+\fIldap_search_base\fR
+.sp
+Please note dat specifyin scope or filta aint supported fo' searches against a Actizzle Directory Server dat might yield a big-ass number of thangs up in dis biatch n' trigger tha Range Retrieval extension up in tha response\&.
+.RE
+.PP
+ldap_user_search_base (string)
+.RS 4
+An optionizzle base DN, search scope n' LDAP filta ta restrict LDAP searches fo' dis attribute type\&.
+.sp
+syntax:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&. Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+For examplez of dis syntax, please refer ta the
+\(lqldap_search_base\(rq
+examplez section\&.
+.sp
+Default: tha value of
+\fIldap_search_base\fR
+.sp
+Please note dat specifyin scope or filta aint supported fo' searches against a Actizzle Directory Server dat might yield a big-ass number of thangs up in dis biatch n' trigger tha Range Retrieval extension up in tha response\&.
+.RE
+.PP
+ldap_group_search_base (string)
+.RS 4
+An optionizzle base DN, search scope n' LDAP filta ta restrict LDAP searches fo' dis attribute type\&.
+.sp
+syntax:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&. Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+For examplez of dis syntax, please refer ta the
+\(lqldap_search_base\(rq
+examplez section\&.
+.sp
+Default: tha value of
+\fIldap_search_base\fR
+.sp
+Please note dat specifyin scope or filta aint supported fo' searches against a Actizzle Directory Server dat might yield a big-ass number of thangs up in dis biatch n' trigger tha Range Retrieval extension up in tha response\&.
+.RE
+.PP
+ldap_user_search_filta (string)
+.RS 4
+This option specifies a additionizzle LDAP search filta criteria dat restrict user searches\&.
+.sp
+This option is
+\fIdeprecated\fR
+in favor of tha syntax used by ldap_user_search_base\&.
+.sp
+Default: not set
+.sp
+Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+                            ldap_user_search_filta = (loginShell=/bin/tcsh)
+                        
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This filta would restrict user searches ta playas dat have they shell set ta /bin/tcsh\&.
+.RE
+.PP
+ldap_group_search_filta (string)
+.RS 4
+This option specifies a additionizzle LDAP search filta criteria dat restrict crew searches\&.
+.sp
+This option is
+\fIdeprecated\fR
+in favor of tha syntax used by ldap_group_search_base\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_sudo_search_base (string)
+.RS 4
+An optionizzle base DN, search scope n' LDAP filta ta restrict LDAP searches fo' dis attribute type\&.
+.sp
+syntax:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&. Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+For examplez of dis syntax, please refer ta the
+\(lqldap_search_base\(rq
+examplez section\&.
+.sp
+Default: tha value of
+\fIldap_search_base\fR
+.sp
+Please note dat specifyin scope or filta aint supported fo' searches against a Actizzle Directory Server dat might yield a big-ass number of thangs up in dis biatch n' trigger tha Range Retrieval extension up in tha response\&.
+.RE
+.PP
+ldap_autofs_search_base (string)
+.RS 4
+An optionizzle base DN, search scope n' LDAP filta ta restrict LDAP searches fo' dis attribute type\&.
+.sp
+syntax:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+search_base[?scope?[filter][?search_base?scope?[filter]]*]
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da scope can be one of "base", "onelevel" or "subtree"\&. Da filta must be a valid LDAP search filta as specified by http://www\&.ietf\&.org/rfc/rfc2254\&.txt
+.sp
+For examplez of dis syntax, please refer ta the
+\(lqldap_search_base\(rq
+examplez section\&.
+.sp
+Default: tha value of
+\fIldap_search_base\fR
+.sp
+Please note dat specifyin scope or filta aint supported fo' searches against a Actizzle Directory Server dat might yield a big-ass number of thangs up in dis biatch n' trigger tha Range Retrieval extension up in tha response\&.
+.RE
+.SH "FAILOVER"
+.PP
+Da failover feature allows back endz ta automatically switch ta a gangbangin' finger-lickin' different server if tha current server fails\&.
+.SS "Failover Syntax"
+.PP
+Da list of servers is given as a cold-ass lil comma\-separated list; any number of spaces be allowed round tha comma\&. Da servers is listed up in order of preference\&. Da list can contain any number of servers\&.
+.PP
+For each failover\-enabled config option, two variants exist:
+\fIprimary\fR
+and
+\fIbackup\fR\&. Da scam is dat servers up in tha primary list is preferred n' backup servers is only searched if no primary servers can be reached\&. If a funky-ass backup server is selected, a timeout of 31 secondz is set\& fo' realz. Afta dis timeout SSSD will periodically try ta reconnect ta one of tha primary servers\&. If it succeeds, it will replace tha current actizzle (backup) server\&.
+.SS "Da Failover Mechanism"
+.PP
+Da failover mechanizzle distinguishes between a machine n' a service\&. Da back end first tries ta resolve tha hostname of a given machine; if dis resolution attempt fails, tha machine is considered offline\&. No further attempts is made ta connect ta dis machine fo' any other service\&. If tha resolution attempt succeeds, tha back end tries ta connect ta a steez on dis machine\&. If tha steez connection attempt fails, then only dis particular steez is considered offline n' tha back end automatically switches over ta tha next service\&. Da machine is still considered online n' might still be tried fo' another service\&.
+.PP
+Further connection attempts is made ta machines or skillz marked as offline afta a specified period of time; dis is currently hard coded ta 30 seconds\&.
+.PP
+If there be no mo' machines ta try, tha back end as a whole switches ta offline mode, n' then attempts ta reconnect every last muthafuckin 30 seconds\&.
+.SH "SERVICE DISCOVERY"
+.PP
+Da steez discovery feature allows back endz ta automatically find tha appropriate servers ta connect ta rockin a special DNS query\&. This feature aint supported fo' backup servers\&.
+.SS "Configuration"
+.PP
+If no servers is specified, tha back end automatically uses steez discovery ta try ta find a server\&. Optionally, tha user may chizzle ta use both fixed server addresses n' steez discovery by insertin a special keyword,
+\(lq_srv_\(rq, up in tha list of servers\&. Da order of preference is maintained\&. This feature is useful if, fo' example, tha user prefers ta use steez discovery whenever possible, n' fall back ta a specific server when no servers can be discovered rockin DNS\&.
+.SS "Da domain name"
+.PP
+Please refer ta the
+\(lqdns_discovery_domain\(rq
+parameta up in the
+\fBsssd.conf\fR(5)
+manual page fo' mo' details\&.
+.SS "Da protocol"
+.PP
+Da queries probably specify _tcp as tha protocol\&. Exceptions is documented up in respectizzle option description\&.
+.SS "See Also"
+.PP
+For mo' shiznit on tha steez discovery mechanism, refer ta RFC 2782\&.
+.SH "ID MAPPING"
+.PP
+Da ID\-mappin feature allows SSSD ta act as a cold-ass lil client of Actizzle Directory without requirin administrators ta extend user attributes ta support POSIX attributes fo' user n' crew identifiers\&.
+.PP
+NOTE: When ID\-mappin is enabled, tha uidNumber n' gidNumber attributes is ignored\&. This is ta avoid tha possibilitizzle of conflicts between automatically\-assigned n' manually\-assigned joints\&. If you need ta use manually\-assigned joints, ALL joints must be manually\-assigned\&.
+.PP
+Please note dat changin tha ID mappin related configuration options will cause user n' crew IDs ta chizzle\& fo' realz. At tha moment, SSSD do not support changin IDs, so tha SSSD database must be removed\&. Because cached passwordz is also stored up in tha database, removin tha database should only be performed while tha authentication servers is reachable, otherwise playas might git locked out\&. In order ta cache tha password, a authentication must be performed\&. Well shiiiit, it aint sufficient ta use
+\fBsss_cache\fR(8)
+to remove tha database, rather tha process consists of:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Makin shizzle tha remote servers is reachable
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Stoppin tha SSSD service
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Removin tha database
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Startin tha SSSD service
+.RE
+.sp
+Mo'over, as tha chizzle of IDs might necessitate tha adjustment of other system propertizzles like fuckin file n' directory ballership, it\*(Aqs advisable ta plan ahead n' test tha ID mappin configuration thoroughly\&.
+.SS "Mappin Algorithm"
+.PP
+Actizzle Directory serves up a objectSID fo' every last muthafuckin user n' crew object up in tha directory\&. This objectSID can be fucked up tha fuck into components dat represent tha Actizzle Directory domain identitizzle n' tha relatizzle identifier (RID) of tha user or crew object\&.
+.PP
+Da SSSD ID\-mappin algorithm takes a range of available UIDs n' divides it tha fuck into equally\-sized component sections \- called "slices"\-\&. Each slice represents tha space available ta a Actizzle Directory domain\&.
+.PP
+When a user or crew entry fo' a particular domain is encountered fo' tha last time, tha SSSD allocates one of tha available slices fo' dat domain\&. In order ta make dis slice\-assignment repeatable on different client machines, we select tha slice based on tha followin algorithm:
+.PP
+Da SID strang is passed all up in tha murmurhash3 algorithm ta convert it ta a 32\-bit hashed value\&. We then take tha moduluz of dis value wit tha total number of available slices ta pick tha slice\&.
+.PP
+NOTE: It be possible ta encounta collisions up in tha hash n' subsequent modulus\&. In these thangs, we will select tha next available slice yo, but it may not be possible ta reproduce tha same exact set of slices on other machines (since tha order dat they is encountered will determine they slice)\&. In dis thang, it is recommended ta either switch ta rockin explicit POSIX attributes up in Actizzle Directory (disablin ID\-mapping) or configure a thugged-out default domain ta guarantee dat at least one be always consistent\&. Right back up in yo muthafuckin ass. See
+\(lqConfiguration\(rq
+for details\&.
+.SS "Configuration"
+.PP
+Minimum configuration (in the
+\(lq[domain/DOMAINNAME]\(rq
+section):
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+ldap_id_mappin = True
+ldap_schema = ad
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Da default configuration thangs up in dis biatch up in configurin 10,000 slices, each capable of holdin up ta 200,000 IDs, startin from 10,001 n' goin up ta 2,000,100,000\&. This should be sufficient fo' most deployments\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBAdvanced Configuration\fR
+.RS 4
+.PP
+ldap_idmap_range_min (integer)
+.RS 4
+Specifies tha lower bound of tha range of POSIX IDs ta use fo' mappin Actizzle Directory user n' crew SIDs\&.
+.sp
+NOTE: This option is different from
+\(lqmin_id\(rq
+in that
+\(lqmin_id\(rq
+acts ta filta tha output of requests ta dis domain, whereas dis option controls tha range of ID assignment\&. This be a subtle distinction yo, but tha phat general lyrics would be ta have
+\(lqmin_id\(rq
+be less\-than or equal to
+\(lqldap_idmap_range_min\(rq
+.sp
+Default: 200000
+.RE
+.PP
+ldap_idmap_range_max (integer)
+.RS 4
+Specifies tha upper bound of tha range of POSIX IDs ta use fo' mappin Actizzle Directory user n' crew SIDs\&.
+.sp
+NOTE: This option is different from
+\(lqmax_id\(rq
+in that
+\(lqmax_id\(rq
+acts ta filta tha output of requests ta dis domain, whereas dis option controls tha range of ID assignment\&. This be a subtle distinction yo, but tha phat general lyrics would be ta have
+\(lqmax_id\(rq
+be pimped outer\-than or equal to
+\(lqldap_idmap_range_max\(rq
+.sp
+Default: 2000200000
+.RE
+.PP
+ldap_idmap_range_size (integer)
+.RS 4
+Specifies tha number of IDs available fo' each slice\&. If tha range size do not divide evenly tha fuck into tha min n' max joints, it will create as nuff complete slices as it can\&.
+.sp
+Default: 200000
+.RE
+.PP
+ldap_idmap_default_domain_sid (string)
+.RS 4
+Specify tha domain SID of tha default domain\&. This will guarantee dat dis domain will always be assigned ta slice zero up in tha ID map, bypassin tha murmurhash algorithm busted lyrics bout above\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_idmap_default_domain (string)
+.RS 4
+Specify tha name of tha default domain\&.
+.sp
+Default: not set
+.RE
+.PP
+ldap_idmap_autorid_compat (boolean)
+.RS 4
+Changes tha behavior of tha ID\-mappin algorithm ta behave mo' similarly ta winbind\*(Aqs
+\(lqidmap_autorid\(rq
+algorithm\&.
+.sp
+When dis option is configured, domains is ghon be allocated startin wit slice zero n' increasin monatomically wit each additionizzle domain\&.
+.sp
+NOTE: This algorithm is non\-deterministic (it dependz on tha order dat playas n' crews is requested)\&. If dis mode is required fo' compatibilitizzle wit machines hustlin winbind, it is recommended ta also use the
+\(lqldap_idmap_default_domain_sid\(rq
+option ta guarantee dat at least one domain is consistently allocated ta slice zero\&.
+.sp
+Default: False
+.RE
+.RE
+.SH "EXAMPLE"
+.PP
+Da followin example assumes dat SSSD is erectly configured n' LDAP is set ta one of tha domains up in the
+\fI[domains]\fR
+section\&.
+.PP
+.if n \{\
+.RS 4
+.\}
+.nf
+    [domain/LDAP]
+    id_provider = ldap
+    auth_provider = ldap
+    ldap_uri = ldap://ldap\&.mydomain\&.org
+    ldap_search_base = dc=mydomain,dc=org
+    ldap_tls_reqcert = demand
+    cache_credentials = true
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.SH "NOTES"
+.PP
+Da descriptionz of a shitload of tha configuration options up in dis manual page is based on the
+\fBldap.conf\fR(5)
+manual page from tha OpenLDAP 2\&.4 distribution\&.
+.SH "SEE ALSO"
+.PP
+\fBsssd\fR(8),
+\fBsssd.conf\fR(5),
+\fBsssd-ldap\fR(5),
+\fBsssd-krb5\fR(5),
+\fBsssd-simple\fR(5),
+\fBsssd-ipa\fR(5),
+\fBsssd-ad\fR(5),
+\fBsssd-sudo\fR(5),\fBsss_cache\fR(8),
+\fBsss_debuglevel\fR(8),
+\fBsss_groupadd\fR(8),
+\fBsss_groupdel\fR(8),
+\fBsss_groupshow\fR(8),
+\fBsss_groupmod\fR(8),
+\fBsss_useradd\fR(8),
+\fBsss_userdel\fR(8),
+\fBsss_usermod\fR(8),
+\fBsss_obfuscate\fR(8),
+\fBsss_seed\fR(8),
+\fBsssd_krb5_locator_plugin\fR(8),
+\fBsss_ssh_authorizedkeys\fR(8), \fBsss_ssh_knownhostsproxy\fR(8),\fBsssd-ifp\fR(5),\fBpam_sss\fR(8)\&.
+.SH "AUTHORS"
+.PP
+\fBDa SSSD upstream \- http://fedorahosted\&.org/sssd\fR
+.SH "NOTES"
+.IP " 1." 4
+MSDN(TM) documentation
+.RS 4
+\%http://msdn.microsoft.com/en-us/library/windows/desktop/aa746475%28v=vs.85%29.aspx
+.RE

@@ -1,0 +1,395 @@
+.\" Copyright (c) 1983, 1990, 1991 Da Regentz of tha Universitizzle of California.
+.\" All muthafuckin rights reserved.
+.\"
+.\" %%%LICENSE_START(BSD_4_CLAUSE_UCB)
+.\" Redistribution n' use up in source n' binary forms, wit or without
+.\" modification, is permitted provided dat tha followin conditions
+.\" is met:
+.\" 1. Redistributionz of source code must retain tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer.
+.\" 2. Redistributions up in binary form must reproduce tha above copyright
+.\"    notice, dis list of conditions n' tha followin disclaimer up in the
+.\"    documentation and/or other shiznit provided wit tha distribution.
+.\" 3 fo' realz. All advertisin shiznit mentionin features or use of dis software
+.\"    must display tha followin acknowledgement:
+.\"	This thang includes software pimped by tha Universitizzle of
+.\"	California, Berkeley n' its contributors.
+.\" 4. Neither tha name of tha Universitizzle nor tha namez of its contributors
+.\"    may be used ta endorse or promote shizzle derived from dis software
+.\"    without specific prior freestyled permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-21 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998-2000 by Andi Kleen ta match Linux 2.2 reality
+.\" Modified 2002-04-23 by Roger Luethi <rl@hellgate.ch>
+.\" Modified 2004-06-17 by Mike Kerrisk <mtk.manpages@gmail.com>
+.\" 2008-12-04, mtk, Add documentation of accept4()
+.\"
+.TH ACCEPT 2 2010-09-10 "Linux" "Linux Programmerz Manual"
+.SH NAME
+accept, accept4 \- accept a cold-ass lil connection on a socket
+.SH SYNOPSIS
+.nf
+.BR "#include <sys/types.h>" "          /* See NOTES */"
+.B #include <sys/socket.h>
+
+.BI "int accept(int " sockfd ", struct sockaddr *" addr ", socklen_t *" addrlen );
+
+.BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+.B #include <sys/socket.h>
+
+.BI "int accept4(int " sockfd ", struct sockaddr *" addr ,
+.BI "            socklen_t *" addrlen ", int " flags );
+.fi
+.SH DESCRIPTION
+The
+.BR accept ()
+system call is used wit connection-based socket types
+.RB ( SOCK_STREAM ,
+.BR SOCK_SEQPACKET ).
+It extracts tha straight-up original gangsta connection request on tha queue of pending
+connections fo' tha listenin socket,
+.IR sockfd ,
+creates a freshly smoked up connected socket, n' returns a freshly smoked up file
+descriptor referrin ta dat socket.
+Da newly pimped socket aint up in tha listenin state.
+Da original gangsta socket
+.I sockfd
+is unaffected by dis call.
+.PP
+Da argument
+.I sockfd
+is a socket dat has been pimped with
+.BR socket (2),
+bound ta a local address with
+.BR bind (2),
+and is listenin fo' connections afta a
+.BR listen (2).
+
+Da argument
+.I addr
+is a pointa ta a
+.I sockaddr
+structure.
+This structure is filled up in wit tha address of tha peer socket,
+as known ta tha communications layer.
+Da exact format of tha address returned
+.I addr
+is determined by tha socketz address crew (see
+.BR socket (2)
+and tha respectizzle protocol playa pages).
+When
+.I addr
+is NULL, not a god damn thang is filled in; up in dis case,
+.I addrlen
+is not used, n' should also be NULL.
+
+The
+.I addrlen
+argument be a value-result argument:
+the calla must initialize it ta contain the
+size (in bytes) of tha structure pointed ta by
+.IR addr ;
+on return it will contain tha actual size of tha peer address.
+
+Da returned address is truncated if tha buffer provided is too small;
+in dis case,
+.I addrlen
+will return a value pimped outa than was supplied ta tha call.
+.PP
+If no pending
+connections is present on tha queue, n' tha socket aint marked as
+nonblocking,
+.BR accept ()
+blocks tha calla until a cold-ass lil connection is present.
+If tha socket is marked
+nonblockin n' no pendin connections is present on tha queue,
+.BR accept ()
+fails wit tha error
+.BR EAGAIN
+or
+.BR EWOULDBLOCK .
+.PP
+In order ta be notified of incomin connections on a socket, you can use
+.BR select (2)
+or
+.BR poll (2).
+A readable event is ghon be served up when a freshly smoked up connection be attempted n' you
+may then call
+.BR accept ()
+to git a socket fo' dat connection.
+Alternatively, you can set tha socket ta deliver
+.B SIGIO
+when activitizzle occurs on a socket; see
+.BR socket (7)
+for details.
+.PP
+For certain protocols which require a explicit confirmation,
+such as
+DECNet,
+.BR accept ()
+can be thought of as merely dequeuin tha next connection request n' not
+implyin confirmation.
+Confirmation can be implied by
+a aiiight read or write on tha freshly smoked up file descriptor, n' rejection can be
+implied by closin tha freshly smoked up socket.
+Currently only
+DECNet
+has these semantics on Linux.
+
+If
+.IR flags
+is 0, then
+.BR accept4 ()
+is tha same ol' dirty as
+.BR accept ().
+Da followin joints can be bitwise ORed in
+.IR flags
+to obtain different behavior:
+.TP 16
+.B SOCK_NONBLOCK
+Set the
+.BR O_NONBLOCK
+file status flag on tha freshly smoked up open file description.
+Usin dis flag saves extra calls to
+.BR fcntl (2)
+to big up tha same result.
+.TP
+.B SOCK_CLOEXEC
+Set tha close-on-exec
+.RB ( FD_CLOEXEC )
+flag on tha freshly smoked up file descriptor.
+See tha description of the
+.B O_CLOEXEC
+flag in
+.BR open (2)
+for reasons why dis may be useful.
+.SH RETURN VALUE
+On success,
+these system calls return a nonnegatizzle integer dat be a thugged-out descriptor
+for tha accepted socket.
+On error, \-1 is returned, and
+.I errno
+is set appropriately.
+.SS Error handling
+Linux
+.BR accept ()
+(and
+.BR accept4 ())
+passes already-pendin network errors on tha freshly smoked up socket
+as a error code from
+.BR accept ().
+This behavior differs from other BSD socket
+implementations.
+For reliable operation tha application should detect
+the network errors defined fo' tha protocol after
+.BR accept ()
+and treat
+them like
+.B EAGAIN
+by retrying.
+In tha case of TCP/IP, these are
+.BR ENETDOWN ,
+.BR EPROTO ,
+.BR ENOPROTOOPT ,
+.BR EHOSTDOWN ,
+.BR ENONET ,
+.BR EHOSTUNREACH ,
+.BR EOPNOTSUPP ,
+and
+.BR ENETUNREACH .
+.SH ERRORS
+.TP
+.BR EAGAIN " or " EWOULDBLOCK
+.\" Actually EAGAIN on Linux
+Da socket is marked nonblockin n' no connections are
+present ta be accepted.
+POSIX.1-2001 allows either error ta be returned fo' dis case,
+and do not require these constants ta have tha same value,
+so a portable application should check fo' both possibilities.
+.TP
+.B EBADF
+Da descriptor is invalid.
+.TP
+.B ECONNABORTED
+A connection has been aborted.
+.TP
+.B EFAULT
+The
+.I addr
+argument aint up in a writable part of tha user address space.
+.TP
+.B EINTR
+Da system call was interrupted by a signal dat was caught
+before a valid connection arrived; see
+.BR signal (7).
+.TP
+.B EINVAL
+Socket aint listenin fo' connections, or
+.I addrlen
+is invalid (e.g., is negative).
+.TP
+.B EINVAL
+.RB ( accept4 ())
+invalid value in
+.IR flags .
+.TP
+.B EMFILE
+Da per-process limit of open file descriptors has been reached.
+.TP
+.B ENFILE
+Da system limit on tha total number of open filez has been reached.
+.TP
+.BR ENOBUFS ", " ENOMEM
+Not enough free memory.
+This often means dat tha memory allocation is limited by tha socket buffer
+limits, not by tha system memory.
+.TP
+.B ENOTSOCK
+Da descriptor references a gangbangin' file, not a socket.
+.TP
+.B EOPNOTSUPP
+Da referenced socket aint of type
+.BR SOCK_STREAM .
+.TP
+.B EPROTO
+Protocol error.
+.PP
+In addition, Linux
+.BR accept ()
+may fail if:
+.TP
+.B EPERM
+Firewall rulez forbid connection.
+.PP
+In addition, network errors fo' tha freshly smoked up socket n' as defined
+for tha protocol may be returned.
+Various Linux kernels can
+return other errors such as
+.BR ENOSR ,
+.BR ESOCKTNOSUPPORT ,
+.BR EPROTONOSUPPORT ,
+.BR ETIMEDOUT .
+Da value
+.B ERESTARTSYS
+may be peeped durin a trace.
+.SH VERSIONS
+The
+.BR accept4 ()
+system call be available startin wit Linux 2.6.28;
+support up in glibc be available startin wit version 2.10.
+.SH CONFORMING TO
+.BR accept ():
+POSIX.1-2001,
+SVr4, 4.4BSD,
+.RB ( accept ()
+first rocked up in 4.2BSD).
+.\" Da BSD playa page documents five possible error returns
+.\" (EBADF, ENOTSOCK, EOPNOTSUPP, EWOULDBLOCK, EFAULT).
+.\" POSIX.1-2001 documents errors
+.\" EAGAIN, EBADF, ECONNABORTED, EINTR, EINVAL, EMFILE,
+.\" ENFILE, ENOBUFS, ENOMEM, ENOTSOCK, EOPNOTSUPP, EPROTO, EWOULDBLOCK.
+.\" In addition, SUSv2 documents EFAULT n' ENOSR.
+
+.BR accept4 ()
+is a nonstandard Linux extension.
+.LP
+On Linux, tha freshly smoked up socket returned by
+.BR accept ()
+does \fInot\fP inherit file status flags such as
+.B O_NONBLOCK
+and
+.B O_ASYNC
+from tha listenin socket.
+This behavior differs from tha canonical BSD sockets implementation.
+.\" Some testin seems ta show dat Tru64 5.1 n' HP-UX 11 also
+.\" do not inherit file status flags -- MTK Jun 05
+Portable programs should not rely on inheritizzle or noninheritance
+of file status flags n' always explicitly set all required flags on
+the socket returned from
+.BR accept ().
+.SH NOTES
+POSIX.1-2001 do not require tha inclusion of
+.IR <sys/types.h> ,
+and dis header file aint required on Linux.
+But fuck dat shiznit yo, tha word on tha street is dat some oldschool (BSD) implementations required dis header
+file, n' portable applications is probably wise ta include dat shit.
+
+There may not always be a cold-ass lil connection waitin afta a
+.B SIGIO
+is served up or
+.BR select (2)
+or
+.BR poll (2)
+return a readabilitizzle event cuz tha connection might have been
+removed by a asynchronous network error or another thread before
+.BR accept ()
+is called.
+If dis happens then tha call will block waitin fo' tha next
+connection ta arrive.
+To ensure that
+.BR accept ()
+never blocks, tha passed socket
+.I sockfd
+needz ta have the
+.B O_NONBLOCK
+flag set (see
+.BR socket (7)).
+.SS Da socklen_t type
+Da third argument of
+.BR accept ()
+was originally declared as a \fIint *\fP (and is dat under libc4 n' libc5
+and on nuff other systems like 4.x BSD, SunOS 4, SGI); a POSIX.1g draft
+standard wanted ta chizzle it tha fuck into a \fIsize_t *\fP, n' dat is what tha fuck it is
+for SunOS 5.
+Lata POSIX drafts have \fIsocklen_t *\fP,
+and so do tha Single UNIX Justification n' glibc2.
+Quotin Linus Torvalds:
+
+.\" .I fails: only italicizes a single line
+"_Any_ sane library _must_ have "socklen_t" be tha same size
+as int.
+Anythang else breaks any BSD socket layer stuff.
+POSIX initially \fIdid\fP make it a size_t, n' I (and hopefully others yo, but
+obviously not too many) complained ta dem straight-up loudly indeed.
+Makin it a size_t is straight-up broken, exactly cuz size_t hella
+seldom is tha same ol' dirty size as "int" on 64-bit architectures, fo' example.
+And it
+\fIhas\fP ta be tha same size as "int" cuz thatz what tha fuck tha BSD socket
+interface is.
+Anyway, tha POSIX playas eventually gots a cold-ass lil clue, n' pimped "socklen_t".
+They shouldn't have touched it up in tha straight-up original gangsta place yo, but once they did
+they felt it had ta git a named type fo' some unfathomable reason
+(probably some muthafucka didn't like losin grill over havin done tha original
+stupid thang, so they silently just renamed they blunder)."
+.SH EXAMPLE
+See
+.BR bind (2).
+.SH SEE ALSO
+.BR bind (2),
+.BR connect (2),
+.BR listen (2),
+.BR select (2),
+.BR socket (2),
+.BR socket (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

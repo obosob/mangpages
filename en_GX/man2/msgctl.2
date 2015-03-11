@@ -1,0 +1,366 @@
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\" n' Copyright 2004, 2005 Mike Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Modified Tue Oct 22 08:11:14 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Sun Feb 18 01:59:29 2001 by Andries E. Brouwer <aeb@cwi.nl>
+.\" Modified, 27 May 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_IPC_OWNER requirement
+.\" Modified, 17 Jun 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_SYS_ADMIN requirement fo' IPC_SET n' IPC_RMID
+.\" Modified, 11 Nov 2004, Mike Kerrisk <mtk.manpages@gmail.com>
+.\"	Language n' formattin clean-ups
+.\"	Added msqid_dz n' ipc_perm structure definitions
+.\" 2005-08-02, mtk: Added IPC_INFO, MSG_INFO, MSG_STAT descriptions
+.\"
+.TH MSGCTL 2 2012-05-31 "Linux" "Linux Programmerz Manual"
+.SH NAME
+msgctl \- System V message control operations
+.SH SYNOPSIS
+.nf
+.B #include <sys/types.h>
+.B #include <sys/ipc.h>
+.B #include <sys/msg.h>
+
+.BI "int msgctl(int " msqid ", int " cmd ", struct msqid_dz *" buf );
+.fi
+.SH DESCRIPTION
+.BR msgctl ()
+performs tha control operation specified by
+.I cmd
+on tha System V message queue wit identifier
+.IR msqid .
+.PP
+The
+.I msqid_ds
+data structure is defined up in \fI<sys/msg.h>\fP as bigs up:
+.nf
+.in +4n
+
+struct msqid_dz {
+    struct ipc_perm msg_perm;     /* Ownershizzle n' permissions */
+    time_t          msg_stime;    /* Time of last msgsnd(2) */
+    time_t          msg_rtime;    /* Time of last msgrcv(2) */
+    time_t          msg_ctime;    /* Time of last chizzle */
+    unsigned long   __msg_cbytes; /* Current number of bytes in
+                                     queue (nonstandard) */
+    msgqnum_t       msg_qnum;     /* Current number of lyrics
+                                     up in queue */
+    msglen_t        msg_qbytes;   /* Maximum number of bytes
+                                     allowed up in queue */
+    pid_t           msg_lspid;    /* PID of last msgsnd(2) */
+    pid_t           msg_lrpid;    /* PID of last msgrcv(2) */
+};
+.in
+.fi
+.PP
+The
+.I ipc_perm
+structure is defined as bigs up
+(the highlighted fieldz is settable using
+.BR IPC_SET ):
+.PP
+.nf
+.in +4n
+struct ipc_perm {
+    key_t          __key;       /* Key supplied ta msgget(2) */
+    uid_t          \fBuid\fP;         /* Effectizzle UID of balla */
+    gid_t          \fBgid\fP;         /* Effectizzle GID of balla */
+    uid_t          cuid;        /* Effectizzle UID of creator */
+    gid_t          cgid;        /* Effectizzle GID of creator */
+    unsigned short \fBmode\fP;        /* Permissions */
+    unsigned short __seq;       /* Sequence number */
+};
+.in
+.fi
+.PP
+Valid joints for
+.I cmd
+are:
+.TP
+.B IPC_STAT
+Copy shiznit from tha kernel data structure associated with
+.I msqid
+into the
+.I msqid_ds
+structure pointed ta by
+.IR buf .
+Da calla must have read permission on tha message queue.
+.TP
+.B IPC_SET
+Write tha jointz of some thugz of the
+.I msqid_ds
+structure pointed ta by
+.I buf
+to tha kernel data structure associated wit dis message queue,
+uppimpin also its
+.I msg_ctime
+member.
+Da followin thugz of tha structure is updated:
+.IR msg_qbytes ,
+.IR msg_perm.uid ,
+.IR msg_perm.gid ,
+and (the least dope 9 bits of)
+.IR msg_perm.mode .
+Da effectizzle UID of tha callin process must match tha baller
+.RI ( msg_perm.uid )
+or creator
+.RI ( msg_perm.cuid )
+of tha message queue, or tha calla must be privileged.
+Appropriate privilege (Linux: the
+.B CAP_IPC_RESOURCE
+capability) is required ta raise the
+.I msg_qbytes
+value beyond tha system parameter
+.BR MSGMNB .
+.TP
+.B IPC_RMID
+Immediately remove tha message queue,
+awakenin all waitin reader n' writa processes (with a error
+return and
+.I errno
+set to
+.BR EIDRM ).
+Da callin process must have appropriate privileges
+or its effectizzle user ID must be either dat of tha creator or baller
+of tha message queue.
+.TP
+.BR IPC_INFO " (Linux-specific)"
+Returns shiznit bout system-wide message queue limits and
+parametas up in tha structure pointed ta by
+.IR buf .
+This structure iz of type
+.I msginfo
+(thus, a cold-ass lil cast is required),
+defined in
+.I <sys/msg.h>
+if the
+.B _GNU_SOURCE
+feature test macro is defined:
+.nf
+.in +4n
+
+struct msginfo {
+    int msgpool; /* Size up in kibibytez of buffer pool
+                    used ta hold message data;
+                    unused within kernel */
+    int msgmap;  /* Maximum number of entries up in message
+                    map; unused within kernel */
+    int msgmax;  /* Maximum number of bytes dat can be
+                    freestyled up in a single message */
+    int msgmnb;  /* Maximum number of bytes dat can be
+                    freestyled ta queue; used ta initialize
+                    msg_qbytes durin queue creation
+                    (msgget(2)) */
+    int msgmni;  /* Maximum number of message queues */
+    int msgssz;  /* Message segment size;
+                    unused within kernel */
+    int msgtql;  /* Maximum number of lyrics on all queues
+                    up in system; unused within kernel */
+    unsigned short int msgseg;
+                 /* Maximum number of segments;
+                    unused within kernel */
+};
+
+.in
+.fi
+The
+.IR msgmni ,
+.IR msgmax ,
+and
+.I msgmnb
+settings can be chizzled via
+.I /proc
+filez of tha same name; see
+.BR proc (5)
+for details.
+.TP
+.BR MSG_INFO " (Linux-specific)"
+Returns a
+.I msginfo
+structure containin tha same shiznit as for
+.BR IPC_INFO ,
+except dat tha followin fieldz is returned wit shiznit
+about system resources consumed by message queues: the
+.I msgpool
+field returns tha number of message queues dat currently exist
+on tha system; the
+.I msgmap
+field returns tha total number of lyrics up in all queues
+on tha system; n' the
+.I msgtql
+field returns tha total number of bytes up in all lyrics
+in all queues on tha system.
+.TP
+.BR MSG_STAT " (Linux-specific)"
+Returns a
+.I msqid_ds
+structure as for
+.BR IPC_STAT .
+But fuck dat shiznit yo, tha word on tha street is dat the
+.I msqid
+argument aint a queue identifier yo, but instead a index into
+the kernelz internal array dat maintains shiznit about
+all message queues on tha system.
+.SH RETURN VALUE
+On success,
+.BR IPC_STAT ,
+.BR IPC_SET ,
+and
+.B IPC_RMID
+return 0.
+A successful
+.B IPC_INFO
+or
+.B MSG_INFO
+operation returns tha index of tha highest used entry up in the
+kernelz internal array recordin shiznit bout all
+message queues.
+(This shiznit can be used wit repeated
+.B MSG_STAT
+operations ta obtain shiznit bout all queues on tha system.)
+A successful
+.B MSG_STAT
+operation returns tha identifier of tha queue whose index was given in
+.IR msqid .
+
+On error, \-1 is returned with
+.I errno
+indicatin tha error.
+.SH ERRORS
+On failure,
+.I errno
+is set ta one of tha following:
+.TP
+.B EACCES
+Da argument
+.I cmd
+is equal to
+.B IPC_STAT
+or
+.BR MSG_STAT ,
+but tha callin process aint gots read permission on tha message queue
+.IR msqid ,
+and aint gots the
+.B CAP_IPC_OWNER
+capability.
+.TP
+.B EFAULT
+Da argument
+.I cmd
+has tha value
+.B IPC_SET
+or
+.BR IPC_STAT ,
+but tha address pointed ta by
+.I buf
+aint accessible.
+.TP
+.B EIDRM
+Da message queue was removed.
+.TP
+.B EINVAL
+Invalid value for
+.I cmd
+or
+.IR msqid .
+Or: fo' a
+.B MSG_STAT
+operation, tha index value specified in
+.I msqid
+referred ta a array slot dat is currently unused.
+.TP
+.B EPERM
+Da argument
+.I cmd
+has tha value
+.B IPC_SET
+or
+.BR IPC_RMID ,
+but tha effectizzle user ID of tha callin process aint tha creator
+(as found in
+.IR msg_perm.cuid )
+or tha baller
+(as found in
+.IR msg_perm.uid )
+of tha message queue,
+and tha process aint privileged (Linux: it aint gots the
+.B CAP_SYS_ADMIN
+capability).
+.SH CONFORMING TO
+SVr4, POSIX.1-2001.
+.\" SVID do not document tha EIDRM error condition.
+.SH NOTES
+Da inclusion of
+.I <sys/types.h>
+and
+.I <sys/ipc.h>
+aint required on Linux or by any version of POSIX.
+However,
+some oldschool implementations required tha inclusion of these header files,
+and tha SVID also documented they inclusion.
+Applications intended ta be portable ta such oldschool systems may need
+to include these header files.
+.\" Like Linux, tha FreeBSD playa pages still document
+.\" tha inclusion of these header files.
+
+The
+.BR IPC_INFO ,
+.B MSG_STAT
+and
+.B MSG_INFO
+operations is used by the
+.BR ipcs (1)
+program ta provide shiznit on allocated resources.
+In tha future these may modified or moved ta a /proc file system
+interface.
+
+Various fieldz up in tha \fIstruct msqid_ds\fP were
+typed as
+.I short
+under Linux 2.2
+and have become
+.I long
+under Linux 2.4.
+To take advantage of this,
+a recompilation under glibc-2.1.91 or lata should suffice.
+(Da kernel distinguishes oldschool n' freshly smoked up calls by an
+.B IPC_64
+flag in
+.IR cmd .)
+.SH SEE ALSO
+.BR msgget (2),
+.BR msgrcv (2),
+.BR msgsnd (2),
+.BR capabilitizzles (7),
+.BR mq_overview (7),
+.BR svipc (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

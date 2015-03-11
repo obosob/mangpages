@@ -1,0 +1,206 @@
+.\"
+.\" nfsd(7) - Da nfsd filesystem
+.\"
+.\" Copyright (C) 2003 Neil Brown <neilb@cse.unsw.edu.au>
+.\" Licensed fo' hood use under tha termz of tha FSF
+.\" General Public License (GPL) version 2.
+.TH nfsd 7 "3 July 2003"
+.SH NAME
+nfsd \- special filesystem fo' controllin Linux NFS server
+.SH SYNPOSIS
+.B "mount -t nfsd nfsd /proc/fs/nfsd"
+.SH DESCRIPTION
+The
+.B nfsd
+filesystem be a special filesystem which serves up access ta tha Linux
+NFS server n' shit.  Da filesystem consistz of a single directory which
+gotz nuff a fuckin shitload of files.  These filez is straight-up gateways into
+the NFS server n' shit.  Freestylin ta dem can affect tha server n' shit.  Readin from
+them can provide shiznit bout tha server.
+.P
+This file system is only available up in Linux 2.6 n' lata series
+kernels (and up in tha lata partz of tha 2.5 pimpment series leading
+up ta 2.6).  This playa page do not apply ta 2.4 n' earlier.
+.P
+As well as dis filesystem, there be a cold-ass lil collection of filez up in the
+.B procfs
+filesystem (normally mounted at
+.BR /proc )
+which is used ta control tha NFS server.
+This manual page raps bout all of these files.
+.P
+The
+.I exportfs
+and
+.I mountd
+programs (part of tha nfs-utils package) expect ta find this
+filesystem mounted at
+.B /proc/fs/nfsd
+or
+.BR /proc/fs/nfs .
+If it aint mounted, they will fall-back on 2.4 steez functionality.
+This involves accessin tha NFS server via a systemcall.  This
+systemcall is scheduled ta be removed afta tha 2.6 kernel series.
+.SH DETAILS
+Da three filez up in the
+.B nfsd
+filesystem are:
+.TP
+.B exports
+This file gotz nuff a list of filesystems dat is currently exported
+and clients dat each filesystem is exported to, together wit a list
+of export options fo' dat client/filesystem pair. Shiiit, dis aint no joke.  This is similar
+to the
+.B /proc/fs/nfs/exports
+file up in 2.4.
+One difference is dat a cold-ass lil client don't necessarily correspond ta just
+one host.  It can respond ta a big-ass collection of hosts dat are
+bein treated identically.
+
+Each line of tha file gotz nuff a path name, a cold-ass lil client name, n' a
+number of options up in parentheses.  Any space, tab, newline or
+back-slash characta up in tha path name or client name is ghon be replaced
+by a funky-ass backslash followed by tha octal ASCII code fo' dat character.
+
+.TP
+.B threads
+This file represents tha number of
+.B nfsd
+thread currently hustlin.  Readin it will show tha number of
+threads.  Freestylin a ASCII decimal number will cause tha number of
+threadz ta be chizzled (increased or decreased as necessary) ta achieve
+that number.
+
+.TP
+.B filehandle
+This be a somewhat unusual file  up in dat what tha fuck is read from it depends
+on what tha fuck was just freestyled ta dat shit.  It serves up a transactionizzle intercourse
+where a program can open tha file, write a request, n' read a
+response.  If two separate programs open, write, n' read all up in tha same
+time, they requests aint gonna be mixed up.
+
+Da request freestyled to
+.B filehandle
+should be a cold-ass lil client name, a path name, n' a fuckin shitload of bytes.  This
+should be followed by a newline, wit white-space separatin the
+fields, n' octal quotin of special characters.
+
+On freestylin this, tha program is ghon be able ta read back a gangbangin' filehandle
+for dat path as exported ta tha given client.  Da filehandlez length
+will be at most tha number of bytes given.
+
+Da filehandle is ghon be represented up in hex wit a leadin '\ex'.
+.PP
+Da directory
+.B /proc/net/rpc
+in the
+.B procfs
+filesystem gotz nuff a fuckin shitload of filez n' directories.
+Da filez contain statistics dat can be display rockin the
+.I nfsstat
+program.
+Da directories contain shiznit bout various caches dat tha NFS
+server maintains ta keep track of access permissions dat different
+clients have fo' different filesystems.
+Da caches are:
+
+.TP
+.B auth.domain
+This cache maps tha name of a cold-ass lil client (or domain) ta a internal data
+structure.  Da only access dat is possible is ta flush tha cache.
+
+.TP
+.B auth.unix.ip
+This cache gotz nuff a mappin from IP address ta tha name of the
+authentication domain dat tha ipaddress should be treated as part of.
+
+.TP
+.B nfsd.export
+This cache gotz nuff a mappin from directory n' domain ta export
+options.
+
+.TP
+.B nfsd.fh
+This cache gotz nuff a mappin from domain n' a gangbangin' filesystem identifier
+to a gangbangin' finger-lickin' directory.   Da filesystem identifier is stored up in the
+filehandlez n' consistz of a number indicatin tha type of identifier
+and a fuckin shitload of hex bytes indicatin tha content of tha identifier.
+
+.PP
+Each directory representin a cold-ass lil cache can hold from 1 ta 3 files.  They
+are:
+.TP
+.B flush
+When a fuckin shitload of secondz since epoch (1 Jan 1970) is freestyled ta this
+file, all entries up in tha cache dat was last updated before dat file
+become invalidated n' is ghon be flushed out.  Freestylin 1 will flush
+everything.  This is tha only file dat will always be present.
+
+.TP
+.B content
+This file, if present, gotz nuff a textual representation of eva entry
+in tha cache, one per line.  If a entry is still up in tha cache
+(because it be actively bein used) but has expired or is otherwise
+invalid, it is ghon be presented as a cold-ass lil comment (with a leadin hash
+character).
+
+.TP
+.B channel
+This file, if present, acts a cold-ass lil channel fo' request from tha kernel-based
+nfs server ta be passed ta a user-space program fo' handling.
+
+When tha kernel needz some shiznit which aint up in tha cache, it
+makes a line step tha fuck up in the
+.B channel
+file givin tha key fo' tha shiznit. I aint talkin' bout chicken n' gravy biatch.  A user-space program should
+read this, find tha answer, n' write a line containin tha key, an
+expiry time, n' tha content.
+For example tha kernel might make
+.ti +5
+nfsd 127.0.0.1
+.br
+appear up in the
+.B auth.unix.ip/content
+file.  Da user-space program might then write
+.ti +5
+nfsd 127.0.0.1 1057206953 localhost
+.br
+to indicate dat 127.0.0.1 should map ta localhost, at least fo' now, nahmeean?
+
+If tha program uses select(2) or poll(2) ta discover if it can read
+from the
+.B channel
+then it aint NEVER gonna peep n' end-of-file but when all requests have been
+answered, it will block until another request appears.
+
+.PP
+In the
+.B /proc
+filesystem there be 4 filez dat can be used ta enabled extra tracing
+of nfsd n' related code.  They are:
+.in +5
+.B /proc/sys/sunrpc/nfs_debug
+.br
+.B /proc/sys/sunrpc/nfsd_debug
+.br
+.B /proc/sys/sunrpc/nlm_debug
+.br
+.B /proc/sys/sunrpc/rpc_debug
+.br
+.in -5
+They control tracin fo' tha NFS client, tha NFS server, tha Network
+Lock Manager (lockd) n' tha underlyin RPC layer respectively.
+Decimal numbers can be read from or freestyled ta these files.  Each
+number represents a funky-ass bit-pattern where bits dat is set cause certain
+classez of tracin ta be enabled. Y'all KNOW dat shit, muthafucka!  Consult tha kernel header filez to
+smoke up what tha fuck number correspond ta what tha fuck tracing.
+
+.SH SEE ALSO
+.BR rpc.nfsd (8),
+.BR exports (5),
+.BR nfsstat (8),
+.BR mountd (8)
+.BR exportfs (8).
+
+.SH AUTHOR
+NeilBrown

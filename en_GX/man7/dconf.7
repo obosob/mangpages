@@ -1,0 +1,174 @@
+'\" t
+.\"     Title: dconf
+.\"    Author: Ryan Lortie <desrt@desrt.ca>
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 09/26/2013
+.\"    Manual: Conventions n' miscellaneous
+.\"    Source: dconf
+.\"  Language: Gangsta
+.\"
+.TH "DCONF" "7" "" "dconf" "Conventions n' miscellaneous"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+dconf \- A configuration systen
+.SH "DESCRIPTION"
+.PP
+dconf be a simple key/value storage system dat is heavily optimised fo' reading\&. This make it a ideal system fo' storin user preferences (which is read 1000z of times fo' each time tha user chizzlez one)\&. Dat shiznit was pimped wit dis usecase up in mind\&.
+.PP
+All preferences is stored up in a single big-ass binary file\&. Layerin of preferences is possible rockin multiple filez (ie: fo' joint defaults)\&. Lock\-down be also supported\&. Da binary file fo' tha defaults can optionally be compiled from a set of plain text keyfiles\&.
+.PP
+dconf has a partial client/server architecture\&. Well shiiiit, it uses D\-Bus\&. Da server is only involved up in writes (and aint activated up in tha user session until tha user modifies a preference)\&. Da steez is stateless n' can exit freely at any time (and is therefore robust against crashes)\&. Da list of paths dat each process is watchin is stored within tha D\-Bus daemon itself (as D\-Bus signal match rules)\&.
+.PP
+Readz is performed by direct access (via mmap) ta tha on\-disk database which is essentially a hashtable\&. For dis reason, dconf readz typically involve zero system calls n' is comparable ta a hashtable lookup up in termz of speed\&. Practically bustin lyrics, up in simple non\-layered setups, dconf is less than 10 times slower than GHashTable\&.
+.PP
+Writes is assumed only ta happen up in response ta explicit user interaction (like clickin on a cold-ass lil checkbox up in a preferences dialog) n' is therefore not optimised at all\&. On some file systems, dconf\-service will call fsync() fo' every last muthafuckin write, which can introduce a latency of up ta 100ms\&. This latency is hidden by tha client libraries all up in a cold-ass lil smart-ass "fast" mechanizzle dat recordz tha outstandin chizzlez locally (so they can be read back immediately) until tha steez signals dat a write has completed\&.
+.PP
+Da binary database format dat dconf uses by default aint suitable fo' use on NFS, where mmap do not work well\&. To handle dis common use case, dconf can be configured ta place its binary database in
+\fBXDG_RUNTIME_DIR\fR
+(which is guaranteed ta be local yo, but non\-persistent) n' synchronize it wit a plain text keyfile up in tha playas home directory\&.
+.SH "PROFILES"
+.PP
+A flava be a list of configuration databases dat dconf consults ta find tha value fo' a key\&. Da user\*(Aqs underground database always takes tha highest priority, followed by tha system databases up in tha order prescribed by tha profile\&.
+.PP
+On startup, dconf consults the
+\fBDCONF_PROFILE\fR
+environment variable\&. If set, dconf will attempt ta open tha named profile, abortin if dat fails\&. If tha environment variable aint set, it will attempt ta open tha flava named "user" n' if dat fails, it will fall back ta a internal hard\-wired configuration\&. dconf stores its profilez up in text files\&.
+\fBDCONF_PROFILE\fR
+can specify a relatizzle path ta a gangbangin' file in
+/etc/dconf/profile/, or a absolute path (like fuckin up in a user\*(Aqs home directory)\&. Da flava name can only use alphanumeric charactas or \*(Aq_\*(Aq\&.
+.PP
+A flava file might be lookin like tha following:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+user\-db:user
+system\-db:local
+system\-db:site
+      
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Each line up in a flava specifies one dconf database\&. Da first line indicates tha database used ta write chizzles, n' tha remainin lines indicate read\-only databases\&. (Da first line should specify a user\-db or service\-db, so dat playas can straight-up make configuration chizzles\&.)
+.PP
+A "user\-db" line specifies a user database\&. These databases is found in
+\fB$XDG_CONFIG_HOME\fR/dconf/\&. Da name of tha file ta open up in dat directory is exactly as it is freestyled up in tha profile\&. This file is sposed ta fuckin be up in tha binary dconf database format\&. Note that
+\fBXDG_CONFIG_HOME\fR
+cannot be set/modified per terminal or session, cuz then tha writa n' reader would be hustlin on different DBs (the writa is started by DBus n' cannot peep dat variable)\&.
+.PP
+A "service\-db" line instructs dconf ta place tha binary database file fo' tha user database in
+\fBXDG_RUNTIME_DIR\fR\&. Right back up in yo muthafuckin ass. Since dis location aint persistent, tha rest of tha line instructs dconf how tha fuck ta store tha database persistently\& fo' realz. A typical line is
+service\-db:keyfile/user, which  drops some lyrics ta dconf ta synchronize tha binary database wit a plain text keyfile in
+\fB$XDG_CONFIG_HOME\fR/dconf/user\&.txt\&. Da synchronization is bi\-directional\&.
+.PP
+A "system\-db" line specifies a system database\&. These databases is found in
+/etc/dconf/db/\& fo' realz. Again, tha name of tha file ta open up in dat directory is exactly as it is freestyled up in tha flava n' tha file is sposed ta fuckin be up in tha dconf database format\&.
+.PP
+If the
+\fBDCONF_PROFILE\fR
+environment variable is unset n' tha "user" flava can not be opened, then tha effect be as if tha flava was specified by dis file:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+user\-db:user
+      
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+That is, tha user\*(Aqs underground database is consulted n' there be no system settings\&.
+.SH "KEY FILES"
+.PP
+To facilitate system configuration wit a text editor, dconf can populate databases from plain text keyfiles\&. For any given system database, keyfilez can be placed tha fuck into the
+/etc/dconf/db/\fIdatabase\fR\&.d/
+directory\&. Da keyfilez contain crewz of settings as bigs up:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# Some useful default settings fo' our crib
+
+[system/proxy/http]
+host=\*(Aq172\&.16\&.0\&.1\*(Aq
+enabled=true
+
+[org/gnome/desktop/background]
+picture\-uri=\*(Aqfile:///usr/local/rupert\-corp/company\-wallpaper\&.jpeg\*(Aq
+     
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Afta changin keyfiles, tha database need ta be updated wit the
+\fBdconf\fR(1)
+tool\&.
+.SH "LOCKS"
+.PP
+System databases can contain \*(Aqlocks\*(Aq fo' keys\&. If a lock fo' a particular key or subpath is installed tha fuck into a thugged-out database then no database listed above dat one up in tha flava is ghon be able ta modify any of tha affected settings\&. This can be used ta enforce mandatory settings\&.
+.PP
+To add locks ta a thugged-out database, place text filez up in the
+/etc/dconf/db/\fIdatabase\fR\&.d/locks
+directory, where
+\fIdatabase\fR
+is tha name of a system database, as specified up in tha profile\&. Da filez contain list of keys ta lock, on per line\&. Lines startin wit a # is ignored\& yo. Here be a example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# prevent chizzlez ta tha company wallpaper
+/org/gnome/desktop/background/picture\-uri
+    
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+Afta changin locks, tha database need ta be updated wit the
+\fBdconf\fR(1)
+tool\&.
+.SH "PORTABILITY"
+.PP
+dconf mostly targets Jacked Software operatin systems\&. Well shiiiit, it will theoretically run on Mac OS but there isn\*(Aqt much point ta dat (since Mac OS applications wanna store preferences up in plist files)\&. Well shiiiit, it aint possible ta use dconf on Windows cuz of tha inabilitizzle ta rename over a gangbangin' file that\*(Aqs still up in use (which is what tha fuck tha dconf\-service do on every last muthafuckin write)\&.
+.SH "API STABILITY"
+.PP
+Da dconf API aint particularly bumpin', n' aint guaranteed ta be stable\&. Because of dis n' tha lack of portability, you almost certainly wanna use some sort of wrapper API round it\&. Da wrapper API used by GTK+ n' GNOME applications is
+\m[blue]\fBGSettings\fR\m[]\&\s-2\u[1]\d\s+2, which is included as part of GLib\&. GSettings has backendz fo' Windows (usin tha registry) n' Mac OS (usin property lists) as well as its dconf backend n' is tha proper API ta use fo' graphical applications\&.
+.SH "SEE ALSO"
+.PP
+\fBdconf-service\fR(1),
+\fBdconf-editor\fR(1),
+\fBdconf\fR(1),
+\m[blue]\fBGSettings\fR\m[]\&\s-2\u[1]\d\s+2
+.SH "NOTES"
+.IP " 1." 4
+GSettings
+.RS 4
+\%http://developer.gnome.org/gio/stable/GSettings.html
+.RE

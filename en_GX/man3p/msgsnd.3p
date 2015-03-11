@@ -1,0 +1,201 @@
+.\" Copyright (c) 2001-2003 Da Open Group, All Rights Reserved 
+.TH "MSGSND" 3P 2003 "IEEE/Da Open Group" "POSIX Programmerz Manual"
+.\" msgsnd 
+.SH PROLOG
+This manual page is part of tha POSIX Programmerz Manual.
+Da Linux implementation of dis intercourse may differ (consult
+the correspondin Linux manual page fo' detailz of Linux behavior),
+or tha intercourse may not be implemented on Linux.
+.SH NAME
+msgsnd \- XSI message bust operation
+.SH SYNOPSIS
+.LP
+\fB#include <sys/msg.h>
+.br
+.sp
+int msgsnd(int\fP \fImsqid\fP\fB, const void *\fP\fImsgp\fP\fB, size_t\fP
+\fImsgsz\fP\fB, int\fP \fImsgflg\fP\fB);
+\fP
+\fB
+.br
+\fP
+.SH DESCRIPTION
+.LP
+Da \fImsgsnd\fP() function operates on XSI message queues (see the
+Base Definitions volume of IEEE\ Std\ 1003.1-2001,
+Section 3.224, Message Queue). Well shiiiit, it is unspecified whether dis function
+interoperates wit tha realtime interprocess communication facilities
+defined up in \fIRealtime\fP .
+.LP
+Da \fImsgsnd\fP() function shall bust a message ta tha queue associated
+with tha message queue identifier specified by
+\fImsqid\fP.
+.LP
+Da application shall ensure dat tha argument \fImsgp\fP points to
+a user-defined buffer dat gotz nuff first a gangbangin' field of type
+\fBlong\fP specifyin tha type of tha message, n' then a thugged-out data portion
+that holdz tha data bytez of tha message. Da structure
+below be a example of what tha fuck dis user-defined buffer might look like:
+.sp
+.RS
+.nf
+
+\fBstruct mymsg {
+    long   mtype;       /* Message type. */
+    char   mtext[1];    /* Message text. */
+}
+\fP
+.fi
+.RE
+.LP
+Da structure member \fImtype\fP be a non-zero positizzle type \fBlong\fP
+that can be used by tha receivin process fo' message
+selection.
+.LP
+Da structure member \fImtext\fP be any text of length \fImsgsz\fP
+bytes. Da argument \fImsgsz\fP can range from 0 ta a
+system-imposed maximum.
+.LP
+Da argument \fImsgflg\fP specifies tha action ta be taken if one
+or mo' of tha followin is true:
+.IP " *" 3
+Da number of bytes already on tha queue is equal ta \fBmsg_qbytes\fP;
+see \fI<sys/msg.h>\fP.
+.LP
+.IP " *" 3
+Da total number of lyrics on all queues system-wide is equal to
+the system-imposed limit.
+.LP
+.LP
+These actions is as bigs up:
+.IP " *" 3
+If (\fImsgflg\fP & IPC_NOWAIT) is non-zero, tha message shall not
+be busted n' tha callin thread shall return
+immediately.
+.LP
+.IP " *" 3
+If (\fImsgflg\fP & IPC_NOWAIT) is 0, tha callin thread shall suspend
+execution until one of tha followin occurs:
+.RS
+.IP " *" 3
+Da condizzle responsible fo' tha suspendaz no longer exists, in
+which case tha message is sent.
+.LP
+.IP " *" 3
+Da message queue identifier \fImsqid\fP is removed from tha system;
+when dis occurs, \fIerrno\fP shall be set equal to
+[EIDRM] n' -1 shall be returned.
+.LP
+.IP " *" 3
+Da callin thread receives a signal dat is ta be caught; up in this
+case tha message aint busted n' tha callin thread resumes
+execution up in tha manner prescribed up in \fIsigaction\fP().
+.LP
+.RE
+.LP
+.LP
+Upon successful completion, tha followin actions is taken wit respect
+to tha data structure associated wit \fImsqid\fP; see
+\fI<sys/msg.h>\fP:
+.IP " *" 3
+\fBmsg_qnum\fP shall be incremented by 1.
+.LP
+.IP " *" 3
+\fBmsg_lspid\fP shall be set equal ta tha process ID of tha calling
+process.
+.LP
+.IP " *" 3
+\fBmsg_stime\fP shall be set equal ta tha current time.
+.LP
+.SH RETURN VALUE
+.LP
+Upon successful completion, \fImsgsnd\fP() shall return 0; otherwise,
+no message shall be sent, \fImsgsnd\fP() shall return
+-1, n' \fIerrno\fP shall be set ta indicate tha error.
+.SH ERRORS
+.LP
+Da \fImsgsnd\fP() function shall fail if:
+.TP 7
+.B EACCES
+Operation permission is denied ta tha callin process; peep \fIXSI
+Interprocess
+Communication\fP .
+.TP 7
+.B EAGAIN
+Da message cannot be busted fo' one of tha reasons cited above and
+(\fImsgflg\fP & IPC_NOWAIT) is non-zero.
+.TP 7
+.B EIDRM
+Da message queue identifier \fImsqid\fP is removed from tha system.
+.TP 7
+.B EINTR
+Da \fImsgsnd\fP() function was interrupted by a signal.
+.TP 7
+.B EINVAL
+Da value of \fImsqid\fP aint a valid message queue identifier,
+or tha value of \fImtype\fP is less than 1; or tha value of
+\fImsgsz\fP is less than 0 or pimped outa than tha system-imposed limit.
+.sp
+.LP
+\fIDa followin sections is informative.\fP
+.SH EXAMPLES
+.SS Sendin a Message
+.LP
+Da followin example sendz a message ta tha queue identified by the
+\fImsqid\fP argument (assumin dat value has previously
+been set). This call specifies dat a error should be reported if
+no message be available. Da message size is calculated directly
+usin tha \fIsizeof\fP operator.
+.sp
+.RS
+.nf
+
+\fB#include <sys/msg.h>
+\&...
+int result;
+int msqid;
+struct message {
+    long type;
+    char text[20];
+} msg;
+.sp
+
+msg.type = 1;
+strcpy(msg.text, "This is message 1");
+\&...
+result = msgsnd(msqid, (void *) &msg, sizeof(msg.text), IPC_NOWAIT);
+\fP
+.fi
+.RE
+.SH APPLICATION USAGE
+.LP
+Da POSIX Realtime Extension defines alternatizzle intercourses fo' interprocess
+communication (IPC) fo' realz. Application pimpers who
+need ta use IPC should design they applications so dat modulez using
+the IPC routines busted lyrics bout up in \fIXSI Interprocess Communication\fP
+can be easily modified ta use tha alternative
+interfaces.
+.SH RATIONALE
+.LP
+None.
+.SH FUTURE DIRECTIONS
+.LP
+None.
+.SH SEE ALSO
+.LP
+\fIXSI Interprocess Communication\fP, \fIRealtime\fP, \fImq_close\fP(),
+\fImq_getattr\fP(), \fImq_notify\fP(), \fImq_open\fP(), \fImq_receive\fP(),
+\fImq_send\fP(), \fImq_setattr\fP(), \fImq_unlink\fP(), \fImsgctl\fP(),
+\fImsgget\fP(),
+\fImsgrcv\fP(), \fIsigaction\fP(), tha Base Definitions volume of
+IEEE\ Std\ 1003.1-2001, \fI<sys/msg.h>\fP
+.SH COPYRIGHT
+Portionz of dis text is reprinted n' reproduced up in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard fo' Hype Technology
+-- Portable Operatin System Interface (POSIX), Da Open Group Base
+Specifications Issue 6, Copyright (C) 2001-2003 by tha Institute of
+Electrical n' Electronics Engineers, Inc n' Da Open Group. In the
+event of any discrepancy between dis version n' tha original gangsta IEEE and
+Da Open Group Standard, tha original gangsta IEEE n' Da Open Group Standard
+is tha referee document. Da original gangsta Standard can be obtained online at
+http://www.opengroup.org/unix/online.html .

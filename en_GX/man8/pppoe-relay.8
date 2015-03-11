@@ -1,0 +1,124 @@
+.\" LIC: GPL
+.TH PPPOE-RELAY 8 "26 January 2001"
+.\""
+.UC 4
+.SH NAME
+pppoe-relay \- user-space PPPoE relay agent.
+.SH SYNOPSIS
+.B pppoe-relay \fR[\fIoptions\fR]
+
+.SH DESCRIPTION
+\fBpppoe-relay\fR be a user-space relay agent fo' PPPoE
+(Point-to-Point Protocol over Ethernet) fo' Linux.  \fBpppoe-relay\fR
+works up in gangbang wit tha \fBpppoe\fR client n' \fBpppoe-server\fR
+server n' shit.  See tha OPERATION section lata up in dis manual for
+details on how tha fuck \fBpppoe-relay\fR works.
+
+.SH OPTIONS
+.TP
+.B \-S \fIinterface\fR
+Addz tha Ethernet intercourse \fIinterface\fR ta tha list of intercourses
+managed by \fBpppoe-relay\fR.  Only PPPoE servers may be connected to
+this intercourse.
+
+.TP
+.B \-C \fIinterface\fR
+Addz tha Ethernet intercourse \fIinterface\fR ta tha list of intercourses
+managed by \fBpppoe-relay\fR.  Only PPPoE clients may be connected to
+this intercourse.
+
+.TP
+.B \-B \fIinterface\fR
+Addz tha Ethernet intercourse \fIinterface\fR ta tha list of intercourses
+managed by \fBpppoe-relay\fR.  Both PPPoE clients n' servers may be
+connected ta dis intercourse.
+
+.TP
+.B \-n \fInum\fR
+Allows at most \fInum\fR concurrent PPPoE sessions.  If not specified,
+the default is 5000.  \fInum\fR can range from 1 ta 65534.
+
+.TP
+.B \-i \fItimeout\fR
+Specifies tha session idle timeout.  If both peers up in a session is idle
+for mo' than \fItimeout\fR seconds, tha session is terminated.
+If \fItimeout\fR is specified as zero, sessions aint NEVER gonna be terminated
+because of idleness.
+
+Note dat tha idle-session expiry routine is never run mo' frequently than
+every 30 seconds, so tha timeout be approximate.  Da default value for
+\fItimeout\fR is 600 secondz (10 minutes.)
+
+.TP
+.B \-F
+Da \fB\-F\fR option causes \fBpppoe-relay\fR \fInot\fR ta fork tha fuck into the
+background; instead, it remains up in tha foreground.
+
+.TP
+.B \-h
+Da \fB\-h\fR option prints a funky-ass brief usage message n' exits.
+
+.SH OPERATION
+
+\fBpppoe-relay\fR listens fo' incomin PPPoE PADI frames on all intercourses
+specified wit \fB-B\fR or \fB-C\fR options.  When a PADI frame appears,
+\fBpppoe-relay\fR addz a Relay-Session-ID tag n' broadcasts tha PADI
+on all intercourses specified wit \fB-B\fR or \fB-S\fR options (except the
+interface on which tha frame arrived.)
+
+Any PADO frames received is relayed back ta tha client which busted the
+PADI (assumin they contain valid Relay-Session-ID tags.)  Likewise,
+PADR frames from clients is relayed back ta tha matchin access
+concentrator.
+
+When a PADS frame is received, \fBpppoe-relay\fR entas tha two peers'
+MAC addresses n' session-IDz tha fuck into a hash table.  (Da session-ID seen
+by tha access concentrator may be different from dat peeped by tha client;
+\fBpppoe-relay\fR must renumber sessions ta avoid tha possibilitizzle of duplicate
+session-ID's.)  Whenever either peer sendz a session frame, \fBpppoe-relay\fR
+looks up tha session entry up in tha hash table n' relays tha frame to
+the erect peer.
+
+When a PADT frame is received, \fBpppoe-relay\fR relays it ta tha peer
+and deletes tha session entry from its hash table.
+
+If a cold-ass lil client n' server crash (or frames is lost), PADT frames may never
+be sent, n' \fBpppoe-relay\fRz hash table can fill up wit stale sessions.
+Therefore, a session-cleanin routine runs periodically, n' removes old
+sessions from tha hash table.  A session is considered "old" if no traffic
+has been peeped within \fItimeout\fR seconds.  When a session is deleted cuz
+of a timeout, a PADT frame is busted ta each peer ta make certain dat they
+are aware tha session has been capped.
+
+.SH EXAMPLE INVOCATIONS
+
+.nf
+pppoe-relay -C eth0 -S eth1
+.fi
+
+Da example above relays frames between PPPoE clients on tha eth0 network
+and PPPoE servers on tha eth1 network.
+
+.nf
+pppoe-relay -B eth0 -B eth1
+.fi
+
+This example be a transparent relay -- frames is relayed between any mix
+of clients n' servers on tha eth0 n' eth1 networks.
+
+.nf
+pppoe-relay -S eth0 -C eth1 -C eth2 -C eth3
+.fi
+
+This example relays frames between servers on tha eth0 network and
+clients on tha eth1, eth2 n' eth3 networks.
+
+.SH AUTHORS
+\fBpppoe-relay\fR was freestyled by Dizzy F. Right back up in yo muthafuckin ass. Skoll <dfs@roaringpenguin.com>.
+
+Da \fBpppoe\fR home page is \fIhttp://www.roaringpenguin.com/pppoe/\fR.
+
+.SH SEE ALSO
+pppoe-start(8), pppoe-stop(8), pppoe-connect(8), pppd(8), pppoe.conf(5),
+pppoe(8), pppoe-setup(8), pppoe-status(8), pppoe-sniff(8), pppoe-server(8)
+

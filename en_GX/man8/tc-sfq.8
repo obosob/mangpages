@@ -1,0 +1,224 @@
+.TH TC 8 "24 January 2012" "iproute2" "Linux"
+.SH NAME
+sfq \- Stochastic Fairnizz Queueing
+.SH SYNOPSIS
+.B tc qdisc ...
+.B [ divisor
+hashtablesize
+.B ] [ limit
+packets
+.B ] [ perturb
+seconds
+.B ] [ quantum
+bytes
+.B ] [ flows
+number
+.B ] [ depth
+number
+.B ] [ headdrop
+.B ] [ redflowlimit
+bytes
+.B ] [ min
+bytes
+.B ] [ max
+bytes
+.B ] [ avpkt
+bytes
+.B ] [ burst
+packets
+.B ] [ probability
+P
+.B ] [ ecn
+.B ] [ harddrop ]
+.SH DESCRIPTION
+
+Stochastic Fairnizz Queuein be a cold-ass lil classless queuein discipline available for
+traffic control wit tha 
+.BR tc (8)
+command.
+
+SFQ do not shape traffic but only schedulez tha transmission of packets, based on 'flows'. 
+Da goal is ta ensure fairnizz so dat each flow be able ta bust data up in turn, thus preventing
+any single flow from drownin up tha rest.
+
+This may up in fact have some effect up in mitigatin a Denial of Service attempt.
+
+SFQ is work-conservin n' therefore always delivers a packet if it has one available.
+.SH ALGORITHM
+On enqueueing, each packet be assigned ta a hash bucket, based on tha packets hash value.
+This hash value is either obtained from a external flow classifier (use
+.B
+tc filter
+to set them), or a thugged-out default internal classifier if no external classifier has been configured.
+
+When tha internal classifier is used, sfq uses
+.TP
+(i)
+Source address
+.TP
+(ii)
+Destination address
+.TP
+(iii)
+Source n' Destination port
+.P
+If these is available. Right back up in yo muthafuckin ass. SFQ knows bout ipv4 n' ipv6 n' also UDP, TCP n' ESP. 
+Packets wit other protocols is hashed based on tha 32bits representation of they 
+destination n' source fo' realz. A flow correspondz mostly ta a TCP/IP connection.
+
+Each of these buckets should represent a unique flow. Because multiple flows may
+get hashed ta tha same bucket, sfqs internal hashin algorithm may be perturbed at configurable 
+intervals so dat tha unfairnizz lasts only fo' a gangbangin' finger-lickin' dirty-ass short while. Perturbation may 
+however cause some inadvertent packet reorderin ta occur fo' realz. Afta linux-3.3, there is
+no packet reorderin problem yo, but possible packet drops if rehashin hits one limit
+(number of flows or packets per flow)
+
+When dequeuing, each hashbucket wit data is queried up in a round robin fashion.
+
+Before linux-3.3, tha compile time maximum length of tha SFQ is 128 packets, which can be spread over
+at most 128 bucketz of 1024 available. In case of overflow, tail-drop is performed
+on tha fullest bucket, thus maintainin fairness.
+
+Afta linux-3.3, maximum length of SFQ is 65535 packets, n' divisor limit is 65536.
+In case of overflow, tail-drop is performed on tha fullest bucket, unless headdrop was requested.
+
+.SH PARAMETERS
+.TP
+divisor
+Can be used ta set a gangbangin' finger-lickin' different hash table size, available from kernel 2.6.39 onwards.
+Da specified divisor must be a juice of two n' cannot be larger than 65536.
+Default value: 1024.
+.TP 
+limit
+Upper limit of tha SFQ. Can be used ta reduce tha default length of 127 packets.
+Afta linux-3.3, it can be raised.
+.TP
+depth
+Limit of packets per flow (afta linux-3.3). Default ta 127 n' can be lowered.
+.TP
+perturb
+Interval up in secondz fo' queue algorithm perturbation. I aint talkin' bout chicken n' gravy biatch. Defaults ta 0, which means dat 
+no perturbation occurs. Do not set too low fo' each perturbation may cause some packet
+reorderin or losses fo' realz. Advised value: 60
+This value has no effect when external flow classification is used.
+Its betta ta increase divisor value ta lower risk of hash collisions.
+.TP 
+quantum
+Amount of bytes a gangbangin' flow be allowed ta dequeue durin a round of tha round robin process.
+Defaults ta tha MTU of tha intercourse which be also tha advised value n' tha minimum value.
+.TP
+flows
+Afta linux-3.3, it is possible ta chizzle tha default limit of flows.
+Default value is 127
+.TP
+headdrop
+Default SFQ behavior is ta big-ass up tail-drop of packets from a gangbangin' flow.
+Yo ass can ask a headdrop instead, as dis is known ta provide a funky-ass betta feedback fo' TCP flows.
+.TP
+redflowlimit
+Configure tha optionizzle RED module on top of each SFQ flow.
+Random Early Detection principle is ta big-ass up packet marks or drops up in a probabilistic way.
+(man tc-red fo' details bout RED)
+.nf
+redflowlimit configures tha hard limit on tha real (not average) queue size per SFQ flow up in bytes.
+.fi
+.TP
+min
+Average queue size at which markin becomes a possibility. Defaults to
+.B max
+/3
+.TP
+max
+At dis average queue size, tha markin probabilitizzle is maximal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Defaults to
+.B redflowlimit
+/4
+.TP
+probability
+Maximum  probabilitizzle  fo'  marking, specified as a gangbangin' floatin point number from 0.0 ta 1.0. Default value is 0.02
+.TP
+avpkt
+Specified up in bytes. Used wit burst ta determine tha time constant fo' average queue size calculations. Default value is 1000
+.TP
+burst
+Used fo' determinin how tha fuck fast tha average queue size is hyped up by tha real queue size.
+.nf
+Default value is : 
+.B (2 * min + max) / (3 * avpkt)
+.fi
+.TP
+ecn
+RED can either 'mark' or 'drop'. Explicit Congestion
+Notification allows RED ta notify remote hosts dat they rate exceedz the
+amount of bandwidth available. Non-ECN capable hosts can only be notified by
+droppin a packet.  If dis parameta is specified, packets which indicate
+that they hosts honor ECN will only be marked n' not dropped, unless the
+queue size hits
+.B depth
+packets.
+.TP
+harddrop
+If average flow queue size be above
+.B max
+bytes, dis parameta forces a thugged-out drop instead of ecn marking.
+.SH EXAMPLE & USAGE
+
+To attach ta thang ppp0:
+.P
+# tc qdisc add dev ppp0 root sfq
+.P
+Please note dat SFQ, like all non-shapin (work-conserving) qdiscs, is only useful 
+if it owns tha queue.
+This is tha case when tha link speed equals tha straight-up available bandwidth. This holdz 
+for regular beeper modems, ISDN connections n' direct non-switched ethernet links. 
+.P
+Most often, cable modems n' DSL devices do not fall tha fuck into dis category. Da same holdz 
+for when connected ta a switch  n' tryin ta bust data ta a cold-ass lil congested segment also 
+connected ta tha switch.
+.P
+In dis case, tha effectizzle queue do not reside within Linux n' is therefore not 
+available fo' scheduling.
+.P
+Embed SFQ up in a cold-ass lil classful qdisc ta make shizzle it owns tha queue.
+
+It be possible ta use external classifiers wit sfq, fo' example ta hash traffic based only
+on source/destination ip addresses:
+.P
+# tc filta add ... flow hash keys src,dst perturb 30 divisor 1024
+.P
+Note dat tha given divisor should match tha one used by sfq. If you have
+changed tha sfq default of 1024, use tha same value fo' tha flow hash filter, like a muthafucka.
+
+.P
+Example of sfq wit optionizzle RED mode :
+.P
+# tc qdisc add dev eth0 parent 1:1 handle 10: sfq limit 3000 flows 512 divisor 16384 
+  redflowlimit 100000 min 8000 max 60000 probabilitizzle 0.20 ecn headdrop
+
+.SH SOURCE
+.TP 
+o
+Pizzle E. McKenney "Stochastic Fairnizz Queuing",
+IEEE INFOCOMM'90 Proceedings, San Frankieco, 1990.
+
+.TP
+o
+Pizzle E. McKenney "Stochastic Fairnizz Queuing",
+"Interworking: Research n' Experience", v.2, 1991, p.113-131.
+
+.TP 
+o
+See also:
+M. Right back up in yo muthafuckin ass. Shreedhar n' George Varghese "Efficient Fair
+Queuin rockin Deficit Round Robin", Proc. Right back up in yo muthafuckin ass. SIGCOMM 95.
+
+.SH SEE ALSO
+.BR tc (8),
+.BR tc-red (8)
+
+.SH AUTHORS
+Alexey N. Kuznetsov, <kuznet@ms2.inr.ac.ru>,
+Eric Dumazet <eric.dumazet@gmail.com>.
+.P
+This manpage maintained by bert hubert <ahu@ds9a.nl>
+
+

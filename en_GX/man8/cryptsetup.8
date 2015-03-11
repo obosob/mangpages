@@ -1,0 +1,1037 @@
+.TH CRYPTSETUP "8" "December 2013" "cryptsetup" "Maintenizzle Commands"
+.SH NAME
+cryptsetup - manage plain dm-crypt n' LUKS encrypted volumes
+.SH SYNOPSIS
+.B cryptsetup <options> <action> <action args>
+.SH DESCRIPTION
+.PP
+cryptsetup is used ta conveniently setup dm-crypt managed
+device-mapper mappings. These include plain dm-crypt volumes and
+LUKS volumes. Da difference is dat LUKS uses a metadata header
+and can hence offer mo' features than plain dm-crypt. On tha other
+hand, tha header is visible n' vulnerable ta damage.
+
+In addition, cryptsetup serves up limited support fo' tha use of
+historic loopaes volumes n' fo' TruerCrypt compatible volumes.
+
+.SH PLAIN DM-CRYPT OR LUKS?
+.PP
+Unless you KNOW tha cryptographic background well, use LUKS.
+With plain dm-crypt there be a fuckin shitload of possible user errors
+that massively decrease security. While LUKS cannot fix them
+all, it can lessen tha impact fo' nuff of em.
+.SH WARNINGS
+.PP
+All dem phat shiznit on tha riskz of rockin encrypted storage,
+on handlin problems n' on securitizzle aspects can be found up in the
+\fICryptsetup FAQUIZZY\fR. Read dat shit. Nonetheless, some risks deserve
+to be mentioned here.
+
+\fBBackup:\fR Storage media take a thugged-out dirt nap. Encryption has no influence on dis shit.
+Backup is mandatory fo' encrypted data as well, if tha data has any
+worth. Right back up in yo muthafuckin ass. See tha Cryptsetup FAQUIZZY fo' lyrics on how tha fuck ta do backup of an
+encrypted volume.
+
+\fBCharacta encoding:\fR If you enta a
+passphrase wit special symbols, tha passphrase can chizzle
+dependin characta encoding. Keyboard settings can also chizzle,
+which can make blind input hard or impossible. For
+example, switchin from some ASCII 8-bit variant ta UTF-8
+can lead ta a gangbangin' finger-lickin' different binary encodin n' hence different
+passphrase peeped by cryptsetup, even if what tha fuck you peep on
+the terminal is exactly tha same. Well shiiiit, it is therefore highly
+recommended ta select passphrase charactas only from 7-bit
+ASCII, as tha encodin fo' 7-bit ASCII stays tha same ol' dirty for
+all ASCII variants n' UTF-8.
+
+\fBLUKS header:\fR If tha header of a LUKS volume gets damaged,
+all data is permanently lost unless you gotz a header-backup.
+If a key-slot is damaged, it can only be restored from a header-backup
+or if another actizzle key-slot wit known passphrase is undamaged.
+Damagin tha LUKS header is suttin' playas manage ta do with
+surprisin frequency. This risk is tha result of a trade-off
+between securitizzle n' safety, as LUKS is designed fo' fast and
+secure wipin by just overwritin header n' key-slot area.
+
+\fBPreviously used partitions:\fR If a partizzle was previously used,
+it be a straight-up phat scam ta wipe filesystem signatures, data, etc. before
+bustin a LUKS or plain dm-crypt container on dat shit.
+For a quick removal of filesystem signatures, use "wipefs". Take care
+though dat dis may not remove every last muthafuckin thang. In particular md (RAID)
+signatures all up in tha end of a thang may survive. Well shiiiit, it also do not
+remove data. For a gangbangin' full wipe, overwrite tha whole partizzle before
+container creation. I aint talkin' bout chicken n' gravy biatch. If you do not know how tha fuck ta ta that, the
+cryptsetup FAQUIZZY raps bout nuff muthafuckin options.
+
+.SH BASIC COMMANDS
+Da followin is valid actions fo' all supported thang types.
+
+\fIopen\fR <device> <name> \-\-type <device_type>
+.IP
+Opens (creates a mappin with) <name> backed by thang <device>.
+
+Device type can be \fIplain\fR, \fIluks\fR (default), \fIloopaes\fR
+or \fItcrypt\fR.
+
+For backward compatibilitizzle there be \fBopen\fR command aliases:
+
+\fBcreate\fR (argument-order <name> <device>): open \-\-type plain
+.br
+\fBplainOpen\fR: open \-\-type plain
+.br
+\fBluksOpen\fR: open \-\-type luks
+.br
+\fBloopaesOpen\fR: open \-\-type loopaes
+.br
+\fBtcryptOpen\fR: open \-\-type tcrypt
+
+\fB<options>\fR is type specific n' is busted lyrics bout below
+for individual thang types. For \fBcreate\fR, tha order of tha <name>
+and <device> options is inverted fo' oldschool reasons, all other
+aliases use tha standard \fB<device> <name>\fR order.
+.PP
+\fIclose\fR <name>
+.IP
+Removes tha existin mappin <name> n' wipes tha key from kernel memory.
+
+For backward compatibilitizzle there be \fBclose\fR command aliases:
+\fBremove\fR, \fBplainClose\fR, \fBluksClose\fR, \fBloopaesClose\fR,
+\fBtcryptClose\fR (all behaves exactly tha same, thang type is
+determined automatically from actizzle device).
+.PP
+\fIstatus\fR <name>
+.IP
+Reports tha status fo' tha mappin <name>.
+.PP
+\fIresize\fR <name>
+.IP
+Resizes a actizzle mappin <name>.
+
+If \-\-size (in sectors) aint specified, tha size of the
+underlyin block thang is used. Y'all KNOW dat shit, muthafucka! Note dat dis do not
+change tha raw thang geometry, it just chizzlez how tha fuck many
+sectorz of tha raw thang is represented up in tha mapped device.
+.SH PLAIN MODE
+Plain dm-crypt encrypts tha thang sector-by-sector wit a
+single, non-salted hash of tha passphrase. No checks
+are performed, no metadata is used. Y'all KNOW dat shit, muthafucka! There is no formattin operation.
+When tha raw thang is mapped (opened), tha usual thang operations
+can be used on tha mapped device, includin filesystem creation.
+Mapped devices probably reside up in /dev/mapper/<name>.
+
+Da followin is valid plain thang type actions:
+
+\fIopen\fR \-\-type plain <device> <name>
+.br
+\fIcreate\fR <name> <device> (\fBOBSOLETE syntax\fR)
+.IP
+Opens (creates a mappin with) <name> backed by thang <device>.
+
+\fB<options>\fR can be [\-\-hash, \-\-cipher, \-\-verify-passphrase,
+\-\-key-file, \-\-keyfile-offset, \-\-key-size, \-\-offset, \-\-skip, \-\-size,
+\-\-readonly, \-\-shared, \-\-allow-discards]
+
+Example: 'cryptsetup open --type plain /dev/sda10 e1' maps tha raw
+encrypted thang /dev/sda10 ta tha mapped (decrypted) device
+/dev/mapper/e1, which can then be mounted, fsck-ed or have a
+filesystem pimped on dat shit.
+.SH LUKS EXTENSION
+LUKS, tha Linux Unified Key Setup, be a standard fo' disk encryption.
+It addz a standardized header all up in tha start of tha device,
+a key-slot area directly behind tha header n' tha bulk
+data area behind dis shit. Da whole set is called a 'LUKS container'.
+Da thang dat a LUKS container resides on is called a 'LUKS device'.
+For most purposes both terms can be used interchangeably. But
+note dat when tha LUKS header be at a nonzero offset
+in a thugged-out device, then tha thang aint a LUKS thang no mo' yo, but
+has a LUKS container stored up in it at a offset.
+
+LUKS can manage multiple passphrases dat can be individually revoked
+or chizzled n' dat can be securely scrubbed from persistent
+media cuz of tha use of anti-forensic stripes. Passphrases
+are protected against brute-force n' dictionary
+attacks by PBKDF2, which implements hash iteration n' salting
+in one function.
+
+Each passphrase, also called a
+.B key
+in dis document, be associated wit one of 8 key-slots.
+Key operations dat do not specify a slot affect tha straight-up original gangsta slot
+that matches tha supplied passphrase or tha straight-up original gangsta empty slot if
+a freshly smoked up passphrase be added.
+
+Da followin is valid LUKS actions:
+
+\fIluksFormat\fR <device> [<key file>]
+.IP
+Initializes a LUKS partizzle n' sets tha initial passphrase
+(for key-slot 0),
+either via promptin or via <key file>. Note that
+if tha second argument is present, then tha passphrase
+is taken from tha file given there, without tha need
+to use tha \-\-key-file option. I aint talkin' bout chicken n' gravy biatch fo' realz. Also note dat fo' both forms
+of readin tha passphrase from file you can
+give '-' as file name, which thangs up in dis biatch up in tha passphrase bein read
+from stdin n' tha safety-question bein skipped.
+
+Yo ass can only call luksFormat on a LUKS thang dat aint mapped.
+
+\fB<options>\fR can be [\-\-hash, \-\-cipher, \-\-verify\-passphrase,
+\-\-key\-size, \-\-key\-slot,
+\-\-key\-file (takes precedence over optionizzle second argument),
+\-\-keyfile\-offset, \-\-keyfile\-size, \-\-use\-random | \-\-use\-urandom,
+\-\-uuid, \-\-master\-key\-file, \-\-iter\-time, \-\-header,
+\-\-force\-password].
+
+\fBWARNING:\fR Bustin a luksFormat on a existin LUKS container will
+make all data tha oldschool container permanently irretrievable, unless
+you gotz a header backup.
+.PP
+\fIopen\fR \-\-type luks <device> <name>
+.br
+\fIluksOpen\fR <device> <name> (\fBold syntax\fR)
+.IP
+Opens tha LUKS thang <device> n' sets up a mappin <name> after
+successful verification of tha supplied passphrase.
+If tha passphrase aint supplied via \-\-key-file, tha command
+prompts fo' it interactively.
+
+Da <device> parameta can be also specified by LUKS UUID up in the
+format UUID=<uuid>, which uses tha symlinks up in /dev/disk/by-uuid.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-keyfile\-offset,
+\-\-keyfile\-size, \-\-readonly, \-\-test\-passphrase,
+\-\-allow\-discards, \-\-header, \-\-key-slot, \-\-master\-key\-file].
+.PP
+\fIluksSuspend\fR <name>
+.IP
+Suspendz a actizzle thang (all IO operations will blocked
+and accesses ta tha thang will wait indefinitely)
+and wipes tha encryption
+key from kernel memory. Needz kernel 2.6.19 or later.
+
+Afta dis operation you gotta use \fIluksResume\fR ta reinstate
+the encryption key n' unblock tha thang or \fIclose\fR ta remove
+the mapped device.
+
+\fBWARNING:\fR never suspend tha thang on which tha cryptsetup binary resides.
+
+\fB<options>\fR can be [\-\-header].
+.PP
+\fIluksResume\fR <name>
+.IP
+Resumes a suspended thang n' reinstates tha encryption key.
+Prompts interactively fo' a passphrase if \-\-key-file aint given.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-keyfile\-size, \-\-header]
+.PP
+\fIluksAddKey\fR <device> [<key file wit freshly smoked up key>]
+.IP
+addz a freshly smoked up passphrase fo' realz. An existin passphrase must be supplied
+interactively or via \-\-key-file.
+Da freshly smoked up passphrase ta be added can be specified interactively
+or read from tha file given as positionizzle argument.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-keyfile\-offset,
+\-\-keyfile\-size, \-\-new\-keyfile\-offset,
+\-\-new\-keyfile\-size, \-\-key\-slot, \-\-master\-key\-file,
+\-\-iter\-time, \-\-force\-password].
+.PP
+\fIluksRemoveKey\fR <device> [<key file wit passphrase ta be removed>]
+.IP
+Removes tha supplied passphrase from tha LUKS device. The
+passphrase ta be removed can be specified interactively,
+as positionizzle argument or via \-\-key-file.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-keyfile\-offset,
+\-\-keyfile\-size]
+
+\fBWARNING:\fR If you read tha passphrase from stdin
+(without further argument or wit '-' as argument
+to \-\-key\-file), batch-mode (-q) is ghon be implicitely
+switched on n' no warnin is ghon be given when you remove the
+last remainin passphrase from a LUKS container n' shit. Removing
+the last passphrase make tha LUKS container permanently
+inaccessible.
+.PP
+\fIluksChangeKey\fR <device> [<new key file>]
+.IP
+Changes a existin passphrase. Da passphrase
+to be chizzled must be supplied interactively or via \-\-key\-file.
+Da freshly smoked up passphrase can be supplied interactively or in
+a file given as positionizzle argument.
+
+If a key-slot is specified (via \-\-key-slot), tha passphrase
+for dat key-slot must be given n' tha freshly smoked up passphrase
+will overwrite tha specified key-slot. If no key-slot
+is specified n' there is still a gangbangin' free key-slot, then
+the freshly smoked up passphrase is ghon be put tha fuck into a gangbangin' free key-slot before the
+key-slot containin tha oldschool passphrase is purged. Y'all KNOW dat shit, muthafucka! If there is
+no free key-slot, then tha key-slot wit tha oldschool passphrase is
+overwritten directly.
+
+\fBWARNING:\fR If a key-slot is overwritten, a media failure
+durin dis operation can cause tha overwrite ta fail after
+the oldschool passphrase has been wiped n' make tha LUKS container
+inaccessible.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-keyfile\-offset,
+\-\-keyfile\-size, \-\-new\-keyfile\-offset,
+\-\-new\-keyfile\-size, \-\-key\-slot, \-\-force\-password].
+.PP
+\fIluksKillSlot\fR <device> <key slot number>
+.IP
+Wipe tha key-slot number <key slot> from tha LUKS device fo' realz. A remaining
+passphrase must be supplied, either interactively or via \-\-key-file.
+This command can remove tha last remainin key-slot yo, but requires
+an interactizzle confirmation when bustin so. Removin tha last
+passphrase cook up a LUKS container permanently inaccessible.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-keyfile\-offset,
+\-\-keyfile\-size].
+
+\fBWARNING:\fR If you read tha passphrase from stdin
+(without further argument or wit '-' as argument
+to \-\-key-file), batch-mode (-q) is ghon be implicitely
+switched on n' no warnin is ghon be given when you remove the
+last remainin passphrase from a LUKS container n' shit. Removing
+the last passphrase make tha LUKS container permanently
+inaccessible.
+.PP
+\fIerase\fR <device>
+.br
+\fIluksErase\fR <device>
+.IP
+Erase all keyslots n' make tha LUKS container permanently inaccessible.
+Yo ass do not need ta provide any password fo' dis operation.
+
+\fBWARNING:\fR This operation is irreversible.
+.PP
+\fIluksUUID\fR <device>
+.IP
+Print tha UUID of a LUKS device.
+.br
+Set freshly smoked up UUID if \fI\-\-uuid\fR option is specified.
+.PP
+\fIisLuks\fR <device>
+.IP
+Returns true, if <device> be a LUKS device, false otherwise.
+Use option \-v ta git human-readable feedback. 'Command successful.'
+means tha thang be a LUKS device.
+.PP
+\fIluksDump\fR <device>
+.IP
+Dump tha header shiznit of a LUKS device.
+
+If tha \-\-dump\-master\-key option is used, tha LUKS thang masta key is
+dumped instead of tha keyslot info. Beware dat tha masta key cannot be
+changed n' can be used ta decrypt tha data stored up in tha LUKS container
+without a passphrase n' even without tha LUKS header n' shit. This means
+that if tha masta key is compromised, tha whole thang has ta be
+erased ta prevent further access. Use dis option carefully.
+
+In order ta dump tha masta key, a passphrase has ta be supplied,
+either interactively or via \-\-key\-file.
+
+\fB<options>\fR can be [\-\-dump\-master\-key, \-\-key\-file,
+\-\-keyfile\-offset, \-\-keyfile\-size].
+
+\fBWARNING:\fR If \-\-dump\-master\-key is used wit \-\-key\-file
+and tha argument ta \-\-key\-file is '-', no validation question
+will be axed n' no warnin given.
+.PP
+\fIluksHeaderBackup\fR <device> \-\-header\-backup\-file <file>
+.IP
+Stores a funky-ass binary backup of tha LUKS header n' keyslot area.
+.br
+Note: Usin '-' as filename writes tha header backup ta a gangbangin' file named '-'.
+
+\fBWARNING:\fR This backup file n' a passphrase valid
+at tha time of backup allows decryption of the
+LUKS data area, even if tha passphrase was lata chizzled or
+removed from tha LUKS device fo' realz. Also note dat wit a header
+backup you lose tha mobilitizzle ta securely wipe tha LUKS
+device by just overwritin tha header n' key-slots, n' you can put dat on yo' toast. You
+either need ta securely erase all header backups in
+addizzle or overwrite tha encrypted data area as well.
+Da second option is less secure, as some sectors
+can survive, e.g. cuz of defect pimpment.
+.PP
+\fIluksHeaderRestore\fR <device> \-\-header\-backup\-file <file>
+.IP
+Restores a funky-ass binary backup of tha LUKS header n' keyslot area
+from tha specified file.
+.br
+Note: Usin '-' as filename readz tha header backup from a gangbangin' file named '-'.
+
+\fBWARNING:\fR Header n' keyslots is ghon be replaced, only
+the passphrases from tha backup will work afterwards.
+
+This command requires dat tha masta key size n' data offset
+of tha LUKS header already on tha thang n' of tha header backup
+match fo' realz. Alternatively, if there is no LUKS header on tha device,
+the backup will also be freestyled ta dat shit.
+.SH loop-AES EXTENSION
+cryptsetup supports mappin loop-AES encrypted partizzle using
+a compatibilitizzle mode.
+.PP
+\fIopen\fR \-\-type loopaes <device> <name> \-\-key\-file <keyfile>
+.br
+\fIloopaesOpen\fR <device> <name> \-\-key\-file <keyfile>  (\fBold syntax\fR)
+.IP
+Opens tha loop-AES <device> n' sets up a mappin <name>.
+
+If tha key file is encrypted wit GnuPG, then you gotta use
+\-\-key\-file=\- n' decrypt it before use, e.g. like this:
+.br
+gpg \-\-decrypt <keyfile> | cryptsetup loopaesOpen \-\-key\-file=\-
+<device> <name>
+
+Use \fB\-\-keyfile\-size\fR ta specify tha proper key length if needed.
+
+Use \fB\-\-offset\fR ta specify thang offset. Note dat tha units
+need ta be specified up in number of 512 byte sectors.
+
+Use \fB\-\-skip\fR ta specify tha IV offset. If tha original gangsta device
+used a offset n' but did not use it up in IV sector calculations,
+you gotta explicitly use \fB\-\-skip 0\fR up in addizzle ta tha offset
+parameter.
+
+Use \fB\-\-hash\fR ta override tha default hash function for
+passphrase hashin (otherwise it is detected accordin ta key
+size).
+
+\fB<options>\fR can be [\-\-key\-file, \-\-key\-size, \-\-offset, \-\-skip,
+\-\-hash, \-\-readonly, \-\-allow\-discards].
+.PP
+See also section 7 of tha FAQUIZZY n' \fBhttp://loop-aes.sourceforge.net\fR
+for mo' shiznit regardin loop-AES.
+.SH TCRYPT (TrueCrypt-compatible) EXTENSION
+cryptsetup supports mappin of TrueCrypt or tcplay encrypted partition
+usin a natizzle Linux kernel API.
+Header formattin n' TCRYPT header chizzle aint supported, cryptsetup
+never chizzlez TCRYPT header on-device.
+
+TCRYPT extension requires kernel userspace
+crypto API ta be available (introduced up in Linux kernel 2.6.38).
+If yo ass is configurin kernel yo ass, enable
+"User-space intercourse fo' symmetric key cipher algorithms" in
+"Cryptographic API" section (CRYPTO_USER_API_SKCIPHER .config option).
+
+Because TCRYPT header is encrypted, you gotta always provide valid
+passphrase n' keyfiles.
+
+Cryptsetup should recognize all header variants, except legacy cipher chains
+usin LRW encryption mode wit 64 bits encryption block (namely Blowfish
+in LRW mode aint recognized, dis is limitation of kernel crypto API).
+
+\fBNOTE:\fR Activation wit \fBtcryptOpen\fR is supported only fo' cipher chains
+usin LRW or XTS encryption modes.
+
+Da \fBtcryptDump\fR command should work fo' all recognized TCRYPT devices
+and don't require superuser privilege.
+
+To map system thang (device wit boot loader where tha whole encrypted
+system resides) use \fB\-\-tcrypt\-system\fR option.
+Yo ass can use partizzle thang as tha parameta (parameta must be real partition
+device, not image up in file), then only dis partizzle is mapped.
+
+If you have whole TCRYPT thang as a gangbangin' file image n' you wanna map multiple
+partizzle encrypted wit system encryption, please create loopback mapping
+with partitions first (\fBlosetup -P\fR, peep \fPlosetup(8)\fR playa page fo' mo' info),
+and use loop partizzle as tha thang parameter.
+
+If you use whole base thang as parameter, one thang fo' tha whole system
+encryption is mapped. Y'all KNOW dat shit, muthafucka! This mode be available only fo' backward compatibility
+with olda cryptsetup versions which mapped TCRYPT system encryption
+usin whole device.
+
+To use hidden header (and map hidden device, if available),
+use \fB\-\-tcrypt\-hidden\fR option.
+
+To explicitly use backup (secondary) header, use \fB\-\-tcrypt\-backup\fR
+option.
+
+\fBNOTE:\fR There is no protection fo' a hidden volume if
+the outa volume is mounted. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Da reason is dat if there
+were any protection, it would require some metadata describing
+what ta protect up in tha outa volume n' tha hidden volume would
+become detectable.
+
+.PP
+\fIopen\fR \-\-type tcrypt <device> <name>
+.br
+\fItcryptOpen\fR <device> <name>  (\fBold syntax\fR)
+.IP
+Opens tha TCRYPT (a TrueCrypt-compatible) <device> n' sets up
+a mappin <name>.
+
+\fB<options>\fR can be [\-\-key\-file, \-\-tcrypt\-hidden,
+\-\-tcrypt\-system, \-\-tcrypt\-backup, \-\-readonly, \-\-test\-passphrase,
+\-\-allow-discards].
+
+Da keyfile parameta allows combination of file content wit the
+passphrase n' can be repeated. Y'all KNOW dat shit, muthafucka! This type'a shiznit happens all tha time. Note dat rockin keyfilez is compatible
+with TCRYPT n' is different from LUKS keyfile logic.
+
+\fBWARNING:\fR Option \fB\-\-allow\-discards\fR cannot be combined with
+option \fB\-\-tcrypt\-hidden\fR. For aiiight mappin it can cause
+\fBdestruction of hidden volume\fR (hidden volume appears as unused space
+for outa volume so dis space can be discarded).
+
+.PP
+\fItcryptDump\fR <device>
+.IP
+Dump tha header shiznit of a TCRYPT device.
+
+If tha \-\-dump\-master\-key option is used, tha TCRYPT thang masta key
+is dumped instead of TCRYPT header info. Beware dat tha masta key
+(or concatenated masta keys if cipher chain is used)
+can be used ta decrypt tha data stored up in tha TCRYPT container without
+a passphrase.
+This means dat if tha masta key is compromised, tha whole thang has
+to be erased ta prevent further access. Use dis option carefully.
+
+\fB<options>\fR can be [\-\-dump\-master\-key, \-\-key\-file,
+\-\-tcrypt\-hidden, \-\-tcrypt\-system, \-\-tcrypt\-backup].
+
+Da keyfile parameta allows combination of file content wit the
+passphrase n' can be repeated.
+.PP
+See also \fBhttp://www.truecrypt.org\fR fo' mo' shiznit regarding
+TrueCrypt.
+
+Please note dat cryptsetup do not use TrueCrypt code, please report
+all problems related ta dis compatibilitizzle extension ta cryptsetup project.
+.SH MISCELLANEOUS
+.PP
+\fIrepair\fR <device>
+.IP
+Tries ta repair tha thang metadata if possible. Currently supported only
+for LUKS thang type.
+
+This command is useful ta fix some known benign LUKS metadata
+header corruptions. Only basic corruptionz of unused keyslot
+are fixable. This command will only chizzle tha LUKS header, not
+any key-slot data.
+
+\fBWARNING:\fR Always create a funky-ass binary backup of tha original
+header before callin dis command.
+.PP
+\fIbenchmark\fR <options>
+.IP
+Benchmarks ciphers n' KDF (key derivation function).
+Without parametas it tries ta measure few common configurations.
+
+To benchmark other ciphers or modes, you need ta specify \fB\-\-cipher\fR
+and \fB\-\-key\-size\fR options or \fB\-\-hash\fR fo' KDF test.
+
+\fBNOTE:\fR This benchmark is rockin memory only n' is only informative.
+Yo ass cannot directly predict real storage encryption speed from dat shit.
+
+For testin block ciphers, dis benchmark requires kernel userspace
+crypto API ta be available (introduced up in Linux kernel 2.6.38).
+If yo ass is configurin kernel yo ass, enable
+"User-space intercourse fo' symmetric key cipher algorithms" in
+"Cryptographic API" section (CRYPTO_USER_API_SKCIPHER .config option).
+
+\fB<options>\fR can be [\-\-cipher, \-\-key\-size, \-\-hash].
+.SH OPTIONS
+.TP
+.B "\-\-verbose, \-v"
+Print mo' shiznit on command execution.
+.TP
+.B "\-\-debug"
+Run up in debug mode wit full diagnostic logs. Debug output
+lines is always prefixed by '#'.
+.TP
+.B "\-\-hash, \-h \fI<hash\-spec>\fR"
+Specifies tha passphrase hash fo' \fIopen\fR (for plain and
+loopaes thang types).
+
+Specifies tha hash used up in tha LUKS key setup scheme n' volume key digest
+for \fIluksFormat\fR. Da specified hash is used as hash-parameter
+for PBKDF2 n' fo' tha AF splitter.
+
+Da specified hash name is passed ta tha compiled-in crypto backend.
+Different backendz may support different hashes.
+For \fIluksFormat\fR, tha hash
+algorithm must provide at least 160 bitz of output, which
+excludes, e.g., MD5. Do not bust a non-crypto hash like
+\fB"crc32"\fR as dis breaks security.
+
+Values compatible wit oldschool version of cryptsetup are
+\fB"ripemd160"\fR fo' \fIopen \-\-type plain\fR and
+\fB"sha1"\fR fo' \fIluksFormat\fR.
+
+Use \fIcryptsetup \-\-help\fR ta show tha defaults.
+.TP
+.B "\-\-cipher, \-c \fI<cipher\-spec>\fR"
+Set tha cipher justification string.
+
+\fIcryptsetup \-\-help\fR shows tha compiled-in defaults.
+Da current default up in tha distributed sources is
+"aes-cbc-essiv:sha256" fo' plain dm-crypt and
+"aes-xts-plain64" fo' LUKS.
+
+If a hash is part of tha cipher spefification, then it is
+used as part of tha IV generation. I aint talkin' bout chicken n' gravy biatch. For example, ESSIV
+needz a hash function, while "plain64" do not and
+hence none is specified.
+
+For XTS mode you can optionally set a key size of
+512 bits wit tha \-s option. I aint talkin' bout chicken n' gravy biatch. Key size fo' XTS
+mode is twice dat fo' other modes fo' tha same
+securitizzle level.
+
+XTS mode requires kernel 2.6.24 or lata n' plain64 requires
+kernel 2.6.33 or later n' shit. Mo' shiznit can be found up in tha FAQUIZZY.
+.TP
+.B "\-\-verify-passphrase, \-y"
+When interactively askin fo' a passphrase, ask fo' it twice
+and diss if both inputs do not match fo' realz. Advised when bustin
+a regular mappin fo' tha last time, or when hustlin
+\fIluksFormat\fR. Ignored on input from file or stdin.
+.TP
+.B "\-\-key-file, \-d \fIname\fR"
+Read tha passphrase from file.
+
+If tha name given is "-", then tha passphrase is ghon be read from stdin.
+In dis case, readin aint gonna stop at newline characters.
+
+With LUKS, passphrases supplied via \-\-key\-file is always
+the existin passphrases axed by a cold-ass lil command, except in
+the case of \fIluksFormat\fR where \-\-key\-file is equivalent
+to tha positionizzle key file argument.
+
+If you wanna set a freshly smoked up passphrase via key file, you have to
+use a positionizzle argument ta \fIluksAddKey\fR.
+
+See section \fBNOTES ON PASSPHRASE PROCESSING\fR fo' mo' shiznit.
+.TP
+.B "\-\-keyfile\-offset \fIvalue\fR"
+Skip \fIvalue\fR bytes all up in tha beginnin of tha key file.
+Works wit all commandz dat accepts key files.
+.TP
+.B "\-\-keyfile\-size, \-l \fIvalue\fR"
+Read a maximum of \fIvalue\fR bytes from tha key file.
+Default is ta read tha whole file up ta tha compiled-in
+maximum dat can be queried wit \-\-help. Right back up in yo muthafuckin ass. Supplyin more
+data than tha compiled-in maximum aborts tha operation.
+
+This option is useful
+to cut trailin newlines, fo' example. If \-\-keyfile\-offset
+is also given, tha size count starts afta tha offset.
+Works wit all commandz dat accepts key files.
+.TP
+.B "\-\-new\-keyfile\-offset \fIvalue\fR"
+Skip \fIvalue\fR bytes all up in tha start when
+addin a freshly smoked up passphrase from key file with
+\fIluksAddKey\fR.
+.TP
+.B "\-\-new\-keyfile\-size  \fIvalue\fR"
+Read a maximum of \fIvalue\fR bytes when adding
+a freshly smoked up passphrase from key file wit \fIluksAddKey\fR.
+Default is ta read tha whole file up ta tha compiled-in
+maximum length dat can be queried wit \-\-help.
+Supplyin mo' than tha compiled up in maximum aborts the
+operation.
+When \-\-new\-keyfile\-offset be also given, readin starts
+afta tha offset.
+.TP
+.B "\-\-master\-key\-file"
+Use a masta key stored up in a gangbangin' file.
+
+For \fIluksFormat\fR this
+allows bustin a LUKS header wit dis specific
+masta key. If tha masta key was taken from a existing
+LUKS header n' all other parametas is tha same,
+then tha freshly smoked up header decrypts tha data encrypted wit the
+header tha masta key was taken from.
+
+\fBWARNING:\fR If you create yo' own masta key, you
+need ta make shizzle ta do it right. Otherwise you can end
+up wit a low-entropy or otherwise partially predictable
+masta key which will compromise security.
+
+For \fIluksAddKey\fR dis allows addin a freshly smoked up passphrase
+without havin ta know a exitin one.
+
+For \fIopen\fR dis allows ta open tha LUKS device
+without givin a passphrase.
+.TP
+.B "\-\-dump\-master\-key"
+For \fIluksDump\fR dis option includes tha masta key up in tha displayed
+information. I aint talkin' bout chicken n' gravy biatch. Use wit care, as tha masta key can be used to
+bypass tha passphrases, peep also option \-\-master\-key\-file.
+.TP
+.B "\-\-use\-random"
+.TP
+.B "\-\-use\-urandom"
+For \fIluksFormat\fR these options define which kernel random number
+generator is ghon be used ta create tha masta key (which be a
+long-term key).
+
+See \fBNOTES ON RANDOM NUMBER GENERATORS\fR fo' more
+information. I aint talkin' bout chicken n' gravy biatch. Use \fIcryptsetup \-\-help\fR
+to show tha compiled-in default random number generator.
+
+\fBWARNING:\fR In a low-entropy thang (e.g. up in an
+embedded system), both selections is problematic.
+Usin /dev/urandom can lead ta weak keys.
+Usin /dev/random can block a long-ass time, potentially
+forever, if not enough entropy can be harvested by
+the kernel.
+.TP
+.B "\-\-key\-slot, \-S <0\-7>"
+For LUKS operations dat add key material, dis options allows you
+to specify which key slot is selected fo' tha freshly smoked up key.
+This option can be used fo' \fIluksFormat\fR,
+and \fIluksAddKey\fR.
+.br
+In addition, fo' \fIopen\fR, dis option selects a
+specific key-slot ta compare tha passphrase against.
+If tha given passphrase would only match a gangbangin' finger-lickin' different key-slot,
+the operation fails.
+.TP
+.B "\-\-key\-size, \-s <bits>"
+Sets key size up in bits, n' you can put dat on yo' toast. Da argument has ta be a multiple of
+8. Da possible key-sizes is limited by tha cipher and
+mode used.
+
+See /proc/crypto fo' mo' shiznit. I aint talkin' bout chicken n' gravy biatch. Note dat key-size
+in /proc/crypto is stated up in bytes.
+
+This option can be used fo' \fIopen \-\-type plain\fR or \fIluksFormat\fR.
+All other LUKS actions will use tha key-size specified up in tha LUKS header.
+Use \fIcryptsetup \-\-help\fR ta show tha compiled-in defaults.
+.TP
+.B "\-\-size, \-b <number of 512 byte sectors>"
+Force tha size of tha underlyin thang up in sectorz of 512 bytes.
+This option is only relevant fo' tha \fIopen\fR n' \fIresize\fR
+actions.
+.TP
+.B "\-\-offset, \-o <number of 512 byte sectors>"
+Start offset up in tha backend thang up in 512-byte sectors.
+This option is only relevant fo' tha \fIopen\fR action wit plain
+or loopaes thang types.
+.TP
+.B "\-\-skip, \-p <number of 512 byte sectors>"
+Start offset used up in IV calculation up in 512-byte sectors
+(how nuff sectorz of tha encrypted data ta skip all up in tha beginning).
+This option is only relevant fo' tha \fIopen\fR action wit plain
+or loopaes thang types.
+
+Hence, if \-\-offset \fIn\fR, n' \-\-skip \fIs\fR, sector \fIn\fR
+(the first sector of encrypted device) will git a sector number
+of \fIs\fR fo' tha IV calculation.
+.TP
+.B "\-\-readonly, \-r"
+set up a read-only mapping.
+.TP
+.B "\-\-shared"
+Creates a additionizzle mappin fo' one common
+ciphertext device fo' realz. Arbitrary mappings is supported.
+This option is only relevant fo' the
+\fIopen \-\-type plain\fR action. I aint talkin' bout chicken n' gravy biatch. Use \-\-offset, \-\-size n' \-\-skip to
+specify tha mapped area.
+.TP
+.B "\-\-iter\-time, \-i <number of milliseconds>"
+Da number of millisecondz ta spend wit PBKDF2 passphrase processing.
+This option is only relevant fo' LUKS operations dat set or chizzle
+passphrases, like fuckin \fIluksFormat\fR or \fIluksAddKey\fR.
+Specifyin 0 as parameta selects tha compiled-in default.
+.TP
+.B "\-\-batch\-mode, \-q"
+Suppresses all confirmation thangs. Use wit care!
+
+If tha \-y option aint specified, dis option also switches off
+the passphrase verification fo' \fIluksFormat\fR.
+.TP
+.B "\-\-timeout, \-t <number of seconds>"
+Da number of secondz ta wait before timeout on passphrase input
+via terminal. It aint nuthin but tha nick nack patty wack, I still gots tha bigger sack. Well shiiiit, it is relevant every last muthafuckin time a passphrase be asked,
+for example fo' \fIopen\fR, \fIluksFormat\fR or \fIluksAddKey\fR.
+It has no effect if used up in conjunction wit \-\-key-file.
+.br
+This option is useful when tha system
+should not stall if tha user do not input a passphrase,
+e.g. durin boot. Da default be a value of 0 seconds,
+which means ta wait alllll muthafuckin day.
+.TP
+.B "\-\-tries, \-T"
+How tha fuck often tha input of tha passphrase shall be retried.
+This option is relevant
+every time a passphrase be asked, fo' example for
+\fIopen\fR, \fIluksFormat\fR or \fIluksAddKey\fR.
+Da default is 3 tries.
+.TP
+.B "\-\-align\-payload <number of 512 byte sectors>"
+Align payload at a funky-ass boundary of \fIvalue\fR 512-byte sectors.
+This option is relevant fo' \fIluksFormat\fR.
+
+If not specified, cryptsetup tries ta use tha topologizzle info
+provided by kernel fo' tha underlyin thang ta git optimal alignment.
+If not available (or tha calculated value be a multiple of tha default)
+data is by default aligned ta a 1MiB boundary (i.e. 2048 512-byte sectors).
+
+For a thugged-out detached LUKS header dis option specifies tha offset on the
+data device. Right back up in yo muthafuckin ass. See also tha \-\-header option.
+.TP
+.B "\-\-uuid=\fIUUID\fR"
+Use tha provided \fIUUID\fR fo' tha \fIluksFormat\fR command
+instead of generatin freshly smoked up one. Chizzlez tha existin UUID when
+used wit tha \fIluksUUID\fR command.
+
+Da UUID must be provided up in tha standard UUID format,
+e.g. 12345678-1234-1234-1234-123456789abc.
+.TP
+.B "\-\-allow\-discards\fR"
+Allow tha use of discard (TRIM) requests fo' device.
+This option is only relevant fo' \fIopen\fR action.
+
+\fBWARNING:\fR This command can gotz a wack securitizzle impact
+because it can make filesystem-level operations visible on
+the physical device. For example, shiznit leaking
+filesystem type, used space, etc. may be extractable from
+the physical thang if tha discarded blocks can be located
+later n' shit. If up in doubt, do no use dat shit.
+
+A kernel version of 3.1 or lata is needed. Y'all KNOW dat shit, muthafucka! For earlier kernels
+this option is ignored.
+.TP
+.B "\-\-test\-passphrase\fR"
+Do not activate device, just verify passphrase.
+This option is only relevant fo' \fIopen\fR action (the device
+mappin name aint mandatory if dis option is used).
+.TP
+.B "\-\-header\fR <device or file storin tha LUKS header>"
+Use a thugged-out detached (separated) metadata thang or file where the
+LUKS header is stored. Y'all KNOW dat shit, muthafucka! This options allows ta store ciphertext
+and LUKS header on different devices.
+
+This option is only relevant fo' LUKS devices n' can be
+used wit tha \fIluksFormat\fR, \fIopen\fR, \fIluksSuspend\fR,
+\fIluksResume\fR, \fIstatus\fR n' \fIresize\fR commands.
+
+For \fIluksFormat\fR wit a gangbangin' file name as argument ta \-\-header,
+it has ta exist n' be big-ass enough ta contain tha LUKS header.
+See tha cryptsetup FAQUIZZY fo' header size calculation.
+
+For other commandz dat chizzle tha LUKS header (e.g. \fIluksAddKey\fR),
+specify tha thang or file wit tha LUKS header directly as the
+LUKS device.
+
+If used wit \fIluksFormat\fR, tha \-\-align\-payload option is taken
+as absolute sector alignment on ciphertext thang n' can be zero.
+
+\fBWARNING:\fR There is no check whether tha ciphertext thang specified
+actually belongs ta tha header given. I aint talkin' bout chicken n' gravy biatch. In fact you can specify an
+arbitrary thang as tha ciphertext thang fo' \fIopen\fR
+with tha \-\-header option. I aint talkin' bout chicken n' gravy biatch. Use wit care.
+.TP
+.B "\-\-force\-password\fR"
+Do not use password qualitizzle checkin fo' freshly smoked up LUKS passwords.
+
+This option applies only ta \fIluksFormat\fR, \fIluksAddKey\fR and
+\fIluksChangeKey\fR n' is ignored if cryptsetup is built without
+password qualitizzle checkin support.
+
+For mo' info bout password qualitizzle check, peep manual page
+for \fBpwquality.conf(5)\fR.
+.TP
+.B "\-\-version"
+Show tha program version.
+.TP
+.B "\-\-usage"
+Show short option help.
+.TP
+.B "\-\-help, \-?"
+Show help text n' default parameters.
+.SH RETURN CODES
+Cryptsetup returns 0 on success n' a non-zero value on error.
+
+Error codes are: 1 wack parameters, 2 no permission (bad passphrase),
+3 outta memory, 4 wack thang specified, 5 thang already exists
+or thang be jumpin' off tha hook.
+.SH NOTES ON PASSPHRASE PROCESSING FOR PLAIN MODE
+Note dat no iterated hashin or saltin is done up in plain mode.
+If hashin is done, it aint nuthin but a single direct hash. This means that
+low-entropy passphrases is easy as fuck  ta battle up in plain mode.
+
+\fBFrom a terminal\fR: Da passphrase is read until the
+first newline, i.e. '\\n'.
+Da input without tha newline characta is processed with
+the default hash or tha hash specified wit \-\-hash.
+Da hash result is ghon be truncated ta tha key size
+of tha used cipher, or tha size specified wit \-s.
+
+\fBFrom stdin\fR: Readin will continue until a newline (or until
+the maximum input size is reached), wit tha trailin newline
+stripped. Y'all KNOW dat shit, muthafucka! Da maximum input size is defined by tha same
+compiled-in default as fo' tha maximum key file size n'  can
+be overwritten rockin \-\-keyfile-size option.
+
+Da data read is ghon be hashed wit tha default hash
+or tha hash specified wit \-\-hash.
+Da has result is ghon be truncated ta tha key size
+of tha used cipher, or tha size specified wit \-s.
+
+Note dat if \-\-key-file=- is used fo' readin tha key
+from stdin, trailin newlines is not stripped from tha input.
+
+If "plain" is used as argument ta \-\-hash, tha input
+data aint gonna be hashed. Y'all KNOW dat shit, muthafucka! Instead, it is ghon be zero padded (if
+shorta than tha key size) or truncated (if longer than the
+key size) n' used directly as tha binary key. This is useful for
+directly specifyin a funky-ass binary key.
+No warnin is ghon be given if tha amount of data read from stdin is
+less than tha key size.
+
+\fBFrom a key file\fR: It is ghon be truncated ta the
+key size of tha used cipher or tha size given by \-s
+and directly used as binary key.
+if tha key file is shorta than tha key, cryptsetup
+will quit wit a error.
+
+.SH NOTES ON PASSPHRASE PROCESSING FOR LUKS
+LUKS uses PBKDF2 ta protect against doggtionary attacks
+and ta give some protection ta low-entropy passphrases
+(see RFC 2898 n' tha cryptsetup FAQUIZZY).
+
+\fBFrom a terminal\fR: Da passphrase is read until the
+first newline n' then processed by PBKDF2 without
+the newline character.
+
+\fBFrom stdin\fR:
+LUKS will read passphrases from stdin up ta the
+first newline characta or tha compiled-in
+maximum key file length. If \-\-keyfile\-size is
+given, it is ignored.
+
+\fBFrom key file\fR:
+Da complete keyfile is read up ta tha compiled-in
+maximum size. Newline charactas do not terminizzle the
+input. Da \-\-keyfile\-size option can be used ta limit
+what is read.
+
+\fBPassphrase processing\fR:
+Whenever a passphrase be added ta a LUKS header (luksAddKey, luksFormat),
+the user may specify how tha fuck much tha time tha passphrase processing
+should consume. Da time is used ta determine tha iteration count
+for PBKDF2 n' higher times will offer betta protection for
+low-entropy passphrases yo, but open will take longer to
+complete. For passphrases dat have entropy higher than the
+used key length, higher iteration times aint gonna increase security.
+
+Da default settin of one second is sufficient fo' most
+practical cases. Da only exception be a low-entropy
+passphrase used on a thang wit a slow CPU, as dis will
+result up in a low iteration count. On a slow thang it may
+be advisable ta increase tha iteration time rockin the
+\-\-iter\-time option up in order ta obtain a higher
+iteration count. This do slow down all lata luksOpen
+operations accordingly.
+.SH INCOHERENT BEHAVIOR FOR INVALID PASSPHRASES/KEYS
+LUKS checks fo' a valid passphrase when a encrypted partition
+is unlocked. Y'all KNOW dat shit, muthafucka! Da behavior of plain dm-crypt is different.
+It will always decrypt wit tha passphrase given. I aint talkin' bout chicken n' gravy biatch. If the
+given passphrase is wrong, tha thang mapped by plain
+dm-crypt will essentially still contain encrypted data and
+will be unreadable.
+.SH NOTES ON SUPPORTED CIPHERS, MODES, HASHES AND KEY SIZES
+Da available combinationz of ciphers, modes, hashes n' key sizes
+depend on kernel support. Right back up in yo muthafuckin ass. See /proc/crypto fo' a list of available
+options. Yo ass might need ta load additionizzle kernel crypto modules
+in order ta git mo' options.
+
+For tha \-\-hash option, if tha crypto backend is libgcrypt,
+then all algorithms supported by tha gcrypt library is available.
+For other crypto backendz some algorithms may be missing.
+.SH NOTES ON PASSPHRASES
+Mathematics can't be bribed. Y'all KNOW dat shit, muthafucka! Make shizzle you keep yo' passphrases safe.
+There is all dem sick tricks fo' constructin a gangbangin' fallback, when suddenly
+out of tha blue, yo' dome refuses ta cooperate.
+These fallbacks need LUKS, as itz only possible wit LUKS
+to have multiple passphrases. Right back up in yo muthafuckin ass. Still, if yo' attacker model do
+not prevent it, storin yo' passphrase up in a sealed envelope somewhere
+may be a phat scam as well.
+.SH NOTES ON RANDOM NUMBER GENERATORS
+Random Number Generators (RNG) used up in cryptsetup is always the
+kernel RNGs without any modifications or additions ta data stream
+produced.
+
+There is two typez of randomnizz cryptsetup/LUKS needs. One type
+(which always uses /dev/urandom) is used fo' salts, tha AF splitter
+and fo' wipin deleted keyslots.
+
+Da second type is used fo' tha volume (master) key. Yo ass can switch
+between rockin /dev/random n' /dev/urandom  here, see
+\fP\-\-use\-random\fR n' \fP\-\-use\-urandom\fR
+options. Usin /dev/random on a system without enough entropy sources
+can cause \fPluksFormat\fR ta block until tha axed amount of
+random data is gathered. Y'all KNOW dat shit, muthafucka! In a low-entropy thang (embedded system),
+this can take a straight-up long time n' potentially forever n' shiznit fo' realz. At tha same
+time, rockin /dev/urandom up in a low-entropy thang will
+produce low-qualitizzle keys. This be a straight-up problem yo, but solving
+it is outta scope fo' a mere man-page.
+See \fPurandom(4)\fR fo' mo' shiznit.
+.SH NOTES ON LOOPBACK DEVICE USE
+Cryptsetup is probably used directly on a funky-ass block thang (disk
+partizzle or LVM volume). But fuck dat shiznit yo, tha word on tha street is dat if tha thang argument be a
+file, cryptsetup tries ta allocate a loopback device
+and map it tha fuck into dis file. This mode requires Linux kernel 2.6.25
+or mo' recent which supports tha loop autoclear flag (loop thang is
+cleared on last close automatically). Of course, you can
+always map a gangbangin' file ta a loop-device manually. Right back up in yo muthafuckin ass. See the
+cryptsetup FAQUIZZY fo' a example.
+
+When thang mappin be active, you can peep tha loop backin file in
+the status command output fo' realz. Also peep losetup(8).
+.SH DEPRECATED ACTIONS
+.PP
+Da \fIreload\fR action is no longer supported.
+Please use \fIdmsetup(8)\fR if you need to
+directly manipulate wit tha thang mappin table.
+.PP
+Da \fIluksDelKey\fR was replaced wit \fIluksKillSlot\fR.
+.PP
+.SH REPORTING BUGS
+Report bugs, includin ones up in tha documentation, on
+the cryptsetup mailin list at <dm-crypt@saout.de>
+or up in tha 'Issues' section on LUKS joint.
+Please attach tha output of tha failed command wit the
+\-\-debug option added.
+.SH AUTHORS
+cryptsetup originally freestyled by Christophe Saout <christophe@saout.de>
+.br
+Da LUKS extensions n' original gangsta playa page was freestyled by
+Clemens Fruhwirth <clemens@endorphin.org>.
+.br
+Man page extensions by Milan Broz <gmazyland@gmail.com>.
+.br
+Man page rewrite n' extension by Arno Wagner <arno@wagner.name>.
+.SH COPYRIGHT
+Copyright \(co 2004 Christophe Saout
+.br
+Copyright \(co 2004-2006 Clemens Fruhwirth
+.br
+Copyright \(co 2009-2012 Red Hat, Inc.
+.br
+Copyright \(co 2009-2014 Milan Broz
+.br
+Copyright \(co 2012-2014 Arno Wagner
+
+This is free software; peep tha source fo' copyin conditions.  There is NO
+warranty; not even fo' MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH SEE ALSO
+Da LUKS joint at \fBhttp://code.google.com/p/cryptsetup/\fR
+
+Da cryptsetup FAQUIZZY, contained up in tha distribution package and
+online at
+\fBhttp://code.google.com/p/cryptsetup/wiki/FrequentlyAskedQuestions\fR
+
+Da cryptsetup mailin list n' list archive, peep FAQUIZZY entry 1.6.
+
+Da LUKS on-disk format justification available at
+\fBhttp://code.google.com/p/cryptsetup/wiki/Specification\fR

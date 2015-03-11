@@ -1,0 +1,257 @@
+'\" t
+.\"     Title: drm-kms
+.\"    Author: Dizzy Herrmann <dh.herrmann@googlemail.com>
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: September 2012
+.\"    Manual: Direct Renderin Manager
+.\"    Source: libdrm
+.\"  Language: Gangsta
+.\"
+.TH "DRM\-KMS" "7" "September 2012" "libdrm" "Direct Renderin Manager"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+drm-kms \- Kernel Mode\-Setting
+.SH "SYNOPSIS"
+.sp
+.ft B
+.nf
+#include <xf86drm\&.h>
+.fi
+.ft
+.sp
+.ft B
+.nf
+#include <xf86drmMode\&.h>
+.fi
+.ft
+.SH "DESCRIPTION"
+.PP
+Each DRM thang serves up access ta manage which monitors n' displays is currently used n' what tha fuck frames ta be displayed\&. This task is called
+\fIKernel Mode\-Setting\fR
+(KMS)\& yo. Historically, dis was done up in user\-space n' called
+\fIUser\-space Mode\-Setting\fR
+(UMS)\& fo' realz. Almost all open\-source drivers now provide tha KMS kernel API ta do dis up in tha kernel, however, nuff non\-open\-source binary drivers from different vendors still do not support this\&. Yo ass can use
+\fBdrmModeSettingSupported\fR(3)
+to check whether yo' driver supports this\&. To KNOW how tha fuck KMS works, we need ta introduce 5 objects:
+\fICRTCs\fR,
+\fIPlanes\fR,
+\fIEncoders\fR,
+\fIConnectors\fR
+and
+\fIFramebuffers\fR\&.
+.PP
+CRTCs
+.RS 4
+A
+\fICRTC\fR
+short for
+\fICRT Controller\fR
+is a abstraction representin a part of tha chip dat gotz nuff a pointa ta a scanout buffer\&. Therefore, tha number of CRTCs available determines how tha fuck nuff independent scanout buffers can be actizzle at any given time\&. Da CRTC structure gotz nuff nuff muthafuckin fieldz ta support this: a pointa ta some vizzle memory (abstracted as a gangbangin' frame\-buffer object), a list of driven connectors, a gangbangin' finger-lickin' display mode n' a (x, y) offset tha fuck into tha vizzle memory ta support pannin or configurations where one piece of vizzle memory spans multiple CRTCs\& fo' realz. A CRTC is tha central point where configuration of displays happens\&. Yo ass select which objects ta use, which modes n' which parametas n' then configure each CRTC via
+\fBdrmModeCrtcSet\fR(3)
+to drive tha display devices\&.
+.RE
+.PP
+Planes
+.RS 4
+A
+\fIplane\fR
+respresents a image source dat can be blended wit or overlayed on top of a CRTC durin tha scanout process\&. Planes is associated wit a gangbangin' frame\-buffer ta crop a portion of tha image memory (source) n' optionally scale it ta a thugged-out destination size\&. Da result is then blended wit or overlayed on top of a CRTC\&. Planes is not provided by all hardware n' tha number of available planes is limited\&. If planes is not available or if not enough planes is available, tha user should fall back ta aiiight software blendin (via GPU or CPU)\&.
+.RE
+.PP
+Encoders
+.RS 4
+An
+\fIencoder\fR
+takes pixel data from a CRTC n' converts it ta a gangbangin' format suitable fo' any attached connectors\&. On some devices, it may be possible ta git a CRTC bust data ta mo' than one encoder\&. In dat case, both encodaz would receive data from tha same scanout buffer, resultin up in a
+\fIcloned\fR
+display configuration across tha connectors attached ta each encoder\&.
+.RE
+.PP
+Connectors
+.RS 4
+A
+\fIconnector\fR
+is tha final destination of pixel\-data on a thugged-out device, n' probably connects directly ta a external display thang like a monitor or laptop panel\& fo' realz. A connector can only be attached ta one encoder at a time\&. Da connector be also tha structure where shiznit bout tha attached display is kept, so it gotz nuff fieldz fo' display data,
+\fIEDID\fR
+data,
+\fIDPMS\fR
+and
+\fIconnection status\fR, n' shiznit bout modes supported on tha attached displays\&.
+.RE
+.PP
+Framebuffers
+.RS 4
+\fIFramebuffers\fR
+are abstract memory objects dat provide a source of pixel data ta scanout ta a CRTC\& fo' realz. Applications explicitely request tha creation of framebuffers n' can control they behavior\&. Framebuffers rely on tha underneath memory manager fo' low\-level memory operations\&. When bustin a gangbangin' framebuffer, applications pass a memory handle all up in tha API which is used as backin storage\&. Da framebuffer itself is only a abstract object wit no data\&. Well shiiiit, it just refers ta memory buffers dat must be pimped wit the
+\fBdrm-memory\fR(7)
+API\&.
+.RE
+.SS "Mode\-Setting"
+.PP
+Before mode\-settin can be performed, a application need ta call
+\fBdrmSetMaster\fR(3)
+to become
+\fIDRM\-Master\fR\&. Well shiiiit, it then has exclusive access ta tha KMS API\& fo' realz. A call to
+\fBdrmModeGetResources\fR(3)
+returns a list of
+\fICRTCs\fR,
+\fIConnectors\fR,
+\fIEncoders\fR
+and
+\fIPlanes\fR\&.
+.PP
+Normal procedure now includes: First, you select which connectors you wanna use\&. Users is mostly horny bout which monitor or display\-panel be actizzle so you need ta make shizzle ta arrange dem up in tha erect logical order n' select tha erect ones ta use\&. For each connector, you need ta find a CRTC ta drive dis connector\&. If you wanna clone output ta two or mo' connectors, you may bust a single CRTC fo' all cloned connectors (if tha hardware supports this)\&. To find a suitable CRTC, you need ta iterate over tha list of encodaz dat is available fo' each connector\&. Each encoder gotz nuff a list of CRTCs dat it can work wit n' you simply select one of these CRTCs\&. If you lata program tha CRTC ta control a cold-ass lil connector, it automatically selects tha dopest encoder\&. But fuck dat shiznit yo, tha word on tha street is dat dis procedure is needed so yo' CRTC has at least one hustlin encoder fo' tha selected connector\&. Right back up in yo muthafuckin ass. See the
+\fIExamples\fR
+section below fo' mo' shiznit\&.
+.PP
+All valid modes fo' a cold-ass lil connector can be retrieved wit a cold-ass lil call to
+\fBdrmModeGetConnector\fR(3)
+Yo ass need ta select tha mode you wanna use n' save it\&. Da first mode up in tha list is tha default mode wit tha highest resolution possible n' often a suitable chizzle\&.
+.PP
+Afta you gotz a hustlin connector+CRTC+mode combination, you need ta create a gangbangin' framebuffer dat is used fo' scanout\&. Memory buffer allocation is driver\-depedent n' busted lyrics bout in
+\fBdrm-memory\fR(7)\&. Yo ass need ta create a funky-ass buffer big-ass enough fo' yo' selected mode\&. Now you can create a gangbangin' framebuffer object dat uses yo' memory\-buffer as scanout buffer\&. Yo ass can do dis with
+\fBdrmModeAddFB\fR(3)
+and
+\fBdrmModeAddFB2\fR(3)\&.
+.PP
+As a last step, you wanna program yo' CRTC ta drive yo' selected connector\&. Yo ass can do dis wit a cold-ass lil call to
+\fBdrmModeSetCrtc\fR(3)\&.
+.SS "Page\-Flipping"
+.PP
+A call to
+\fBdrmModeSetCrtc\fR(3)
+is executed immediately n' forces tha CRTC ta use tha freshly smoked up scanout buffer\&. If you want smooth\-transitions without tearing, you probably use double\-buffering\&. Yo ass need ta create one framebuffer object fo' each buffer you use\&. Yo ass can then call
+\fBdrmModeSetCrtc\fR(3)
+on tha next buffer ta flip\&. If you wanna synchronize yo' flips with
+\fIvertical\-blanks\fR, you can use
+\fBdrmModePageFlip\fR(3)
+which schedulez yo' page\-flip fo' tha next
+\fIvblank\fR\&.
+.SS "Planes"
+.PP
+Planes is controlled independently from CRTCs\&. That is, a cold-ass lil call to
+\fBdrmModeSetCrtc\fR(3)
+does not affect planes\&. Instead, you need ta call
+\fBdrmModeSetPlane\fR(3)
+to configure a plane\&. This requires tha plane ID, a CRTC, a gangbangin' framebuffer n' offsets tha fuck into tha plane\-framebuffer n' tha CRTC\-framebuffer\&. Da CRTC then blendz tha content from tha plane over tha CRTC framebuffer buffer durin scanout\& fo' realz. As dis do not involve any software\-blending, it is way fasta than traditionizzle blending\&. But fuck dat shiznit yo, tha word on tha street is dat plane resources is limited\&. Right back up in yo muthafuckin ass. See
+\fBdrmModeGetPlaneResources\fR(3)
+for mo' shiznit\&.
+.SS "Cursors"
+.PP
+Similar ta planes, nuff hardware also supports cursors\& fo' realz. A cursor be a straight-up lil' small-ass buffer wit a image dat is blended over tha CRTC framebuffer\&. Yo ass can set a gangbangin' finger-lickin' different cursor fo' each CRTC with
+\fBdrmModeSetCursor\fR(3)
+and move it on tha screen with
+\fBdrmModeMoveCursor\fR(3)\&. This allows ta move tha cursor on tha screen without rerendering\&. If no hardware cursors is supported, you need ta rerender fo' each frame tha cursor is moved\&.
+.SH "EXAMPLES"
+.PP
+Some examplez of how tha fuck basic mode\-settin can be done\&. Right back up in yo muthafuckin ass. See tha man\-page of each DRM function fo' mo' shiznit\&.
+.SS "CRTC/Encoder Selection"
+.PP
+If you retrieved all display configuration shiznit via
+\fBdrmModeGetResources\fR(3)
+as
+drmModeRes
+*\fIres\fR, selected a cold-ass lil connector from tha list in
+\fIres\fR\->\fIconnectors\fR
+and retrieved tha connector\-information as
+drmModeConnector
+*\fIconn\fR
+via
+\fBdrmModeGetConnector\fR(3)
+then dis example shows, how tha fuck you can find a suitable CRTC id ta drive dis connector\&. This function takes a gangbangin' file\-descriptor ta tha DRM thang (see
+\fBdrmOpen\fR(3)) as
+\fIfd\fR, a pointa ta tha retrieved resources as
+\fIres\fR
+and a pointa ta tha selected connector as
+\fIconn\fR\&. Well shiiiit, it returns a integer smalla than 0 on failure, otherwise, a valid CRTC id is returned\&.
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+static int modeset_find_crtc(int fd, drmModeRes *res, drmModeConnector *conn)
+{
+	drmModeEncoder *enc;
+	unsigned int i, j;
+
+	/* iterate all encodaz of dis connector */
+	for (i = 0; i < conn\->count_encoders; ++i) {
+		enc = drmModeGetEncoder(fd, conn\->encoders[i]);
+		if (!enc) {
+			/* cannot retrieve encoder, ignoring\&.\&.\&. */
+			continue;
+		}
+
+		/* iterate all global CRTCs */
+		for (j = 0; j < res\->count_crtcs; ++j) {
+			/* check whether dis CRTC works wit tha encoder */
+			if (!(enc\->possible_crtcs & (1 << j)))
+				continue;
+
+
+			/* Here you need ta check dat no other connector
+			 * currently uses tha CRTC wit id "crtc"\&. If you intend
+			 * ta drive one connector only, then you can skip this
+			 * step\&. Otherwise, simply scan yo' list of configured
+			 * connectors n' CRTCs whether dis CRTC be already
+			 * used\&. If it is, then simply continue tha search here\&. */
+			if (res\->crtcs[j] "is unused") {
+				drmModeFreeEncoder(enc);
+				return res\->crtcs[j];
+			}
+		}
+
+		drmModeFreeEncoder(enc);
+	}
+
+	/* cannot find a suitable CRTC */
+	return \-ENOENT;
+}
+.fi
+.if n \{\
+.RE
+.\}
+.SH "REPORTING BUGS"
+.PP
+Bugs up in dis manual should be reported ta http://bugs\&.freedesktop\&.org under tha "Mesa" product, wit "Other" or "libdrm" as tha component\&.
+.SH "SEE ALSO"
+.PP
+\fBdrm\fR(7),
+\fBdrm-memory\fR(7),
+\fBdrmModeGetResources\fR(3),
+\fBdrmModeGetConnector\fR(3),
+\fBdrmModeGetEncoder\fR(3),
+\fBdrmModeGetCrtc\fR(3),
+\fBdrmModeSetCrtc\fR(3),
+\fBdrmModeGetFB\fR(3),
+\fBdrmModeAddFB\fR(3),
+\fBdrmModeAddFB2\fR(3),
+\fBdrmModeRmFB\fR(3),
+\fBdrmModePageFlip\fR(3),
+\fBdrmModeGetPlaneResources\fR(3),
+\fBdrmModeGetPlane\fR(3),
+\fBdrmModeSetPlane\fR(3),
+\fBdrmModeSetCursor\fR(3),
+\fBdrmModeMoveCursor\fR(3),
+\fBdrmSetMaster\fR(3),
+\fBdrmAvailable\fR(3),
+\fBdrmCheckModesettingSupported\fR(3),
+\fBdrmOpen\fR(3)

@@ -1,0 +1,453 @@
+
+.\" startin from a version by Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" %%%LICENSE_START(GPLv2+_SW_3_PARA)
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under tha termz of tha GNU General Public License as published by
+.\" tha Jacked Software Foundation; either version 2 of tha License, or
+.\" (at yo' option) any lata version.
+.\"
+.\" This program is distributed up in tha hope dat it is ghon be useful,
+.\" but WITHOUT ANY WARRANTY; without even tha implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License fo' mo' details.
+.\"
+.\" Yo ass should have received a cold-ass lil copy of tha GNU General Public
+.\" License along wit dis manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
+.\"
+.TH SIGNALFD 2 2009-01-13 Linux "Linux Programmerz Manual"
+.SH NAME
+signalfd \- create a gangbangin' file descriptor fo' acceptin signals
+.SH SYNOPSIS
+.B #include <sys/signalfd.h>
+.sp
+.BI "int signalfd(int " fd ", const sigset_t *" mask ", int " flags );
+.SH DESCRIPTION
+.BR signalfd ()
+creates a gangbangin' file descriptor dat can be used ta accept signals
+targeted all up in tha caller.
+This serves up a alternatizzle ta tha use of a signal handlez or
+.BR sigwaitinfo (2),
+and has tha advantage dat tha file descriptor may be monitored by
+.BR select (2),
+.BR poll (2),
+and
+.BR epoll (7).
+
+The
+.I mask
+argument specifies tha set of signals dat tha caller
+wishes ta accept via tha file descriptor.
+This argument be a signal set whose contents can be initialized
+usin tha macros busted lyrics bout in
+.BR sigsetops (3).
+Normally, tha set of signals ta be received via the
+file descriptor should be blocked using
+.BR sigprocmask (2),
+to prevent tha signals bein handled accordin ta they default
+dispositions.
+It aint possible ta receive
+.B SIGKILL
+or
+.B SIGSTOP
+signals via a signalfd file descriptor;
+these signals is silently ignored if specified in
+.IR mask .
+
+If the
+.I fd
+argument is \-1,
+then tha call creates a freshly smoked up file descriptor n' associates the
+signal set specified in
+.I mask
+with dat descriptor.
+If
+.I fd
+is not \-1,
+then it must specify a valid existin signalfd file descriptor, and
+.I mask
+is used ta replace tha signal set associated wit dat descriptor.
+
+Startin wit Linux 2.6.27, tha followin joints may be bitwise ORed in
+.IR flags
+to chizzle tha behaviour of
+.BR signalfd ():
+.TP 14
+.B SFD_NONBLOCK
+Set the
+.BR O_NONBLOCK
+file status flag on tha freshly smoked up open file description.
+Usin dis flag saves extra calls to
+.BR fcntl (2)
+to big up tha same result.
+.TP
+.B SFD_CLOEXEC
+Set tha close-on-exec
+.RB ( FD_CLOEXEC )
+flag on tha freshly smoked up file descriptor.
+See tha description of the
+.B O_CLOEXEC
+flag in
+.BR open (2)
+for reasons why dis may be useful.
+.PP
+In Linux up ta version 2.6.26, the
+.I flags
+argument is unused, n' must be specified as zero.
+
+.BR signalfd ()
+returns a gangbangin' file descriptor dat supports tha followin operations:
+.TP
+.BR read (2)
+If one or mo' of tha signals specified in
+.I mask
+is pendin fo' tha process, then tha buffer supplied to
+.BR read (2)
+is used ta return one or more
+.I signalfd_siginfo
+structures (see below) dat describe tha signals.
+The
+.BR read (2)
+returns shiznit fo' as nuff signals as is pendin n' will
+fit up in tha supplied buffer.
+Da buffer must be at least
+.I "sizeof(struct signalfd_siginfo)"
+bytes.
+Da return value of the
+.BR read (2)
+is tha total number of bytes read.
+.IP
+As a cold-ass lil consequence of the
+.BR read (2),
+the signals is consumed,
+so dat they is no longer pendin fo' tha process
+(i.e., aint gonna be caught by signal handlezs,
+and cannot be accepted using
+.BR sigwaitinfo (2)).
+.IP
+If none of tha signals in
+.I mask
+is pendin fo' tha process, then the
+.BR read (2)
+either blocks until one of tha signals in
+.I mask
+is generated fo' tha process,
+or fails wit tha error
+.B EAGAIN
+if tha file descriptor has been made nonblocking.
+.TP
+.BR poll "(2), " select "(2) (and similar)"
+Da file descriptor is readable
+(the
+.BR select (2)
+.I readfds
+argument; the
+.BR poll (2)
+.B POLLIN
+flag)
+if one or mo' of tha signals in
+.I mask
+is pendin fo' tha process.
+.IP
+Da signalfd file descriptor also supports tha other file-descriptor
+multiplexin APIs:
+.BR pselect (2),
+.BR ppoll (2),
+and
+.BR epoll (7).
+.TP
+.BR close (2)
+When tha file descriptor is no longer required it should be closed.
+When all file descriptors associated wit tha same signalfd object
+have been closed, tha resources fo' object is freed by tha kernel.
+.SS Da signalfd_siginfo structure
+Da format of the
+.I signalfd_siginfo
+structure(s) returned by
+.BR read (2)s
+from a signalfd file descriptor be as bigs up:
+.in +4n
+.nf
+
+struct signalfd_siginfo {
+    uint32_t ssi_signo;   /* Signal number */
+    int32_t  ssi_errno;   /* Error number (unused) */
+    int32_t  ssi_code;    /* Signal code */
+    uint32_t ssi_pid;     /* PID of sender */
+    uint32_t ssi_uid;     /* Real UID of sender */
+    int32_t  ssi_fd;      /* File descriptor (SIGIO) */
+    uint32_t ssi_tid;     /* Kernel timer ID (POSIX timers)
+    uint32_t ssi_band;    /* Band event (SIGIO) */
+    uint32_t ssi_overrun; /* POSIX timer overrun count */
+    uint32_t ssi_trapno;  /* Trap number dat caused signal */
+.\" ssi_trapno is unused on most arches
+    int32_t  ssi_status;  /* Exit status or signal (SIGCHLD) */
+    int32_t  ssi_int;     /* Integer busted by sigqueue(3) */
+    uint64_t ssi_ptr;     /* Pointa busted by sigqueue(3) */
+    uint64_t ssi_utime;   /* User CPU time consumed (SIGCHLD) */
+    uint64_t ssi_stime;   /* System CPU time consumed (SIGCHLD) */
+    uint64_t ssi_addr;    /* Address dat generated signal
+                             (for hardware-generated signals) */
+.\" FIXME Since Linux 2.6.37 there is 'uint16_t ssi_addr_lsb'
+.\" which aint yet documented
+    uint8_t  pad[\fIX\fP];      /* Pad size ta 128 bytes (allow for
+                              additionizzle fieldz up in tha future) */
+};
+
+.fi
+.in
+Each of tha fieldz up in dis structure
+is analogous ta tha similarly named field up in the
+.I siginfo_t
+structure.
+The
+.I siginfo_t
+structure is busted lyrics bout in
+.BR sigaction (2).
+Not all fieldz up in tha returned
+.I signalfd_siginfo
+structure is ghon be valid fo' a specific signal;
+the set of valid fieldz can be determined from tha value returned up in the
+.I ssi_code
+field.
+This field is tha analog of the
+.I siginfo_t
+.I si_code
+field; see
+.BR sigaction (2)
+for details.
+.SS fork(2) semantics
+Afta a
+.BR fork (2),
+the lil pimp inherits a cold-ass lil copy of tha signalfd file descriptor.
+A
+.BR read (2)
+from tha file descriptor up in tha lil pimp will return shiznit
+about signals queued ta tha child.
+.SS execve(2) semantics
+Just like any other file descriptor,
+a signalfd file descriptor remains open across an
+.BR execve (2),
+unless it has been marked fo' close-on-exec (see
+.BR fcntl (2)).
+Any signals dat was available fo' readin before the
+.BR execve (2)
+remain available ta tha newly loaded program.
+(This be analogous ta traditionizzle signal semantics,
+where a funky-ass blocked signal dat is pendin remains pendin across an
+.BR execve (2).)
+.SS Thread semantics
+Da semantics of signalfd file descriptors up in a multithreaded program
+mirror tha standard semantics fo' signals.
+In other lyrics,
+when a thread readz from a signalfd file descriptor,
+it will read tha signals dat is pimped up ta tha thread
+itself n' tha signals dat is pimped up ta tha process
+(i.e., tha entire thread group).
+(A thread aint gonna be able ta read signals dat is directed
+to other threadz up in tha process.)
+.SH RETURN VALUE
+On success,
+.BR signalfd ()
+returns a signalfd file descriptor;
+this is either a freshly smoked up file descriptor (if
+.I fd
+was \-1), or
+.I fd
+if
+.I fd
+was a valid signalfd file descriptor.
+On error, \-1 is returned and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EBADF
+The
+.I fd
+file descriptor aint a valid file descriptor.
+.TP
+.B EINVAL
+.I fd
+is not a valid signalfd file descriptor.
+.\" or, the
+.\" .I sizemask
+.\" argument aint equal to
+.\" .IR sizeof(sigset_t) ;
+.TP
+.B EINVAL
+.I flags
+is invalid;
+or, up in Linux 2.6.26 or earlier,
+.I flags
+is nonzero.
+.TP
+.B EMFILE
+Da per-process limit of open file descriptors has been reached.
+.TP
+.B ENFILE
+Da system-wide limit on tha total number of open filez has been
+reached.
+.TP
+.B ENODEV
+Could not mount (internal) anonymous inode device.
+.TP
+.B ENOMEM
+There was insufficient memory ta create a freshly smoked up signalfd file descriptor.
+.SH VERSIONS
+.BR signalfd ()
+is available on Linux since kernel 2.6.22.
+Workin support is provided up in glibc since version 2.8.
+.\" signalfd() is up in glibc 2.7 yo, but reportedly do not build
+The
+.BR signalfd4 ()
+system call (see NOTES) be available on Linux since kernel 2.6.27.
+.SH CONFORMING TO
+.BR signalfd ()
+and
+.BR signalfd4 ()
+are Linux-specific.
+.SH NOTES
+Da underlyin Linux system call requires a additionizzle argument,
+.IR "size_t sizemask" ,
+which specifies tha size of the
+.I mask
+argument.
+Da glibc
+.BR signalfd ()
+wrapper function do not include dis argument,
+since it serves up tha required value fo' tha underlyin system call.
+
+A process can create multiple signalfd file descriptors.
+This make it possible ta accept different signals
+on different file descriptors.
+(This may be useful if monitorin tha file descriptors using
+.BR select (2),
+.BR poll (2),
+or
+.BR epoll (7):
+the arrival of different signals will make different descriptors ready.)
+If a signal appears up in the
+.I mask
+of mo' than one of tha file descriptors, then occurrences
+of dat signal can be read (once) from any one of tha descriptors.
+.SS Underlyin Linux system calls
+There is two underlyin Linux system calls:
+.BR signalfd ()
+and tha mo' recent
+.BR signalfd4 ().
+Da forma system call do not implement a
+.I flags
+argument.
+Da latta system call implements the
+.I flags
+values busted lyrics bout above.
+Startin wit glibc 2.9, the
+.BR signalfd ()
+wrapper function will use
+.BR signalfd4 ()
+where it be available.
+.SH BUGS
+In kernels before 2.6.25, the
+.I ssi_ptr
+and
+.I ssi_int
+fieldz is not filled up in wit tha data accompanyin a signal busted by
+.BR sigqueue (3).
+.\" Da fix also was put tha fuck into 2.6.24.5
+.SH EXAMPLE
+Da program below accepts tha signals
+.B SIGINT
+and
+.B SIGQUIT
+via a signalfd file descriptor.
+Da program terminates afta acceptin a
+.B SIGQUIT
+signal.
+Da followin shell session demonstrates tha use of tha program:
+.in +4n
+.nf
+
+.RB "$" " ./signalfd_demo"
+.BR "^C" "                   # Control\-C generates SIGINT"
+Got SIGINT
+.B ^C
+Got SIGINT
+\fB^\\\fP                    # Control\-\\ generates SIGQUIT
+Got SIGQUIT
+$
+.fi
+.in
+.SS Program source
+\&
+.nf
+#include <sys/signalfd.h>
+#include <signal.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define handle_error(msg) \\
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    sigset_t mask;
+    int sfd;
+    struct signalfd_siginfo fdsi;
+    ssize_t s;
+
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGQUIT);
+
+    /* Block signals so dat they aren\(aqt handled
+       accordin ta they default dispositions */
+
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == \-1)
+        handle_error("sigprocmask");
+
+    sfd = signalfd(\-1, &mask, 0);
+    if (sfd == \-1)
+        handle_error("signalfd");
+
+    fo' (;;) {
+        s = read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
+        if (s != sizeof(struct signalfd_siginfo))
+            handle_error("read");
+
+        if (fdsi.ssi_signo == SIGINT) {
+            printf("Got SIGINT\\n");
+        } else if (fdsi.ssi_signo == SIGQUIT) {
+            printf("Got SIGQUIT\\n");
+            exit(EXIT_SUCCESS);
+        } else {
+            printf("Read unexpected signal\\n");
+        }
+    }
+}
+.fi
+.SH SEE ALSO
+.BR eventfd (2),
+.BR poll (2),
+.BR read (2),
+.BR select (2),
+.BR sigaction (2),
+.BR sigprocmask (2),
+.BR sigwaitinfo (2),
+.BR timerfd_create (2),
+.BR sigsetops (3),
+.BR sigwait (3),
+.BR epoll (7),
+.BR signal (7)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

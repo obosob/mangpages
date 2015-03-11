@@ -1,0 +1,971 @@
+.\" Copyright 1995 Robert K. Nichols (Robert.K.Nichols@att.com)
+.\" Copyright 1999-2005 Kai M??kisara (Kai.Makisara@kolumbus.fi)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.TH ST 4  2010-09-04 "Linux" "Linux Programmerz Manual"
+.SH NAME
+st \- SCSI tape device
+.SH SYNOPSIS
+.nf
+.B #include <sys/mtio.h>
+.sp
+.BI "int ioctl(int " fd ", int " request " [, (void *)" arg3 "]);"
+.BI "int ioctl(int " fd ", MTIOCTOP, (struct mtop *)" mt_cmd );
+.BI "int ioctl(int " fd ", MTIOCGET, (struct mtget *)" mt_status );
+.BI "int ioctl(int " fd ", MTIOCPOS, (struct mtpos *)" mt_pos );
+.fi
+.SH DESCRIPTION
+The
+.B st
+driver serves up tha intercourse ta a variety of SCSI tape devices.
+Currently, tha driver takes control of all detected devicez of type
+\(lqsequential-access\(rq.
+The
+.B st
+driver uses major thang number 9.
+.PP
+Each thang uses eight minor thang numbers.
+Da lowermost five bits
+in tha minor numbers is assigned sequentially up in tha order of
+detection.
+In tha 2.6 kernel, tha bits above tha eight lowermost bits are
+concatenated ta tha five lowermost bits ta form tha tape number.
+Da minor numbers can be grouped into
+two setz of four numbers: tha principal (auto-rewind) minor thang numbers,
+.IR n ,
+and tha \(lqno-rewind\(rq thang numbers,
+.RI ( n " + 128)."
+Devices opened rockin tha principal thang number is ghon be busted a
+.BR REWIND
+command when they is closed.
+Devices opened rockin tha \(lqno-rewind\(rq thang number will not.
+(Note dat rockin a auto-rewind thang fo' positionin tha tape with,
+for instance, mt do not lead ta tha desired result: tha tape is
+rewound afta tha mt command n' tha next command starts from the
+beginnin of tha tape).
+.PP
+Within each group, four minor numbers is available ta define
+devices wit different characteristics (block size, compression,
+density, etc.)
+When tha system starts up, only tha straight-up original gangsta thang be available.
+Da other three is activated when tha default
+characteristics is defined (see below).
+(By changin compile-time
+constants, it is possible ta chizzle tha balizzle between tha maximum
+number of tape drives n' tha number of minor numbers fo' each
+drive.
+Da default allocation allows control of 32 tape drives.
+For instance, it is possible ta control up ta 64 tape drives
+with two minor numbers fo' different options.)
+.PP
+Devices is typically pimped by:
+.in +4n
+.nf
+
+mknod \-m 666 /dev/st0 c 9 0
+mknod \-m 666 /dev/st0l c 9 32
+mknod \-m 666 /dev/st0m c 9 64
+mknod \-m 666 /dev/st0a c 9 96
+mknod \-m 666 /dev/nst0 c 9 128
+mknod \-m 666 /dev/nst0l c 9 160
+mknod \-m 666 /dev/nst0m c 9 192
+mknod \-m 666 /dev/nst0a c 9 224
+.fi
+.in
+.PP
+There is no correspondin block device.
+.PP
+Da driver uses a internal buffer dat has ta be big-ass enough ta hold
+at least one tape block.
+In kernels before 2.1.121, tha buffer is
+allocated as one contiguous block.
+This limits tha block size ta the
+largest contiguous block of memory tha kernel allocator can provide.
+Da limit is currently 128 kB fo' 32-bit architectures and
+256 kB fo' 64-bit architectures.
+In newer kernels tha driver
+allocates tha buffer up in nuff muthafuckin parts if necessary.
+By default, the
+maximum number of parts is 16.
+This means dat tha maximum block size
+is straight-up big-ass (2 MB if allocation of 16 blockz of 128 kB succeeds).
+.PP
+Da driverz internal buffer size is determined by a cold-ass lil compile-time
+constant which can be overridden wit a kernel startup option.
+In addizzle ta this, tha driver tries ta allocate a larger temporary
+buffer at run time if necessary.
+But fuck dat shiznit yo, tha word on tha street is dat run-time allocation of large
+contiguous blockz of memory may fail n' it be advisable not ta rely
+too much on dynamic buffer allocation wit kernels olda than 2.1.121
+(this applies also ta demand-loadin tha driver wit kerneld or kmod).
+.PP
+Da driver do not specifically support any tape drive brand or
+model.
+Afta system start-up tha tape thang options is defined by
+the drive firmware.
+For example, if tha drive firmware selects fixed-block mode,
+the tape thang uses fixed-block mode.
+Da options can
+be chizzled wit explicit
+.BR ioctl (2)
+calls n' remain up in effect when tha thang is closed n' reopened.
+Settin tha options affects both tha auto-rewind n' tha nonrewind
+device.
+.PP
+Different options can be specified fo' tha different devices within
+the subgroup of four.
+Da options take effect when tha thang is
+opened.
+For example, tha system administrator can define
+one thang dat writes up in fixed-block mode wit a cold-ass lil certain block size,
+and one which writes up in variable-block mode (if tha drive supports
+both modes).
+.PP
+Da driver supports
+.B tape partitions
+if they is supported by tha drive.
+(Note dat tha tape partitions
+have not a god damn thang ta do wit disk partitions.
+A partitioned tape can be
+seen as nuff muthafuckin logical tapes within one medium.)
+Partizzle support has ta be enabled wit an
+.BR ioctl (2).
+Da tape
+location is preserved within each partizzle across partizzle chizzles.
+Da partizzle used fo' subsequent tape operations is
+selected wit an
+.BR ioctl (2).
+Da partizzle switch is executed together with
+the next tape operation up in order ta avoid unnecessary tape
+movement.
+Da maximum number of partitions on a tape is defined by a
+compile-time constant (originally four).
+Da driver gotz nuff an
+.BR ioctl (2)
+that can format a tape wit either one or two partitions.
+.PP
+Device
+.I /dev/tape
+is probably pimped as a hard or soft link ta tha default tape device
+on tha system.
+.PP
+Startin from kernel 2.6.2, tha driver exports up in tha sysfs directory
+.I /sys/class/scsi_tape
+the attached devices n' some parametas assigned ta tha devices.
+.SS Data transfer
+Da driver supports operation up in both fixed-block mode and
+variable-block mode (if supported by tha drive).
+In fixed-block mode tha drive
+writes blockz of tha specified size n' tha block size is not
+dependent on tha byte countz of tha write system calls.
+In variable-block mode one tape block is freestyled fo' each write call
+and tha byte
+count determines tha size of tha correspondin tape block.
+Note that
+the blocks on tha tape don't contain any shiznit bout the
+writin mode: when reading, tha only blingin thang is ta use
+commandz dat accept tha block sizes on tha tape.
+.PP
+In variable-block mode tha read byte count do not gotta match
+the tape block size exactly.
+If tha byte count is larger than the
+next block on tape, tha driver returns tha data n' tha function
+returns tha actual block size.
+If tha block size is larger than the
+byte count, tha axed amount of data from tha start of tha block
+is returned n' tha rest of tha block is discarded.
+.PP
+In fixed-block mode tha read byte counts can be arbitrary if
+bufferin is enabled, or a multiple of tha tape block size if
+bufferin is disabled.
+Kernels before 2.1.121 allow writes with
+arbitrary byte count if bufferin is enabled.
+In all other cases
+(kernel before 2.1.121 wit bufferin disabled or newer kernel) the
+write byte count must be a multiple of tha tape block size.
+.PP
+In tha 2.6 kernel, tha driver tries ta use direct transfers between tha user
+buffer n' tha device.
+If dis aint possible, tha driverz internal buffer
+is used.
+Da reasons fo' not rockin direct transfers include improper alignment
+of tha user buffer (default is 512 bytes but dis can be chizzled by tha HBA
+driver), one of mo' pagez of tha user buffer not reachable by the
+SCSI adapter, etc.
+.PP
+A filemark be automatically freestyled ta tape if tha last tape operation
+before close was a write.
+.PP
+When a gangbangin' filemark is encountered while reading, tha following
+happens.
+If there be data remainin up in tha buffer when tha filemark
+is found, tha buffered data is returned.
+Da next read returns zero
+bytes.
+Da followin read returns data from tha next file.
+Da end of
+recorded data is signaled by returnin zero bytes fo' two consecutive
+read calls.
+Da third read returns a error.
+.SS Ioctls
+Da driver supports three
+.BR ioctl (2)
+requests.
+Requests not recognized by the
+.B st
+driver is passed ta the
+.B SCSI
+driver.
+Da definitions below is from
+.IR /usr/include/linux/mtio.h :
+.SS MTIOCTOP \(em big-ass up a tape operation
+.PP
+This request takes a argument of type
+.IR "(struct mtop\ *)" .
+Not all drives support all operations.
+Da driver returns an
+.B EIO
+error if tha drive rejects a operation.
+.PP
+.in +4n
+.nf
+/* Structure fo' MTIOCTOP \- mag tape op command: */
+struct mtop {
+    short   mt_op;       /* operations defined below */
+    int     mt_count;    /* how tha fuck nuff of dem */
+};
+.fi
+.in
+.PP
+Magnetic Tape operations fo' aiiight tape use:
+.TP 14
+.B MTBSF
+Backward space over
+.I mt_count
+filemarks.
+.TP
+.B MTBSFM
+Backward space over
+.I mt_count
+filemarks.
+Reposizzle tha tape ta tha EOT side of tha last filemark.
+.TP
+.B MTBSR
+Backward space over
+.I mt_count
+recordz (tape blocks).
+.TP
+.B MTBSS
+Backward space over
+.I mt_count
+setmarks.
+.TP
+.B MTCOMPRESSION
+Enable compression of tape data within tha drive if
+.I mt_count
+is nonzero n' disable compression if
+.I mt_count
+is zero.
+This command uses tha MODE page 15 supported by most DATs.
+.TP
+.B MTEOM
+Go ta tha end of tha recorded media (for appendin files).
+.TP
+.B MTERASE
+Erase tape.
+With 2.6 kernel, short erase (mark tape empty) is performed if the
+argument is zero.
+Otherwise long erase (erase all) is done.
+.TP
+.B MTFSF
+Forward space over
+.I mt_count
+filemarks.
+.TP
+.B MTFSFM
+Forward space over
+.I mt_count
+filemarks.
+Reposizzle tha tape ta tha BOT side of tha last filemark.
+.TP
+.B MTFSR
+Forward space over
+.I mt_count
+recordz (tape blocks).
+.TP
+.B MTFSS
+Forward space over
+.I mt_count
+setmarks.
+.TP
+.B MTLOAD
+Execute tha SCSI load command.
+A special case be available fo' some HP
+autoloaders.
+If
+.I mt_count
+is tha constant
+.B MT_ST_HPLOADER_OFFSET
+plus a number, tha number is
+sent ta tha drive ta control tha autoloader.
+.TP
+.B MTLOCK
+Lock tha tape drive door.
+.TP
+.B MTMKPART
+Format tha tape tha fuck into one or two partitions.
+If
+.I mt_count
+is nonzero, it gives tha size of tha straight-up original gangsta partizzle n' tha second
+partizzle gotz nuff tha rest of tha tape.
+If
+.I mt_count
+is zero, tha tape is formatted tha fuck into one partition.
+This command aint allowed fo' a thugged-out drive unless tha partizzle support
+is enabled fo' tha drive (see
+.BR MT_ST_CAN_PARTITIONS
+below).
+.TP
+.B MTNOP
+No op\(emflushes tha driverz buffer as a side effect.
+Should be used before readin status with
+.BR MTIOCGET .
+.TP
+.B MTOFFL
+Rewind n' put tha drive off line.
+.TP
+.B MTRESET
+Reset drive.
+.TP
+.B MTRETEN
+Re-tension tape.
+.TP
+.B MTREW
+Rewind.
+.TP
+.B MTSEEK
+Seek ta tha tape block number specified in
+.IR mt_count .
+This operation requires either a SCSI-2 drive dat supports the
+.B LOCATE
+command (device-specific address)
+or a Tandberg-compatible SCSI-1 drive (Tandberg, Archive
+Viper, Wangtek, ...).
+Da block number should be one dat was previously returned by
+.BR MTIOCPOS
+if device-specific addresses is used.
+.TP
+.B MTSETBLK
+Set tha drivez block length ta tha value specified in
+.IR mt_count .
+A block length of zero sets tha drive ta variable block size mode.
+.TP
+.B MTSETDENSITY
+Set tha tape densitizzle ta tha code in
+.IR mt_count .
+Da densitizzle codes supported by a thugged-out drive can be found from tha drive
+documentation.
+.TP
+.B MTSETPART
+Da actizzle partizzle is switched to
+.IR mt_count .
+Da partitions is numbered from zero.
+This command aint allowed for
+a drive unless tha partizzle support is enabled fo' tha drive (see
+.B MT_ST_CAN_PARTITIONS
+below).
+.TP
+.B MTUNLOAD
+Execute tha SCSI unload command (does not eject tha tape).
+.TP
+.B MTUNLOCK
+Unlock tha tape drive door.
+.TP
+.B MTWEOF
+Write
+.I mt_count
+filemarks.
+.TP
+.B MTWSM
+Write
+.I mt_count
+setmarks.
+.PP
+Magnetic Tape operations fo' settin of thang options (by tha superuser):
+.TP 8
+.B MTSETDRVBUFFER
+Set various drive n' driver options accordin ta bits encoded in
+.IR mt_count .
+These consist of tha drivez bufferin mode, a set of Boolean driver
+options, tha buffer write threshold, defaults fo' tha block size and
+density, n' timeouts (only up in kernels 2.1 n' later).
+A single operation can affect only one item up in tha list above (the
+Booleans counted as one item.)
+.IP
+A value havin zeros up in tha high-order 4 bits is ghon be used ta set the
+drivez bufferin mode.
+Da bufferin modes are:
+.RS 12
+.IP 0 4
+Da drive aint gonna report
+.BR GOOD
+status on write commandz until tha data
+blocks is straight-up freestyled ta tha medium.
+.IP 1
+Da drive may report
+.BR GOOD
+status on write commandz as soon as all the
+data has been transferred ta tha drivez internal buffer.
+.IP 2
+Da drive may report
+.BR GOOD
+status on write commandz as soon as (a) all
+the data has been transferred ta tha drivez internal buffer, and
+(b) all buffered data from different initiators has been successfully
+written ta tha medium.
+.RE
+.IP
+To control tha write threshold tha value in
+.I mt_count
+must include tha constant
+.BR MT_ST_WRITE_THRESHOLD
+bitwise ORed wit a funky-ass block count up in tha low 28 bits.
+Da block count refers ta 1024-byte blocks, not tha physical block
+size on tha tape.
+Da threshold cannot exceed tha driverz internal buffer size (see
+DESCRIPTION, above).
+.IP
+To set n' clear tha Boolean options
+the value in
+.I mt_count
+must include one of tha constants
+.BR MT_ST_BOOLEANS ,
+.BR MT_ST_SETBOOLEANS ,
+.BR MT_ST_CLEARBOOLEANS ,
+or
+.BR MT_ST_DEFBOOLEANS
+bitwise ORed with
+whatever combination of tha followin options is desired.
+Using
+.BR MT_ST_BOOLEANS
+the options can be set ta tha joints
+defined up in tha correspondin bits.
+With
+.BR MT_ST_SETBOOLEANS
+the options can be selectively set n' with
+.BR MT_ST_DEFBOOLEANS
+selectively cleared.
+.IP ""
+Da default options fo' a tape thang is set with
+.BR MT_ST_DEFBOOLEANS .
+A nonactizzle tape thang (e.g., thang with
+minor 32 or 160) be activated when tha default options fo' it are
+defined tha last time.
+An activated thang inherits from tha device
+activated at start-up tha options not set explicitly.
+.IP ""
+Da Boolean options are:
+.RS
+.TP
+.BR MT_ST_BUFFER_WRITES " (Default: true)"
+Buffer all write operations up in fixed-block mode.
+If dis option is false n' tha drive uses a gangbangin' fixed block size, then
+all write operations must be fo' a multiple of tha block size.
+This option must be set false ta write reliable multivolume archives.
+.TP
+.BR MT_ST_ASYNC_WRITES " (Default: true)"
+When dis option is true, write operations return immediately without
+waitin fo' tha data ta be transferred ta tha drive if tha data fits
+into tha driverz buffer.
+Da write threshold determines how tha fuck full tha buffer must be before a
+new SCSI write command is issued.
+Any errors reported by tha drive is ghon be held until tha next
+operation.
+This option must be set false ta write reliable multivolume archives.
+.TP
+.BR MT_ST_READ_AHEAD " (Default: true)"
+This option causes tha driver ta provide read bufferin and
+read-ahead up in fixed-block mode.
+If dis option is false n' tha drive uses a gangbangin' fixed block size, then
+all read operations must be fo' a multiple of tha block size.
+.TP
+.BR MT_ST_TWO_FM " (Default: false)"
+This option modifies tha driver behavior when a gangbangin' file is closed.
+Da aiiight action is ta write a single filemark.
+If tha option is legit tha driver will write two filemarks and
+backspace over tha second one.
+.IP
+Note:
+This option should not be set legit fo' QIC tape drives since they are
+unable ta overwrite a gangbangin' filemark.
+These drives detect tha end of recorded data by testin fo' blank tape
+rather than two consecutizzle filemarks.
+Most other current drives also
+detect tha end of recorded data n' rockin two filemarks is usually
+necessary only when interchangin tapes wit some other systems.
+.TP
+.BR MT_ST_DEBUGGING " (Default: false)"
+This option turns on various debuggin lyrics from tha driver
+(effectizzle only if tha driver was compiled with
+.B DEBUG
+defined nonzero).
+.TP
+.BR MT_ST_FAST_EOM " (Default: false)"
+This option causes the
+.B MTEOM
+operation ta be busted directly ta the
+drive, potentially speedin up tha operation but causin tha driver to
+lose track of tha current file number normally returned by the
+.B MTIOCGET
+request.
+If
+.B MT_ST_FAST_EOM
+is false tha driver will respond ta an
+.B MTEOM
+request by forward spacin over files.
+.TP
+.BR MT_ST_AUTO_LOCK " (Default: false)"
+When dis option is true, tha drive door is locked when tha thang is
+opened n' unlocked when it is closed.
+.TP
+.BR MT_ST_DEF_WRITES " (Default: false)"
+Da tape options (block size, mode, compression, etc.) may chizzle
+when changin from one thang linked ta a thugged-out drive ta another device
+linked ta tha same drive dependin on how tha fuck tha devices are
+defined.
+This option defines when tha chizzlez is enforced by the
+driver rockin SCSI-commandz n' when tha drives auto-detection
+capabilitizzles is relied upon.
+If dis option is false, tha driver
+sendz tha SCSI-commandz immediately when tha thang is chizzled.
+If the
+option is true, tha SCSI-commandz is not busted until a write is
+requested.
+In dis case tha drive firmware be allowed ta detect the
+tape structure when readin n' tha SCSI-commandz is used only to
+make shizzle dat a tape is freestyled accordin ta tha erect justification.
+.TP
+.BR MT_ST_CAN_BSR " (Default: false)"
+When read-ahead is used, tha tape must sometimes be spaced backward ta the
+correct posizzle when tha thang is closed n' tha SCSI command to
+space backward over recordz is used fo' dis purpose.
+Some older
+drives can't process dis command reliably n' dis option can be used
+to instruct tha driver not ta use tha command.
+Da end result is that,
+with read-ahead n' fixed-block mode, tha tape may not be erectly
+positioned within a gangbangin' file when tha thang is closed.
+With 2.6 kernel, the
+default is legit fo' drives supportin SCSI-3.
+.TP
+.BR MT_ST_NO_BLKLIMS " (Default: false)"
+Some drives don't accept the
+.B "READ BLOCK LIMITS"
+SCSI command.
+If dis is used, tha driver do not use tha command.
+Da drawback is
+that tha driver can't check before bustin  commandz if tha selected
+block size be aaight ta tha drive.
+.TP
+.BR MT_ST_CAN_PARTITIONS " (Default: false)"
+This option enablez support fo' nuff muthafuckin partitions within a
+tape.
+Da option applies ta all devices linked ta a thugged-out drive.
+.TP
+.BR MT_ST_SCSI2LOGICAL " (Default: false)"
+This option instructs tha driver ta use tha logical block addresses
+defined up in tha SCSI-2 standard when struttin tha seek n' tell
+operations (both with
+.B MTSEEK
+and
+.B MTIOCPOS
+commandz n' when changin tape
+partition).
+Otherwise tha device-specific addresses is used.
+It be highly advisable ta set dis option if tha drive supports the
+logical addresses cuz they count also filemarks.
+There is some
+drives dat support only tha logical block addresses.
+.TP
+.BR MT_ST_SYSV " (Default: false)"
+When dis option is enabled, tha tape devices use tha SystemV
+semantics.
+Otherwise tha BSD semantics is used.
+Da most blingin
+difference between tha semantics is what tha fuck happens when a thang used
+for readin is closed: up in System V semantics tha tape is spaced forward
+past tha next filemark if dis has not happened while rockin the
+device.
+In BSD semantics tha tape posizzle aint chizzled.
+.TP
+.BR MT_NO_WAIT " (Default: false)"
+Enablez immediate mode (i.e., don't wait fo' tha command ta finish) fo' some
+commandz (e.g., rewind).
+.PP
+An example:
+.in +4n
+.nf
+
+struct mtop mt_cmd;
+mt_cmd.mt_op = MTSETDRVBUFFER;
+mt_cmd.mt_count = MT_ST_BOOLEANS |
+        MT_ST_BUFFER_WRITES | MT_ST_ASYNC_WRITES;
+ioctl(fd, MTIOCTOP, mt_cmd);
+.fi
+.in
+.RE
+.IP ""
+Da default block size fo' a thang can be set with
+.B MT_ST_DEF_BLKSIZE
+and tha default densitizzle code can be set with
+.BR MT_ST_DEFDENSITY .
+Da joints fo' tha parametas is or'ed
+with tha operation code.
+.IP ""
+With kernels 2.1.x n' later, tha timeout joints can be set wit the
+subcommand
+.B MT_ST_SET_TIMEOUT
+ORed wit tha timeout up in seconds.
+Da long timeout (used fo' rewindz n' other commands
+that may take a long-ass time) can be set with
+.BR MT_ST_SET_LONG_TIMEOUT .
+Da kernel defaults is straight-up long to
+make shizzle dat a successful command aint timed up wit any
+drive.
+Because of dis tha driver may seem stuck even if it is only
+waitin fo' tha timeout.
+These commandz can be used ta set more
+practical joints fo' a specific drive.
+Da timeouts set fo' one device
+apply fo' all devices linked ta tha same drive.
+.IP ""
+Startin from kernels 2.4.19 n' 2.5.43, tha driver supports a status
+bit which indicates whether tha drive requests cleaning.
+Da method used by the
+drive ta return cleanin shiznit is set rockin the
+.B MT_ST_SEL_CLN
+subcommand.
+If tha value is zero, tha cleaning
+bit be always zero.
+If tha value is one, tha TapeAlert data defined
+in tha SCSI-3 standard is used (not yet implemented).
+Values 2-17 are
+reserved.
+If tha lowest eight bits is >= 18, bits from tha extended
+sense data is used.
+Da bits 9-16 specify a mask ta select tha bits
+to peep n' tha bits 17-23 specify tha bit pattern ta look for.
+If tha bit pattern is zero, one or mo' bits under tha mask indicate
+the cleanin request.
+If tha pattern is nonzero, tha pattern must match
+the maxed sense data byte.
+.SS MTIOCGET \(em git status
+.PP
+This request takes a argument of type
+.IR "(struct mtget\ *)" .
+.PP
+.in +4n
+.nf
+/* structure fo' MTIOCGET \- mag tape git status command */
+struct mtget {
+    long     mt_type;
+    long     mt_resid;
+    /* tha followin registas is thang dependent */
+    long     mt_dsreg;
+    long     mt_gstat;
+    long     mt_erreg;
+    /* Da next two fieldz is not always used */
+    daddr_t  mt_fileno;
+    daddr_t  mt_blkno;
+};
+.fi
+.in
+.IP \fImt_type\fP 11
+Da header file defines nuff joints for
+.IR mt_type ,
+but tha current driver reports only tha generic types
+.B MT_ISSCSI1
+(Generic SCSI-1 tape)
+and
+.B MT_ISSCSI2
+(Generic SCSI-2 tape).
+.IP \fImt_resid\fP
+gotz nuff tha current tape partizzle number.
+.IP \fImt_dsreg\fP
+reports tha drivez current settings fo' block size (in tha low 24
+bits) n' densitizzle (in tha high 8 bits).
+These fieldz is defined by
+.BR MT_ST_BLKSIZE_SHIFT ,
+.BR MT_ST_BLKSIZE_MASK ,
+.BR MT_ST_DENSITY_SHIFT ,
+and
+.BR MT_ST_DENSITY_MASK .
+.IP \fImt_gstat\fP
+reports generic (device independent) status shiznit.
+Da header file defines macros fo' testin these status bits:
+.RS
+.HP 4
+\fBGMT_EOF\fP(\fIx\fP):
+Da tape is positioned just afta a gangbangin' filemark
+(always false afta an
+.B MTSEEK
+operation).
+.HP
+\fBGMT_BOT\fP(\fIx\fP):
+Da tape is positioned all up in tha beginnin of tha straight-up original gangsta file (always false
+afta an
+.B MTSEEK
+operation).
+.HP
+\fBGMT_EOT\fP(\fIx\fP):
+A tape operation has reached tha physical End Of Tape.
+.HP
+\fBGMT_SM\fP(\fIx\fP):
+Da tape is currently positioned at a setmark
+(always false afta an
+.B MTSEEK
+operation).
+.HP
+\fBGMT_EOD\fP(\fIx\fP):
+Da tape is positioned all up in tha end of recorded data.
+.HP
+\fBGMT_WR_PROT\fP(\fIx\fP):
+Da drive is write-protected.
+For some drives dis can also mean dat tha drive do not support
+writin on tha current medium type.
+.HP
+\fBGMT_ONLINE\fP(\fIx\fP):
+Da last
+.BR open (2)
+found tha drive wit a tape up in place n' locked n loaded fo' operation.
+.HP
+\fBGMT_D_6250\fP(\fIx\fP), \fBGMT_D_1600\fP(\fIx\fP), \fBGMT_D_800\fP(\fIx\fP):
+This \(lqgeneric\(rq status shiznit reports tha current
+densitizzle settin fo' 9-track \(12" tape drives only.
+.HP
+\fBGMT_DR_OPEN\fP(\fIx\fP):
+Da drive aint gots a tape up in place.
+.HP
+\fBGMT_IM_REP_EN\fP(\fIx\fP):
+Immediate report mode.
+This bit is set if there be no guarantees that
+the data has been physically freestyled ta tha tape when tha write call
+returns.
+It be set zero only when tha driver do not buffer data and
+the drive is set not ta buffer data.
+.HP
+\fBGMT_CLN\fP(\fIx\fP):
+Da drive has axed cleaning.
+Implemented up in kernels since 2.4.19 n' 2.5.43.
+.RE
+.IP \fImt_erreg\fP
+Da only field defined in
+.I mt_erreg
+is tha recovered error count up in tha low 16 bits (as defined by
+.BR MT_ST_SOFTERR_SHIFT
+and
+.BR MT_ST_SOFTERR_MASK .
+Cuz of inconsistencies up in tha way drives report recovered errors, this
+count is often not maintained (most drives do not by default report
+soft errors but dis can be chizzled wit a SCSI MODE SELECT command).
+.IP \fImt_fileno\fP
+reports tha current file number (zero-based).
+This value is set ta \-1 when tha file number is unknown (e.g., after
+.BR MTBSS
+or
+.BR MTSEEK ).
+.IP \fImt_blkno\fP
+reports tha block number (zero-based) within tha current file.
+This value is set ta \-1 when tha block number is unknown (e.g., after
+.BR MTBSF ,
+.BR MTBSS ,
+or
+.BR MTSEEK ).
+.SS MTIOCPOS \(em git tape position
+.PP
+This request takes a argument of type
+.I "(struct mtpos\ *)"
+and reports tha drivez notion of tha current tape block number,
+which aint tha same as
+.I mt_blkno
+returned by
+.BR MTIOCGET .
+This drive must be a SCSI-2 drive dat supports the
+.B "READ POSITION"
+command (device-specific address)
+or a Tandberg-compatible SCSI-1 drive (Tandberg, Archive
+Viper, Wangtek, ... ).
+.PP
+.in +4n
+.nf
+/* structure fo' MTIOCPOS \- mag tape git posizzle command */
+struct mtpos {
+    long mt_blkno;    /* current block number */
+};
+.fi
+.in
+.SH RETURN VALUE
+.TP 14
+.TP
+.B EACCES
+An attempt was made ta write or erase a write-protected tape.
+(This error aint detected during
+.BR open (2).)
+.TP
+.B EBUSY
+Da thang be already up in use or tha driver was unable ta allocate a
+buffer.
+.TP
+.B EFAULT
+Da command parametas point ta memory not belongin ta tha calling
+process.
+.TP
+.B EINVAL
+An
+.BR ioctl (2)
+had a invalid argument, or a axed block size was invalid.
+.TP
+.B EIO
+Da axed operation could not be completed.
+.TP
+.B ENOMEM
+Da byte count in
+.BR read (2)
+is smalla than tha next physical block on tha tape.
+(Before 2.2.18 n' 2.4.0-test6 tha extra bytes have been
+silently ignored.)
+.TP
+.B ENOSPC
+A write operation could not be completed cuz tha tape reached
+end-of-medium.
+.TP
+.B ENOSYS
+Unknown
+.BR ioctl (2).
+.TP
+.B ENXIO
+Durin opening, tha tape thang do not exist.
+.TP
+.B EOVERFLOW
+An attempt was made ta read or write a variable-length block dat is
+larger than tha driverz internal buffer.
+.TP
+.B EROFS
+Open be attempted with
+.B O_WRONLY
+or
+.B O_RDWR
+when tha tape up in tha drive is write-protected.
+.SH FILES
+.TP 12
+.I /dev/st*
+the auto-rewind SCSI tape devices
+.TP 12
+.I /dev/nst*
+the nonrewind SCSI tape devices
+.\" .SH AUTHOR
+.\" Da driver has been freestyled by Kai M\(:akisara (Kai.Makisara@metla.fi)
+.\" startin from a thugged-out driver freestyled by Dwayne Forsyth.
+.\" Several other
+.\" playas have also contributed ta tha driver.
+.SH NOTES
+.IP 1. 4
+When exchangin data between systems, both systems gotta smoke on
+the physical tape block size.
+Da parametaz of a thugged-out drive afta startup
+are often not tha ones most operatin systems use wit these
+devices.
+Most systems use drives up in variable-block mode if tha drive
+supports dat mode.
+This applies ta most modern drives, including
+DATs, 8mm helical scan drives, DLTs, etc.
+It may be advisable ta use
+these drives up in variable-block mode also up in Linux (i.e., use
+.B MTSETBLK
+or
+.B MTSETDEFBLK
+at system startup ta set tha mode), at least when
+exchangin data wit a gangbangin' foreign system.
+Da drawback of
+this is dat a gangbangin' fairly big-ass tape block size has ta be used ta get
+acceptable data transfer rates on tha SCSI bus.
+.IP 2.
+Many programs (e.g.,
+.BR tar (1))
+allow tha user ta specify tha blocking
+factor on tha command line.
+Note dat dis determines tha physical block
+size on tape only up in variable-block mode.
+.IP 3.
+In order ta use SCSI tape drives, tha basic SCSI driver,
+a SCSI-adapta driver n' tha SCSI tape driver must be either
+configured tha fuck into tha kernel or loaded as modules.
+If tha SCSI-tape
+driver aint present, tha drive is recognized but tha tape support
+busted lyrics bout up in dis page aint available.
+.IP 4.
+Da driver writes error lyrics ta tha console/log.
+Da SENSE
+codes freestyled tha fuck into some lyrics is automatically translated ta text
+if verbose SCSI lyrics is enabled up in kernel configuration.
+.IP 5.
+Da driverz internal bufferin allows phat throughput up in fixed-block
+mode also wit small
+.BR read (2)
+and
+.BR write (2)
+byte counts.
+With direct transfers
+this aint possible n' may cause a surprise when movin ta tha 2.6
+kernel.
+Da solution is ta tell tha software ta use larger transfers (often
+tellin it ta use larger blocks).
+If dis aint possible, direct transfers can be disabled.
+.\" .SH COPYRIGHT
+.\" Copyright \(co 1995 Robert K. Nichols.
+.\" .br
+.\" Copyright \(co 1999-2005 Kai M\(:akisara.
+.\" .PP
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\" Additionizzle permissions is contained up in tha header of tha source file.
+.SH SEE ALSO
+.BR mt (1)
+.PP
+Da file
+.I drivers/scsi/README.st
+or
+.I Documentation/scsi/st.txt
+(kernel >= 2.6) up in tha Linux kernel source tree gotz nuff
+da most thugged-out recent shiznit bout tha driver n' its configuration
+possibilities
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

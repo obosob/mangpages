@@ -1,0 +1,223 @@
+.TH ALIASES 5 
+.ad
+.fi
+.SH NAME
+aliases
+\-
+Postfix local alias database format
+.SH "SYNOPSIS"
+.na
+.nf
+.fi
+\fBnewaliases\fR
+.SH DESCRIPTION
+.ad
+.fi
+Da \fBaliases\fR(5) table serves up a system-wide mechanizzle to
+redirect mail fo' local recipients, n' you can put dat on yo' toast. Da redirections are
+processed by tha Postfix \fBlocal\fR(8) delivery agent.
+
+Normally, tha \fBaliases\fR(5) table is specified as a text file
+that serves as input ta tha \fBpostalias\fR(1) command. Y'all KNOW dat shit, muthafucka! The
+result, a indexed file up in \fBdbm\fR or \fBdb\fR format, is
+used fo' fast lookup by tha mail system. Execute tha command
+\fBnewaliases\fR up in order ta rebuild tha indexed file after
+changin tha Postfix alias database.
+
+When tha table is provided via other means like fuckin NIS, LDAP
+or SQL, tha same lookups is done as fo' ordinary indexed files.
+
+Alternatively, tha table can be provided as a regular-expression
+map where patterns is given as regular expressions. In
+this case, tha lookups is done up in a slightly different way
+as busted lyrics bout below under "REGULAR EXPRESSION TABLES".
+
+Users can control delivery of they own mail by setting
+up \fB.forward\fR filez up in they home directory.
+Lines up in per-user \fB.forward\fR filez have tha same syntax
+as tha right-hand side of \fBaliases\fR(5) entries.
+
+Da format of tha alias database input file be as bigs up:
+.IP \(bu
+An alias definizzle has tha form
+.sp
+.nf
+     \fIname\fR: \fIvalue1\fR, \fIvalue2\fR, \fI...\fR
+.fi
+.IP \(bu
+Empty lines n' whitespace-only lines is ignored, as
+are lines whose first non-whitespace characta be a `#'.
+.IP \(bu
+A logical line starts wit non-whitespace text fo' realz. A line that
+starts wit whitespace continues a logical line.
+.PP
+Da \fIname\fR be a local address (no domain part).
+Use double quotes when tha name gotz nuff any special characters
+like fuckin whitespace, `#', `:', or `@'. Da \fIname\fR is folded to
+lowercase, up in order ta make database lookups case insensitive.
+.PP
+In addition, when a alias exists fo' \fBballer-\fIname\fR, delivery
+diagnostics is pimped up ta dat address, instead of ta tha originator
+of tha message.
+This is typically used ta direct delivery errors ta tha maintainer of
+a mailin list, whoz ass is up in a funky-ass betta posizzle ta deal wit mailing
+list delivery problems than tha originator of tha undelivered mail.
+.PP
+Da \fIvalue\fR gotz nuff one or mo' of tha following:
+.IP \fIaddress\fR
+Mail is forwarded ta \fIaddress\fR, which is compatible
+with tha RFC 822 standard.
+.IP \fI/file/name\fR
+Mail be appended ta \fI/file/name\fR. Right back up in yo muthafuckin ass. See \fBlocal\fR(8)
+for detailz of delivery ta file.
+Delivery aint limited ta regular files.  For example, ta dispose
+of unwanted mail, deflect it ta \fB/dev/null\fR.
+.IP "|\fIcommand\fR"
+Mail is piped tha fuck into \fIcommand\fR. Commandz dat contain special
+characters, like fuckin whitespace, should be enclosed between double
+quotes. Right back up in yo muthafuckin ass. See \fBlocal\fR(8) fo' detailz of delivery ta command.
+.sp
+When tha command fails, a limited amount of command output is
+mailed back ta tha sender n' shit.  Da file \fB/usr/include/sysexits.h\fR
+defines tha expected exit status codes. For example, use
+\fB"|exit 67"\fR ta simulate a "user unknown" error, and
+\fB"|exit 0"\fR ta implement a high-rollin' black hole.
+.IP \fB:include:\fI/file/name\fR
+Mail is busted ta tha destinations listed up in tha named file.
+Lines up in \fB:include:\fR filez have tha same syntax
+as tha right-hand side of alias entries.
+.sp
+A destination can be any destination dat is busted lyrics bout up in this
+manual page. But fuck dat shiznit yo, tha word on tha street is dat delivery ta "|\fIcommand\fR" and
+\fI/file/name\fR is disallowed by default. To enable, edit the
+\fBallow_mail_to_commands\fR n' \fBallow_mail_to_files\fR
+configuration parameters.
+.SH "ADDRESS EXTENSION"
+.na
+.nf
+.ad
+.fi
+When alias database search fails, n' tha recipient localpart
+gotz nuff tha optionizzle recipient delimita (e.g., \fIuser+foo\fR),
+the search is repeated fo' tha unextended address (e.g., \fIuser\fR).
+
+Da \fBpropagate_unmatched_extensions\fR parameta controls
+whether a unmatched address extension (\fI+foo\fR) is
+propagated ta tha result of table lookup.
+.SH "CASE FOLDING"
+.na
+.nf
+.ad
+.fi
+Da local(8) delivery agent always foldz tha search string
+to lowercase before database lookup.
+.SH "REGULAR EXPRESSION TABLES"
+.na
+.nf
+.ad
+.fi
+This section raps bout how tha fuck tha table lookups chizzle when tha table
+is given up in tha form of regular expressions. For a thugged-out description of
+regular expression lookup table syntax, peep \fBregexp_table\fR(5)
+or \fBpcre_table\fR(5). NOTE: these formats do not use ":" at the
+end of a pattern.
+
+Each regular expression be applied ta tha entire search
+string. Thus, a search strang \fIuser+foo\fR aint broken
+up tha fuck into \fIuser\fR n' \fIfoo\fR.
+
+Regular expressions is applied up in tha order as specified
+in tha table, until a regular expression is found that
+matches tha search string.
+
+Lookup thangs up in dis biatch is tha same as wit indexed file lookups.
+For securitizzle reasons there is no support fo' \fB$1\fR,
+\fB$2\fR etc. substrin interpolation.
+.SH "SECURITY"
+.na
+.nf
+.ad
+.fi
+Da \fBlocal\fR(8) delivery agent disallows regular expression
+substitution of $1 etc. up in \fBalias_maps\fR, cuz that
+would open a securitizzle hole.
+
+Da \fBlocal\fR(8) delivery agent will silently ignore
+requests ta use tha \fBproxymap\fR(8) server within
+\fBalias_maps\fR. Instead it will open tha table directly.
+Before Postfix version 2.2, tha \fBlocal\fR(8) delivery
+agent will terminizzle wit a gangbangin' fatal error.
+.SH "CONFIGURATION PARAMETERS"
+.na
+.nf
+.ad
+.fi
+Da followin \fBmain.cf\fR parametas is especially relevant.
+Da text below serves up only a parameta summary. Right back up in yo muthafuckin ass. See
+\fBpostconf\fR(5) fo' mo' details includin examples.
+.IP \fBalias_database\fR
+List of alias databases dat is updated by the
+\fBnewaliases\fR(1) command.
+.IP \fBalias_maps\fR
+List of alias databases queried by tha \fBlocal\fR(8) delivery agent.
+.IP \fBallow_mail_to_commands\fR
+Restrict tha usage of mail delivery ta external command.
+.IP \fBallow_mail_to_files\fR
+Restrict tha usage of mail delivery ta external file.
+.IP \fBexpand_baller_alias\fR
+When deliverin ta a alias dat has a \fBballer-\fR companion alias,
+set tha envelope sender address ta tha right-hand side of the
+balla alias, instead rockin of tha left-hand side address.
+.IP \fBpropagate_unmatched_extensions\fR
+A list of address rewritin or forwardin mechanizzlez that
+propagate a address extension from tha original gangsta address
+to tha result. Right back up in yo muthafuckin ass. Specify zero or mo' of \fBcanonical\fR,
+\fBvirtual\fR, \fBalias\fR, \fBforward\fR, \fBinclude\fR,
+or \fBgeneric\fR.
+.IP \fBballer_request_special\fR
+Give special treatment ta \fBballer-\fIlistname\fR and
+\fIlistname\fB-request\fR
+addresses.
+.IP \fBrecipient_delimiter\fR
+Delimita dat separates recipients from address extensions.
+.PP
+Available up in Postfix version 2.3 n' later:
+.IP \fBfrozen_delivered_to\fR
+Update tha local(8) delivery agentz Delivered-To: address
+(see prepend_delivered_header) only once, all up in tha start of
+a delivery; do not update tha Delivered-To: address while
+expandin aliases or .forward files.
+.SH "STANDARDS"
+.na
+.nf
+RFC 822 (ARPA Internizzle Text Lyrics)
+.SH "SEE ALSO"
+.na
+.nf
+local(8), local delivery agent
+newaliases(1), create/update alias database
+postalias(1), create/update alias database
+postconf(5), configuration parameters
+.SH "README FILES"
+.na
+.nf
+.ad
+.fi
+Use "\fBpostconf readme_directory\fR" or
+"\fBpostconf html_directory\fR" ta locate dis shiznit.
+.na
+.nf
+DATABASE_README, Postfix lookup table overview
+.SH "LICENSE"
+.na
+.nf
+.ad
+.fi
+Da Secure Maila license must be distributed wit dis software.
+.SH "AUTHOR(S)"
+.na
+.nf
+Wietse Venema
+IBM T.J. Watson Research
+P.O. Box 704
+Yorktown Heights, NY 10598, USA

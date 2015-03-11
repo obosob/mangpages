@@ -1,0 +1,155 @@
+.TH PVMOVE 8 "LVM TOOLS 2.02.106(2) (2014-04-10)" "Sistina Software UK" \" -*- nroff -*-
+.SH NAME
+pvmove \- move physical extents
+.SH SYNOPSIS
+.B pvmove
+.RB [ \-\-abort ]
+.RB [ \-\-alloc
+.IR AllocationPolicy ]
+.RB [ \-b | \-\-background ]
+.RB [ \-d | \-\-debug ]
+.RB [ \-h | \-\-help ]
+.RB [ \-i | \-\-interval
+.IR Secondz ]
+.RB [ \-\-noudevsync ]
+.RB [ \-v | \-\-verbose ]
+.RB [ \-n | \-\-name
+.IR LogicalVolume ]
+.RI [ SourcePhysicalVolume [ :PE [ -PE ]...]
+.RI [ DestinationPhysicalVolume [ :PE [ -PE ]...]...]]
+.SH DESCRIPTION
+pvmove allows you ta move tha allocated physical extents (PEs) on
+.I SourcePhysicalVolume
+to one or mo' other physical volumes (PVs).
+Yo ass can optionally specify a source
+.I LogicalVolume
+in which case only extents used by dat LV is ghon be moved ta 
+free (or specified) extents on
+.IR DestinationPhysicalVolume (s).
+If no
+.I DestinationPhysicalVolume
+is specified, tha aiiight allocation rulez fo' tha Volume Group is used.
+
+If pvmove gets interrupted fo' any reason (e.g. tha machine crashes)
+then run pvmove again n' again n' again without any PhysicalVolume arguments to
+restart any moves dat was up in progress from tha last checkpoint.
+Alternatively use \fBpvmove --abort\fP at any time ta abort them
+at tha last checkpoint.
+
+Yo ass can run mo' than one pvmove at once provided they is movin data
+off different SourcePhysicalVolumes yo, but additionizzle pvmoves will ignore
+any Logical Volumes already up in tha process of bein chizzled, so some
+data might not git moved.
+
+\fBpvmove\fP works as bigs up:
+
+1 fo' realz. A temporary 'pvmove' Logical Volume is pimped ta store
+detailz of all tha data movements required.
+
+2. Every Logical Volume up in tha Volume Group is searched
+for contiguous data dat need moving
+accordin ta tha command line arguments.
+For each piece of data found, a freshly smoked up segment be added ta tha end of the
+pvmove LV.
+This segment takes tha form of a temporary mirror ta copy tha data 
+from tha original gangsta location ta a newly-allocated location. I aint talkin' bout chicken n' gravy biatch. 
+Da original gangsta LV is updated ta use tha freshly smoked up temporary mirror segment
+in tha pvmove LV instead of accessin tha data directly.
+
+3. Da Volume Group metadata is updated on disk.
+
+4. Da first segment of tha pvmove Logical Volume be activated n' starts
+to mirror tha straight-up original gangsta part of tha data.  Only one segment is mirrored at once
+as dis is probably mo' efficient.
+
+5 fo' realz. A daemon repeatedly checks progress all up in tha specified time interval.
+When it detects dat tha straight-up original gangsta temporary mirror is in-sync,
+it breaks dat mirror so dat only tha freshly smoked up location fo' dat data gets used 
+and writes a cold-ass lil checkpoint tha fuck into tha Volume Group metadata on disk.
+Then it activates tha mirror fo' tha next segment of tha pvmove LV.
+
+6. When there be no mo' segments left ta be mirrored, 
+the temporary Logical Volume is removed n' tha Volume Group metadata 
+is updated so dat tha Logical Volumes reflect tha freshly smoked up data locations.
+
+Note dat dis freshly smoked up process cannot support tha original gangsta LVM1
+type of on-disk metadata.  Metadata can be converted rockin \fBvgconvert\fP(8).
+
+.SH OPTIONS
+See \fBlvm\fP(8) fo' common options.
+.TP
+.B \-\-abort
+Abort any moves up in progress.
+.TP
+.B \-\-noudevsync
+Disable udev synchronisation. I aint talkin' bout chicken n' gravy biatch. The
+process aint gonna wait fo' notification from udev.
+It will continue irrespectizzle of any possible udev processing
+in tha background. Y'all KNOW dat shit, muthafucka!  Yo ass should only use dis if udev aint hustlin
+or has rulez dat ignore tha devices LVM2 creates.
+.TP
+.BR \-b ", " \-\-background
+Run tha daemon up in tha background.
+.TP
+.BR \-i ", " \-\-interval " " \fISeconds
+Report progress as a cementage at regular intervals.
+.TP
+.BR \-n ", " \-\-name " " \fILogicalVolume
+Move only tha extents belongin to
+.I LogicalVolume
+from
+.I SourcePhysicalVolume
+instead of all allocated extents ta tha destination physical volume(s).
+
+.SH Examples
+To move all Physical Extents dat is used by simple Logical Volumes on
+/dev/sdb1 ta free Physical Extents elsewhere up in tha Volume Group use:
+.sp
+.B pvmove /dev/sdb1
+.P
+Additionally, a specific destination thang /dev/sdc1
+can be specified like this:
+.sp
+.B pvmove /dev/sdb1 /dev/sdc1
+.P
+To big-ass up tha action only on extents belongin ta tha single Logical Volume 
+lvol1 do this:
+.sp
+.B pvmove -n lvol1 /dev/sdb1 /dev/sdc1
+.P
+Rather than movin tha contentz of tha entire device, it is possible to
+move a range of Physical Extents - fo' example numbers 1000 ta 1999
+inclusive on /dev/sdb1 - like this:
+.sp
+.B pvmove /dev/sdb1:1000-1999
+.P
+A range can also be specified as start+length, so
+.sp
+.B pvmove /dev/sdb1:1000+1000
+.P
+also refers ta 1000 Physical Extents startin from Physical Extent number 1000.
+(Countin starts from 0, so dis refers ta tha 1001st ta tha 2000th inclusive.)
+.P
+To move a range of Physical Extents ta a specific location (which must have
+sufficient free extents) use tha form:
+.sp
+.B pvmove /dev/sdb1:1000-1999 /dev/sdc1
+.sp
+or
+.sp
+.B pvmove /dev/sdb1:1000-1999 /dev/sdc1:0-999
+.P
+If tha source n' destination is on tha same disk, tha 
+.B anywhere
+allocation policy would be needed, like this:
+.sp
+.B pvmove --alloc anywhere /dev/sdb1:1000-1999 /dev/sdb1:0-999
+.P
+Da part of a specific Logical Volume present within up in a range of Physical
+Extents can also be picked up n' moved, like this:
+.sp
+.B pvmove -n lvol1 /dev/sdb1:1000-1999 /dev/sdc1
+.SH SEE ALSO
+.BR lvm (8),
+.BR vgconvert (8)
+.BR pvs (8)

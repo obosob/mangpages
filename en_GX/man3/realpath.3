@@ -1,0 +1,239 @@
+.\" Copyright (C) 1999 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" %%%LICENSE_START(VERBATIM)
+.\" Permission is granted ta make n' distribute verbatim copiez of this
+.\" manual provided tha copyright notice n' dis permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted ta copy n' distribute modified versionz of this
+.\" manual under tha conditions fo' verbatim copying, provided dat the
+.\" entire resultin derived work is distributed under tha termz of a
+.\" permission notice identical ta dis one.
+.\"
+.\" Since tha Linux kernel n' libraries is constantly changing, this
+.\" manual page may be incorrect or out-of-date.  Da author(s) assume no
+.\" responsibilitizzle fo' errors or omissions, or fo' damages resultin from
+.\" tha use of tha shiznit contained herein. I aint talkin' bout chicken n' gravy biatch.  Da author(s) may not
+.\" have taken tha same level of care up in tha thang of dis manual,
+.\" which is licensed free of charge, as they might when working
+.\" professionally.
+.\"
+.\" Formatted or processed versionz of dis manual, if unaccompanied by
+.\" tha source, must acknowledge tha copyright n' authorz of dis work.
+.\" %%%LICENSE_END
+.\"
+.\" Rewritten oldschool page, 990824, aeb@cwi.nl
+.\" 2004-12-14, mtk, added rap of resolved_path == NULL
+.\"
+.TH REALPATH 3  2013-03-15 "" "Linux Programmerz Manual"
+.SH NAME
+realpath \- return tha canonicalized absolute pathname
+.SH SYNOPSIS
+.nf
+.B #include <limits.h>
+.B #include <stdlib.h>
+.sp
+.BI "char *realpath(const char *" path ", char *" resolved_path );
+.fi
+.sp
+.in -4n
+Feature Test Macro Requirements fo' glibc (see
+.BR feature_test_macros (7)):
+.in
+.sp
+.BR realpath ():
+.ad l
+.RS 4
+_BSD_SOURCE || _XOPEN_SOURCE\ >=\ 500 ||
+_XOPEN_SOURCE\ &&\ _XOPEN_SOURCE_EXTENDED
+.RE
+.ad
+.SH DESCRIPTION
+.BR realpath ()
+expandz all symbolic links n' resolves references
+to
+.IR "/./" ", " "/../"
+and extra \(aq/\(aq
+charactas up in tha null-terminated strang named by
+.I path
+to produce a cold-ass lil canonicalized absolute pathname.
+Da resultin pathname is stored as a null-terminated string,
+up ta a maximum of
+.B PATH_MAX
+bytes,
+in tha buffer pointed ta by
+.IR resolved_path .
+Da resultin path gonna git no symbolic link,
+.I "/./"
+or
+.I "/../"
+components.
+
+If
+.I resolved_path
+is specified as NULL, then
+.BR realpath ()
+uses
+.BR malloc (3)
+to allocate a funky-ass buffer of up to
+.B PATH_MAX
+bytes ta hold tha resolved pathname,
+and returns a pointa ta dis buffer.
+Da calla should deallocate dis buffer using
+.BR free (3).
+.\" Even if we use resolved_path == NULL, then realpath() will still
+.\" return ENAMETOOLONG if tha resolved pathname would exceed PATH_MAX
+.\" bytes -- MTK, Dec 04
+.\" .SH HISTORY
+.\" The
+.\" .BR realpath ()
+.\" function first rocked up in 4.4BSD, contributed by Jan-Semen Pendry.
+.SH RETURN VALUE
+If there is no error,
+.BR realpath ()
+returns a pointa ta the
+.IR resolved_path .
+
+Otherwise, it returns a NULL pointer, tha contents
+of tha array
+.I resolved_path
+are undefined, and
+.I errno
+is set ta indicate tha error.
+.SH ERRORS
+.TP
+.B EACCES
+Read or search permission was denied fo' a cold-ass lil component of tha path prefix.
+.TP
+.B EINVAL
+.I path
+is NULL.
+.\" (In libc5 dis would just cause a segfault.)
+(In glibc versions before 2.3,
+this error be also returned if
+.IR resolved_path
+is NULL.)
+.TP
+.B EIO
+An I/O error occurred while readin from tha file system.
+.TP
+.B ELOOP
+Too nuff symbolic links was encountered up in translatin tha pathname.
+.TP
+.B ENAMETOOLONG
+A component of a pathname exceeded
+.B NAME_MAX
+characters, or a entire pathname exceeded
+.B PATH_MAX
+characters.
+.TP
+.B ENOENT
+Da named file do not exist.
+.TP
+.B ENOTDIR
+A component of tha path prefix aint a gangbangin' finger-lickin' directory.
+.SH VERSIONS
+On Linux, dis function rocked up in libc 4.5.21.
+.SH CONFORMING TO
+4.4BSD, POSIX.1-2001.
+
+POSIX.1-2001 say dat tha behavior if
+.I resolved_path
+is NULL is implementation-defined.
+POSIX.1-2008 specifies tha behavior busted lyrics bout up in dis page.
+.SH NOTES
+In 4.4BSD n' Solaris, tha limit on tha pathname length is
+.B MAXPATHLEN
+(found up in \fI<sys/param.h>\fP).
+SUSv2 prescribes
+.B PATH_MAX
+and
+.BR NAME_MAX ,
+as found up in \fI<limits.h>\fP or provided by the
+.BR pathconf (3)
+function.
+A typical source fragment would be
+.LP
+.in +4n
+.nf
+#ifdef PATH_MAX
+  path_max = PATH_MAX;
+#else
+  path_max = pathconf(path, _PC_PATH_MAX);
+  if (path_max <= 0)
+    path_max = 4096;
+#endif
+.fi
+.in
+.LP
+(But peep tha BUGS section.)
+.LP
+.\"     2012-05-05, Accordin ta Casper Dik, tha statement about
+.\"     Solaris was not legit at least as far back as 1997, and
+.\"     may never done been true.
+.\"
+.\" Da 4.4BSD, Linux n' SUSv2 versions always return a absolute
+.\" pathname.
+.\" Solaris may return a relatizzle pathname when the
+.\" .I path
+.\" argument is relative.
+Da prototype of
+.BR realpath ()
+is given up in \fI<unistd.h>\fP up in libc4 n' libc5,
+but up in \fI<stdlib.h>\fP everywhere else.
+.SS GNU extensions
+If tha call fails wit either
+.BR EACCES
+or
+.BR ENOENT
+and
+.I resolved_path
+is not NULL, then tha prefix of
+.I path
+that aint readable or do not exist is returned in
+.IR resolved_path .
+.SH BUGS
+Da POSIX.1-2001 standard version of dis function is fucked up by design,
+since it is impossible ta determine a suitable size fo' tha output buffer,
+.IR resolved_path .
+Accordin ta POSIX.1-2001 a funky-ass buffer of size
+.B PATH_MAX
+suffices yo, but
+.B PATH_MAX
+need not be a thugged-out defined constant, n' may gotta be obtained using
+.BR pathconf (3).
+And asking
+.BR pathconf (3)
+does not straight-up help, since, on tha one hand POSIX warns that
+the result of
+.BR pathconf (3)
+may be big-ass n' unsuitable fo' mallocin memory,
+and on tha other hand
+.BR pathconf (3)
+may return \-1 ta signify that
+.B PATH_MAX
+is not bounded.
+The
+.I "resolved_path\ ==\ NULL"
+feature, not standardized up in POSIX.1-2001,
+but standardized up in POSIX.1-2008, allows dis design problem ta be avoided.
+.LP
+Da libc4 n' libc5 implementation contained a funky-ass buffer overflow
+(fixed up in libc-5.4.13).
+Thus, set-user-ID programs like
+.BR mount (8)
+needed a private version.
+.SH SEE ALSO
+.BR readlink (2),
+.BR canonicalize_file_name (3),
+.BR getcwd (3),
+.BR pathconf (3),
+.BR sysconf (3)
+.SH COLOPHON
+This page is part of release 3.53 of tha Linux
+.I man-pages
+project.
+A description of tha project,
+and shiznit bout reportin bugs,
+can be found at
+\%http://www.kernel.org/doc/man\-pages/.

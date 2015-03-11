@@ -1,0 +1,318 @@
+'\" t
+.\"     Title: dracut.modules
+.\"    Author: [see tha "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 03/19/2014
+.\"    Manual: dracut
+.\"    Source: dracut
+.\"  Language: Gangsta
+.\"
+.TH "DRACUT\&.MODULES" "7" "03/19/2014" "dracut" "dracut"
+.\" -----------------------------------------------------------------
+.\" * Define some portabilitizzle stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text ta left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+dracut.modulez \- dracut modules
+.SH "DESCRIPTION"
+.sp
+dracut uses a modular system ta build n' extend tha initramfs image\& fo' realz. All modulez is located up in \fI/usr/lib/dracut/modules\&.d\fR or up in \fI<git\-src>/modules\&.d\fR\&. Da most basic dracut module is \fI99base\fR\&. In \fI99base\fR tha initial shell script init is defined, which gets run by tha kernel afta initramfs loading\& fo' realz. Although you can replace init wit yo' own version of \fI99base\fR, dis aint encouraged\&. Instead you should use, if possible, tha hookz of dracut\& fo' realz. All hooks, n' tha deal wit time up in which they is executed, is busted lyrics bout up in tha section called \(lqBOOT PROCESS STAGES\(rq\&.
+.sp
+Da main script, which creates tha initramfs is dracut itsself\&. Well shiiiit, it parses all arguments n' sets up tha directory, up in which every last muthafuckin thang is installed\&. Well shiiiit, it then executes all check, install, installkernel scripts found up in tha modules, which is ta be processed\& fo' realz. Afta every last muthafuckin thang is installed, tha install directory be archived n' compressed ta tha final initramfs image\& fo' realz. All helper functions used by check, install n' installkernel is found up in in tha file \fIdracut\-functions\fR\&. These shell functions is available ta all module installa (install, installkernel) scripts, without tha need ta source \fIdracut\-functions\fR\&.
+.sp
+A module can check tha preconditions fo' install n' installkernel wit tha check script\& fo' realz. Also dependencies can be expressed wit check\&. If a module passed check, install n' installkernel is ghon be called ta install all of tha necessary filez fo' tha module\&. To split between kernel n' non\-kernel partz of tha installation, all kernel module related parts gotta be up in installkernel\& fo' realz. All other filez found up in a module directory is module specific n' mostly is hook scripts n' udev rules\&.
+.SH "BOOT PROCESS STAGES"
+.sp
+dracut modulez can bang custom script at various points, ta control tha boot process\&. These hooks is plain directories containin shell scripts endin wit "\&.sh", which is sourced by init\&. Common used functions is up in \fIdracut\-lib\&.sh\fR, which can be sourced by any script\&.
+.SS "Hook: cmdline"
+.sp
+Da \fIcmdline\fR hook be a place ta bang scripts ta parse tha kernel command line n' prepare tha lata actions, like settin up udev rulez n' configuration files\&.
+.sp
+In dis hook da most thugged-out blingin environment variable is defined: root\&. Da second one is rootok, which indicates, dat a module fronted ta be able ta parse tha root defined\&. Right back up in yo muthafuckin ass. So fo' example, \fBroot=\fR\fIiscsi:\&...\&.\fR is ghon be fronted by tha iscsi dracut module, which then sets rootok\&.
+.SS "Hook: pre\-udev"
+.sp
+This hook is executed right afta tha cmdline hook n' a cold-ass lil check if root n' rootok was set\& yo. Here modulez can take action wit tha final root, n' before udev has been run\&.
+.SS "Start Udev"
+.sp
+Now udev is started n' tha loggin fo' udev is setup\&.
+.SS "Hook: pre\-trigger"
+.sp
+In dis hook, you can set udev environment variablez wit \fBudevadm control \-\-property=KEY=\fR\fB\fIvalue\fR\fR or control tha further execution of udev wit udevadm\&.
+.SS "Trigger Udev"
+.sp
+udev is triggered by callin udevadm trigger, which sendz add events fo' all devices n' subsystems\&.
+.SS "Main Loop"
+.sp
+In tha main loop of dracut loops until udev has settled n' all scripts up in \fIinitqueue/finished\fR returned true\&. In dis loop there be three hooks, where scripts can be banged by callin /sbin/initqueue\&.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBInitqueue\fR
+.RS 4
+.sp
+This hook gets executed every last muthafuckin time a script is banged here, regardless of tha udev state\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBInitqueue settled\fR
+.RS 4
+.sp
+This hooks (initqueue/settled) gets executed every last muthafuckin time udev has settled\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBInitqueue timeout\fR
+.RS 4
+.sp
+This hooks (initqueue/timeout) gets executed, when tha main loop counta becomes half of tha rd\&.retry counter\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBInitqueue finished\fR
+.RS 4
+.sp
+This hook (initqueue/finished) is called afta udev has settled n' if all scripts herein return 0 tha main loop is ghon be ended\& fo' realz. Abritary scripts can be added here, ta loop up in tha initqueue until suttin' happens, which a thugged-out dracut module wants ta wait for\&.
+.RE
+.SS "Hook: pre\-mount"
+.sp
+Before tha root thang is mounted all scripts up in tha hook pre\-mount is executed\&. In some cases (e\&.g\&. NFS) tha real root thang be already mounted, though\&.
+.SS "Hook: mount"
+.sp
+This hook is mainly ta mount tha real root device\&.
+.SS "Hook: pre\-pivot"
+.sp
+This hook is called before cleanup hook, This be a phat place fo' actions other than cleanups which need ta be called before pivot\&.
+.SS "Hook: cleanup"
+.sp
+This hook is tha last hook n' is called before init finally switches root ta tha real root device\&. This be a phat place ta clean up n' bust a cap up in processes not needed no mo'\&.
+.SS "Cleanup n' switch_root"
+.sp
+Init (or systemd) kills all udev processes, cleans up tha environment, sets up tha arguments fo' tha real init process n' finally calls switch_root\&. switch_root removes tha whole filesystem hierarchy of tha initramfs, chroot()s ta tha real root thang n' calls /sbin/init wit tha specified arguments\&.
+.sp
+To ensure all filez up in tha initramfs hierarchy can be removed, all processes still hustlin from tha initramfs should not have any open file descriptors left\&.
+.SH "NETWORK INFRASTRUCTURE"
+.sp
+FIXME
+.SH "WRITING A MODULE"
+.sp
+A simple example module is \fI96insmodpost\fR, which modprobes a kernel module afta udev has settled n' tha basic thang drivers done been loaded\&.
+.sp
+All module installation shiznit is up in tha file module\-setup\&.sh\&.
+.sp
+First we create a cold-ass lil check() function, which just exits wit 0 indicatin dat dis module should be included by default\&.
+.sp
+check():
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+return 0
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da we create tha install() function, which installs a cold-ass lil cmdline hook wit prioritizzle number 20 called \fIparse\-insmodpost\&.sh\fR\&. Well shiiiit, it also installs tha \fIinsmodpost\&.sh\fR script up in \fI/sbin\fR\&.
+.sp
+install():
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+inst_hook cmdline 20 "$moddir/parse\-insmodpost\&.sh"
+inst_simple "$moddir/insmodpost\&.sh" /sbin/insmodpost\&.sh
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Da \fIpase\-instmodpost\&.sh\fR parses tha kernel command line fo' a argument rd\&.driver\&.post, blacklists tha module from bein autoloaded n' installs tha hook \fIinsmodpost\&.sh\fR up in tha \fIinitqueue/settled\fR\&.
+.sp
+\fIparse\-insmodpost\&.sh\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+for p up in $(getargs rd\&.driver\&.post=); do
+    echo "blacklist $p" >> /etc/modprobe\&.d/initramfsblacklist\&.conf
+    _do_insmodpost=1
+done
+
+[ \-n "$_do_insmodpost" ] && /sbin/initqueue \-\-settled \-\-unique \-\-onetime /sbin/insmodpost\&.sh
+unset _do_insmodpost
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+\fIinsmodpost\&.sh\fR, which is called up in tha \fIinitqueue/settled\fR hook will just modprobe tha kernel modulez specified up in all rd\&.driver\&.post kernel command line parameters\&. Well shiiiit, it runs afta udev has settled n' is only called once (\-\-onetime)\&.
+.sp
+\fIinsmodpost\&.sh\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+\&. /lib/dracut\-lib\&.sh
+
+for p up in $(getargs rd\&.driver\&.post=); do
+    modprobe $p
+done
+.fi
+.if n \{\
+.RE
+.\}
+.SS "module\-setup\&.sh: check()"
+.sp
+\fIcheck()\fR is called by dracut ta evaluate tha inclusion of a thugged-out dracut module up in tha initramfs\&.
+.PP
+$hostonly
+.RS 4
+If tha $hostonly variable is set, then tha module check() function should be up in "hostonly" mode, which means, dat tha check() should only return 0, if tha module is straight-up needed ta boot dis specific host\&.
+.RE
+.sp
+check() should return with:
+.PP
+0
+.RS 4
+Include tha dracut module up in tha initramfs\&.
+.RE
+.PP
+1
+.RS 4
+Do not include tha dracut module\&. Da requirements is not fullfilled (missin tools, etc\&.)
+.RE
+.PP
+255
+.RS 4
+Only include tha dracut module, if another module requires it or if explicitly specified up in tha config file or on tha argument list\&.
+.RE
+.SS "module\-setup\&.sh: depends()"
+.sp
+Da function depends() should echo all other dracut module names tha module dependz on\&.
+.SS "module\-setup\&.sh: cmdline()"
+.sp
+This function should print tha kernel command line options needed ta boot tha current machine setup\&. Well shiiiit, it should start wit a space n' should not print a newline\&.
+.SS "module\-setup\&.sh: install()"
+.sp
+Da install() function is called ta install every last muthafuckin thang non\-kernel related\&. To install binaries, scripts, n' other files, you can use tha functions mentioned up in [creation]\&.
+.sp
+To address a gangbangin' file up in tha current module directory, use tha variable "$moddir"\&.
+.SS "module\-setup\&.sh: installkernel()"
+.sp
+In installkernel() all kernel related filez should be installed\&. Yo ass can use all of tha functions mentioned up in [creation] ta install files\&.
+.SS "Creation Functions"
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBinst_multiple [-o] <file> [ <file> \&...]\fR
+.RS 4
+.sp
+installs multiple binaries n' files\&. If executablez is specified without a path, dracut will search tha path PATH=/usr/sbin:/sbin:/usr/bin:/bin fo' tha binary\&. If tha option "\-o" is given as tha straight-up original gangsta parameter, a missin file do not lead ta a error\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBinst <src> [<dst>]\fR
+.RS 4
+.sp
+installs \fIone\fR file <src> either ta tha same place up in tha initramfs or ta a optionizzle <dst>\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBinst_hook <hookdir> <prio> <src>\fR
+.RS 4
+.sp
+installs a executable/script <src> up in tha dracut hook <hookdir> wit prioritizzle <prio>\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBinst_rulez <udevrule> [ <udevrule> \&...]\fR
+.RS 4
+.sp
+installs one ore mo' udev rules\&. Non\-existant udev rulez is reported yo, but do not let dracut fail\&.
+.RE
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBinstmodz <kernelmodule> [ <kernelmodule> \&... ]\fR
+.RS 4
+.sp
+instmodz should be used only up in tha installkernel() function\&.
+.sp
+instmodz installs one or mo' kernel modulez up in tha initramfs\&. <kernelmodule> can also be a whole subsystem, if prefixed wit a "=", like "=drivers/net/team"\&.
+.sp
+instmodz aint gonna install tha kernel module, if $hostonly is set n' tha kernel module aint currently needed by any /sys/\fB\&...\fR/uevent MODALIAS\&. To install a kernel module regardless of tha hostonly mode use tha form:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+hostonly=\*(Aq\*(Aq instmodz <kernelmodule>
+.fi
+.if n \{\
+.RE
+.\}
+.RE
+.SS "Initramfs Functions"
+.sp
+FIXME
+.SS "Network Modules"
+.sp
+FIXME
+.SH "AUTHOR"
+.sp
+Harald Hoyer
+.SH "SEE ALSO"
+.sp
+\fBdracut\fR(8)
