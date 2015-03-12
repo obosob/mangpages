@@ -9,6 +9,10 @@ You can see a HTML versions here: http://gangsta.poorcoding.com/
     cd mangpages
     make && sudo make install
 
+# Using
+
+    man -L en_GX ....
+
 # Don't want to install locally?
 Put this in your shell's rc file:
 
