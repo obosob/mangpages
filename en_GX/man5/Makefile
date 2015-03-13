@@ -503,10 +503,13 @@ MAN = \
 	xorg.conf.d.5.gz \
 	xorg_event.conf.5.gz \
 	yp.conf.5.gz \
-	yum-fs-snapshot.conf.5.gz \
+	yum-fs-snapshot.conf.5.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man5
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -514,11 +517,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man5
-	install -m 644 -t $(MANPREFIX)/en_GX/man5 $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man5:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

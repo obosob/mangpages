@@ -191,10 +191,13 @@ MAN = \
 	vwait.n.gz \
 	while.n.gz \
 	winfo.n.gz \
-	wm.n.gz \
+	wm.n.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/mann
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -202,11 +205,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/mann
-	install -m 644 -t $(MANPREFIX)/en_GX/mann $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/mann:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

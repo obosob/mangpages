@@ -9895,10 +9895,13 @@ MAN = \
 	yn.3.gz \
 	ynf.3.gz \
 	ynl.3.gz \
-	zlib.3.gz \
+	zlib.3.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man3
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -9906,11 +9909,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man3
-	install -m 644 -t $(MANPREFIX)/en_GX/man3 $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man3:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

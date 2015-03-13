@@ -441,10 +441,13 @@ MAN = \
 	waitid.2.gz \
 	waitpid.2.gz \
 	write.2.gz \
-	writev.2.gz \
+	writev.2.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man2
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -452,11 +455,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man2
-	install -m 644 -t $(MANPREFIX)/en_GX/man2 $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man2:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

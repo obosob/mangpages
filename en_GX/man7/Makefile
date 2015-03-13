@@ -222,10 +222,13 @@ MAN = \
 	weston-drm.7.gz \
 	wireless.7.gz \
 	x25.7.gz \
-	xkeyboard-config.7.gz \
+	xkeyboard-config.7.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man7
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -233,11 +236,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man7
-	install -m 644 -t $(MANPREFIX)/en_GX/man7 $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man7:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

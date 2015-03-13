@@ -1833,10 +1833,13 @@ MAN = \
 	zeppelin.8.gz \
 	zic.8.gz \
 	zoneminder_selinux.8.gz \
-	zos_remote_selinux.8.gz \
+	zos_remote_selinux.8.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man8
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -1844,11 +1847,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man8
-	install -m 644 -t $(MANPREFIX)/en_GX/man8 $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man8:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

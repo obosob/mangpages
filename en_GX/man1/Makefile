@@ -2826,10 +2826,13 @@ MAN = \
 	zvbi-atsc-cc.1.gz \
 	zvbi-chains.1.gz \
 	zvbid.1.gz \
-	zvbi-ntsc-cc.1.gz \
+	zvbi-ntsc-cc.1.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man1
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -2837,11 +2840,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man1
-	install -m 644 -t $(MANPREFIX)/en_GX/man1 $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man1:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

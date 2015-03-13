@@ -9,10 +9,10 @@ DIRS = en_GX/man6 en_GX/man4 en_GX/man5 en_GX/man3p en_GX/mann en_GX/man1 en_GX/
 all: $(DIRS)
 
 $(DIRS):
-	+make -C $@
+	+@make -C $@
 
 clean:
-	for i in $(DIRS); do make -C $$i clean; done
+	+@for i in $(DIRS); do make -C $$i $(ARGS) clean; done
 
 install:
-	for i in $(DIRS); do make -C $$i install; done
+	+@for i in $(DIRS); do make -C $$i $(ARGS) install; done

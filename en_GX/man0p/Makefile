@@ -101,10 +101,13 @@ MAN = \
 	wait.h.0p.gz \
 	wchar.h.0p.gz \
 	wctype.h.0p.gz \
-	wordexp.h.0p.gz \
+	wordexp.h.0p.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man0p
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -112,11 +115,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man0p
-	install -m 644 -t $(MANPREFIX)/en_GX/man0p $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man0p:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

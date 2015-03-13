@@ -165,10 +165,13 @@ MAN = \
 	write.1p.gz \
 	xargs.1p.gz \
 	yacc.1p.gz \
-	zcat.1p.gz \
+	zcat.1p.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man1p
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -176,11 +179,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man1p
-	install -m 644 -t $(MANPREFIX)/en_GX/man1p $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man1p:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@

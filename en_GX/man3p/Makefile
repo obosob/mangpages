@@ -1124,10 +1124,13 @@ MAN = \
 	wscanf.3p.gz \
 	y0.3p.gz \
 	y1.3p.gz \
-	yn.3p.gz \
+	yn.3p.gz
 
 
-.PHONY: all clean install
+MANDIR=$(MANPREFIX)/en_GX/man3p
+CLEAN = $(MAN:%=clean_%)
+
+.PHONY: all clean $(CLEAN) install
 .SUFFIXES:
 
 %.gz: %
@@ -1135,11 +1138,17 @@ MAN = \
 
 all: $(MAN)
 
-clean:
-	rm -f $(MAN)
+clean: $(CLEAN)
 
-install: | $(MANPREFIX)/en_GX/man3p
-	install -m 644 -t $(MANPREFIX)/en_GX/man3p $(MAN)
+$(CLEAN):
+	rm -f $(@:clean_%=%)
 
-$(MANPREFIX)/en_GX/man3p:
+TARGET = $(MAN:%=$(MANDIR)/%)
+
+install: $(TARGET)
+
+$(TARGET): | $(MANDIR)
+	install -m 644 $(notdir $@) $(MANDIR)
+
+$(MANDIR):
 	mkdir -p $@
